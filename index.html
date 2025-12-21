@@ -297,7 +297,9 @@
 
         .summary {
             flex: 1;
-            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(45, 212, 191, 0.05) 100%);
+            background: rgba(21, 29, 38, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 1rem;
@@ -309,7 +311,9 @@
             justify-content: center;
             gap: 0.75rem;
             padding: 1rem 1.5rem;
-            background: var(--bg-card);
+            background: rgba(21, 29, 38, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             animation: fadeInUp 0.6s ease-out 0.15s backwards;
@@ -685,9 +689,27 @@
             margin: 0;
             flex: 1;
             height: auto;
+            background: transparent;
+            border: none;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+        }
+
+        .skills-panel .graph-legend,
+        .skills-panel .graph-hint {
+            display: none;
         }
 
         /* Career Panel - Timeline */
+        .career-panel {
+            background: rgba(21, 29, 38, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
         .career-panel .project-list-wrapper {
             flex: 1;
             max-height: none;
@@ -701,7 +723,9 @@
         /* Clients Panel */
         .clients-panel {
             padding: 1.5rem;
-            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(45, 212, 191, 0.03) 100%);
+            background: rgba(21, 29, 38, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--border-color);
             border-radius: 12px;
             flex: 1;
@@ -768,7 +792,12 @@
             gap: 1rem;
             flex: 1;
             overflow-y: auto;
-            padding: 0.5rem;
+            padding: 1.5rem;
+            background: rgba(21, 29, 38, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
         }
 
         .testimonial-card {
@@ -846,7 +875,9 @@
             width: 100%;
             height: 100%;
             min-height: 250px;
-            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(45, 212, 191, 0.03) 100%);
+            background: rgba(21, 29, 38, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--border-color);
             border-radius: 12px;
             overflow: hidden;
@@ -897,6 +928,62 @@
             font-size: 0.65rem;
             color: var(--text-muted);
             opacity: 0.7;
+        }
+
+        .skill-tooltip {
+            position: absolute;
+            pointer-events: none;
+            background: rgba(21, 29, 38, 0.95);
+            border: 1px solid var(--accent-teal);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            width: 260px;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+            z-index: 100;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .skill-tooltip.visible {
+            opacity: 1;
+        }
+
+        .skill-tooltip.primary {
+            border-color: var(--accent-gold);
+        }
+
+        .skill-tooltip.tool {
+            border-color: var(--text-muted);
+        }
+
+        .skill-tooltip-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--accent-gold);
+            margin-bottom: 0.25rem;
+        }
+
+        .skill-tooltip.secondary .skill-tooltip-title {
+            color: var(--accent-teal);
+        }
+
+        .skill-tooltip.tool .skill-tooltip-title {
+            color: var(--text-secondary);
+        }
+
+        .skill-tooltip-desc {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .skill-tooltip-usage {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            border-top: 1px solid var(--border-color);
+            padding-top: 0.5rem;
         }
 
         @media (max-width: 900px) {
@@ -1080,6 +1167,11 @@
                 <div class="carousel-panel skills-panel active" id="panel-skills">
                     <div class="skill-graph-container">
                         <canvas id="skill-graph-canvas"></canvas>
+                        <div class="skill-tooltip" id="skill-tooltip">
+                            <div class="skill-tooltip-title"></div>
+                            <div class="skill-tooltip-desc"></div>
+                            <div class="skill-tooltip-usage"></div>
+                        </div>
                         <div class="graph-legend">
                             <div class="legend-item">
                                 <span class="legend-dot primary"></span>
@@ -1556,33 +1648,53 @@
                 bgCard: '#151d26'
             };
 
-            // Skill nodes with categories - smaller sizes for better spacing
+            // Skill nodes with categories and descriptions
             const skills = [
                 // Core skills (primary - gold)
-                { id: 'unity', label: 'Unity', category: 'primary', size: 22 },
-                { id: 'csharp', label: 'C#', category: 'primary', size: 20 },
-                { id: 'hlsl', label: 'HLSL/GLSL', category: 'primary', size: 20 },
-                { id: 'directx', label: 'DirectX', category: 'primary', size: 18 },
-                { id: 'arvr', label: 'AR/VR', category: 'primary', size: 18 },
-                { id: 'urp', label: 'URP/HDRP', category: 'primary', size: 17 },
+                { id: 'unity', label: 'Unity', category: 'primary', size: 22,
+                  desc: 'Primary game engine', usage: 'Daily since 2017 - shipped 12+ titles across mobile, PC, and VR platforms' },
+                { id: 'csharp', label: 'C#', category: 'primary', size: 20,
+                  desc: 'Main programming language', usage: '7+ years - gameplay systems, editor tools, and performance-critical code' },
+                { id: 'hlsl', label: 'HLSL/GLSL', category: 'primary', size: 20,
+                  desc: 'Shader programming', usage: 'Custom rendering pipelines, VFX, post-processing, and compute shaders' },
+                { id: 'directx', label: 'DirectX', category: 'primary', size: 18,
+                  desc: 'Graphics API', usage: 'DX11/DX12 for Windows and Xbox development' },
+                { id: 'arvr', label: 'AR/VR', category: 'primary', size: 18,
+                  desc: 'Immersive experiences', usage: 'Meta Quest, HoloLens, and mobile AR projects' },
+                { id: 'urp', label: 'URP/HDRP', category: 'primary', size: 17,
+                  desc: 'Unity render pipelines', usage: 'Custom render features, shader graphs, and pipeline extensions' },
 
                 // Secondary skills (teal)
-                { id: 'opengl', label: 'OpenGL', category: 'secondary', size: 14 },
-                { id: 'unreal', label: 'Unreal', category: 'secondary', size: 16 },
-                { id: 'vulkan', label: 'Vulkan', category: 'secondary', size: 13 },
-                { id: 'python', label: 'Python', category: 'secondary', size: 13 },
-                { id: 'cpp', label: 'C++', category: 'secondary', size: 15 },
-                { id: 'wpf', label: 'WPF', category: 'secondary', size: 11 },
-                { id: 'compute', label: 'Compute', category: 'secondary', size: 16 },
-                { id: 'vfx', label: 'VFX Graph', category: 'secondary', size: 15 },
-                { id: 'niagara', label: 'Niagara', category: 'secondary', size: 13 },
-                { id: 'threejs', label: 'Three.js', category: 'secondary', size: 13 },
-                { id: 'webgl', label: 'WebGL', category: 'secondary', size: 13 },
+                { id: 'opengl', label: 'OpenGL', category: 'secondary', size: 14,
+                  desc: 'Cross-platform graphics', usage: 'Mobile and Linux rendering targets' },
+                { id: 'unreal', label: 'Unreal', category: 'secondary', size: 16,
+                  desc: 'Secondary engine', usage: 'Blueprint systems and material editor for specific projects' },
+                { id: 'vulkan', label: 'Vulkan', category: 'secondary', size: 13,
+                  desc: 'Low-level graphics API', usage: 'Performance optimization on Android and Linux' },
+                { id: 'python', label: 'Python', category: 'secondary', size: 13,
+                  desc: 'Scripting & tools', usage: 'Build automation, asset pipelines, and data processing' },
+                { id: 'cpp', label: 'C++', category: 'secondary', size: 15,
+                  desc: 'Systems programming', usage: 'Native plugins, engine modifications, and Unreal development' },
+                { id: 'wpf', label: 'WPF', category: 'secondary', size: 11,
+                  desc: 'Desktop UI framework', usage: 'Internal tools and editors for game development' },
+                { id: 'compute', label: 'Compute', category: 'secondary', size: 16,
+                  desc: 'GPU compute shaders', usage: 'Particle simulations, procedural generation, and physics' },
+                { id: 'vfx', label: 'VFX Graph', category: 'secondary', size: 15,
+                  desc: 'Unity visual effects', usage: 'GPU-driven particle systems and real-time simulations' },
+                { id: 'niagara', label: 'Niagara', category: 'secondary', size: 13,
+                  desc: 'Unreal VFX system', usage: 'Complex particle effects for Unreal projects' },
+                { id: 'threejs', label: 'Three.js', category: 'secondary', size: 13,
+                  desc: 'WebGL framework', usage: 'Interactive 3D web experiences and visualizations' },
+                { id: 'webgl', label: 'WebGL', category: 'secondary', size: 13,
+                  desc: 'Browser graphics', usage: 'Custom shaders and real-time web graphics' },
 
                 // Tools (muted)
-                { id: 'renderdoc', label: 'RenderDoc', category: 'tool', size: 11 },
-                { id: 'nsight', label: 'NSight', category: 'tool', size: 11 },
-                { id: 'pix', label: 'PIX', category: 'tool', size: 11 }
+                { id: 'renderdoc', label: 'RenderDoc', category: 'tool', size: 11,
+                  desc: 'Graphics debugger', usage: 'Frame analysis and shader debugging' },
+                { id: 'nsight', label: 'NSight', category: 'tool', size: 11,
+                  desc: 'NVIDIA profiler', usage: 'GPU performance analysis and optimization' },
+                { id: 'pix', label: 'PIX', category: 'tool', size: 11,
+                  desc: 'DirectX debugger', usage: 'Windows and Xbox graphics debugging' }
             ];
 
             // Connections between skills
@@ -1632,6 +1744,162 @@
             let mouseX = 0, mouseY = 0;
             let settled = false;
             let settleTimer = 0;
+
+            // Tooltip element and connector line
+            const tooltip = document.getElementById('skill-tooltip');
+            const tooltipTitle = tooltip.querySelector('.skill-tooltip-title');
+            const tooltipDesc = tooltip.querySelector('.skill-tooltip-desc');
+            const tooltipUsage = tooltip.querySelector('.skill-tooltip-usage');
+
+            let tooltipTarget = null; // Current node the tooltip is attached to
+            let tooltipPos = { x: 0, y: 0 }; // Position for tooltip
+            let tooltipConnectPoint = { x: 0, y: 0 }; // Connection point on tooltip edge
+            let lineAnimProgress = 0; // Animation progress 0-1
+            let lineAnimStartTime = 0;
+            const lineAnimDuration = 300; // ms for line to draw
+            let tooltipSide = 'right'; // 'left' or 'right'
+
+            function generateTooltipPosition(node) {
+                const tooltipWidth = 260;
+                const tooltipHeight = 120;
+                const margin = 20;
+
+                // Randomly choose left or right side
+                tooltipSide = Math.random() > 0.5 ? 'right' : 'left';
+
+                let tx, ty;
+
+                if (tooltipSide === 'right') {
+                    // Position on right side of canvas
+                    tx = width - tooltipWidth - margin;
+                } else {
+                    // Position on left side of canvas
+                    tx = margin;
+                }
+
+                // Random vertical position, but try to align somewhat with node
+                const minY = margin;
+                const maxY = height - tooltipHeight - margin;
+                ty = node.y - tooltipHeight / 2 + (Math.random() - 0.5) * 100;
+                ty = Math.max(minY, Math.min(maxY, ty));
+
+                tooltipPos = { x: tx, y: ty };
+
+                // Connection point is on the edge facing the node
+                if (tooltipSide === 'right') {
+                    tooltipConnectPoint = {
+                        x: tx,
+                        y: ty + tooltipHeight / 2
+                    };
+                } else {
+                    tooltipConnectPoint = {
+                        x: tx + tooltipWidth,
+                        y: ty + tooltipHeight / 2
+                    };
+                }
+
+                // Start line animation
+                lineAnimProgress = 0;
+                lineAnimStartTime = performance.now();
+            }
+
+            function updateTooltip(node) {
+                if (node && !isDragging) {
+                    // Only generate new position if hovering a new node
+                    if (tooltipTarget !== node) {
+                        tooltipTarget = node;
+                        generateTooltipPosition(node);
+                        // Hide tooltip initially - will show when line finishes
+                        tooltip.classList.remove('visible');
+                    }
+
+                    tooltipTitle.textContent = node.label;
+                    tooltipDesc.textContent = node.desc || '';
+                    tooltipUsage.textContent = node.usage || '';
+
+                    // Set category class for color (visible class added when line completes)
+                    tooltip.className = 'skill-tooltip ' + node.category + (lineAnimProgress >= 1 ? ' visible' : '');
+
+                    tooltip.style.left = tooltipPos.x + 'px';
+                    tooltip.style.top = tooltipPos.y + 'px';
+                } else {
+                    tooltip.classList.remove('visible');
+                    tooltipTarget = null;
+                    lineAnimProgress = 0;
+                }
+            }
+
+            function drawTooltipConnector() {
+                if (!tooltipTarget) return;
+
+                // Update animation progress
+                const elapsed = performance.now() - lineAnimStartTime;
+                lineAnimProgress = Math.min(1, elapsed / lineAnimDuration);
+
+                // Show tooltip when line completes
+                if (lineAnimProgress >= 1 && !tooltip.classList.contains('visible')) {
+                    tooltip.classList.add('visible');
+                }
+
+                const node = tooltipTarget;
+                const nodeX = node.x;
+                const nodeY = node.y;
+                const connX = tooltipConnectPoint.x;
+                const connY = tooltipConnectPoint.y;
+
+                // Get line color based on category
+                let lineColor;
+                if (node.category === 'primary') {
+                    lineColor = colors.gold;
+                } else if (node.category === 'secondary') {
+                    lineColor = colors.teal;
+                } else {
+                    lineColor = colors.textMuted;
+                }
+
+                ctx.strokeStyle = lineColor;
+                ctx.lineWidth = 1.5;
+                ctx.globalAlpha = 0.8;
+
+                // Calculate the corner point for L-shape
+                // First go vertical from node, then horizontal to tooltip
+                const cornerX = nodeX;
+                const cornerY = connY;
+
+                // Calculate total line length for animation
+                const verticalDist = Math.abs(cornerY - nodeY);
+                const horizontalDist = Math.abs(connX - cornerX);
+                const totalDist = verticalDist + horizontalDist;
+
+                // How much of the line to draw based on animation progress
+                const drawDist = totalDist * lineAnimProgress;
+
+                ctx.beginPath();
+                ctx.moveTo(nodeX, nodeY);
+
+                if (drawDist <= verticalDist) {
+                    // Still drawing vertical portion
+                    const progress = drawDist / verticalDist;
+                    const currentY = nodeY + (cornerY - nodeY) * progress;
+                    ctx.lineTo(nodeX, currentY);
+                } else {
+                    // Vertical complete, drawing horizontal
+                    ctx.lineTo(cornerX, cornerY);
+                    const remainingDist = drawDist - verticalDist;
+                    const horizontalProgress = remainingDist / horizontalDist;
+                    const currentX = cornerX + (connX - cornerX) * horizontalProgress;
+                    ctx.lineTo(currentX, cornerY);
+                }
+
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+
+                // Draw small circle at node connection point
+                ctx.beginPath();
+                ctx.arc(nodeX, nodeY, 3, 0, Math.PI * 2);
+                ctx.fillStyle = lineColor;
+                ctx.fill();
+            }
 
             function resize() {
                 const rect = container.getBoundingClientRect();
@@ -1683,13 +1951,13 @@
                 return connected;
             }
 
-            // Gentle physics simulation - runs only briefly then settles
+            // Physics simulation - stronger forces when dragging
             function simulate() {
                 if (settled && !dragNode) return;
 
-                const repulsion = 1800;
-                const attraction = 0.006;
-                const damping = 0.92; // Higher = more friction = calmer
+                const repulsion = dragNode ? 3500 : 1800;
+                const attraction = dragNode ? 0.025 : 0.006;
+                const damping = 0.88;
                 const centerPull = 0.003;
 
                 let totalMovement = 0;
@@ -1828,7 +2096,7 @@
                     });
                 }
 
-                // Draw connections with gradient
+                // Draw connections with gradient and mouse light
                 connections.forEach(([a, b]) => {
                     const nodeA = nodes.find(n => n.id === a);
                     const nodeB = nodes.find(n => n.id === b);
@@ -1841,14 +2109,15 @@
                     const gradient = ctx.createLinearGradient(nodeA.x, nodeA.y, nodeB.x, nodeB.y);
 
                     if (isHighlighted) {
-                        gradient.addColorStop(0, 'rgba(45, 212, 191, 0.6)');
-                        gradient.addColorStop(0.5, 'rgba(232, 185, 35, 0.4)');
-                        gradient.addColorStop(1, 'rgba(45, 212, 191, 0.6)');
-                        ctx.lineWidth = 2;
+                        gradient.addColorStop(0, 'rgba(45, 212, 191, 0.7)');
+                        gradient.addColorStop(0.5, 'rgba(232, 185, 35, 0.5)');
+                        gradient.addColorStop(1, 'rgba(45, 212, 191, 0.7)');
+                        ctx.lineWidth = 2.5;
                     } else {
-                        const alpha = hoveredNode ? 0.05 : 0.12;
-                        gradient.addColorStop(0, `rgba(45, 212, 191, ${alpha})`);
-                        gradient.addColorStop(1, `rgba(232, 185, 35, ${alpha})`);
+                        const baseAlpha = hoveredNode ? 0.05 : 0.15;
+                        gradient.addColorStop(0, `rgba(45, 212, 191, ${baseAlpha})`);
+                        gradient.addColorStop(0.5, `rgba(255, 255, 255, ${baseAlpha * 0.5})`);
+                        gradient.addColorStop(1, `rgba(232, 185, 35, ${baseAlpha})`);
                         ctx.lineWidth = 1;
                     }
 
@@ -1867,34 +2136,34 @@
 
                     // Subtle pulse animation
                     const pulse = Math.sin(time * node.pulseSpeed + node.pulsePhase);
-                    const displaySize = node.size + (isHovered ? 2 : pulse * 0.3);
+                    const displaySize = node.size + (isHovered ? 3 : pulse * 0.5);
 
                     // Get colors based on category
-                    let baseColor, glowColor;
+                    let glowColor;
                     if (node.category === 'primary') {
-                        baseColor = colors.gold;
                         glowColor = colors.gold;
                     } else if (node.category === 'secondary') {
-                        baseColor = colors.teal;
                         glowColor = colors.teal;
                     } else {
-                        baseColor = colors.textMuted;
                         glowColor = colors.textMuted;
                     }
 
                     ctx.globalAlpha = isDimmed ? 0.25 : 1;
 
-                    // Outer glow
+                    // Glow effect on hover or connected
                     if (isHovered || isConnected) {
+                        const glowSize = displaySize * (isHovered ? 2.5 : 2);
                         const glowGradient = ctx.createRadialGradient(
                             node.x, node.y, displaySize * 0.5,
-                            node.x, node.y, displaySize * 2
+                            node.x, node.y, glowSize
                         );
-                        glowGradient.addColorStop(0, isHovered ? `${glowColor}40` : `${glowColor}20`);
+                        const glowAlpha = isHovered ? 0.5 : 0.3;
+                        glowGradient.addColorStop(0, `${glowColor}${Math.floor(glowAlpha * 255).toString(16).padStart(2, '0')}`);
+                        glowGradient.addColorStop(0.5, `${glowColor}${Math.floor(glowAlpha * 128).toString(16).padStart(2, '0')}`);
                         glowGradient.addColorStop(1, 'transparent');
                         ctx.fillStyle = glowGradient;
                         ctx.beginPath();
-                        ctx.arc(node.x, node.y, displaySize * 2, 0, Math.PI * 2);
+                        ctx.arc(node.x, node.y, glowSize, 0, Math.PI * 2);
                         ctx.fill();
                     }
 
@@ -1908,15 +2177,15 @@
                     );
 
                     if (node.category === 'primary') {
-                        nodeGradient.addColorStop(0, '#f5d45a');
+                        nodeGradient.addColorStop(0, 'hsl(45, 85%, 65%)');
                         nodeGradient.addColorStop(0.5, colors.gold);
                         nodeGradient.addColorStop(1, colors.goldDim);
                     } else if (node.category === 'secondary') {
-                        nodeGradient.addColorStop(0, '#5eebd7');
+                        nodeGradient.addColorStop(0, 'hsl(168, 75%, 55%)');
                         nodeGradient.addColorStop(0.5, colors.teal);
                         nodeGradient.addColorStop(1, colors.tealDim);
                     } else {
-                        nodeGradient.addColorStop(0, '#8b9299');
+                        nodeGradient.addColorStop(0, 'hsl(210, 10%, 55%)');
                         nodeGradient.addColorStop(0.5, colors.textMuted);
                         nodeGradient.addColorStop(1, '#4a5058');
                     }
@@ -1926,13 +2195,13 @@
 
                     // Inner highlight
                     ctx.beginPath();
-                    ctx.arc(node.x - displaySize * 0.25, node.y - displaySize * 0.25, displaySize * 0.3, 0, Math.PI * 2);
+                    ctx.arc(node.x - displaySize * 0.2, node.y - displaySize * 0.2, displaySize * 0.25, 0, Math.PI * 2);
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
                     ctx.fill();
 
                     // Border
                     drawOrganicShape(node.x, node.y, displaySize, node.rotation, pulse * 0.5 + 0.5);
-                    ctx.strokeStyle = isHovered ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.1)';
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${isHovered ? 0.6 : 0.15})`;
                     ctx.lineWidth = isHovered ? 2 : 1;
                     ctx.stroke();
 
@@ -1956,6 +2225,9 @@
 
                     ctx.globalAlpha = 1;
                 });
+
+                // Draw tooltip connector line after nodes
+                drawTooltipConnector();
             }
 
             function animate() {
@@ -1991,9 +2263,11 @@
                     dragNode.vy = 0;
                     settled = false;
                     settleTimer = 0;
+                    updateTooltip(null);
                 } else {
                     hoveredNode = getNodeAt(mouseX, mouseY);
                     container.style.cursor = hoveredNode ? 'pointer' : 'grab';
+                    updateTooltip(hoveredNode);
                 }
             });
 
@@ -2008,6 +2282,7 @@
                 dragNode = null;
                 hoveredNode = null;
                 container.style.cursor = 'grab';
+                updateTooltip(null);
             });
 
             // Touch support
