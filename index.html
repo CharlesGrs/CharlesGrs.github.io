@@ -722,7 +722,7 @@
 
         /* Clients Panel */
         .clients-panel {
-            padding: 1.5rem;
+            padding: 2rem;
             background: rgba(21, 29, 38, 0.6);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
@@ -732,57 +732,157 @@
             overflow-y: auto;
         }
 
+        .clients-panel .clients-section {
+            margin-bottom: 2rem;
+        }
+
+        .clients-panel .clients-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .clients-panel .section-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .clients-panel .section-label::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-gold);
+        }
+
+        .clients-panel .section-label.other::before {
+            background: var(--accent-teal);
+        }
+
         .clients-panel .client-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
         }
 
         .clients-panel .client-card {
-            padding: 1.25rem;
-            background: var(--bg-secondary);
+            padding: 0.9rem 1.4rem;
+            background: transparent;
             border: 1px solid var(--border-color);
-            border-radius: 8px;
-            text-align: center;
+            border-radius: 100px;
+            text-align: left;
             text-decoration: none;
-            transition: all 0.3s ease;
+            transition: border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                        transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                        box-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1);
             opacity: 0;
             transform: scale(0.9);
             animation: skillReveal 0.5s ease forwards;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .clients-panel .client-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at center, rgba(45, 212, 191, 0.15) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .clients-panel .client-card:hover {
             border-color: var(--accent-teal);
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(45, 212, 191, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(45, 212, 191, 0.12);
+        }
+
+        .clients-panel .client-card:hover::before {
+            opacity: 1;
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.15s;
         }
 
         .clients-panel .client-card.major {
-            border-color: var(--accent-gold);
+            border-color: rgba(232, 185, 35, 0.4);
             animation-name: skillRevealGold;
         }
 
+        .clients-panel .client-card.major::before {
+            background: radial-gradient(ellipse at center, rgba(232, 185, 35, 0.18) 0%, transparent 70%);
+        }
+
         .clients-panel .client-card.major:hover {
-            box-shadow: 0 8px 25px rgba(232, 185, 35, 0.2);
+            border-color: var(--accent-gold);
+            box-shadow: 0 4px 20px rgba(232, 185, 35, 0.15);
         }
 
         .clients-panel .client-name {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             font-weight: 600;
             color: var(--text-primary);
-            margin-bottom: 0.25rem;
+            white-space: nowrap;
+            position: relative;
+            z-index: 1;
+            transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.1s;
+        }
+
+        .clients-panel .client-card:hover .client-name {
+            color: var(--accent-teal);
+            transition: color 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.2s;
         }
 
         .clients-panel .client-card.major .client-name {
             color: var(--accent-gold);
         }
 
+        .clients-panel .client-card.major:hover .client-name {
+            color: #f5d060;
+            transition: color 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.2s;
+        }
+
         .clients-panel .client-type {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.03em;
+            white-space: nowrap;
+            position: relative;
+            z-index: 1;
+            padding: 0.2rem 0.5rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 4px;
+            transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                        color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .clients-panel .client-card:hover .client-type {
+            background: rgba(45, 212, 191, 0.15);
+            color: var(--accent-teal);
+            transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.25s,
+                        color 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.25s;
+        }
+
+        .clients-panel .client-card.major .client-type {
+            background: rgba(232, 185, 35, 0.1);
+            color: var(--accent-gold);
+        }
+
+        .clients-panel .client-card.major:hover .client-type {
+            background: rgba(232, 185, 35, 0.2);
+            color: #f5d060;
+            transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.25s,
+                        color 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.25s;
         }
 
         /* Testimonials Panel */
@@ -1068,12 +1168,28 @@
             }
 
             .clients-panel {
-                padding: 1rem;
+                padding: 1.25rem;
+            }
+
+            .clients-panel .clients-section {
+                margin-bottom: 1.5rem;
             }
 
             .clients-panel .client-grid {
-                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-                gap: 0.75rem;
+                gap: 0.5rem;
+            }
+
+            .clients-panel .client-card {
+                padding: 0.7rem 1rem;
+            }
+
+            .clients-panel .client-name {
+                font-size: 0.75rem;
+            }
+
+            .clients-panel .client-type {
+                font-size: 0.55rem;
+                padding: 0.15rem 0.4rem;
             }
         }
 
@@ -1319,43 +1435,51 @@
 
                 <!-- Clients Panel -->
                 <div class="carousel-panel clients-panel" id="panel-clients">
-                    <div class="client-grid">
-                        <a href="https://nexusstudios.com/" target="_blank" class="client-card major">
-                            <div class="client-name">Nexus Studios</div>
-                            <div class="client-type">VR / Immersive</div>
-                        </a>
-                        <a href="https://www.ubisoft.com/" target="_blank" class="client-card major">
-                            <div class="client-name">Ubisoft</div>
-                            <div class="client-type">AAA Games</div>
-                        </a>
-                        <a href="https://www.22cans.com/" target="_blank" class="client-card major">
-                            <div class="client-name">22cans</div>
-                            <div class="client-type">Game Studio</div>
-                        </a>
-                        <a href="https://www.sandbox.game/" target="_blank" class="client-card">
-                            <div class="client-name">The Sandbox</div>
-                            <div class="client-type">Web3 Gaming</div>
-                        </a>
-                        <a href="https://www.drest.com/" target="_blank" class="client-card">
-                            <div class="client-name">DREST</div>
-                            <div class="client-type">Fashion Tech</div>
-                        </a>
-                        <a href="https://www.linkedin.com/company/h3investments/posts/" target="_blank" class="client-card">
-                            <div class="client-name">H3 Space</div>
-                            <div class="client-type">AR / VR</div>
-                        </a>
-                        <a href="https://store.steampowered.com/developer/lrdg" target="_blank" class="client-card">
-                            <div class="client-name">Little Red Dog</div>
-                            <div class="client-type">Game Studio</div>
-                        </a>
-                        <a href="https://scapin.io/" target="_blank" class="client-card">
-                            <div class="client-name">Scapin'</div>
-                            <div class="client-type">Social App</div>
-                        </a>
-                        <a href="https://sabda.es/" target="_blank" class="client-card">
-                            <div class="client-name">SABDA</div>
-                            <div class="client-type">Immersive Art</div>
-                        </a>
+                    <div class="clients-section">
+                        <div class="section-label">Featured Partners</div>
+                        <div class="client-grid">
+                            <a href="https://nexusstudios.com/" target="_blank" class="client-card major">
+                                <span class="client-name">Nexus Studios</span>
+                                <span class="client-type">VR / Immersive</span>
+                            </a>
+                            <a href="https://www.ubisoft.com/" target="_blank" class="client-card major">
+                                <span class="client-name">Ubisoft</span>
+                                <span class="client-type">AAA Games</span>
+                            </a>
+                            <a href="https://www.22cans.com/" target="_blank" class="client-card major">
+                                <span class="client-name">22cans</span>
+                                <span class="client-type">Game Studio</span>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="clients-section">
+                        <div class="section-label other">Collaborations</div>
+                        <div class="client-grid">
+                            <a href="https://www.sandbox.game/" target="_blank" class="client-card">
+                                <span class="client-name">The Sandbox</span>
+                                <span class="client-type">Web3 Gaming</span>
+                            </a>
+                            <a href="https://www.drest.com/" target="_blank" class="client-card">
+                                <span class="client-name">DREST</span>
+                                <span class="client-type">Fashion Tech</span>
+                            </a>
+                            <a href="https://www.linkedin.com/company/h3investments/posts/" target="_blank" class="client-card">
+                                <span class="client-name">H3 Space</span>
+                                <span class="client-type">AR / VR</span>
+                            </a>
+                            <a href="https://store.steampowered.com/developer/lrdg" target="_blank" class="client-card">
+                                <span class="client-name">Little Red Dog</span>
+                                <span class="client-type">Game Studio</span>
+                            </a>
+                            <a href="https://scapin.io/" target="_blank" class="client-card">
+                                <span class="client-name">Scapin'</span>
+                                <span class="client-type">Social App</span>
+                            </a>
+                            <a href="https://sabda.es/" target="_blank" class="client-card">
+                                <span class="client-name">SABDA</span>
+                                <span class="client-type">Immersive Art</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
 
@@ -1649,53 +1773,58 @@
             };
 
             // Skill nodes with categories and descriptions
+            // baseSize is the reference size at 400px canvas dimension
             const skills = [
                 // Core skills (primary - gold)
-                { id: 'unity', label: 'Unity', category: 'primary', size: 22,
+                { id: 'unity', label: 'Unity', category: 'primary', baseSize: 22,
                   desc: 'Primary game engine', usage: 'Daily since 2017 - shipped 12+ titles across mobile, PC, and VR platforms' },
-                { id: 'csharp', label: 'C#', category: 'primary', size: 20,
+                { id: 'csharp', label: 'C#', category: 'primary', baseSize: 20,
                   desc: 'Main programming language', usage: '7+ years - gameplay systems, editor tools, and performance-critical code' },
-                { id: 'hlsl', label: 'HLSL/GLSL', category: 'primary', size: 20,
+                { id: 'hlsl', label: 'HLSL/GLSL', category: 'primary', baseSize: 20,
                   desc: 'Shader programming', usage: 'Custom rendering pipelines, VFX, post-processing, and compute shaders' },
-                { id: 'directx', label: 'DirectX', category: 'primary', size: 18,
+                { id: 'directx', label: 'DirectX', category: 'primary', baseSize: 18,
                   desc: 'Graphics API', usage: 'DX11/DX12 for Windows and Xbox development' },
-                { id: 'arvr', label: 'AR/VR', category: 'primary', size: 18,
+                { id: 'arvr', label: 'AR/VR', category: 'primary', baseSize: 18,
                   desc: 'Immersive experiences', usage: 'Meta Quest, HoloLens, and mobile AR projects' },
-                { id: 'urp', label: 'URP/HDRP', category: 'primary', size: 17,
+                { id: 'urp', label: 'URP/HDRP', category: 'primary', baseSize: 17,
                   desc: 'Unity render pipelines', usage: 'Custom render features, shader graphs, and pipeline extensions' },
 
                 // Secondary skills (teal)
-                { id: 'opengl', label: 'OpenGL', category: 'secondary', size: 14,
+                { id: 'opengl', label: 'OpenGL', category: 'secondary', baseSize: 14,
                   desc: 'Cross-platform graphics', usage: 'Mobile and Linux rendering targets' },
-                { id: 'unreal', label: 'Unreal', category: 'secondary', size: 16,
+                { id: 'unreal', label: 'Unreal', category: 'secondary', baseSize: 16,
                   desc: 'Secondary engine', usage: 'Blueprint systems and material editor for specific projects' },
-                { id: 'vulkan', label: 'Vulkan', category: 'secondary', size: 13,
+                { id: 'vulkan', label: 'Vulkan', category: 'secondary', baseSize: 13,
                   desc: 'Low-level graphics API', usage: 'Performance optimization on Android and Linux' },
-                { id: 'python', label: 'Python', category: 'secondary', size: 13,
+                { id: 'python', label: 'Python', category: 'secondary', baseSize: 13,
                   desc: 'Scripting & tools', usage: 'Build automation, asset pipelines, and data processing' },
-                { id: 'cpp', label: 'C++', category: 'secondary', size: 15,
+                { id: 'cpp', label: 'C++', category: 'secondary', baseSize: 15,
                   desc: 'Systems programming', usage: 'Native plugins, engine modifications, and Unreal development' },
-                { id: 'wpf', label: 'WPF', category: 'secondary', size: 11,
+                { id: 'wpf', label: 'WPF', category: 'secondary', baseSize: 11,
                   desc: 'Desktop UI framework', usage: 'Internal tools and editors for game development' },
-                { id: 'compute', label: 'Compute', category: 'secondary', size: 16,
+                { id: 'compute', label: 'Compute', category: 'secondary', baseSize: 16,
                   desc: 'GPU compute shaders', usage: 'Particle simulations, procedural generation, and physics' },
-                { id: 'vfx', label: 'VFX Graph', category: 'secondary', size: 15,
+                { id: 'vfx', label: 'VFX Graph', category: 'secondary', baseSize: 15,
                   desc: 'Unity visual effects', usage: 'GPU-driven particle systems and real-time simulations' },
-                { id: 'niagara', label: 'Niagara', category: 'secondary', size: 13,
+                { id: 'niagara', label: 'Niagara', category: 'secondary', baseSize: 13,
                   desc: 'Unreal VFX system', usage: 'Complex particle effects for Unreal projects' },
-                { id: 'threejs', label: 'Three.js', category: 'secondary', size: 13,
+                { id: 'threejs', label: 'Three.js', category: 'secondary', baseSize: 13,
                   desc: 'WebGL framework', usage: 'Interactive 3D web experiences and visualizations' },
-                { id: 'webgl', label: 'WebGL', category: 'secondary', size: 13,
+                { id: 'webgl', label: 'WebGL', category: 'secondary', baseSize: 13,
                   desc: 'Browser graphics', usage: 'Custom shaders and real-time web graphics' },
 
                 // Tools (muted)
-                { id: 'renderdoc', label: 'RenderDoc', category: 'tool', size: 11,
+                { id: 'renderdoc', label: 'RenderDoc', category: 'tool', baseSize: 11,
                   desc: 'Graphics debugger', usage: 'Frame analysis and shader debugging' },
-                { id: 'nsight', label: 'NSight', category: 'tool', size: 11,
+                { id: 'nsight', label: 'NSight', category: 'tool', baseSize: 11,
                   desc: 'NVIDIA profiler', usage: 'GPU performance analysis and optimization' },
-                { id: 'pix', label: 'PIX', category: 'tool', size: 11,
+                { id: 'pix', label: 'PIX', category: 'tool', baseSize: 11,
                   desc: 'DirectX debugger', usage: 'Windows and Xbox graphics debugging' }
             ];
+
+            // Reference dimension for scaling (sizes are designed for this)
+            const BASE_DIMENSION = 400;
+            let sizeScale = 1;
 
             // Connections between skills
             const connections = [
@@ -1720,6 +1849,7 @@
                 const radius = 150 + Math.random() * 50;
                 return {
                     ...skill,
+                    size: skill.baseSize, // Will be updated on resize
                     x: 0,
                     y: 0,
                     vx: 0,
@@ -1733,7 +1863,11 @@
                     pulseSpeed: 0.3 + Math.random() * 0.3,
                     pulsePhase: Math.random() * Math.PI * 2,
                     rotation: Math.random() * Math.PI * 2,
-                    rotationSpeed: (Math.random() - 0.5) * 0.003
+                    rotationSpeed: (Math.random() - 0.5) * 0.003,
+                    // Glow animation state
+                    glowIntensity: 0,
+                    targetGlowIntensity: 0,
+                    glowDelay: 0
                 };
             });
 
@@ -1759,9 +1893,12 @@
             const lineAnimDuration = 300; // ms for line to draw
             let tooltipSide = 'right'; // 'left' or 'right'
 
+            // Offset from node to tooltip (set once when tooltip appears)
+            let tooltipOffset = { x: 0, y: 0 };
+            const tooltipWidth = 260;
+            const tooltipHeight = 120;
+
             function generateTooltipPosition(node) {
-                const tooltipWidth = 260;
-                const tooltipHeight = 120;
                 const margin = 20;
 
                 // Randomly choose left or right side
@@ -1785,6 +1922,9 @@
 
                 tooltipPos = { x: tx, y: ty };
 
+                // Store offset from node position to tooltip position
+                tooltipOffset = { x: tx - node.x, y: ty - node.y };
+
                 // Connection point is on the edge facing the node
                 if (tooltipSide === 'right') {
                     tooltipConnectPoint = {
@@ -1803,10 +1943,39 @@
                 lineAnimStartTime = performance.now();
             }
 
-            function updateTooltip(node) {
-                if (node && !isDragging) {
-                    // Only generate new position if hovering a new node
-                    if (tooltipTarget !== node) {
+            function updateTooltipPositionForDrag(node) {
+                // Update tooltip position maintaining the offset from the node
+                const margin = 20;
+                let tx = node.x + tooltipOffset.x;
+                let ty = node.y + tooltipOffset.y;
+
+                // Clamp to canvas bounds
+                tx = Math.max(margin, Math.min(width - tooltipWidth - margin, tx));
+                ty = Math.max(margin, Math.min(height - tooltipHeight - margin, ty));
+
+                tooltipPos = { x: tx, y: ty };
+
+                // Update connection point
+                if (tooltipSide === 'right') {
+                    tooltipConnectPoint = {
+                        x: tx,
+                        y: ty + tooltipHeight / 2
+                    };
+                } else {
+                    tooltipConnectPoint = {
+                        x: tx + tooltipWidth,
+                        y: ty + tooltipHeight / 2
+                    };
+                }
+
+                tooltip.style.left = tooltipPos.x + 'px';
+                tooltip.style.top = tooltipPos.y + 'px';
+            }
+
+            function updateTooltip(node, forceKeep = false) {
+                if (node) {
+                    // Only generate new position if hovering a new node (and not dragging)
+                    if (tooltipTarget !== node && !isDragging) {
                         tooltipTarget = node;
                         generateTooltipPosition(node);
                         // Hide tooltip initially - will show when line finishes
@@ -1822,7 +1991,7 @@
 
                     tooltip.style.left = tooltipPos.x + 'px';
                     tooltip.style.top = tooltipPos.y + 'px';
-                } else {
+                } else if (!forceKeep) {
                     tooltip.classList.remove('visible');
                     tooltipTarget = null;
                     lineAnimProgress = 0;
@@ -1916,6 +2085,11 @@
                 settled = false;
                 settleTimer = 0;
 
+                // Calculate size scale based on canvas dimensions
+                // Use the smaller dimension for scaling, with min/max limits
+                const minDim = Math.min(width, height);
+                sizeScale = Math.max(0.5, Math.min(1.2, minDim / BASE_DIMENSION));
+
                 // Initialize positions in a more spread out pattern
                 nodes.forEach((node, i) => {
                     const angle = (i / nodes.length) * Math.PI * 2 + Math.PI / 4;
@@ -1926,6 +2100,8 @@
                     node.baseY = node.y;
                     node.vx = 0;
                     node.vy = 0;
+                    // Update node size based on scale
+                    node.size = node.baseSize * sizeScale;
                 });
             }
 
@@ -1955,7 +2131,9 @@
             function simulate() {
                 if (settled && !dragNode) return;
 
-                const repulsion = dragNode ? 3500 : 1800;
+                // Scale physics parameters based on canvas size
+                const scaleSquared = sizeScale * sizeScale;
+                const repulsion = (dragNode ? 3500 : 1800) * scaleSquared;
                 const attraction = dragNode ? 0.025 : 0.006;
                 const damping = 0.88;
                 const centerPull = 0.003;
@@ -1973,7 +2151,7 @@
                         const dx = nodeA.x - nodeB.x;
                         const dy = nodeA.y - nodeB.y;
                         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                        const minDist = nodeA.size + nodeB.size + 40;
+                        const minDist = (nodeA.size + nodeB.size + 40 * sizeScale);
 
                         if (dist < minDist * 2) {
                             const force = repulsion / (dist * dist);
@@ -1991,7 +2169,7 @@
                             const dx = other.x - nodeA.x;
                             const dy = other.y - nodeA.y;
                             const dist = Math.sqrt(dx * dx + dy * dy);
-                            const idealDist = 120;
+                            const idealDist = 120 * sizeScale; // Scale ideal distance
                             if (dist > idealDist) {
                                 const strength = (dist - idealDist) * attraction;
                                 fx += (dx / dist) * strength;
@@ -2079,11 +2257,51 @@
                 ctx.closePath();
             }
 
+            // Track time for glow delays
+            let lastHoveredNode = null;
+            let hoverStartTime = 0;
+
             function draw() {
                 ctx.clearRect(0, 0, width, height);
                 time += 0.016;
 
                 const connectedToHovered = hoveredNode ? getConnectedNodes(hoveredNode) : new Set();
+
+                // Reset glow delay timer when hover changes
+                if (hoveredNode !== lastHoveredNode) {
+                    hoverStartTime = time;
+                    lastHoveredNode = hoveredNode;
+                }
+
+                const timeSinceHover = time - hoverStartTime;
+
+                // Update glow intensities with smooth transitions
+                nodes.forEach(node => {
+                    const isHovered = node === hoveredNode;
+                    const isConnected = connectedToHovered.has(node.id);
+
+                    // Set target glow intensity
+                    if (isHovered) {
+                        node.targetGlowIntensity = 1;
+                        node.glowDelay = 0;
+                    } else if (isConnected) {
+                        node.targetGlowIntensity = 0.6;
+                        node.glowDelay = 0.15; // 150ms delay for connected nodes
+                    } else {
+                        node.targetGlowIntensity = 0;
+                        node.glowDelay = 0;
+                    }
+
+                    // Smoothly interpolate glow intensity with delay
+                    const effectiveTime = Math.max(0, timeSinceHover - node.glowDelay);
+                    if (effectiveTime > 0 || node.targetGlowIntensity === 0) {
+                        const lerpSpeed = node.targetGlowIntensity > node.glowIntensity ? 0.08 : 0.12;
+                        node.glowIntensity += (node.targetGlowIntensity - node.glowIntensity) * lerpSpeed;
+                    }
+
+                    // Clamp very small values to 0
+                    if (node.glowIntensity < 0.01) node.glowIntensity = 0;
+                });
 
                 // Apply floating animation to settled nodes
                 if (settled && !dragNode) {
@@ -2136,7 +2354,8 @@
 
                     // Subtle pulse animation
                     const pulse = Math.sin(time * node.pulseSpeed + node.pulsePhase);
-                    const displaySize = node.size + (isHovered ? 3 : pulse * 0.5);
+                    const sizeBoost = node.glowIntensity * 3; // Smooth size increase
+                    const displaySize = node.size + pulse * 0.5 + sizeBoost;
 
                     // Get colors based on category
                     let glowColor;
@@ -2150,14 +2369,15 @@
 
                     ctx.globalAlpha = isDimmed ? 0.25 : 1;
 
-                    // Glow effect on hover or connected
-                    if (isHovered || isConnected) {
-                        const glowSize = displaySize * (isHovered ? 2.5 : 2);
+                    // Smooth glow effect based on glowIntensity
+                    if (node.glowIntensity > 0.01) {
+                        const glowSize = displaySize * (1.8 + node.glowIntensity * 0.5);
                         const glowGradient = ctx.createRadialGradient(
                             node.x, node.y, displaySize * 0.5,
                             node.x, node.y, glowSize
                         );
-                        const glowAlpha = isHovered ? 0.5 : 0.3;
+                        // Reduced glow intensity (was 0.5/0.3, now 0.25 max)
+                        const glowAlpha = node.glowIntensity * 0.25;
                         glowGradient.addColorStop(0, `${glowColor}${Math.floor(glowAlpha * 255).toString(16).padStart(2, '0')}`);
                         glowGradient.addColorStop(0.5, `${glowColor}${Math.floor(glowAlpha * 128).toString(16).padStart(2, '0')}`);
                         glowGradient.addColorStop(1, 'transparent');
@@ -2199,24 +2419,32 @@
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
                     ctx.fill();
 
-                    // Border
+                    // Border - smooth transition based on glow intensity
                     drawOrganicShape(node.x, node.y, displaySize, node.rotation, pulse * 0.5 + 0.5);
-                    ctx.strokeStyle = `rgba(255, 255, 255, ${isHovered ? 0.6 : 0.15})`;
-                    ctx.lineWidth = isHovered ? 2 : 1;
+                    const borderAlpha = 0.15 + node.glowIntensity * 0.35;
+                    const borderWidth = 1 + node.glowIntensity * 0.8;
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${borderAlpha})`;
+                    ctx.lineWidth = borderWidth;
                     ctx.stroke();
 
-                    // Label with background
-                    const labelY = node.y + displaySize + 16;
-                    ctx.font = `${isHovered ? '600' : '500'} ${isHovered ? 11 : 10}px "JetBrains Mono", monospace`;
+                    // Label with background - smooth font weight transition, scaled for screen size
+                    const labelOffset = 12 * sizeScale + 6;
+                    const labelY = node.y + displaySize + labelOffset;
+                    const fontWeight = node.glowIntensity > 0.5 ? '600' : '500';
+                    const baseFontSize = 8 + 2 * sizeScale; // Scale font size with screen
+                    const fontSize = baseFontSize + node.glowIntensity;
+                    ctx.font = `${fontWeight} ${fontSize}px "JetBrains Mono", monospace`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
 
                     const textWidth = ctx.measureText(node.label).width;
+                    const paddingX = 3 * sizeScale + 1;
+                    const paddingY = 5 * sizeScale + 2;
 
                     // Label background
                     ctx.fillStyle = `rgba(21, 29, 38, ${isDimmed ? 0.5 : 0.8})`;
                     ctx.beginPath();
-                    ctx.roundRect(node.x - textWidth / 2 - 4, labelY - 7, textWidth + 8, 14, 3);
+                    ctx.roundRect(node.x - textWidth / 2 - paddingX, labelY - paddingY, textWidth + paddingX * 2, paddingY * 2, 3);
                     ctx.fill();
 
                     // Label text
@@ -2246,6 +2474,11 @@
                     isDragging = true;
                     settled = false;
                     container.style.cursor = 'grabbing';
+                    // If we're starting to drag a node that has tooltip, set it as target
+                    if (hoveredNode === dragNode && !tooltipTarget) {
+                        tooltipTarget = dragNode;
+                        generateTooltipPosition(dragNode);
+                    }
                 }
             });
 
@@ -2263,7 +2496,10 @@
                     dragNode.vy = 0;
                     settled = false;
                     settleTimer = 0;
-                    updateTooltip(null);
+                    // Update tooltip position to follow the dragged node
+                    if (tooltipTarget === dragNode) {
+                        updateTooltipPositionForDrag(dragNode);
+                    }
                 } else {
                     hoveredNode = getNodeAt(mouseX, mouseY);
                     container.style.cursor = hoveredNode ? 'pointer' : 'grab';
@@ -2296,6 +2532,10 @@
                 if (dragNode) {
                     isDragging = true;
                     settled = false;
+                    // Show tooltip for touched node
+                    tooltipTarget = dragNode;
+                    generateTooltipPosition(dragNode);
+                    updateTooltip(dragNode);
                 }
             }, { passive: false });
 
@@ -2311,6 +2551,10 @@
                 dragNode.vx = 0;
                 dragNode.vy = 0;
                 settled = false;
+                // Update tooltip position to follow the dragged node
+                if (tooltipTarget === dragNode) {
+                    updateTooltipPositionForDrag(dragNode);
+                }
             }, { passive: false });
 
             canvas.addEventListener('touchend', () => {
