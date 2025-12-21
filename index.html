@@ -206,7 +206,7 @@
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 2rem 2rem 1.5rem;
+            padding: 1rem 2rem 1.5rem;
             background: transparent;
             height: 100vh;
             display: flex;
@@ -232,10 +232,10 @@
         header {
             display: grid;
             grid-template-columns: 1fr auto;
-            gap: 2rem;
-            padding-bottom: 1rem;
+            gap: 1.5rem;
+            padding-bottom: 0.6rem;
             border-bottom: 1px solid var(--border-color);
-            margin-bottom: 1rem;
+            margin-bottom: 0.6rem;
             animation: fadeInUp 0.6s ease-out;
             flex-shrink: 0;
         }
@@ -253,11 +253,11 @@
         }
 
         .name-block h1 {
-            font-size: 3rem;
+            font-size: 2.5rem;
             font-weight: 700;
             letter-spacing: -0.03em;
             line-height: 1;
-            margin-bottom: 0.4rem;
+            margin-bottom: 0.2rem;
             background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-dim) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -265,24 +265,24 @@
         }
 
         .tagline {
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             color: var(--text-secondary);
-            margin-top: 0.5rem;
+            margin-top: 0.2rem;
             font-weight: 300;
         }
 
         .titles {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.5rem;
-            margin-top: 0.75rem;
+            gap: 0.4rem;
+            margin-top: 0.4rem;
         }
 
         .title-tag {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 500;
-            padding: 0.4rem 0.8rem;
+            padding: 0.3rem 0.6rem;
             background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: 4px;
@@ -306,7 +306,7 @@
                 color: var(--text-secondary);
                 text-decoration: none;
                 display: block;
-                padding: 0.3rem 0;
+                padding: 0.15rem 0;
                 transition: color 0.2s ease;
             }
 
@@ -317,11 +317,11 @@
             .contact-block .company {
                 color: var(--accent-gold);
                 font-weight: 500;
-                margin-bottom: 0.5rem;
+                margin-bottom: 0.2rem;
             }
 
         .languages {
-            margin-top: 1rem;
+            margin-top: 0.5rem;
             display: flex;
             gap: 0.5rem;
             justify-content: flex-end;
@@ -382,8 +382,8 @@
         /* Summary Section with Stats */
         .summary-row {
             display: flex;
-            gap: 1.5rem;
-            margin-bottom: 1rem;
+            gap: 1rem;
+            margin-bottom: 0.6rem;
             align-items: stretch;
             flex-shrink: 0;
         }
@@ -395,15 +395,15 @@
             -webkit-backdrop-filter: blur(8px);
             border: none;
             border-radius: 16px;
-            padding: 1.5rem;
+            padding: 1rem 1.25rem;
         }
 
         .stats-bar {
             display: flex;
             flex-direction: column;
             justify-content: center;
-            gap: 0.75rem;
-            padding: 1rem 1.5rem;
+            gap: 0.5rem;
+            padding: 0.75rem 1.25rem;
             background: radial-gradient(ellipse at center, rgba(21, 29, 38, 0.5) 0%, rgba(21, 29, 38, 0.2) 70%, transparent 100%);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
@@ -435,8 +435,8 @@
 
             .summary p {
                 color: var(--text-secondary);
-                font-size: 0.85rem;
-                line-height: 1.7;
+                font-size: 0.8rem;
+                line-height: 1.6;
             }
 
             .summary .highlight-text {
@@ -723,7 +723,7 @@
             display: flex;
             justify-content: center;
             gap: 0.5rem;
-            margin-bottom: 1rem;
+            margin-bottom: 0.6rem;
             flex-wrap: wrap;
             flex-shrink: 0;
         }
@@ -999,6 +999,7 @@
             display: flex;
             flex-direction: column;
             min-height: 0;
+            overflow: hidden;
         }
 
         .portfolio-main {
@@ -1008,7 +1009,8 @@
             align-items: center;
             justify-content: center;
             min-height: 0;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
+            overflow: hidden;
         }
 
         .portfolio-slide {
@@ -1028,14 +1030,18 @@
         }
 
         .portfolio-slide a {
-            display: block;
-            max-width: 100%;
-            max-height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
         }
 
         .portfolio-slide img {
             max-width: 100%;
             max-height: 100%;
+            width: auto;
+            height: auto;
             object-fit: contain;
             border-radius: 8px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
@@ -1121,6 +1127,7 @@
             padding: 0.5rem 0;
             scrollbar-width: thin;
             scrollbar-color: var(--border-color) transparent;
+            flex-shrink: 0;
         }
 
         .portfolio-thumbnails::-webkit-scrollbar {
@@ -1169,6 +1176,7 @@
             color: var(--text-muted);
             text-align: center;
             margin-top: 0.5rem;
+            flex-shrink: 0;
         }
 
         /* Testimonials Panel */
@@ -1477,6 +1485,7 @@
                 font-size: 0.55rem;
                 padding: 0.15rem 0.4rem;
             }
+
         }
 
         @media print {
@@ -2796,7 +2805,7 @@
 
                 // Normal physics - runs even during startup (nodes are just invisible)
                 const repulsion = (dragNode ? 5000 : 3000) * scaleSquared;
-                const attraction = dragNode ? 0.005 : 0.003;
+                const attraction = dragNode ? 0.0015 : 0.003;
                 const damping = 0.95;
                 const centerPull = 0.002;
 
