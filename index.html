@@ -885,6 +885,199 @@
                         color 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.25s;
         }
 
+        /* Portfolio Panel */
+        .portfolio-panel {
+            padding: 1.5rem;
+            background: rgba(21, 29, 38, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .portfolio-panel.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .portfolio-carousel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .portfolio-main {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0;
+            margin-bottom: 1rem;
+        }
+
+        .portfolio-slide {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+        }
+
+        .portfolio-slide.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .portfolio-slide a {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .portfolio-slide img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .portfolio-slide a:hover img {
+            transform: scale(1.02);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+        }
+
+        .portfolio-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 0.75rem 1rem;
+            background: transparent;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .portfolio-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+        }
+
+        .portfolio-link {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            color: var(--accent-teal);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+        }
+
+        .portfolio-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 40px;
+            border: 1px solid var(--border-color);
+            background: rgba(21, 29, 38, 0.8);
+            backdrop-filter: blur(8px);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-secondary);
+            z-index: 10;
+        }
+
+        .portfolio-nav:hover {
+            border-color: var(--accent-gold);
+            color: var(--accent-gold);
+            background: rgba(232, 185, 35, 0.1);
+        }
+
+        .portfolio-nav.prev {
+            left: 0.5rem;
+        }
+
+        .portfolio-nav.next {
+            right: 0.5rem;
+        }
+
+        .portfolio-nav svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .portfolio-thumbnails {
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding: 0.5rem 0;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) transparent;
+        }
+
+        .portfolio-thumbnails::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .portfolio-thumbnails::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .portfolio-thumbnails::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 2px;
+        }
+
+        .portfolio-thumb {
+            flex-shrink: 0;
+            width: 60px;
+            height: 60px;
+            border-radius: 6px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            opacity: 0.6;
+        }
+
+        .portfolio-thumb:hover {
+            opacity: 1;
+        }
+
+        .portfolio-thumb.active {
+            border-color: var(--accent-gold);
+            opacity: 1;
+        }
+
+        .portfolio-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .portfolio-counter {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 0.5rem;
+        }
+
         /* Testimonials Panel */
         .testimonials-panel {
             display: flex;
@@ -1273,6 +1466,7 @@
         <section class="tabbed-carousel">
             <div class="carousel-tabs">
                 <button class="carousel-tab active" data-panel="skills">Skills</button>
+                <button class="carousel-tab" data-panel="portfolio">Portfolio</button>
                 <button class="carousel-tab" data-panel="career">Career</button>
                 <button class="carousel-tab" data-panel="clients">Clients</button>
                 <button class="carousel-tab" data-panel="testimonials">Testimonials</button>
@@ -1303,6 +1497,174 @@
                             </div>
                         </div>
                         <div class="graph-hint">Drag nodes to explore</div>
+                    </div>
+                </div>
+
+                <!-- Portfolio Panel - ArtStation Carousel -->
+                <div class="carousel-panel portfolio-panel" id="panel-portfolio">
+                    <div class="portfolio-carousel">
+                        <div class="portfolio-main">
+                            <button class="portfolio-nav prev" aria-label="Previous">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                            </button>
+                            <button class="portfolio-nav next" aria-label="Next">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                            </button>
+
+                            <div class="portfolio-slide active" data-index="0">
+                                <a href="https://www.artstation.com/artwork/V216yN" target="_blank">
+                                    <img src="https://cdna.artstation.com/p/assets/images/images/084/284/470/large/charles-grassi-screenshot-2025-01-11-181036-2.jpg" alt="Cave 360° Scene Composition">
+                                </a>
+                                <div class="portfolio-info">
+                                    <div class="portfolio-title">Cave 360° Scene Composition</div>
+                                    <div class="portfolio-link">View on ArtStation</div>
+                                </div>
+                            </div>
+                            <div class="portfolio-slide" data-index="1">
+                                <a href="https://www.artstation.com/artwork/V216JZ" target="_blank">
+                                    <img src="https://cdna.artstation.com/p/assets/images/images/084/274/870/large/charles-grassi-screenshot-2024-10-08-064527.jpg" alt="Volumetric Fog | Cloud With Rain & Thunder">
+                                </a>
+                                <div class="portfolio-info">
+                                    <div class="portfolio-title">Volumetric Fog | Cloud With Rain & Thunder</div>
+                                    <div class="portfolio-link">View on ArtStation</div>
+                                </div>
+                            </div>
+                            <div class="portfolio-slide" data-index="2">
+                                <a href="https://www.artstation.com/artwork/WXKB2E" target="_blank">
+                                    <img src="https://cdnb.artstation.com/p/assets/images/images/079/164/965/large/charles-grassi-screenshot-2024-08-15-031337.jpg" alt="Maelstrom (WIP)">
+                                </a>
+                                <div class="portfolio-info">
+                                    <div class="portfolio-title">Maelstrom (WIP)</div>
+                                    <div class="portfolio-link">View on ArtStation</div>
+                                </div>
+                            </div>
+                            <div class="portfolio-slide" data-index="3">
+                                <a href="https://www.artstation.com/artwork/x3AvG2" target="_blank">
+                                    <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/424/977/large/charles-grassi-thumb.jpg" alt="Cartoon Ocean Shader">
+                                </a>
+                                <div class="portfolio-info">
+                                    <div class="portfolio-title">Cartoon Ocean Shader & Breakdown</div>
+                                    <div class="portfolio-link">View on ArtStation</div>
+                                </div>
+                            </div>
+                            <div class="portfolio-slide" data-index="4">
+                                <a href="https://www.artstation.com/artwork/EzqE08" target="_blank">
+                                    <img src="https://cdnb.artstation.com/p/assets/images/images/078/404/623/large/charles-grassi-screenshot-2024-03-06-030921.jpg" alt="Raytraced Mountain Scene">
+                                </a>
+                                <div class="portfolio-info">
+                                    <div class="portfolio-title">Raytraced Mountain Scene in a Single Shader</div>
+                                    <div class="portfolio-link">View on ArtStation</div>
+                                </div>
+                            </div>
+                            <div class="portfolio-slide" data-index="5">
+                                <a href="https://www.artstation.com/artwork/6LnRor" target="_blank">
+                                    <img src="https://cdna.artstation.com/p/assets/images/images/078/403/874/large/charles-grassi-screenshot-2023-11-01-200540.jpg" alt="SABDA Projection Mapping">
+                                </a>
+                                <div class="portfolio-info">
+                                    <div class="portfolio-title">SABDA - Projection Mapping Immersive 360° Scenes</div>
+                                    <div class="portfolio-link">View on ArtStation</div>
+                                </div>
+                            </div>
+                            <div class="portfolio-slide" data-index="6">
+                                <a href="https://www.artstation.com/artwork/zxKvQw" target="_blank">
+                                    <img src="https://cdnb.artstation.com/p/assets/images/images/084/275/951/large/charles-grassi-screenshot-2023-12-25-213543.jpg" alt="Space Colonization Algorithm">
+                                </a>
+                                <div class="portfolio-info">
+                                    <div class="portfolio-title">Multi-Threaded Space Colonization Algorithm</div>
+                                    <div class="portfolio-link">View on ArtStation</div>
+                                </div>
+                            </div>
+                            <div class="portfolio-slide" data-index="7">
+                                <a href="https://www.artstation.com/artwork/K36Por" target="_blank">
+                                    <img src="https://cdna.artstation.com/p/assets/images/images/078/403/954/large/charles-grassi-screenshot-2023-10-18-193823.jpg" alt="Alien Egg Shader">
+                                </a>
+                                <div class="portfolio-info">
+                                    <div class="portfolio-title">Alien Egg Shader</div>
+                                    <div class="portfolio-link">View on ArtStation</div>
+                                </div>
+                            </div>
+                            <div class="portfolio-slide" data-index="8">
+                                <a href="https://www.artstation.com/artwork/nJwNLO" target="_blank">
+                                    <img src="https://cdna.artstation.com/p/assets/images/images/078/429/084/large/charles-grassi-sandbox-stylized-cloud-night.jpg" alt="Sandbox Stylized Cloud Shaders">
+                                </a>
+                                <div class="portfolio-info">
+                                    <div class="portfolio-title">Sandbox Stylized Cloud & God Rays Shader</div>
+                                    <div class="portfolio-link">View on ArtStation</div>
+                                </div>
+                            </div>
+                            <div class="portfolio-slide" data-index="9">
+                                <a href="https://www.artstation.com/artwork/gRgVEK" target="_blank">
+                                    <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/425/435/large/charles-grassi-thumb.jpg" alt="Oily Ocean Surface Shader">
+                                </a>
+                                <div class="portfolio-info">
+                                    <div class="portfolio-title">Oily Ocean Surface Shader</div>
+                                    <div class="portfolio-link">View on ArtStation</div>
+                                </div>
+                            </div>
+                            <div class="portfolio-slide" data-index="10">
+                                <a href="https://www.artstation.com/artwork/JraPGz" target="_blank">
+                                    <img src="https://cdnb.artstation.com/p/assets/images/images/078/404/507/large/charles-grassi-screenshot-2023-03-27-145100.jpg" alt="Baked Volumetric Colored Fog">
+                                </a>
+                                <div class="portfolio-info">
+                                    <div class="portfolio-title">Baked Volumetric Colored Fog</div>
+                                    <div class="portfolio-link">View on ArtStation</div>
+                                </div>
+                            </div>
+                            <div class="portfolio-slide" data-index="11">
+                                <a href="https://www.artstation.com/artwork/V2oaP4" target="_blank">
+                                    <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/425/261/large/charles-grassi-thumb.jpg" alt="Single Draw Call Grass Shader">
+                                </a>
+                                <div class="portfolio-info">
+                                    <div class="portfolio-title">Single Draw Call Grass Shader</div>
+                                    <div class="portfolio-link">View on ArtStation</div>
+                                </div>
+                            </div>
+                            <div class="portfolio-slide" data-index="12">
+                                <a href="https://www.artstation.com/artwork/Ovqgby" target="_blank">
+                                    <img src="https://cdna.artstation.com/p/assets/video_clips/images/078/425/098/large/charles-grassi-thumb.jpg" alt="Marching Cube Terrain">
+                                </a>
+                                <div class="portfolio-info">
+                                    <div class="portfolio-title">CPU Multi-Threaded Burst Marching Cube Terrain</div>
+                                    <div class="portfolio-link">View on ArtStation</div>
+                                </div>
+                            </div>
+                            <div class="portfolio-slide" data-index="13">
+                                <a href="https://www.artstation.com/artwork/Bko5el" target="_blank">
+                                    <img src="https://cdna.artstation.com/p/assets/images/images/078/519/226/large/charles-grassi-screenshot-2023-10-29-140203-2.jpg" alt="HDRP Interior Lighting">
+                                </a>
+                                <div class="portfolio-info">
+                                    <div class="portfolio-title">HDRP - Interior Lighting Scenarios</div>
+                                    <div class="portfolio-link">View on ArtStation</div>
+                                </div>
+                            </div>
+                            <div class="portfolio-slide" data-index="14">
+                                <a href="https://www.artstation.com/artwork/wrAvRL" target="_blank">
+                                    <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/425/243/large/charles-grassi-thumb.jpg" alt="Orthographic Water Surface">
+                                </a>
+                                <div class="portfolio-info">
+                                    <div class="portfolio-title">Orthographic Water Surface</div>
+                                    <div class="portfolio-link">View on ArtStation</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="portfolio-thumbnails" id="portfolio-thumbnails">
+                            <div class="portfolio-thumb active" data-index="0"><img src="https://cdna.artstation.com/p/assets/images/images/084/284/470/small_square/charles-grassi-screenshot-2025-01-11-181036-2.jpg" alt=""></div>
+                            <div class="portfolio-thumb" data-index="1"><img src="https://cdna.artstation.com/p/assets/images/images/084/274/870/small_square/charles-grassi-screenshot-2024-10-08-064527.jpg" alt=""></div>
+                            <div class="portfolio-thumb" data-index="2"><img src="https://cdnb.artstation.com/p/assets/images/images/079/164/965/small_square/charles-grassi-screenshot-2024-08-15-031337.jpg" alt=""></div>
+                            <div class="portfolio-thumb" data-index="3"><img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/424/977/small_square/charles-grassi-thumb.jpg" alt=""></div>
+                            <div class="portfolio-thumb" data-index="4"><img src="https://cdnb.artstation.com/p/assets/images/images/078/404/623/small_square/charles-grassi-screenshot-2024-03-06-030921.jpg" alt=""></div>
+                            <div class="portfolio-thumb" data-index="5"><img src="https://cdna.artstation.com/p/assets/images/images/078/403/874/small_square/charles-grassi-screenshot-2023-11-01-200540.jpg" alt=""></div>
+                            <div class="portfolio-thumb" data-index="6"><img src="https://cdnb.artstation.com/p/assets/images/images/084/275/951/small_square/charles-grassi-screenshot-2023-12-25-213543.jpg" alt=""></div>
+                            <div class="portfolio-thumb" data-index="7"><img src="https://cdna.artstation.com/p/assets/images/images/078/403/954/small_square/charles-grassi-screenshot-2023-10-18-193823.jpg" alt=""></div>
+                            <div class="portfolio-thumb" data-index="8"><img src="https://cdna.artstation.com/p/assets/images/images/078/429/084/small_square/charles-grassi-sandbox-stylized-cloud-night.jpg" alt=""></div>
+                            <div class="portfolio-thumb" data-index="9"><img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/425/435/small_square/charles-grassi-thumb.jpg" alt=""></div>
+                            <div class="portfolio-thumb" data-index="10"><img src="https://cdnb.artstation.com/p/assets/images/images/078/404/507/small_square/charles-grassi-screenshot-2023-03-27-145100.jpg" alt=""></div>
+                            <div class="portfolio-thumb" data-index="11"><img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/425/261/small_square/charles-grassi-thumb.jpg" alt=""></div>
+                            <div class="portfolio-thumb" data-index="12"><img src="https://cdna.artstation.com/p/assets/video_clips/images/078/425/098/small_square/charles-grassi-thumb.jpg" alt=""></div>
+                            <div class="portfolio-thumb" data-index="13"><img src="https://cdna.artstation.com/p/assets/images/images/078/519/226/small_square/charles-grassi-screenshot-2023-10-29-140203-2.jpg" alt=""></div>
+                            <div class="portfolio-thumb" data-index="14"><img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/425/243/small_square/charles-grassi-thumb.jpg" alt=""></div>
+                        </div>
+                        <div class="portfolio-counter"><span id="portfolio-current">1</span> / <span id="portfolio-total">15</span></div>
                     </div>
                 </div>
 
@@ -1377,7 +1739,7 @@
                                         <div class="project-title">Senior Graphics Programmer</div>
                                         <div class="project-client">22cans</div>
                                     </div>
-                                    <div class="project-year">2022–2023</div>
+                                    <div class="project-year">2023</div>
                                 </div>
                                 <div class="project-desc">
                                     Created versatile shader library targeting mobile and desktop simultaneously. Developed performant
@@ -1394,14 +1756,33 @@
                             <article class="project-card">
                                 <div class="project-header">
                                     <div>
+                                        <div class="project-title">Shader Expert</div>
+                                        <div class="project-client">GN3RA</div>
+                                    </div>
+                                    <div class="project-year">2023</div>
+                                </div>
+                                <div class="project-desc">
+                                    Developed customizable HDRP cloth shaders for fashion and character rendering.
+                                    Optimized visual effects and lighting systems for high-fidelity real-time applications.
+                                </div>
+                                <div class="project-tags">
+                                    <span class="tech-tag">HDRP</span>
+                                    <span class="tech-tag">Cloth Simulation</span>
+                                    <span class="tech-tag">VFX</span>
+                                </div>
+                            </article>
+
+                            <article class="project-card">
+                                <div class="project-header">
+                                    <div>
                                         <div class="project-title">Graphics Programmer</div>
                                         <div class="project-client">Scapin' · The Sandbox</div>
                                     </div>
                                     <div class="project-year">2021–2022</div>
                                 </div>
                                 <div class="project-desc">
-                                    Engineered custom lighting systems for web3 social applications. Built high-performance shaders
-                                    optimized for mobile battery efficiency while delivering premium visual aesthetics.
+                                    Engineered custom lighting systems for web3 social applications. Built stylized cloud shaders
+                                    and optimized mobile blur effects while delivering premium visual aesthetics.
                                 </div>
                                 <div class="project-tags">
                                     <span class="tech-tag">Lighting</span>
@@ -1413,19 +1794,76 @@
                             <article class="project-card">
                                 <div class="project-header">
                                     <div>
-                                        <div class="project-title">Graphics Engineer & Shader Expert</div>
-                                        <div class="project-client">Ubisoft · H3 Space · DREST</div>
+                                        <div class="project-title">Shader Expert</div>
+                                        <div class="project-client">DREST</div>
                                     </div>
-                                    <div class="project-year">2020–2022</div>
+                                    <div class="project-year">2022</div>
                                 </div>
                                 <div class="project-desc">
-                                    Delivered graphics programming and shader expertise across AAA, AR/VR, and fashion tech verticals.
-                                    Specialized in performance optimization and cross-platform rendering solutions.
+                                    Delivered specialized shader solutions for fashion tech applications.
+                                    Focused on performance optimization and high-quality material rendering.
+                                </div>
+                                <div class="project-tags">
+                                    <span class="tech-tag">Fashion Tech</span>
+                                    <span class="tech-tag">Materials</span>
+                                    <span class="tech-tag">Optimization</span>
+                                </div>
+                            </article>
+
+                            <article class="project-card">
+                                <div class="project-header">
+                                    <div>
+                                        <div class="project-title">Unity Developer & Technical Artist</div>
+                                        <div class="project-client">Lunchbox Entertainment</div>
+                                    </div>
+                                    <div class="project-year">2021–2022</div>
+                                </div>
+                                <div class="project-desc">
+                                    Created terrain, clouds, water, caustics, and bubble VFX shaders for game environments.
+                                    Combined technical programming with artistic direction for immersive visual experiences.
+                                </div>
+                                <div class="project-tags">
+                                    <span class="tech-tag">Water Shaders</span>
+                                    <span class="tech-tag">VFX</span>
+                                    <span class="tech-tag">Environment Art</span>
+                                </div>
+                            </article>
+
+                            <article class="project-card">
+                                <div class="project-header">
+                                    <div>
+                                        <div class="project-title">Graphics Engineer</div>
+                                        <div class="project-client">H3 Space</div>
+                                    </div>
+                                    <div class="project-year">2021</div>
+                                </div>
+                                <div class="project-desc">
+                                    Developed graphics solutions for AR/VR applications. Specialized in performance optimization
+                                    and visual effects for immersive spatial computing experiences.
+                                </div>
+                                <div class="project-tags">
+                                    <span class="tech-tag">AR/VR</span>
+                                    <span class="tech-tag">Optimization</span>
+                                    <span class="tech-tag">3D Math</span>
+                                </div>
+                            </article>
+
+                            <article class="project-card">
+                                <div class="project-header">
+                                    <div>
+                                        <div class="project-title">Unity Developer & Graphics Programmer</div>
+                                        <div class="project-client">Ubisoft</div>
+                                    </div>
+                                    <div class="project-year">2020–2021</div>
+                                </div>
+                                <div class="project-desc">
+                                    Delivered graphics programming expertise for AAA game development.
+                                    Specialized in performance analysis, VFX, and cross-platform rendering optimization.
                                 </div>
                                 <div class="project-tags">
                                     <span class="tech-tag">AAA</span>
-                                    <span class="tech-tag">AR/VR</span>
-                                    <span class="tech-tag">Fashion Tech</span>
+                                    <span class="tech-tag">VFX</span>
+                                    <span class="tech-tag">Performance</span>
                                 </div>
                             </article>
                         </div>
@@ -1478,6 +1916,14 @@
                             <a href="https://sabda.es/" target="_blank" class="client-card">
                                 <span class="client-name">SABDA</span>
                                 <span class="client-type">Immersive Art</span>
+                            </a>
+                            <a href="https://www.genera.so/" target="_blank" class="client-card">
+                                <span class="client-name">GN3RA</span>
+                                <span class="client-type">Digital Fashion</span>
+                            </a>
+                            <a href="https://lunchboxentertainment.com/" target="_blank" class="client-card">
+                                <span class="client-name">Lunchbox Ent.</span>
+                                <span class="client-type">Game Studio</span>
                             </a>
                         </div>
                     </div>
@@ -2613,6 +3059,89 @@
             projectCards.forEach((card, i) => {
                 card.style.animationDelay = `${0.6 + i * 0.12}s`;
             });
+        })();
+
+        // Portfolio carousel functionality
+        (function() {
+            const slides = document.querySelectorAll('.portfolio-slide');
+            const thumbs = document.querySelectorAll('.portfolio-thumb');
+            const prevBtn = document.querySelector('.portfolio-nav.prev');
+            const nextBtn = document.querySelector('.portfolio-nav.next');
+            const currentSpan = document.getElementById('portfolio-current');
+            const thumbnailsContainer = document.getElementById('portfolio-thumbnails');
+
+            let currentIndex = 0;
+            const totalSlides = slides.length;
+
+            function goToSlide(index) {
+                // Handle wrap-around
+                if (index < 0) index = totalSlides - 1;
+                if (index >= totalSlides) index = 0;
+
+                // Update slides
+                slides.forEach((slide, i) => {
+                    slide.classList.toggle('active', i === index);
+                });
+
+                // Update thumbnails
+                thumbs.forEach((thumb, i) => {
+                    thumb.classList.toggle('active', i === index);
+                });
+
+                // Scroll thumbnail into view
+                if (thumbs[index] && thumbnailsContainer) {
+                    const thumb = thumbs[index];
+                    const containerRect = thumbnailsContainer.getBoundingClientRect();
+                    const thumbRect = thumb.getBoundingClientRect();
+
+                    if (thumbRect.left < containerRect.left || thumbRect.right > containerRect.right) {
+                        thumb.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                    }
+                }
+
+                // Update counter
+                if (currentSpan) currentSpan.textContent = index + 1;
+
+                currentIndex = index;
+            }
+
+            // Navigation buttons
+            if (prevBtn) prevBtn.addEventListener('click', () => goToSlide(currentIndex - 1));
+            if (nextBtn) nextBtn.addEventListener('click', () => goToSlide(currentIndex + 1));
+
+            // Thumbnail clicks
+            thumbs.forEach((thumb, i) => {
+                thumb.addEventListener('click', () => goToSlide(i));
+            });
+
+            // Keyboard navigation when portfolio panel is visible
+            document.addEventListener('keydown', (e) => {
+                const portfolioPanel = document.getElementById('panel-portfolio');
+                if (!portfolioPanel || !portfolioPanel.classList.contains('active')) return;
+
+                if (e.key === 'ArrowLeft') goToSlide(currentIndex - 1);
+                if (e.key === 'ArrowRight') goToSlide(currentIndex + 1);
+            });
+
+            // Touch swipe support
+            let touchStartX = 0;
+            let touchEndX = 0;
+            const portfolioMain = document.querySelector('.portfolio-main');
+
+            if (portfolioMain) {
+                portfolioMain.addEventListener('touchstart', (e) => {
+                    touchStartX = e.changedTouches[0].screenX;
+                }, { passive: true });
+
+                portfolioMain.addEventListener('touchend', (e) => {
+                    touchEndX = e.changedTouches[0].screenX;
+                    const diff = touchStartX - touchEndX;
+                    if (Math.abs(diff) > 50) {
+                        if (diff > 0) goToSlide(currentIndex + 1);
+                        else goToSlide(currentIndex - 1);
+                    }
+                }, { passive: true });
+            }
         })();
 
         // Typewriter effect with typos
