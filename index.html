@@ -2341,50 +2341,50 @@
             // Skill nodes with categories and descriptions
             // baseSize is the reference size at 400px canvas dimension
             const skills = [
-                // Core skills (primary - gold)
-                { id: 'unity', label: 'Unity', category: 'primary', baseSize: 22,
+                // Core skills (primary - gold) - first 3 are light sources
+                { id: 'unity', label: 'Unity', category: 'primary', baseSize: 14, isLight: true,
                   desc: 'Primary game engine', usage: 'Daily since 2017 - shipped 12+ titles across mobile, PC, and VR platforms' },
-                { id: 'csharp', label: 'C#', category: 'primary', baseSize: 20,
+                { id: 'csharp', label: 'C#', category: 'primary', baseSize: 13, isLight: true,
                   desc: 'Main programming language', usage: '7+ years - gameplay systems, editor tools, and performance-critical code' },
-                { id: 'hlsl', label: 'HLSL/GLSL', category: 'primary', baseSize: 20,
+                { id: 'hlsl', label: 'HLSL/GLSL', category: 'primary', baseSize: 13, isLight: true,
                   desc: 'Shader programming', usage: 'Custom rendering pipelines, VFX, post-processing, and compute shaders' },
-                { id: 'directx', label: 'DirectX', category: 'primary', baseSize: 18,
+                { id: 'directx', label: 'DirectX', category: 'primary', baseSize: 12,
                   desc: 'Graphics API', usage: 'DX11/DX12 for Windows and Xbox development' },
-                { id: 'arvr', label: 'AR/VR', category: 'primary', baseSize: 18,
+                { id: 'arvr', label: 'AR/VR', category: 'primary', baseSize: 12,
                   desc: 'Immersive experiences', usage: 'Meta Quest, HoloLens, and mobile AR projects' },
-                { id: 'urp', label: 'URP/HDRP', category: 'primary', baseSize: 17,
+                { id: 'urp', label: 'URP/HDRP', category: 'primary', baseSize: 11,
                   desc: 'Unity render pipelines', usage: 'Custom render features, shader graphs, and pipeline extensions' },
 
                 // Secondary skills (teal)
-                { id: 'opengl', label: 'OpenGL', category: 'secondary', baseSize: 14,
+                { id: 'opengl', label: 'OpenGL', category: 'secondary', baseSize: 10,
                   desc: 'Cross-platform graphics', usage: 'Mobile and Linux rendering targets' },
-                { id: 'unreal', label: 'Unreal', category: 'secondary', baseSize: 16,
+                { id: 'unreal', label: 'Unreal', category: 'secondary', baseSize: 11,
                   desc: 'Secondary engine', usage: 'Blueprint systems and material editor for specific projects' },
-                { id: 'vulkan', label: 'Vulkan', category: 'secondary', baseSize: 13,
+                { id: 'vulkan', label: 'Vulkan', category: 'secondary', baseSize: 9,
                   desc: 'Low-level graphics API', usage: 'Performance optimization on Android and Linux' },
-                { id: 'python', label: 'Python', category: 'secondary', baseSize: 13,
+                { id: 'python', label: 'Python', category: 'secondary', baseSize: 9,
                   desc: 'Scripting & tools', usage: 'Build automation, asset pipelines, and data processing' },
-                { id: 'cpp', label: 'C++', category: 'secondary', baseSize: 15,
+                { id: 'cpp', label: 'C++', category: 'secondary', baseSize: 10,
                   desc: 'Systems programming', usage: 'Native plugins, engine modifications, and Unreal development' },
-                { id: 'wpf', label: 'WPF', category: 'secondary', baseSize: 11,
+                { id: 'wpf', label: 'WPF', category: 'secondary', baseSize: 8,
                   desc: 'Desktop UI framework', usage: 'Internal tools and editors for game development' },
-                { id: 'compute', label: 'Compute', category: 'secondary', baseSize: 16,
+                { id: 'compute', label: 'Compute', category: 'secondary', baseSize: 11,
                   desc: 'GPU compute shaders', usage: 'Particle simulations, procedural generation, and physics' },
-                { id: 'vfx', label: 'VFX Graph', category: 'secondary', baseSize: 15,
+                { id: 'vfx', label: 'VFX Graph', category: 'secondary', baseSize: 10,
                   desc: 'Unity visual effects', usage: 'GPU-driven particle systems and real-time simulations' },
-                { id: 'niagara', label: 'Niagara', category: 'secondary', baseSize: 13,
+                { id: 'niagara', label: 'Niagara', category: 'secondary', baseSize: 9,
                   desc: 'Unreal VFX system', usage: 'Complex particle effects for Unreal projects' },
-                { id: 'threejs', label: 'Three.js', category: 'secondary', baseSize: 13,
+                { id: 'threejs', label: 'Three.js', category: 'secondary', baseSize: 9,
                   desc: 'WebGL framework', usage: 'Interactive 3D web experiences and visualizations' },
-                { id: 'webgl', label: 'WebGL', category: 'secondary', baseSize: 13,
+                { id: 'webgl', label: 'WebGL', category: 'secondary', baseSize: 9,
                   desc: 'Browser graphics', usage: 'Custom shaders and real-time web graphics' },
 
                 // Tools (muted)
-                { id: 'renderdoc', label: 'RenderDoc', category: 'tool', baseSize: 11,
+                { id: 'renderdoc', label: 'RenderDoc', category: 'tool', baseSize: 8,
                   desc: 'Graphics debugger', usage: 'Frame analysis and shader debugging' },
-                { id: 'nsight', label: 'NSight', category: 'tool', baseSize: 11,
+                { id: 'nsight', label: 'NSight', category: 'tool', baseSize: 8,
                   desc: 'NVIDIA profiler', usage: 'GPU performance analysis and optimization' },
-                { id: 'pix', label: 'PIX', category: 'tool', baseSize: 11,
+                { id: 'pix', label: 'PIX', category: 'tool', baseSize: 8,
                   desc: 'DirectX debugger', usage: 'Windows and Xbox graphics debugging' }
             ];
 
@@ -2676,6 +2676,9 @@
                     node.appearProgress = 0;
                     node.appearStartTime = time + node.appearDelay;
                 });
+
+                // Resize WebGL canvas
+                resizeSphereGL();
             }
 
             function getNodeAt(x, y) {
@@ -2784,80 +2787,367 @@
                 }
             }
 
-            // Draw lit sphere using Canvas 2D with mouse-based lighting
-            function drawLitSphere(x, y, radius, baseColor, alpha, appearProgress) {
+            // ================================================
+            // WEBGL SDF SPHERE RENDERER - PBR LIGHTING
+            // ================================================
+            let gl, glCanvas, sphereProgram, glReady = false;
+
+            function initSphereGL() {
+                glCanvas = document.createElement('canvas');
+                glCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;';
+                container.insertBefore(glCanvas, container.firstChild);
+
+                gl = glCanvas.getContext('webgl', { alpha: true, antialias: true, premultipliedAlpha: false });
+                if (!gl) return false;
+
+                const vert = `
+                    attribute vec2 aPos;
+                    attribute vec2 aCenter;
+                    attribute float aRadius;
+                    attribute vec3 aColor;
+                    attribute float aAlpha;
+                    attribute float aAppear;
+                    attribute float aGlow;
+                    attribute float aIndex;
+                    attribute float aIsLight;
+                    varying vec2 vUV;
+                    varying vec2 vCenter;
+                    varying float vRadius;
+                    varying vec3 vColor;
+                    varying float vAlpha;
+                    varying float vAppear;
+                    varying float vGlow;
+                    varying float vIndex;
+                    varying float vIsLight;
+                    uniform vec2 uRes;
+                    void main() {
+                        vUV = aPos;
+                        vCenter = aCenter;
+                        vRadius = aRadius;
+                        vColor = aColor;
+                        vAlpha = aAlpha;
+                        vAppear = aAppear;
+                        vGlow = aGlow;
+                        vIndex = aIndex;
+                        vIsLight = aIsLight;
+                        vec2 p = aCenter + aPos * aRadius * 3.0;
+                        vec2 c = (p / uRes) * 2.0 - 1.0;
+                        gl_Position = vec4(c.x, -c.y, 0.0, 1.0);
+                    }
+                `;
+
+                const frag = `
+                    precision highp float;
+                    varying vec2 vUV;
+                    varying vec2 vCenter;
+                    varying float vRadius;
+                    varying vec3 vColor;
+                    varying float vAlpha;
+                    varying float vAppear;
+                    varying float vGlow;
+                    varying float vIndex;
+                    uniform vec2 uRes;
+                    uniform vec2 uMouse;
+                    uniform float uTime;
+
+                    #define PI 3.14159265
+
+                    void main() {
+                        vec2 uv = vUV;
+                        float d = length(uv);
+
+                        // Index-based animation offset
+                        float animOffset = vIndex * 0.5;
+                        float t = uTime + animOffset;
+
+                        // Appear animation
+                        float ap = clamp(vAppear, 0.0, 1.0);
+                        float scaledD = d / max(ap, 0.001);
+
+                        // Soft outer fade to avoid hard edge artifacts
+                        float outerFade = 1.0 - smoothstep(1.2, 1.45, scaledD);
+                        if (outerFade < 0.001) discard;
+
+                        // --- PLANET PARAMETERS ---
+                        float planetRadius = 0.45;
+                        float atmosphereThickness = 0.35;
+                        float atmosphereOuter = planetRadius + atmosphereThickness;
+
+                        // --- MOUSE LIGHT (SUN) ---
+                        vec2 mouseOffset = (uMouse - vCenter);
+                        vec3 lightPos = vec3(mouseOffset / uRes.x * 4.0, 0.3);
+                        vec3 L = normalize(lightPos);
+                        float lightDist = length(lightPos);
+
+                        // Light attenuation
+                        float attenuation = 0.12 / (lightDist * lightDist + 0.008);
+                        attenuation = min(attenuation, 2.5);
+
+                        // --- PLANET SURFACE ---
+                        float planetMask = 1.0 - smoothstep(planetRadius - 0.001, planetRadius, d);
+
+                        // Sphere normal
+                        float zSq = planetRadius * planetRadius - d * d;
+                        float z = zSq > 0.0 ? sqrt(zSq) : 0.0;
+                        vec3 N = d < planetRadius ? normalize(vec3(uv, z)) : vec3(0.0, 0.0, 1.0);
+                        vec3 V = vec3(0.0, 0.0, 1.0);
+
+                        // Lighting calculations
+                        float NdL = max(dot(N, L), 0.0);
+                        float NdV = max(dot(N, V), 0.0);
+                        vec3 H = normalize(L + V);
+                        float NdH = max(dot(N, H), 0.0);
+
+                        // Terminator softening (day/night transition)
+                        float terminator = smoothstep(-0.1, 0.3, NdL);
+
+                        // --- PLANET SHADING ---
+                        // Diffuse with soft shadows
+                        float diffuse = NdL * terminator;
+
+                        // Subtle specular for wet/glossy look
+                        float specular = pow(NdH, 32.0) * 0.3 * terminator;
+
+                        // Subsurface scattering simulation (light through edges)
+                        float sss = pow(max(0.0, dot(-L, V)), 3.0) * 0.15;
+
+                        // --- ATMOSPHERE ---
+                        // Atmospheric density based on distance from planet edge
+                        float atmosDist = d - planetRadius;
+                        float atmosMask = smoothstep(atmosphereOuter, planetRadius, d);
+                        float atmosDensity = atmosMask * (1.0 - planetMask);
+
+                        // Rayleigh-like scattering (blue shift for atmosphere)
+                        vec3 atmosColor = vColor * 1.2 + vec3(0.05, 0.08, 0.15);
+
+                        // Atmospheric limb brightening (atmosphere glows at edges)
+                        float limbAngle = 1.0 - abs(dot(N, V));
+                        float limbGlow = pow(limbAngle, 2.0) * atmosMask;
+
+                        // Atmospheric scattering toward light
+                        float atmosScatter = pow(max(0.0, dot(normalize(vec3(uv, 0.1)), L)), 2.0);
+                        atmosScatter *= atmosDensity;
+
+                        // Thin atmosphere glow ring
+                        float ringDist = abs(d - planetRadius);
+                        float atmosRing = exp(-ringDist * 8.0) * 0.6;
+
+                        // --- OUTER GLOW (atmosphere seen from space) ---
+                        float outerGlow = 0.0;
+                        if (d > planetRadius) {
+                            float glowDist = d - planetRadius;
+                            outerGlow = exp(-glowDist * 8.0) * 0.5;
+                            outerGlow += 0.005 / (glowDist + 0.02); // Exponential falloff halo
+                        }
+
+                        // --- COMPOSE FINAL COLOR ---
+                        vec3 col = vec3(0.0);
+
+                        // Planet surface
+                        vec3 surfaceColor = vColor * 0.85;
+                        col += surfaceColor * diffuse * attenuation * 1.8 * planetMask;
+                        col += vColor * specular * attenuation * planetMask;
+                        col += surfaceColor * sss * attenuation * planetMask;
+
+                        // Ambient/fill light for dark side (very subtle)
+                        col += surfaceColor * 0.03 * planetMask * (1.0 - terminator);
+
+                        // Atmosphere on planet (limb darkening/brightening)
+                        col += atmosColor * limbGlow * attenuation * 0.4 * planetMask;
+
+                        // Atmospheric scattering
+                        col += atmosColor * atmosScatter * attenuation * 0.5;
+
+                        // Atmosphere ring glow
+                        col += vColor * atmosRing * attenuation * 0.8;
+
+                        // Outer atmospheric glow
+                        col += vColor * outerGlow * attenuation * 0.6;
+
+                        // Fresnel rim light (catches light at planet edge)
+                        float fresnel = pow(1.0 - NdV, 4.0) * planetMask;
+                        float fresnelLight = fresnel * max(0.0, dot(normalize(vec3(uv, 0.0)), L));
+                        col += vColor * fresnelLight * attenuation * 0.5;
+
+                        // Hover enhancement
+                        col += vColor * vGlow * (fresnel * 0.3);
+
+                        // --- TONE MAPPING ---
+                        col = col / (col + vec3(0.7));
+                        col = pow(col, vec3(0.95));
+
+                        // --- ALPHA ---
+                        float alpha = 0.0;
+                        alpha += planetMask * 0.98;
+                        alpha += atmosDensity * 0.4;
+                        alpha += atmosRing * 0.5;
+                        alpha += outerGlow * 0.6;
+                        alpha = clamp(alpha, 0.0, 1.0);
+
+                        //// Appear animation
+                        alpha *= smoothstep(0.0, 0.5, ap);
+                        alpha *= vAlpha;
+
+                        gl_FragColor = vec4(col, alpha);
+                    }
+                `;
+
+                function comp(s, t) {
+                    const sh = gl.createShader(t);
+                    gl.shaderSource(sh, s);
+                    gl.compileShader(sh);
+                    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+                        console.error(gl.getShaderInfoLog(sh));
+                        return null;
+                    }
+                    return sh;
+                }
+
+                const vs = comp(vert, gl.VERTEX_SHADER);
+                const fs = comp(frag, gl.FRAGMENT_SHADER);
+                if (!vs || !fs) return false;
+
+                sphereProgram = gl.createProgram();
+                gl.attachShader(sphereProgram, vs);
+                gl.attachShader(sphereProgram, fs);
+                gl.linkProgram(sphereProgram);
+
+                if (!gl.getProgramParameter(sphereProgram, gl.LINK_STATUS)) {
+                    console.error(gl.getProgramInfoLog(sphereProgram));
+                    return false;
+                }
+
+                sphereProgram.aPos = gl.getAttribLocation(sphereProgram, 'aPos');
+                sphereProgram.aCenter = gl.getAttribLocation(sphereProgram, 'aCenter');
+                sphereProgram.aRadius = gl.getAttribLocation(sphereProgram, 'aRadius');
+                sphereProgram.aColor = gl.getAttribLocation(sphereProgram, 'aColor');
+                sphereProgram.aAlpha = gl.getAttribLocation(sphereProgram, 'aAlpha');
+                sphereProgram.aAppear = gl.getAttribLocation(sphereProgram, 'aAppear');
+                sphereProgram.aGlow = gl.getAttribLocation(sphereProgram, 'aGlow');
+                sphereProgram.aIndex = gl.getAttribLocation(sphereProgram, 'aIndex');
+                sphereProgram.uRes = gl.getUniformLocation(sphereProgram, 'uRes');
+                sphereProgram.uMouse = gl.getUniformLocation(sphereProgram, 'uMouse');
+                sphereProgram.uTime = gl.getUniformLocation(sphereProgram, 'uTime');
+                sphereProgram.buf = gl.createBuffer();
+
+                gl.enable(gl.BLEND);
+                gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+                gl.clearColor(0, 0, 0, 0);
+
+                glReady = true;
+                return true;
+            }
+
+            function resizeSphereGL() {
+                if (!glReady) return;
+                glCanvas.width = width * (window.devicePixelRatio || 1);
+                glCanvas.height = height * (window.devicePixelRatio || 1);
+                gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+            }
+
+            function hex2vec(h) {
+                return [parseInt(h.slice(1,3),16)/255, parseInt(h.slice(3,5),16)/255, parseInt(h.slice(5,7),16)/255];
+            }
+
+            function renderSpheresGL(nodes, hovered, connected) {
+                if (!glReady) return false;
+
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                gl.useProgram(sphereProgram);
+                gl.uniform2f(sphereProgram.uRes, width, height);
+                gl.uniform2f(sphereProgram.uMouse, mouseX, mouseY);
+                gl.uniform1f(sphereProgram.uTime, time);
+
+                const v = [];
+                const q = [[-1,-1],[1,-1],[1,1],[-1,-1],[1,1],[-1,1]];
+
+                nodes.forEach((n, idx) => {
+                    const hov = n === hovered;
+                    const conn = connected.has(n.id);
+                    const dim = hovered && !hov && !conn;
+                    let c;
+                    if (n.category === 'primary') c = hex2vec(colors.gold);
+                    else if (n.category === 'secondary') c = hex2vec(colors.teal);
+                    else c = hex2vec(colors.textMuted);
+
+                    const a = dim ? 0.25 : 1.0;
+                    const g = n.glowIntensity || 0;
+                    const p = Math.sin(time * n.pulseSpeed + n.pulsePhase);
+                    const r = n.size + p * 0.5 + g * 3;
+                    const ap = n.appearProgress || 1;
+                    const nodeIndex = idx; // Pass index for animation offset
+
+                    q.forEach(([qx,qy]) => {
+                        v.push(qx, qy, n.x, n.y, r, c[0], c[1], c[2], a, ap, g, nodeIndex);
+                    });
+                });
+
+                const d = new Float32Array(v);
+                gl.bindBuffer(gl.ARRAY_BUFFER, sphereProgram.buf);
+                gl.bufferData(gl.ARRAY_BUFFER, d, gl.DYNAMIC_DRAW);
+
+                const st = 12 * 4; // 12 floats per vertex now
+                gl.enableVertexAttribArray(sphereProgram.aPos);
+                gl.vertexAttribPointer(sphereProgram.aPos, 2, gl.FLOAT, false, st, 0);
+                gl.enableVertexAttribArray(sphereProgram.aCenter);
+                gl.vertexAttribPointer(sphereProgram.aCenter, 2, gl.FLOAT, false, st, 8);
+                gl.enableVertexAttribArray(sphereProgram.aRadius);
+                gl.vertexAttribPointer(sphereProgram.aRadius, 1, gl.FLOAT, false, st, 16);
+                gl.enableVertexAttribArray(sphereProgram.aColor);
+                gl.vertexAttribPointer(sphereProgram.aColor, 3, gl.FLOAT, false, st, 20);
+                gl.enableVertexAttribArray(sphereProgram.aAlpha);
+                gl.vertexAttribPointer(sphereProgram.aAlpha, 1, gl.FLOAT, false, st, 32);
+                gl.enableVertexAttribArray(sphereProgram.aAppear);
+                gl.vertexAttribPointer(sphereProgram.aAppear, 1, gl.FLOAT, false, st, 36);
+                gl.enableVertexAttribArray(sphereProgram.aGlow);
+                gl.vertexAttribPointer(sphereProgram.aGlow, 1, gl.FLOAT, false, st, 40);
+                gl.enableVertexAttribArray(sphereProgram.aIndex);
+                gl.vertexAttribPointer(sphereProgram.aIndex, 1, gl.FLOAT, false, st, 44);
+
+                gl.drawArrays(gl.TRIANGLES, 0, nodes.length * 6);
+                return true;
+            }
+
+            // Canvas 2D fallback
+            function drawLitSphere(x, y, radius, baseColor, alpha, appearProgress, glow) {
                 if (appearProgress < 0.01) return;
+                const r = radius * appearProgress;
+                if (r < 1) return;
 
-                const effectiveRadius = radius * appearProgress;
-                if (effectiveRadius < 1) return;
+                const cr = parseInt(baseColor.slice(1,3), 16);
+                const cg = parseInt(baseColor.slice(3,5), 16);
+                const cb = parseInt(baseColor.slice(5,7), 16);
 
-                // Calculate light direction from mouse
-                const lightDirX = (mouseX - x) / (width || 1);
-                const lightDirY = (mouseY - y) / (height || 1);
+                const lx = (mouseX - x) / (width || 1);
+                const ly = (mouseY - y) / (height || 1);
+                const ld = Math.sqrt(lx*lx + ly*ly) || 1;
+                const hx = x - (lx/ld) * r * 0.35;
+                const hy = y - (ly/ld) * r * 0.35;
 
-                // Normalize and use for highlight offset
-                const lightDist = Math.sqrt(lightDirX * lightDirX + lightDirY * lightDirY) || 1;
-                const normLightX = lightDirX / lightDist;
-                const normLightY = lightDirY / lightDist;
+                const grad = ctx.createRadialGradient(hx, hy, 0, x, y, r);
+                grad.addColorStop(0, `rgba(${Math.min(255,cr+70)},${Math.min(255,cg+70)},${Math.min(255,cb+70)},${alpha})`);
+                grad.addColorStop(0.35, `rgba(${cr},${cg},${cb},${alpha})`);
+                grad.addColorStop(0.8, `rgba(${cr*0.55|0},${cg*0.55|0},${cb*0.55|0},${alpha})`);
+                grad.addColorStop(1, `rgba(${cr*0.25|0},${cg*0.25|0},${cb*0.25|0},${alpha*0.85})`);
 
-                // Highlight position (opposite to light direction for specular)
-                const highlightX = x - normLightX * effectiveRadius * 0.3;
-                const highlightY = y - normLightY * effectiveRadius * 0.3;
-
-                // Parse base color
-                const r = parseInt(baseColor.slice(1, 3), 16);
-                const g = parseInt(baseColor.slice(3, 5), 16);
-                const b = parseInt(baseColor.slice(5, 7), 16);
-
-                // Create radial gradient for 3D sphere effect
-                const gradient = ctx.createRadialGradient(
-                    highlightX, highlightY, 0,
-                    x, y, effectiveRadius
-                );
-
-                // Lighter highlight color
-                const highlightR = Math.min(255, r + 80);
-                const highlightG = Math.min(255, g + 80);
-                const highlightB = Math.min(255, b + 80);
-
-                // Darker shadow color
-                const shadowR = Math.floor(r * 0.5);
-                const shadowG = Math.floor(g * 0.5);
-                const shadowB = Math.floor(b * 0.5);
-
-                gradient.addColorStop(0, `rgba(${highlightR}, ${highlightG}, ${highlightB}, ${alpha})`);
-                gradient.addColorStop(0.3, `rgba(${r}, ${g}, ${b}, ${alpha})`);
-                gradient.addColorStop(0.7, `rgba(${Math.floor(r * 0.8)}, ${Math.floor(g * 0.8)}, ${Math.floor(b * 0.8)}, ${alpha})`);
-                gradient.addColorStop(1, `rgba(${shadowR}, ${shadowG}, ${shadowB}, ${alpha * 0.9})`);
-
-                // Draw sphere
                 ctx.beginPath();
-                ctx.arc(x, y, effectiveRadius, 0, Math.PI * 2);
-                ctx.fillStyle = gradient;
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.fillStyle = grad;
                 ctx.fill();
 
-                // Add specular highlight
-                const specX = highlightX;
-                const specY = highlightY;
-                const specRadius = effectiveRadius * 0.25;
-
-                const specGradient = ctx.createRadialGradient(
-                    specX, specY, 0,
-                    specX, specY, specRadius
-                );
-                specGradient.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.6})`);
-                specGradient.addColorStop(0.5, `rgba(255, 255, 255, ${alpha * 0.2})`);
-                specGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-
+                // Specular
+                const sg = ctx.createRadialGradient(hx, hy, 0, hx, hy, r*0.28);
+                sg.addColorStop(0, `rgba(255,255,255,${alpha*0.75})`);
+                sg.addColorStop(1, 'rgba(255,255,255,0)');
                 ctx.beginPath();
-                ctx.arc(specX, specY, specRadius, 0, Math.PI * 2);
-                ctx.fillStyle = specGradient;
+                ctx.arc(hx, hy, r*0.28, 0, Math.PI * 2);
+                ctx.fillStyle = sg;
                 ctx.fill();
 
-                // Add rim light (fresnel effect)
+                // Rim
                 ctx.beginPath();
-                ctx.arc(x, y, effectiveRadius, 0, Math.PI * 2);
-                ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.15})`;
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(255,255,255,${alpha*0.18 + (glow||0)*0.35})`;
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
             }
@@ -2963,46 +3253,27 @@
                     }
                 });
 
-                // Draw nodes using Canvas 2D with mouse-based lighting
-                nodes.forEach(node => {
-                    const isHovered = node === hoveredNode;
-                    const isConnected = connectedToHovered.has(node.id);
-                    const isDimmed = hoveredNode && !isHovered && !isConnected;
+                // Draw nodes with WebGL PBR shader (falls back to Canvas 2D)
+                if (!renderSpheresGL(nodes, hoveredNode, connectedToHovered)) {
+                    // Canvas 2D fallback
+                    nodes.forEach(node => {
+                        const isHovered = node === hoveredNode;
+                        const isConnected = connectedToHovered.has(node.id);
+                        const isDimmed = hoveredNode && !isHovered && !isConnected;
 
-                    const pulse = Math.sin(time * node.pulseSpeed + node.pulsePhase);
-                    const sizeBoost = node.glowIntensity * 3;
-                    const displaySize = node.size + pulse * 0.5 + sizeBoost;
+                        const pulse = Math.sin(time * node.pulseSpeed + node.pulsePhase);
+                        const sizeBoost = node.glowIntensity * 3;
+                        const displaySize = node.size + pulse * 0.5 + sizeBoost;
 
-                    let baseColor;
-                    if (node.category === 'primary') {
-                        baseColor = colors.gold;
-                    } else if (node.category === 'secondary') {
-                        baseColor = colors.teal;
-                    } else {
-                        baseColor = colors.textMuted;
-                    }
+                        let baseColor;
+                        if (node.category === 'primary') baseColor = colors.gold;
+                        else if (node.category === 'secondary') baseColor = colors.teal;
+                        else baseColor = colors.textMuted;
 
-                    const alpha = isDimmed ? 0.3 : 1.0;
-
-                    // Draw glow effect for hovered/connected nodes
-                    if (node.glowIntensity > 0.01) {
-                        const glowSize = displaySize * (1.5 + node.glowIntensity * 0.3);
-                        const glowGradient = ctx.createRadialGradient(
-                            node.x, node.y, displaySize * 0.5,
-                            node.x, node.y, glowSize
-                        );
-                        const glowAlpha = node.glowIntensity * 0.2;
-                        glowGradient.addColorStop(0, `${baseColor}${Math.floor(glowAlpha * 255).toString(16).padStart(2, '0')}`);
-                        glowGradient.addColorStop(0.5, `${baseColor}${Math.floor(glowAlpha * 128).toString(16).padStart(2, '0')}`);
-                        glowGradient.addColorStop(1, 'transparent');
-                        ctx.fillStyle = glowGradient;
-                        ctx.beginPath();
-                        ctx.arc(node.x, node.y, glowSize, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
-
-                    drawLitSphere(node.x, node.y, displaySize, baseColor, alpha, node.appearProgress);
-                });
+                        const alpha = isDimmed ? 0.3 : 1.0;
+                        drawLitSphere(node.x, node.y, displaySize, baseColor, alpha, node.appearProgress, node.glowIntensity);
+                    });
+                }
 
                 // Draw labels
                 nodes.forEach(node => {
@@ -3157,6 +3428,9 @@
 
             // Initialize
             window.addEventListener('resize', resize);
+
+            // Initialize WebGL sphere renderer
+            initSphereGL();
 
             resize();
             animate();
