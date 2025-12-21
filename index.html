@@ -943,6 +943,18 @@
             min-height: 0;
             overflow: hidden;
             padding: 0.5rem 0;
+            animation: portfolioFadeIn 0.8s ease-out;
+        }
+
+        @keyframes portfolioFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .portfolio-header {
@@ -2607,6 +2619,7 @@
                     });
 
                     // Gentle attraction along connections (longer ideal distance)
+                    // When dragging, connected nodes are pulled much more strongly
                     connections.forEach(([a, b]) => {
                         let other = null;
                         if (a === nodeA.id) other = nodes.find(n => n.id === b);
@@ -2616,8 +2629,14 @@
                             const dy = other.y - nodeA.y;
                             const dist = Math.sqrt(dx * dx + dy * dy);
                             const idealDist = 180 * sizeScale; // Longer connections
-                            if (dist > idealDist) {
-                                const strength = (dist - idealDist) * attraction;
+
+                            // Much stronger pull if connected to the dragged node
+                            const isDragConnected = dragNode && (other === dragNode || nodeA === dragNode);
+                            const dragMultiplier = isDragConnected ? 15 : 1;
+
+                            if (dist > idealDist || isDragConnected) {
+                                const baseStrength = (dist - idealDist) * attraction;
+                                const strength = Math.max(baseStrength, isDragConnected ? 0.05 : 0) * dragMultiplier;
                                 fx += (dx / dist) * strength;
                                 fy += (dy / dist) * strength;
                             }
@@ -3254,6 +3273,8 @@
                 });
 
                 // Draw connections with gradient and mouse light
+                // By default only show connections involving Unity, C#, or HLSL
+                const primaryNodes = new Set(['unity', 'csharp', 'hlsl']);
                 connections.forEach(([a, b]) => {
                     const nodeA = nodes.find(n => n.id === a);
                     const nodeB = nodes.find(n => n.id === b);
@@ -3265,7 +3286,7 @@
                     // Get shrink progress of both nodes to fade connection
                     const shrinkA = nodeA.shrinkProgress !== undefined ? nodeA.shrinkProgress : 1;
                     const shrinkB = nodeB.shrinkProgress !== undefined ? nodeB.shrinkProgress : 1;
-                    const connectionFade = Math.min(shrinkA, shrinkB);
+                    const connectionFade = Math.min(shrinkA, shrinkB) * globalFadeIn;
 
                     // Skip fully faded connections
                     if (connectionFade < 0.01) return;
@@ -3282,8 +3303,10 @@
                     } else {
                         // Hide non-highlighted connections when hovering
                         if (hoveredNode) return;
-                        // Default - extremely subtle
-                        const baseAlpha = 0.035 * connectionFade;
+                        // Only show primary connections by default
+                        if (!primaryNodes.has(a) && !primaryNodes.has(b)) return;
+                        // Default - subtle but visible
+                        const baseAlpha = 0.055 * connectionFade;
                         ctx.strokeStyle = `rgba(255, 255, 255, ${baseAlpha})`;
                         ctx.lineWidth = 0.5;
                     }
@@ -3334,7 +3357,7 @@
                     const labelOffset = 12 * sizeScale + 6;
                     const labelY = node.y + displaySize + labelOffset;
                     const fontWeight = node.glowIntensity > 0.5 ? '600' : '500';
-                    const baseFontSize = 8 + 2 * sizeScale;
+                    const baseFontSize = 9.5 + 2.5 * sizeScale;
                     const fontSize = (baseFontSize + node.glowIntensity) * (0.7 + shrink * 0.3);
                     ctx.font = `${fontWeight} ${fontSize}px "JetBrains Mono", monospace`;
                     ctx.textAlign = 'center';
@@ -3492,6 +3515,19 @@
                     showcaseActive = false;
                     showcaseNode = null;
                 }
+            });
+
+            // Reset fade in when switching to skills tab
+            window.addEventListener('skillsTabActivated', () => {
+                time = 0;
+                globalFadeIn = 0;
+                startupPhase = true;
+                lastShowcaseTime = performance.now();
+                // Hide any active tooltip/showcase
+                tooltip.classList.remove('visible');
+                tooltipTarget = null;
+                showcaseActive = false;
+                showcaseNode = null;
             });
 
             animate();
@@ -3906,7 +3942,8 @@
                     if (panelId === 'skills') {
                         const canvas = document.getElementById('skill-graph-canvas');
                         if (canvas) {
-                            // Trigger resize to reinitialize
+                            // Reset fade animation and trigger resize
+                            window.dispatchEvent(new Event('skillsTabActivated'));
                             window.dispatchEvent(new Event('resize'));
                         }
                     }
@@ -3940,6 +3977,14 @@
                     card.style.animation = '';
                     card.style.animationDelay = `${i * 0.12}s`;
                 });
+
+                // Reset and re-trigger animation for portfolio carousel
+                const portfolioCarousel = panel.querySelector('.portfolio-carousel');
+                if (portfolioCarousel) {
+                    portfolioCarousel.style.animation = 'none';
+                    portfolioCarousel.offsetHeight; // Trigger reflow
+                    portfolioCarousel.style.animation = '';
+                }
             }
         })();
 
