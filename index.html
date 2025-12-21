@@ -501,6 +501,89 @@
                 color: var(--accent-gold);
             }
 
+        /* Skill Graph Section */
+        .skill-graph-section {
+            margin-top: 4rem;
+            padding: 3rem 0;
+            border-top: 1px solid var(--border-color);
+            animation: fadeInUp 0.6s ease-out 0.4s backwards;
+        }
+
+        .skill-graph-section .section-title {
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .skill-graph-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 2rem;
+        }
+
+        .skill-graph-container {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(45, 212, 191, 0.03) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: grab;
+        }
+
+        .skill-graph-container:active {
+            cursor: grabbing;
+        }
+
+        #skill-graph-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .graph-legend {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            display: flex;
+            gap: 1.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .legend-dot.primary { background: var(--accent-gold); }
+        .legend-dot.secondary { background: var(--accent-teal); }
+        .legend-dot.tool { background: var(--text-muted); }
+
+        .graph-hint {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            opacity: 0.7;
+        }
+
+        @media (max-width: 900px) {
+            .skill-graph-container {
+                height: 400px;
+            }
+        }
+
         /* Footer */
         footer {
             margin-top: 3rem;
@@ -812,6 +895,30 @@
             </main>
         </div>
 
+        <!-- Skill Graph Section -->
+        <section class="skill-graph-section">
+            <h2 class="section-title">Skill Network</h2>
+            <p class="skill-graph-subtitle">Interactive visualization of my technical expertise</p>
+            <div class="skill-graph-container">
+                <canvas id="skill-graph-canvas"></canvas>
+                <div class="graph-legend">
+                    <div class="legend-item">
+                        <span class="legend-dot primary"></span>
+                        <span>Core Skills</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot secondary"></span>
+                        <span>Secondary</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot tool"></span>
+                        <span>Tools</span>
+                    </div>
+                </div>
+                <div class="graph-hint">Drag nodes to explore</div>
+            </div>
+        </section>
+
         <footer>
             <div class="footer-links">
                 <a href="mailto:contact.charles.grassi@gmail.com">Email</a>
@@ -1042,6 +1149,520 @@
             document.addEventListener('visibilitychange', () => {
                 // Continues running but at low cost anyway
             });
+        })();
+
+        // Skill Network Graph
+        (function() {
+            const canvas = document.getElementById('skill-graph-canvas');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            const container = canvas.parentElement;
+            let time = 0;
+
+            // Colors matching the site theme
+            const colors = {
+                gold: '#e8b923',
+                goldDim: '#c49a1a',
+                teal: '#2dd4bf',
+                tealDim: '#1a9a87',
+                textPrimary: '#e8eaed',
+                textMuted: '#6b7280',
+                border: '#1f2937',
+                bgCard: '#151d26'
+            };
+
+            // Skill nodes with categories - smaller sizes for better spacing
+            const skills = [
+                // Core skills (primary - gold)
+                { id: 'unity', label: 'Unity', category: 'primary', size: 22 },
+                { id: 'csharp', label: 'C#', category: 'primary', size: 20 },
+                { id: 'hlsl', label: 'HLSL/GLSL', category: 'primary', size: 20 },
+                { id: 'directx', label: 'DirectX', category: 'primary', size: 18 },
+                { id: 'arvr', label: 'AR/VR', category: 'primary', size: 18 },
+                { id: 'urp', label: 'URP/HDRP', category: 'primary', size: 17 },
+
+                // Secondary skills (teal)
+                { id: 'opengl', label: 'OpenGL', category: 'secondary', size: 14 },
+                { id: 'unreal', label: 'Unreal', category: 'secondary', size: 16 },
+                { id: 'vulkan', label: 'Vulkan', category: 'secondary', size: 13 },
+                { id: 'python', label: 'Python', category: 'secondary', size: 13 },
+                { id: 'cpp', label: 'C++', category: 'secondary', size: 15 },
+                { id: 'wpf', label: 'WPF', category: 'secondary', size: 11 },
+                { id: 'compute', label: 'Compute', category: 'secondary', size: 16 },
+                { id: 'vfx', label: 'VFX Graph', category: 'secondary', size: 15 },
+                { id: 'niagara', label: 'Niagara', category: 'secondary', size: 13 },
+                { id: 'threejs', label: 'Three.js', category: 'secondary', size: 13 },
+                { id: 'webgl', label: 'WebGL', category: 'secondary', size: 13 },
+
+                // Tools (muted)
+                { id: 'renderdoc', label: 'RenderDoc', category: 'tool', size: 11 },
+                { id: 'nsight', label: 'NSight', category: 'tool', size: 11 },
+                { id: 'pix', label: 'PIX', category: 'tool', size: 11 }
+            ];
+
+            // Connections between skills
+            const connections = [
+                ['unity', 'csharp'], ['unity', 'hlsl'], ['unity', 'urp'], ['unity', 'arvr'],
+                ['unity', 'vfx'], ['unity', 'compute'],
+                ['csharp', 'wpf'], ['csharp', 'compute'],
+                ['hlsl', 'directx'], ['hlsl', 'opengl'], ['hlsl', 'vulkan'], ['hlsl', 'urp'],
+                ['directx', 'renderdoc'], ['directx', 'pix'], ['directx', 'nsight'],
+                ['opengl', 'vulkan'], ['opengl', 'webgl'],
+                ['unreal', 'cpp'], ['unreal', 'niagara'], ['unreal', 'hlsl'],
+                ['cpp', 'directx'], ['cpp', 'vulkan'],
+                ['compute', 'vfx'], ['compute', 'hlsl'],
+                ['threejs', 'webgl'], ['threejs', 'hlsl'],
+                ['arvr', 'urp'], ['arvr', 'compute'],
+                ['vfx', 'niagara'],
+                ['python', 'unity']
+            ];
+
+            // Initialize node positions with unique animation properties
+            let nodes = skills.map((skill, i) => {
+                const angle = (i / skills.length) * Math.PI * 2;
+                const radius = 150 + Math.random() * 50;
+                return {
+                    ...skill,
+                    x: 0,
+                    y: 0,
+                    vx: 0,
+                    vy: 0,
+                    baseX: 0,
+                    baseY: 0,
+                    // Subtle animation parameters for gentle organic movement
+                    floatSpeed: 0.15 + Math.random() * 0.15,
+                    floatRadius: 1.5 + Math.random() * 2,
+                    floatPhase: Math.random() * Math.PI * 2,
+                    pulseSpeed: 0.3 + Math.random() * 0.3,
+                    pulsePhase: Math.random() * Math.PI * 2,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.003
+                };
+            });
+
+            let width, height, centerX, centerY;
+            let isDragging = false;
+            let dragNode = null;
+            let hoveredNode = null;
+            let mouseX = 0, mouseY = 0;
+            let settled = false;
+            let settleTimer = 0;
+
+            function resize() {
+                const rect = container.getBoundingClientRect();
+                const dpr = window.devicePixelRatio || 1;
+                width = rect.width;
+                height = rect.height;
+                canvas.width = width * dpr;
+                canvas.height = height * dpr;
+                canvas.style.width = width + 'px';
+                canvas.style.height = height + 'px';
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                centerX = width / 2;
+                centerY = height / 2;
+                settled = false;
+                settleTimer = 0;
+
+                // Initialize positions in a more spread out pattern
+                nodes.forEach((node, i) => {
+                    const angle = (i / nodes.length) * Math.PI * 2 + Math.PI / 4;
+                    const radius = Math.min(width, height) * 0.35;
+                    node.x = centerX + Math.cos(angle) * radius * (0.6 + Math.random() * 0.4);
+                    node.y = centerY + Math.sin(angle) * radius * (0.6 + Math.random() * 0.4);
+                    node.baseX = node.x;
+                    node.baseY = node.y;
+                    node.vx = 0;
+                    node.vy = 0;
+                });
+            }
+
+            function getNodeAt(x, y) {
+                for (let i = nodes.length - 1; i >= 0; i--) {
+                    const node = nodes[i];
+                    const dx = x - node.x;
+                    const dy = y - node.y;
+                    const hitRadius = node.size + 5;
+                    if (dx * dx + dy * dy < hitRadius * hitRadius) {
+                        return node;
+                    }
+                }
+                return null;
+            }
+
+            function getConnectedNodes(node) {
+                const connected = new Set();
+                connections.forEach(([a, b]) => {
+                    if (a === node.id) connected.add(b);
+                    if (b === node.id) connected.add(a);
+                });
+                return connected;
+            }
+
+            // Gentle physics simulation - runs only briefly then settles
+            function simulate() {
+                if (settled && !dragNode) return;
+
+                const repulsion = 1800;
+                const attraction = 0.006;
+                const damping = 0.92; // Higher = more friction = calmer
+                const centerPull = 0.003;
+
+                let totalMovement = 0;
+
+                nodes.forEach(nodeA => {
+                    if (nodeA === dragNode) return;
+
+                    let fx = 0, fy = 0;
+
+                    // Gentle repulsion from other nodes
+                    nodes.forEach(nodeB => {
+                        if (nodeA === nodeB) return;
+                        const dx = nodeA.x - nodeB.x;
+                        const dy = nodeA.y - nodeB.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                        const minDist = nodeA.size + nodeB.size + 40;
+
+                        if (dist < minDist * 2) {
+                            const force = repulsion / (dist * dist);
+                            fx += (dx / dist) * force;
+                            fy += (dy / dist) * force;
+                        }
+                    });
+
+                    // Gentle attraction along connections
+                    connections.forEach(([a, b]) => {
+                        let other = null;
+                        if (a === nodeA.id) other = nodes.find(n => n.id === b);
+                        if (b === nodeA.id) other = nodes.find(n => n.id === a);
+                        if (other) {
+                            const dx = other.x - nodeA.x;
+                            const dy = other.y - nodeA.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            const idealDist = 120;
+                            if (dist > idealDist) {
+                                const strength = (dist - idealDist) * attraction;
+                                fx += (dx / dist) * strength;
+                                fy += (dy / dist) * strength;
+                            }
+                        }
+                    });
+
+                    // Pull toward center
+                    fx += (centerX - nodeA.x) * centerPull;
+                    fy += (centerY - nodeA.y) * centerPull;
+
+                    // Apply forces with strong damping
+                    nodeA.vx = (nodeA.vx + fx * 0.1) * damping;
+                    nodeA.vy = (nodeA.vy + fy * 0.1) * damping;
+                    nodeA.x += nodeA.vx;
+                    nodeA.y += nodeA.vy;
+
+                    totalMovement += Math.abs(nodeA.vx) + Math.abs(nodeA.vy);
+
+                    // Keep within bounds
+                    const padding = 50;
+                    nodeA.x = Math.max(padding, Math.min(width - padding, nodeA.x));
+                    nodeA.y = Math.max(padding, Math.min(height - padding, nodeA.y));
+
+                    // Update base position for floating animation
+                    nodeA.baseX = nodeA.x;
+                    nodeA.baseY = nodeA.y;
+                });
+
+                // Settle quickly
+                if (totalMovement < 0.3) {
+                    settleTimer++;
+                    if (settleTimer > 30) {
+                        settled = true;
+                    }
+                } else {
+                    settleTimer = 0;
+                }
+            }
+
+            // Draw hexagonal node shape
+            function drawHexagon(x, y, size, rotation) {
+                ctx.beginPath();
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i / 6) * Math.PI * 2 + rotation;
+                    const px = x + Math.cos(angle) * size;
+                    const py = y + Math.sin(angle) * size;
+                    if (i === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+            }
+
+            // Draw rounded hexagon / organic shape
+            function drawOrganicShape(x, y, size, rotation, pulse) {
+                const points = 6;
+                const vertices = [];
+
+                for (let i = 0; i < points; i++) {
+                    const angle = (i / points) * Math.PI * 2 + rotation;
+                    const r = size * (0.95 + pulse * 0.05);
+                    vertices.push({
+                        x: x + Math.cos(angle) * r,
+                        y: y + Math.sin(angle) * r
+                    });
+                }
+
+                ctx.beginPath();
+                // Draw with smooth curves between vertices
+                for (let i = 0; i < points; i++) {
+                    const curr = vertices[i];
+                    const next = vertices[(i + 1) % points];
+                    const midX = (curr.x + next.x) / 2;
+                    const midY = (curr.y + next.y) / 2;
+
+                    if (i === 0) {
+                        ctx.moveTo(midX, midY);
+                    }
+
+                    const nextMidX = (next.x + vertices[(i + 2) % points].x) / 2;
+                    const nextMidY = (next.y + vertices[(i + 2) % points].y) / 2;
+                    ctx.quadraticCurveTo(next.x, next.y, nextMidX, nextMidY);
+                }
+                ctx.closePath();
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, width, height);
+                time += 0.016;
+
+                const connectedToHovered = hoveredNode ? getConnectedNodes(hoveredNode) : new Set();
+
+                // Apply floating animation to settled nodes
+                if (settled && !dragNode) {
+                    nodes.forEach(node => {
+                        const floatX = Math.sin(time * node.floatSpeed + node.floatPhase) * node.floatRadius;
+                        const floatY = Math.cos(time * node.floatSpeed * 0.7 + node.floatPhase) * node.floatRadius;
+                        node.x = node.baseX + floatX;
+                        node.y = node.baseY + floatY;
+                        node.rotation += node.rotationSpeed;
+                    });
+                }
+
+                // Draw connections with gradient
+                connections.forEach(([a, b]) => {
+                    const nodeA = nodes.find(n => n.id === a);
+                    const nodeB = nodes.find(n => n.id === b);
+                    if (!nodeA || !nodeB) return;
+
+                    const isHighlighted = hoveredNode &&
+                        (hoveredNode.id === a || hoveredNode.id === b);
+
+                    // Create gradient along connection
+                    const gradient = ctx.createLinearGradient(nodeA.x, nodeA.y, nodeB.x, nodeB.y);
+
+                    if (isHighlighted) {
+                        gradient.addColorStop(0, 'rgba(45, 212, 191, 0.6)');
+                        gradient.addColorStop(0.5, 'rgba(232, 185, 35, 0.4)');
+                        gradient.addColorStop(1, 'rgba(45, 212, 191, 0.6)');
+                        ctx.lineWidth = 2;
+                    } else {
+                        const alpha = hoveredNode ? 0.05 : 0.12;
+                        gradient.addColorStop(0, `rgba(45, 212, 191, ${alpha})`);
+                        gradient.addColorStop(1, `rgba(232, 185, 35, ${alpha})`);
+                        ctx.lineWidth = 1;
+                    }
+
+                    ctx.beginPath();
+                    ctx.moveTo(nodeA.x, nodeA.y);
+                    ctx.lineTo(nodeB.x, nodeB.y);
+                    ctx.strokeStyle = gradient;
+                    ctx.stroke();
+                });
+
+                // Draw nodes
+                nodes.forEach(node => {
+                    const isHovered = node === hoveredNode;
+                    const isConnected = connectedToHovered.has(node.id);
+                    const isDimmed = hoveredNode && !isHovered && !isConnected;
+
+                    // Subtle pulse animation
+                    const pulse = Math.sin(time * node.pulseSpeed + node.pulsePhase);
+                    const displaySize = node.size + (isHovered ? 2 : pulse * 0.3);
+
+                    // Get colors based on category
+                    let baseColor, glowColor;
+                    if (node.category === 'primary') {
+                        baseColor = colors.gold;
+                        glowColor = colors.gold;
+                    } else if (node.category === 'secondary') {
+                        baseColor = colors.teal;
+                        glowColor = colors.teal;
+                    } else {
+                        baseColor = colors.textMuted;
+                        glowColor = colors.textMuted;
+                    }
+
+                    ctx.globalAlpha = isDimmed ? 0.25 : 1;
+
+                    // Outer glow
+                    if (isHovered || isConnected) {
+                        const glowGradient = ctx.createRadialGradient(
+                            node.x, node.y, displaySize * 0.5,
+                            node.x, node.y, displaySize * 2
+                        );
+                        glowGradient.addColorStop(0, isHovered ? `${glowColor}40` : `${glowColor}20`);
+                        glowGradient.addColorStop(1, 'transparent');
+                        ctx.fillStyle = glowGradient;
+                        ctx.beginPath();
+                        ctx.arc(node.x, node.y, displaySize * 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    // Draw organic hexagonal shape
+                    drawOrganicShape(node.x, node.y, displaySize, node.rotation, pulse * 0.5 + 0.5);
+
+                    // Fill with gradient
+                    const nodeGradient = ctx.createRadialGradient(
+                        node.x - displaySize * 0.3, node.y - displaySize * 0.3, 0,
+                        node.x, node.y, displaySize * 1.2
+                    );
+
+                    if (node.category === 'primary') {
+                        nodeGradient.addColorStop(0, '#f5d45a');
+                        nodeGradient.addColorStop(0.5, colors.gold);
+                        nodeGradient.addColorStop(1, colors.goldDim);
+                    } else if (node.category === 'secondary') {
+                        nodeGradient.addColorStop(0, '#5eebd7');
+                        nodeGradient.addColorStop(0.5, colors.teal);
+                        nodeGradient.addColorStop(1, colors.tealDim);
+                    } else {
+                        nodeGradient.addColorStop(0, '#8b9299');
+                        nodeGradient.addColorStop(0.5, colors.textMuted);
+                        nodeGradient.addColorStop(1, '#4a5058');
+                    }
+
+                    ctx.fillStyle = nodeGradient;
+                    ctx.fill();
+
+                    // Inner highlight
+                    ctx.beginPath();
+                    ctx.arc(node.x - displaySize * 0.25, node.y - displaySize * 0.25, displaySize * 0.3, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+                    ctx.fill();
+
+                    // Border
+                    drawOrganicShape(node.x, node.y, displaySize, node.rotation, pulse * 0.5 + 0.5);
+                    ctx.strokeStyle = isHovered ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.1)';
+                    ctx.lineWidth = isHovered ? 2 : 1;
+                    ctx.stroke();
+
+                    // Label with background
+                    const labelY = node.y + displaySize + 16;
+                    ctx.font = `${isHovered ? '600' : '500'} ${isHovered ? 11 : 10}px "JetBrains Mono", monospace`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    const textWidth = ctx.measureText(node.label).width;
+
+                    // Label background
+                    ctx.fillStyle = `rgba(21, 29, 38, ${isDimmed ? 0.5 : 0.8})`;
+                    ctx.beginPath();
+                    ctx.roundRect(node.x - textWidth / 2 - 4, labelY - 7, textWidth + 8, 14, 3);
+                    ctx.fill();
+
+                    // Label text
+                    ctx.fillStyle = isDimmed ? colors.textMuted : colors.textPrimary;
+                    ctx.fillText(node.label, node.x, labelY);
+
+                    ctx.globalAlpha = 1;
+                });
+            }
+
+            function animate() {
+                simulate();
+                draw();
+                requestAnimationFrame(animate);
+            }
+
+            // Event handlers
+            canvas.addEventListener('mousedown', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                mouseX = e.clientX - rect.left;
+                mouseY = e.clientY - rect.top;
+                dragNode = getNodeAt(mouseX, mouseY);
+                if (dragNode) {
+                    isDragging = true;
+                    settled = false;
+                    container.style.cursor = 'grabbing';
+                }
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                mouseX = e.clientX - rect.left;
+                mouseY = e.clientY - rect.top;
+
+                if (isDragging && dragNode) {
+                    dragNode.x = mouseX;
+                    dragNode.y = mouseY;
+                    dragNode.baseX = mouseX;
+                    dragNode.baseY = mouseY;
+                    dragNode.vx = 0;
+                    dragNode.vy = 0;
+                    settled = false;
+                    settleTimer = 0;
+                } else {
+                    hoveredNode = getNodeAt(mouseX, mouseY);
+                    container.style.cursor = hoveredNode ? 'pointer' : 'grab';
+                }
+            });
+
+            canvas.addEventListener('mouseup', () => {
+                isDragging = false;
+                dragNode = null;
+                container.style.cursor = hoveredNode ? 'pointer' : 'grab';
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                isDragging = false;
+                dragNode = null;
+                hoveredNode = null;
+                container.style.cursor = 'grab';
+            });
+
+            // Touch support
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                mouseX = touch.clientX - rect.left;
+                mouseY = touch.clientY - rect.top;
+                dragNode = getNodeAt(mouseX, mouseY);
+                if (dragNode) {
+                    isDragging = true;
+                    settled = false;
+                }
+            }, { passive: false });
+
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (!isDragging || !dragNode) return;
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                dragNode.x = touch.clientX - rect.left;
+                dragNode.y = touch.clientY - rect.top;
+                dragNode.baseX = dragNode.x;
+                dragNode.baseY = dragNode.y;
+                dragNode.vx = 0;
+                dragNode.vy = 0;
+                settled = false;
+            }, { passive: false });
+
+            canvas.addEventListener('touchend', () => {
+                isDragging = false;
+                dragNode = null;
+            });
+
+            // Initialize
+            window.addEventListener('resize', resize);
+            resize();
+            animate();
         })();
     </script>
 </body>
