@@ -20,8 +20,7 @@
             --text-secondary: #9ca3af;
             --text-muted: #6b7280;
             --border-color: #1f2937;
-            --gradient-mesh: radial-gradient(ellipse at 20% 0%, rgba(232, 185, 35, 0.08) 0%, transparent 50%),
-                            radial-gradient(ellipse at 80% 100%, rgba(45, 212, 191, 0.05) 0%, transparent 50%);
+            --gradient-mesh: radial-gradient(ellipse at 20% 0%, rgba(232, 185, 35, 0.08) 0%, transparent 50%), radial-gradient(ellipse at 80% 100%, rgba(45, 212, 191, 0.05) 0%, transparent 50%);
         }
 
         * {
@@ -48,6 +47,57 @@
             pointer-events: none;
         }
 
+        .contact-btn {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-dim) 100%);
+            border: none;
+            border-radius: 6px;
+            color: var(--bg-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 100;
+            box-shadow: 0 4px 15px rgba(232, 185, 35, 0.3);
+        }
+
+            .contact-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 25px rgba(232, 185, 35, 0.5);
+            }
+
+            .contact-btn:active {
+                transform: translateY(0);
+            }
+
+            .contact-btn svg {
+                width: 16px;
+                height: 16px;
+            }
+
+        @media print {
+            .contact-btn {
+                display: none !important;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .contact-btn {
+                top: 1rem;
+                right: 1rem;
+                padding: 0.6rem 1rem;
+                font-size: 0.75rem;
+            }
+        }
+
         .noise-overlay {
             position: fixed;
             top: 0;
@@ -69,19 +119,18 @@
             position: relative;
         }
 
-        .container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 100vw;
-            height: 100%;
-            background: radial-gradient(ellipse at 20% 0%, rgba(232, 185, 35, 0.06) 0%, transparent 50%),
-                        radial-gradient(ellipse at 80% 50%, rgba(45, 212, 191, 0.04) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: -1;
-        }
+            .container::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 100vw;
+                height: 100%;
+                background: radial-gradient(ellipse at 20% 0%, rgba(232, 185, 35, 0.06) 0%, transparent 50%), radial-gradient(ellipse at 80% 50%, rgba(45, 212, 191, 0.04) 0%, transparent 50%);
+                pointer-events: none;
+                z-index: -1;
+            }
 
         /* Header */
         header {
@@ -99,6 +148,7 @@
                 opacity: 0;
                 transform: translateY(20px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -144,10 +194,10 @@
             text-transform: uppercase;
         }
 
-        .title-tag.highlight {
-            border-color: var(--accent-gold);
-            color: var(--accent-gold);
-        }
+            .title-tag.highlight {
+                border-color: var(--accent-gold);
+                color: var(--accent-gold);
+            }
 
         .contact-block {
             text-align: right;
@@ -155,23 +205,23 @@
             font-size: 0.85rem;
         }
 
-        .contact-block a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            display: block;
-            padding: 0.3rem 0;
-            transition: color 0.2s ease;
-        }
+            .contact-block a {
+                color: var(--text-secondary);
+                text-decoration: none;
+                display: block;
+                padding: 0.3rem 0;
+                transition: color 0.2s ease;
+            }
 
-        .contact-block a:hover {
-            color: var(--accent-teal);
-        }
+                .contact-block a:hover {
+                    color: var(--accent-teal);
+                }
 
-        .contact-block .company {
-            color: var(--accent-gold);
-            font-weight: 500;
-            margin-bottom: 0.5rem;
-        }
+            .contact-block .company {
+                color: var(--accent-gold);
+                font-weight: 500;
+                margin-bottom: 0.5rem;
+            }
 
         .languages {
             margin-top: 1rem;
@@ -209,46 +259,51 @@
             margin-bottom: 2.5rem;
         }
 
-        .sidebar-section h3 {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.7rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            color: var(--accent-gold);
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid var(--border-color);
-        }
+            .sidebar-section h3 {
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 0.7rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.15em;
+                color: var(--accent-gold);
+                margin-bottom: 1rem;
+                padding-bottom: 0.5rem;
+                border-bottom: 1px solid var(--border-color);
+            }
 
         .skill-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.5rem;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.4rem;
         }
 
         .skill {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
+            font-size: 0.65rem;
             color: var(--text-secondary);
-            padding: 0.5rem;
+            padding: 0.4rem 0.3rem;
             background: var(--bg-card);
             border-radius: 4px;
             text-align: center;
-            border: 1px solid transparent;
+            border: 1px solid var(--border-color);
             transition: all 0.2s ease;
+            white-space: nowrap;
         }
 
-        .skill:hover {
-            border-color: var(--accent-teal);
-            color: var(--accent-teal);
-        }
+            .skill:hover {
+                border-color: var(--accent-teal);
+                color: var(--accent-teal);
+            }
 
-        .skill.primary {
-            grid-column: span 2;
-            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(232, 185, 35, 0.1) 100%);
-            border-color: var(--border-color);
-        }
+            .skill.primary {
+                border-color: var(--accent-gold);
+                color: var(--text-primary);
+            }
+
+                .skill.primary:hover {
+                    background: rgba(232, 185, 35, 0.1);
+                    color: var(--accent-gold);
+                }
 
         /* Client logos */
         .client-list {
@@ -264,12 +319,26 @@
             background: var(--bg-card);
             border-radius: 4px;
             border: 1px solid var(--border-color);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            cursor: pointer;
         }
 
-        .client-tag.major {
-            color: var(--text-primary);
-            border-color: var(--accent-gold);
-        }
+            .client-tag:hover {
+                border-color: var(--accent-teal);
+                color: var(--accent-teal);
+                transform: translateY(-1px);
+            }
+
+            .client-tag.major {
+                color: var(--text-primary);
+                border-color: var(--accent-gold);
+            }
+
+                .client-tag.major:hover {
+                    background: rgba(232, 185, 35, 0.1);
+                    color: var(--accent-gold);
+                }
 
         /* Stats */
         .stats-grid {
@@ -325,16 +394,16 @@
             margin-bottom: 2rem;
         }
 
-        .summary p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            line-height: 1.8;
-        }
+            .summary p {
+                color: var(--text-secondary);
+                font-size: 0.95rem;
+                line-height: 1.8;
+            }
 
-        .summary .highlight-text {
-            color: var(--accent-gold);
-            font-weight: 500;
-        }
+            .summary .highlight-text {
+                color: var(--accent-gold);
+                font-weight: 500;
+            }
 
         /* Project Cards - New approach */
         .project-grid {
@@ -351,27 +420,27 @@
             transition: all 0.3s ease;
         }
 
-        .project-card:hover {
-            border-color: var(--accent-gold);
-            transform: translateX(4px);
-        }
+            .project-card:hover {
+                border-color: var(--accent-gold);
+                transform: translateX(4px);
+            }
 
-        .project-card::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 3px;
-            background: linear-gradient(180deg, var(--accent-gold) 0%, var(--accent-teal) 100%);
-            border-radius: 8px 0 0 8px;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
+            .project-card::before {
+                content: '';
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 3px;
+                background: linear-gradient(180deg, var(--accent-gold) 0%, var(--accent-teal) 100%);
+                border-radius: 8px 0 0 8px;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            }
 
-        .project-card:hover::before {
-            opacity: 1;
-        }
+            .project-card:hover::before {
+                opacity: 1;
+            }
 
         .project-header {
             display: flex;
@@ -414,11 +483,12 @@
         .tech-tag {
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.65rem;
-            padding: 0.25rem 0.5rem;
-            background: rgba(232, 185, 35, 0.1);
-            border: 1px solid var(--border-color);
+            padding: 0.3rem 0.6rem;
+            background: var(--bg-card);
+            border: 1px solid var(--accent-teal);
             border-radius: 3px;
-            color: var(--text-muted);
+            color: var(--accent-teal);
+            opacity: 0.8;
         }
 
         /* Leadership section */
@@ -427,9 +497,9 @@
             border-color: var(--accent-gold);
         }
 
-        .leadership-card .project-title {
-            color: var(--accent-gold);
-        }
+            .leadership-card .project-title {
+                color: var(--accent-gold);
+            }
 
         /* Footer */
         footer {
@@ -448,17 +518,17 @@
             margin-bottom: 1rem;
         }
 
-        .footer-links a {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            text-decoration: none;
-            transition: color 0.2s ease;
-        }
+            .footer-links a {
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 0.8rem;
+                color: var(--text-muted);
+                text-decoration: none;
+                transition: color 0.2s ease;
+            }
 
-        .footer-links a:hover {
-            color: var(--accent-teal);
-        }
+                .footer-links a:hover {
+                    color: var(--accent-teal);
+                }
 
         .footer-note {
             font-size: 0.75rem;
@@ -497,7 +567,7 @@
             .noise-overlay {
                 display: none;
             }
-            
+
             body {
                 background: white;
                 color: #1a1a1a;
@@ -516,6 +586,13 @@
 <body>
     <canvas id="gpu-canvas"></canvas>
     <div class="noise-overlay"></div>
+
+    <a href="mailto:contact.charles.grassi@gmail.com" class="contact-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+        Contact Me
+    </a>
     <div class="container">
         <header>
             <div class="name-block">
@@ -559,35 +636,42 @@
                 <section class="sidebar-section">
                     <h3>Core Skills</h3>
                     <div class="skill-grid">
-                        <span class="skill primary">Unity & C#</span>
-                        <span class="skill">HLSL</span>
-                        <span class="skill">GLSL</span>
-                        <span class="skill">DirectX</span>
-                        <span class="skill">WebGL</span>
-                        <span class="skill primary">Compute Shaders</span>
-                        <span class="skill">AR/VR</span>
-                        <span class="skill">SDF</span>
-                        <span class="skill primary">Performance Analysis</span>
-                        <span class="skill">Ray Marching</span>
-                        <span class="skill">GI</span>
-                        <span class="skill primary">Projection Mapping</span>
+                        <span class="skill primary">Unity</span>
+                        <span class="skill primary">C#</span>
+                        <span class="skill primary">HLSL/GLSL</span>
+                        <span class="skill primary">DirectX</span>
+                        <span class="skill primary">AR/VR</span>
+                        <span class="skill primary">URP/HDRP</span>
+                        <span class="skill">OpenGL</span>
+                        <span class="skill">Unreal</span>
+                        <span class="skill">Vulkan</span>
+                        <span class="skill">Python</span>
+                        <span class="skill">C++</span>
+                        <span class="skill">WPF</span>
+                        <span class="skill">Compute</span>
+                        <span class="skill">VFX Graph</span>
+                        <span class="skill">Niagara</span>
+                        <span class="skill">RenderDoc</span>
+                        <span class="skill">NSight</span>
+                        <span class="skill">PIX</span>
                         <span class="skill">Three.js</span>
-                        <span class="skill">Burst</span>
+                        <span class="skill">WebGL</span>
+                        <span class="skill">Audio React</span>
                     </div>
                 </section>
 
                 <section class="sidebar-section">
                     <h3>Select Clients</h3>
                     <div class="client-list">
-                        <span class="client-tag major">Nexus Studios</span>
-                        <span class="client-tag major">Ubisoft</span>
-                        <span class="client-tag major">22cans</span>
-                        <span class="client-tag">The Sandbox</span>
-                        <span class="client-tag">DREST</span>
-                        <span class="client-tag">H3 Space</span>
-                        <span class="client-tag">Little Red Dog</span>
-                        <span class="client-tag">Scapin'</span>
-                        <span class="client-tag">SABDA</span>
+                        <a href="https://nexusstudios.com/" target="_blank" class="client-tag major">Nexus Studios</a>
+                        <a href="https://www.ubisoft.com/" target="_blank" class="client-tag major">Ubisoft</a>
+                        <a href="https://www.22cans.com/" target="_blank" class="client-tag major">22cans</a>
+                        <a href="https://www.sandbox.game/" target="_blank" class="client-tag">The Sandbox</a>
+                        <a href="https://www.drest.com/" target="_blank" class="client-tag">DREST</a>
+                        <a href="https://www.linkedin.com/company/h3investments/posts/" target="_blank" class="client-tag">H3 Space</a>
+                        <a href="https://store.steampowered.com/developer/lrdg" target="_blank" class="client-tag">Little Red Dog</a>
+                        <a href="https://scapin.io/" target="_blank" class="client-tag">Scapin'</a>
+                        <a href="https://sabda.es/" target="_blank" class="client-tag">SABDA</a>
                     </div>
                 </section>
             </aside>
@@ -595,10 +679,10 @@
             <main class="main-content">
                 <div class="summary">
                     <p>
-                        I run <span class="highlight-text">Zylaris Ltd</span>, a specialized consultancy delivering 
-                        high-performance graphics solutions for games, VR, and immersive installations. From 
-                        <span class="highlight-text">GPU-based light baking</span> using SDFs to <span class="highlight-text">16K projection-mapped environments</span>, 
-                        I help studios push the boundaries of real-time rendering across mobile, desktop, VR, and web platforms. 
+                        I run <span class="highlight-text">Zylaris Ltd</span>, a specialized consultancy delivering
+                        high-performance graphics solutions for games, VR, and immersive installations. From
+                        <span class="highlight-text">GPU-based light baking</span> using SDFs to <span class="highlight-text">16K projection-mapped environments</span>,
+                        I help studios push the boundaries of real-time rendering across mobile, desktop, VR, and web platforms.
                         I've shipped graphics systems for studios including Nexus, Ubisoft, 22cans, and The Sandbox.
                     </p>
                 </div>
@@ -615,7 +699,7 @@
                             <div class="project-year">2025</div>
                         </div>
                         <div class="project-desc">
-                            Built a real-time global illumination system using SDF representations of scanned VR environments. 
+                            Built a real-time global illumination system using SDF representations of scanned VR environments.
                             Implemented GPU compute pipelines for efficient light transport calculations optimized for VR hardware constraints.
                         </div>
                         <div class="project-tags">
@@ -635,8 +719,8 @@
                             <div class="project-year">2023–2024</div>
                         </div>
                         <div class="project-desc">
-                            Led technical direction for a large-scale 16K immersive installation. Developed real-time 3D content, 
-                            managed spatial audio systems, server infrastructure, and projection mapping pipelines. 
+                            Led technical direction for a large-scale 16K immersive installation. Developed real-time 3D content,
+                            managed spatial audio systems, server infrastructure, and projection mapping pipelines.
                             Built and led a multicultural engineering team.
                         </div>
                         <div class="project-tags">
@@ -656,7 +740,7 @@
                             <div class="project-year">2023</div>
                         </div>
                         <div class="project-desc">
-                            Directed graphics team to develop high-performance VFX using compute shaders and Burst-compiled code. 
+                            Directed graphics team to develop high-performance VFX using compute shaders and Burst-compiled code.
                             Achieved significant CPU performance optimizations while maintaining visual fidelity.
                         </div>
                         <div class="project-tags">
@@ -676,7 +760,7 @@
                             <div class="project-year">2022–2023</div>
                         </div>
                         <div class="project-desc">
-                            Created versatile shader library targeting mobile and desktop simultaneously. Developed performant 
+                            Created versatile shader library targeting mobile and desktop simultaneously. Developed performant
                             grass rendering and volumetric lighting effects that maintained visual quality across hardware tiers.
                         </div>
                         <div class="project-tags">
@@ -696,7 +780,7 @@
                             <div class="project-year">2021–2022</div>
                         </div>
                         <div class="project-desc">
-                            Engineered custom lighting systems for web3 social applications. Built high-performance shaders 
+                            Engineered custom lighting systems for web3 social applications. Built high-performance shaders
                             optimized for mobile battery efficiency while delivering premium visual aesthetics.
                         </div>
                         <div class="project-tags">
@@ -715,7 +799,7 @@
                             <div class="project-year">2020–2022</div>
                         </div>
                         <div class="project-desc">
-                            Delivered graphics programming and shader expertise across AAA, AR/VR, and fashion tech verticals. 
+                            Delivered graphics programming and shader expertise across AAA, AR/VR, and fashion tech verticals.
                             Specialized in performance optimization and cross-platform rendering solutions.
                         </div>
                         <div class="project-tags">
@@ -739,226 +823,226 @@
     </div>
 
     <script>
-    // Subtle Aurora Background - Charles Grassi CV
-    (function() {
-        const canvas = document.getElementById('gpu-canvas');
-        const renderer = new THREE.WebGLRenderer({ 
-            canvas, 
-            antialias: false, 
-            alpha: true 
-        });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-        renderer.setSize(window.innerWidth, window.innerHeight);
-
-        const scene = new THREE.Scene();
-        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-
-        // Mouse tracking (subtle)
-        const mouse = { x: 0.5, y: 0.5, targetX: 0.5, targetY: 0.5 };
-        document.addEventListener('mousemove', (e) => {
-            mouse.targetX = e.clientX / window.innerWidth;
-            mouse.targetY = 1.0 - e.clientY / window.innerHeight;
-        });
-
-        // Fullscreen shader
-        const vertexShader = `
-            varying vec2 vUv;
-            void main() {
-                vUv = uv;
-                gl_Position = vec4(position, 1.0);
-            }
-        `;
-
-        const fragmentShader = `
-            uniform float uTime;
-            uniform vec2 uMouse;
-            uniform vec2 uResolution;
-            
-            varying vec2 vUv;
-            
-            // Simplex noise
-            vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-            vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-            vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
-            
-            float snoise(vec2 v) {
-                const vec4 C = vec4(0.211324865405187, 0.366025403784439,
-                                   -0.577350269189626, 0.024390243902439);
-                vec2 i  = floor(v + dot(v, C.yy));
-                vec2 x0 = v - i + dot(i, C.xx);
-                vec2 i1;
-                i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-                vec4 x12 = x0.xyxy + C.xxzz;
-                x12.xy -= i1;
-                i = mod289(i);
-                vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0))
-                    + i.x + vec3(0.0, i1.x, 1.0));
-                vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy),
-                    dot(x12.zw,x12.zw)), 0.0);
-                m = m*m;
-                m = m*m;
-                vec3 x = 2.0 * fract(p * C.www) - 1.0;
-                vec3 h = abs(x) - 0.5;
-                vec3 ox = floor(x + 0.5);
-                vec3 a0 = x - ox;
-                m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
-                vec3 g;
-                g.x = a0.x * x0.x + h.x * x0.y;
-                g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-                return 130.0 * dot(m, g);
-            }
-            
-            void main() {
-                vec2 uv = vUv;
-                
-                // Slow flowing noise
-                float noise1 = snoise(uv * 1.5 + uTime * 0.05);
-                float noise2 = snoise(uv * 2.5 - uTime * 0.03 + 100.0);
-                float noise3 = snoise(uv * 0.8 + uTime * 0.02 + vec2(noise1 * 0.2));
-                
-                float combinedNoise = noise1 * 0.5 + noise2 * 0.3 + noise3 * 0.2;
-                
-                // Colors
-                vec3 gold = vec3(0.91, 0.73, 0.14);
-                vec3 teal = vec3(0.18, 0.83, 0.75);
-                vec3 dark = vec3(0.04, 0.06, 0.08);
-                
-                // Subtle color bands
-                float band1 = smoothstep(-0.3, 0.3, combinedNoise);
-                float band2 = smoothstep(0.0, 0.6, combinedNoise);
-                
-                vec3 color = mix(dark, gold * 0.15, band1 * 0.4);
-                color = mix(color, teal * 0.12, band2 * 0.3);
-                
-                // Very subtle mouse glow
-                float mouseDist = length(uv - uMouse);
-                float mouseGlow = exp(-mouseDist * 3.0) * 0.08;
-                color += teal * mouseGlow;
-                
-                // Vignette
-                float vignette = 1.0 - length(uv - 0.5) * 0.5;
-                color *= vignette;
-                
-                // Keep it very subtle
-                float alpha = 0.6;
-                
-                gl_FragColor = vec4(color, alpha);
-            }
-        `;
-
-        const geometry = new THREE.PlaneGeometry(2, 2);
-        const material = new THREE.ShaderMaterial({
-            vertexShader,
-            fragmentShader,
-            uniforms: {
-                uTime: { value: 0 },
-                uMouse: { value: new THREE.Vector2(0.5, 0.5) },
-                uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
-            },
-            transparent: true,
-            depthWrite: false
-        });
-
-        const mesh = new THREE.Mesh(geometry, material);
-        scene.add(mesh);
-
-        // Sparse floating particles
-        const particleVertexShader = `
-            uniform float uTime;
-            uniform float uPixelRatio;
-            attribute float aScale;
-            attribute float aSpeed;
-            varying float vAlpha;
-            
-            void main() {
-                vec3 pos = position;
-                
-                // Gentle drift
-                pos.x += sin(uTime * aSpeed * 0.5 + position.y * 2.0) * 0.02;
-                pos.y += mod(uTime * aSpeed * 0.1, 2.0) - 1.0;
-                pos.y = mod(pos.y + 1.0, 2.0) - 1.0;
-                
-                gl_Position = vec4(pos, 1.0);
-                gl_PointSize = aScale * uPixelRatio * 3.0;
-                
-                // Fade at edges
-                vAlpha = smoothstep(1.0, 0.7, abs(pos.y)) * 0.4;
-            }
-        `;
-
-        const particleFragmentShader = `
-            varying float vAlpha;
-            
-            void main() {
-                float dist = length(gl_PointCoord - 0.5);
-                float alpha = smoothstep(0.5, 0.0, dist) * vAlpha;
-                vec3 color = mix(vec3(0.91, 0.73, 0.14), vec3(0.18, 0.83, 0.75), 0.5);
-                gl_FragColor = vec4(color, alpha);
-            }
-        `;
-
-        const PARTICLE_COUNT = 60;
-        const particleGeometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(PARTICLE_COUNT * 3);
-        const scales = new Float32Array(PARTICLE_COUNT);
-        const speeds = new Float32Array(PARTICLE_COUNT);
-
-        for (let i = 0; i < PARTICLE_COUNT; i++) {
-            positions[i * 3] = (Math.random() - 0.5) * 2;
-            positions[i * 3 + 1] = (Math.random() - 0.5) * 2;
-            positions[i * 3 + 2] = 0;
-            scales[i] = Math.random() * 1.5 + 0.5;
-            speeds[i] = Math.random() * 0.5 + 0.2;
-        }
-
-        particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        particleGeometry.setAttribute('aScale', new THREE.BufferAttribute(scales, 1));
-        particleGeometry.setAttribute('aSpeed', new THREE.BufferAttribute(speeds, 1));
-
-        const particleMaterial = new THREE.ShaderMaterial({
-            vertexShader: particleVertexShader,
-            fragmentShader: particleFragmentShader,
-            uniforms: {
-                uTime: { value: 0 },
-                uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) }
-            },
-            transparent: true,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
-        });
-
-        const particles = new THREE.Points(particleGeometry, particleMaterial);
-        scene.add(particles);
-
-        // Animation
-        let time = 0;
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            time += 0.016;
-            
-            mouse.x += (mouse.targetX - mouse.x) * 0.02;
-            mouse.y += (mouse.targetY - mouse.y) * 0.02;
-            
-            material.uniforms.uTime.value = time;
-            material.uniforms.uMouse.value.set(mouse.x, mouse.y);
-            
-            particleMaterial.uniforms.uTime.value = time;
-            
-            renderer.render(scene, camera);
-        }
-
-        animate();
-
-        window.addEventListener('resize', () => {
+        // Subtle Aurora Background - Charles Grassi CV
+        (function () {
+            const canvas = document.getElementById('gpu-canvas');
+            const renderer = new THREE.WebGLRenderer({
+                canvas,
+                antialias: false,
+                alpha: true
+            });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
             renderer.setSize(window.innerWidth, window.innerHeight);
-            material.uniforms.uResolution.value.set(window.innerWidth, window.innerHeight);
-        });
 
-        document.addEventListener('visibilitychange', () => {
-            // Continues running but at low cost anyway
-        });
-    })();
+            const scene = new THREE.Scene();
+            const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+            // Mouse tracking (subtle)
+            const mouse = { x: 0.5, y: 0.5, targetX: 0.5, targetY: 0.5 };
+            document.addEventListener('mousemove', (e) => {
+                mouse.targetX = e.clientX / window.innerWidth;
+                mouse.targetY = 1.0 - e.clientY / window.innerHeight;
+            });
+
+            // Fullscreen shader
+            const vertexShader = `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = vec4(position, 1.0);
+                }
+            `;
+
+            const fragmentShader = `
+                uniform float uTime;
+                uniform vec2 uMouse;
+                uniform vec2 uResolution;
+
+                varying vec2 vUv;
+
+                // Simplex noise
+                vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+
+                float snoise(vec2 v) {
+                    const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+                                       -0.577350269189626, 0.024390243902439);
+                    vec2 i  = floor(v + dot(v, C.yy));
+                    vec2 x0 = v - i + dot(i, C.xx);
+                    vec2 i1;
+                    i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+                    vec4 x12 = x0.xyxy + C.xxzz;
+                    x12.xy -= i1;
+                    i = mod289(i);
+                    vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0))
+                        + i.x + vec3(0.0, i1.x, 1.0));
+                    vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy),
+                        dot(x12.zw,x12.zw)), 0.0);
+                    m = m*m;
+                    m = m*m;
+                    vec3 x = 2.0 * fract(p * C.www) - 1.0;
+                    vec3 h = abs(x) - 0.5;
+                    vec3 ox = floor(x + 0.5);
+                    vec3 a0 = x - ox;
+                    m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
+                    vec3 g;
+                    g.x = a0.x * x0.x + h.x * x0.y;
+                    g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+                    return 130.0 * dot(m, g);
+                }
+
+                void main() {
+                    vec2 uv = vUv;
+
+                    // Slow flowing noise
+                    float noise1 = snoise(uv * 1.5 + uTime * 0.05);
+                    float noise2 = snoise(uv * 2.5 - uTime * 0.03 + 100.0);
+                    float noise3 = snoise(uv * 0.8 + uTime * 0.02 + vec2(noise1 * 0.2));
+
+                    float combinedNoise = noise1 * 0.5 + noise2 * 0.3 + noise3 * 0.2;
+
+                    // Colors
+                    vec3 gold = vec3(0.91, 0.73, 0.14);
+                    vec3 teal = vec3(0.18, 0.83, 0.75);
+                    vec3 dark = vec3(0.04, 0.06, 0.08);
+
+                    // Subtle color bands
+                    float band1 = smoothstep(-0.3, 0.3, combinedNoise);
+                    float band2 = smoothstep(0.0, 0.6, combinedNoise);
+
+                    vec3 color = mix(dark, gold * 0.15, band1 * 0.4);
+                    color = mix(color, teal * 0.12, band2 * 0.3);
+
+                    // Very subtle mouse glow
+                    float mouseDist = length(uv - uMouse);
+                    float mouseGlow = exp(-mouseDist * 3.0) * 0.08;
+                    color += teal * mouseGlow;
+
+                    // Vignette
+                    float vignette = 1.0 - length(uv - 0.5) * 0.5;
+                    color *= vignette;
+
+                    // Keep it very subtle
+                    float alpha = 0.6;
+
+                    gl_FragColor = vec4(color, alpha);
+                }
+            `;
+
+            const geometry = new THREE.PlaneGeometry(2, 2);
+            const material = new THREE.ShaderMaterial({
+                vertexShader,
+                fragmentShader,
+                uniforms: {
+                    uTime: { value: 0 },
+                    uMouse: { value: new THREE.Vector2(0.5, 0.5) },
+                    uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
+                },
+                transparent: true,
+                depthWrite: false
+            });
+
+            const mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+
+            // Sparse floating particles
+            const particleVertexShader = `
+                uniform float uTime;
+                uniform float uPixelRatio;
+                attribute float aScale;
+                attribute float aSpeed;
+                varying float vAlpha;
+
+                void main() {
+                    vec3 pos = position;
+
+                    // Gentle drift
+                    pos.x += sin(uTime * aSpeed * 0.5 + position.y * 2.0) * 0.02;
+                    pos.y += mod(uTime * aSpeed * 0.1, 2.0) - 1.0;
+                    pos.y = mod(pos.y + 1.0, 2.0) - 1.0;
+
+                    gl_Position = vec4(pos, 1.0);
+                    gl_PointSize = aScale * uPixelRatio * 3.0;
+
+                    // Fade at edges
+                    vAlpha = smoothstep(1.0, 0.7, abs(pos.y)) * 0.4;
+                }
+            `;
+
+            const particleFragmentShader = `
+                varying float vAlpha;
+
+                void main() {
+                    float dist = length(gl_PointCoord - 0.5);
+                    float alpha = smoothstep(0.5, 0.0, dist) * vAlpha;
+                    vec3 color = mix(vec3(0.91, 0.73, 0.14), vec3(0.18, 0.83, 0.75), 0.5);
+                    gl_FragColor = vec4(color, alpha);
+                }
+            `;
+
+            const PARTICLE_COUNT = 60;
+            const particleGeometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(PARTICLE_COUNT * 3);
+            const scales = new Float32Array(PARTICLE_COUNT);
+            const speeds = new Float32Array(PARTICLE_COUNT);
+
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 2;
+                positions[i * 3 + 1] = (Math.random() - 0.5) * 2;
+                positions[i * 3 + 2] = 0;
+                scales[i] = Math.random() * 1.5 + 0.5;
+                speeds[i] = Math.random() * 0.5 + 0.2;
+            }
+
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            particleGeometry.setAttribute('aScale', new THREE.BufferAttribute(scales, 1));
+            particleGeometry.setAttribute('aSpeed', new THREE.BufferAttribute(speeds, 1));
+
+            const particleMaterial = new THREE.ShaderMaterial({
+                vertexShader: particleVertexShader,
+                fragmentShader: particleFragmentShader,
+                uniforms: {
+                    uTime: { value: 0 },
+                    uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) }
+                },
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+
+            const particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+
+            // Animation
+            let time = 0;
+            function animate() {
+                requestAnimationFrame(animate);
+
+                time += 0.016;
+
+                mouse.x += (mouse.targetX - mouse.x) * 0.02;
+                mouse.y += (mouse.targetY - mouse.y) * 0.02;
+
+                material.uniforms.uTime.value = time;
+                material.uniforms.uMouse.value.set(mouse.x, mouse.y);
+
+                particleMaterial.uniforms.uTime.value = time;
+
+                renderer.render(scene, camera);
+            }
+
+            animate();
+
+            window.addEventListener('resize', () => {
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                material.uniforms.uResolution.value.set(window.innerWidth, window.innerHeight);
+            });
+
+            document.addEventListener('visibilitychange', () => {
+                // Continues running but at low cost anyway
+            });
+        })();
     </script>
 </body>
 </html>
