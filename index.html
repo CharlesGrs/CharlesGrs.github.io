@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charles Grassi | Graphics Programmer & Technical Artist</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0f14;
+            --bg-secondary: #111921;
+            --bg-card: #151d26;
+            --accent-gold: #e8b923;
+            --accent-gold-dim: #c49a1a;
+            --accent-teal: #2dd4bf;
+            --text-primary: #e8eaed;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --border-color: #1f2937;
+            --gradient-mesh: radial-gradient(ellipse at 20% 0%, rgba(232, 185, 35, 0.08) 0%, transparent 50%),
+                            radial-gradient(ellipse at 80% 100%, rgba(45, 212, 191, 0.05) 0%, transparent 50%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        #gpu-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .noise-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.03;
+            z-index: 1000;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem 6rem;
+            background: transparent;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100vw;
+            height: 100%;
+            background: radial-gradient(ellipse at 20% 0%, rgba(232, 185, 35, 0.06) 0%, transparent 50%),
+                        radial-gradient(ellipse at 80% 50%, rgba(45, 212, 191, 0.04) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Header */
+        header {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 3rem;
+            padding-bottom: 3rem;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 3rem;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .name-block h1 {
+            font-size: 4rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-dim) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tagline {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-top: 0.75rem;
+            font-weight: 300;
+        }
+
+        .titles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .title-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 500;
+            padding: 0.4rem 0.8rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .title-tag.highlight {
+            border-color: var(--accent-gold);
+            color: var(--accent-gold);
+        }
+
+        .contact-block {
+            text-align: right;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        .contact-block a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            display: block;
+            padding: 0.3rem 0;
+            transition: color 0.2s ease;
+        }
+
+        .contact-block a:hover {
+            color: var(--accent-teal);
+        }
+
+        .contact-block .company {
+            color: var(--accent-gold);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .languages {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+
+        .lang {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        /* Main Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 3rem;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            animation: fadeInUp 0.6s ease-out 0.1s backwards;
+        }
+
+        .sidebar-section {
+            margin-bottom: 2.5rem;
+        }
+
+        .sidebar-section h3 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--accent-gold);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .skill-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+
+        .skill {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            padding: 0.5rem;
+            background: var(--bg-card);
+            border-radius: 4px;
+            text-align: center;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .skill:hover {
+            border-color: var(--accent-teal);
+            color: var(--accent-teal);
+        }
+
+        .skill.primary {
+            grid-column: span 2;
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(232, 185, 35, 0.1) 100%);
+            border-color: var(--border-color);
+        }
+
+        /* Client logos */
+        .client-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .client-tag {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            padding: 0.4rem 0.6rem;
+            background: var(--bg-card);
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        .client-tag.major {
+            color: var(--text-primary);
+            border-color: var(--accent-gold);
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+            background: var(--bg-card);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-gold);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0.25rem;
+        }
+
+        /* Main Content */
+        .main-content {
+            animation: fadeInUp 0.6s ease-out 0.2s backwards;
+        }
+
+        .section-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--accent-gold);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Summary Section */
+        .summary {
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(45, 212, 191, 0.05) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .summary p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.8;
+        }
+
+        .summary .highlight-text {
+            color: var(--accent-gold);
+            font-weight: 500;
+        }
+
+        /* Project Cards - New approach */
+        .project-grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .project-card {
+            position: relative;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .project-card:hover {
+            border-color: var(--accent-gold);
+            transform: translateX(4px);
+        }
+
+        .project-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--accent-gold) 0%, var(--accent-teal) 100%);
+            border-radius: 8px 0 0 8px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .project-card:hover::before {
+            opacity: 1;
+        }
+
+        .project-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .project-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .project-client {
+            font-size: 0.9rem;
+            color: var(--accent-teal);
+            font-weight: 500;
+        }
+
+        .project-year {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .project-desc {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.7;
+        }
+
+        .project-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            margin-top: 1rem;
+        }
+
+        .tech-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            padding: 0.25rem 0.5rem;
+            background: rgba(232, 185, 35, 0.1);
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            color: var(--text-muted);
+        }
+
+        /* Leadership section */
+        .leadership-card {
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(232, 185, 35, 0.08) 100%);
+            border-color: var(--accent-gold);
+        }
+
+        .leadership-card .project-title {
+            color: var(--accent-gold);
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            animation: fadeInUp 0.6s ease-out 0.3s backwards;
+            background: transparent;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .footer-links a {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--accent-teal);
+        }
+
+        .footer-note {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            header {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            .contact-block {
+                text-align: left;
+            }
+
+            .languages {
+                justify-content: flex-start;
+            }
+
+            .name-block h1 {
+                font-size: 2.5rem;
+            }
+        }
+
+        @media print {
+            #gpu-canvas {
+                display: none;
+            }
+
+            .noise-overlay {
+                display: none;
+            }
+            
+            body {
+                background: white;
+                color: #1a1a1a;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            .project-card {
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gpu-canvas"></canvas>
+    <div class="noise-overlay"></div>
+    <div class="container">
+        <header>
+            <div class="name-block">
+                <h1>Charles Grassi</h1>
+                <p class="tagline">Freelance Graphics Programmer & Technical Artist</p>
+                <div class="titles">
+                    <span class="title-tag highlight">Shader Specialist</span>
+                    <span class="title-tag highlight">Technical Artist</span>
+                    <span class="title-tag">Graphics Engineer</span>
+                    <span class="title-tag">C# Developer</span>
+                </div>
+            </div>
+            <div class="contact-block">
+                <div class="company">Zylaris Ltd · Cyprus</div>
+                <a href="mailto:contact.charles.grassi@gmail.com">contact.charles.grassi@gmail.com</a>
+                <a href="tel:+33646118214">(+33) 6 46 11 82 14</a>
+                <a href="https://twitter.com/charles_grassi" target="_blank">@charles_grassi</a>
+                <div class="languages">
+                    <span class="lang">EN</span>
+                    <span class="lang">FR</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-grid">
+            <aside class="sidebar">
+                <section class="sidebar-section">
+                    <h3>At a Glance</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-number">9+</div>
+                            <div class="stat-label">Years Exp.</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">12+</div>
+                            <div class="stat-label">Studios</div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="sidebar-section">
+                    <h3>Core Skills</h3>
+                    <div class="skill-grid">
+                        <span class="skill primary">Unity & C#</span>
+                        <span class="skill">HLSL</span>
+                        <span class="skill">GLSL</span>
+                        <span class="skill">DirectX</span>
+                        <span class="skill">WebGL</span>
+                        <span class="skill primary">Compute Shaders</span>
+                        <span class="skill">AR/VR</span>
+                        <span class="skill">SDF</span>
+                        <span class="skill primary">Performance Analysis</span>
+                        <span class="skill">Ray Marching</span>
+                        <span class="skill">GI</span>
+                        <span class="skill primary">Projection Mapping</span>
+                        <span class="skill">Three.js</span>
+                        <span class="skill">Burst</span>
+                    </div>
+                </section>
+
+                <section class="sidebar-section">
+                    <h3>Select Clients</h3>
+                    <div class="client-list">
+                        <span class="client-tag major">Nexus Studios</span>
+                        <span class="client-tag major">Ubisoft</span>
+                        <span class="client-tag major">22cans</span>
+                        <span class="client-tag">The Sandbox</span>
+                        <span class="client-tag">DREST</span>
+                        <span class="client-tag">H3 Space</span>
+                        <span class="client-tag">Little Red Dog</span>
+                        <span class="client-tag">Scapin'</span>
+                        <span class="client-tag">SABDA</span>
+                    </div>
+                </section>
+            </aside>
+
+            <main class="main-content">
+                <div class="summary">
+                    <p>
+                        I run <span class="highlight-text">Zylaris Ltd</span>, a specialized consultancy delivering 
+                        high-performance graphics solutions for games, VR, and immersive installations. From 
+                        <span class="highlight-text">GPU-based light baking</span> using SDFs to <span class="highlight-text">16K projection-mapped environments</span>, 
+                        I help studios push the boundaries of real-time rendering across mobile, desktop, VR, and web platforms. 
+                        I've shipped graphics systems for studios including Nexus, Ubisoft, 22cans, and The Sandbox.
+                    </p>
+                </div>
+
+                <h2 class="section-title">Selected Projects</h2>
+
+                <div class="project-grid">
+                    <article class="project-card">
+                        <div class="project-header">
+                            <div>
+                                <div class="project-title">Technical Artist & Graphics Programmer</div>
+                                <div class="project-client">Nexus Studios</div>
+                            </div>
+                            <div class="project-year">2025</div>
+                        </div>
+                        <div class="project-desc">
+                            Built a real-time global illumination system using SDF representations of scanned VR environments. 
+                            Implemented GPU compute pipelines for efficient light transport calculations optimized for VR hardware constraints.
+                        </div>
+                        <div class="project-tags">
+                            <span class="tech-tag">Compute Shaders</span>
+                            <span class="tech-tag">SDF</span>
+                            <span class="tech-tag">VR</span>
+                            <span class="tech-tag">Global Illumination</span>
+                        </div>
+                    </article>
+
+                    <article class="project-card leadership-card">
+                        <div class="project-header">
+                            <div>
+                                <div class="project-title">Chief Technology Officer</div>
+                                <div class="project-client">SABDA</div>
+                            </div>
+                            <div class="project-year">2023–2024</div>
+                        </div>
+                        <div class="project-desc">
+                            Led technical direction for a large-scale 16K immersive installation. Developed real-time 3D content, 
+                            managed spatial audio systems, server infrastructure, and projection mapping pipelines. 
+                            Built and led a multicultural engineering team.
+                        </div>
+                        <div class="project-tags">
+                            <span class="tech-tag">Projection Mapping</span>
+                            <span class="tech-tag">Spatial Audio</span>
+                            <span class="tech-tag">Real-time 3D</span>
+                            <span class="tech-tag">Team Leadership</span>
+                        </div>
+                    </article>
+
+                    <article class="project-card">
+                        <div class="project-header">
+                            <div>
+                                <div class="project-title">Lead Graphics Programmer</div>
+                                <div class="project-client">Little Red Dog Games</div>
+                            </div>
+                            <div class="project-year">2023</div>
+                        </div>
+                        <div class="project-desc">
+                            Directed graphics team to develop high-performance VFX using compute shaders and Burst-compiled code. 
+                            Achieved significant CPU performance optimizations while maintaining visual fidelity.
+                        </div>
+                        <div class="project-tags">
+                            <span class="tech-tag">Compute Shaders</span>
+                            <span class="tech-tag">Burst</span>
+                            <span class="tech-tag">VFX</span>
+                            <span class="tech-tag">Team Lead</span>
+                        </div>
+                    </article>
+
+                    <article class="project-card">
+                        <div class="project-header">
+                            <div>
+                                <div class="project-title">Senior Graphics Programmer</div>
+                                <div class="project-client">22cans</div>
+                            </div>
+                            <div class="project-year">2022–2023</div>
+                        </div>
+                        <div class="project-desc">
+                            Created versatile shader library targeting mobile and desktop simultaneously. Developed performant 
+                            grass rendering and volumetric lighting effects that maintained visual quality across hardware tiers.
+                        </div>
+                        <div class="project-tags">
+                            <span class="tech-tag">HLSL</span>
+                            <span class="tech-tag">Mobile</span>
+                            <span class="tech-tag">Volumetrics</span>
+                            <span class="tech-tag">Grass</span>
+                        </div>
+                    </article>
+
+                    <article class="project-card">
+                        <div class="project-header">
+                            <div>
+                                <div class="project-title">Graphics Programmer</div>
+                                <div class="project-client">Scapin' · The Sandbox</div>
+                            </div>
+                            <div class="project-year">2021–2022</div>
+                        </div>
+                        <div class="project-desc">
+                            Engineered custom lighting systems for web3 social applications. Built high-performance shaders 
+                            optimized for mobile battery efficiency while delivering premium visual aesthetics.
+                        </div>
+                        <div class="project-tags">
+                            <span class="tech-tag">Lighting</span>
+                            <span class="tech-tag">Mobile Optimization</span>
+                            <span class="tech-tag">Web3</span>
+                        </div>
+                    </article>
+
+                    <article class="project-card">
+                        <div class="project-header">
+                            <div>
+                                <div class="project-title">Graphics Engineer & Shader Expert</div>
+                                <div class="project-client">Ubisoft · H3 Space · DREST</div>
+                            </div>
+                            <div class="project-year">2020–2022</div>
+                        </div>
+                        <div class="project-desc">
+                            Delivered graphics programming and shader expertise across AAA, AR/VR, and fashion tech verticals. 
+                            Specialized in performance optimization and cross-platform rendering solutions.
+                        </div>
+                        <div class="project-tags">
+                            <span class="tech-tag">AAA</span>
+                            <span class="tech-tag">AR/VR</span>
+                            <span class="tech-tag">Fashion Tech</span>
+                        </div>
+                    </article>
+                </div>
+            </main>
+        </div>
+
+        <footer>
+            <div class="footer-links">
+                <a href="mailto:contact.charles.grassi@gmail.com">Email</a>
+                <a href="https://twitter.com/charles_grassi">Twitter</a>
+                <a href="https://linkedin.com/in/charles-grassi">LinkedIn</a>
+            </div>
+            <p class="footer-note">Available for consulting engagements · Remote worldwide</p>
+        </footer>
+    </div>
+
+    <script>
+    // Subtle Aurora Background - Charles Grassi CV
+    (function() {
+        const canvas = document.getElementById('gpu-canvas');
+        const renderer = new THREE.WebGLRenderer({ 
+            canvas, 
+            antialias: false, 
+            alpha: true 
+        });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+        // Mouse tracking (subtle)
+        const mouse = { x: 0.5, y: 0.5, targetX: 0.5, targetY: 0.5 };
+        document.addEventListener('mousemove', (e) => {
+            mouse.targetX = e.clientX / window.innerWidth;
+            mouse.targetY = 1.0 - e.clientY / window.innerHeight;
+        });
+
+        // Fullscreen shader
+        const vertexShader = `
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                gl_Position = vec4(position, 1.0);
+            }
+        `;
+
+        const fragmentShader = `
+            uniform float uTime;
+            uniform vec2 uMouse;
+            uniform vec2 uResolution;
+            
+            varying vec2 vUv;
+            
+            // Simplex noise
+            vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+            vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+            vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+            
+            float snoise(vec2 v) {
+                const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+                                   -0.577350269189626, 0.024390243902439);
+                vec2 i  = floor(v + dot(v, C.yy));
+                vec2 x0 = v - i + dot(i, C.xx);
+                vec2 i1;
+                i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+                vec4 x12 = x0.xyxy + C.xxzz;
+                x12.xy -= i1;
+                i = mod289(i);
+                vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0))
+                    + i.x + vec3(0.0, i1.x, 1.0));
+                vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy),
+                    dot(x12.zw,x12.zw)), 0.0);
+                m = m*m;
+                m = m*m;
+                vec3 x = 2.0 * fract(p * C.www) - 1.0;
+                vec3 h = abs(x) - 0.5;
+                vec3 ox = floor(x + 0.5);
+                vec3 a0 = x - ox;
+                m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
+                vec3 g;
+                g.x = a0.x * x0.x + h.x * x0.y;
+                g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+                return 130.0 * dot(m, g);
+            }
+            
+            void main() {
+                vec2 uv = vUv;
+                
+                // Slow flowing noise
+                float noise1 = snoise(uv * 1.5 + uTime * 0.05);
+                float noise2 = snoise(uv * 2.5 - uTime * 0.03 + 100.0);
+                float noise3 = snoise(uv * 0.8 + uTime * 0.02 + vec2(noise1 * 0.2));
+                
+                float combinedNoise = noise1 * 0.5 + noise2 * 0.3 + noise3 * 0.2;
+                
+                // Colors
+                vec3 gold = vec3(0.91, 0.73, 0.14);
+                vec3 teal = vec3(0.18, 0.83, 0.75);
+                vec3 dark = vec3(0.04, 0.06, 0.08);
+                
+                // Subtle color bands
+                float band1 = smoothstep(-0.3, 0.3, combinedNoise);
+                float band2 = smoothstep(0.0, 0.6, combinedNoise);
+                
+                vec3 color = mix(dark, gold * 0.15, band1 * 0.4);
+                color = mix(color, teal * 0.12, band2 * 0.3);
+                
+                // Very subtle mouse glow
+                float mouseDist = length(uv - uMouse);
+                float mouseGlow = exp(-mouseDist * 3.0) * 0.08;
+                color += teal * mouseGlow;
+                
+                // Vignette
+                float vignette = 1.0 - length(uv - 0.5) * 0.5;
+                color *= vignette;
+                
+                // Keep it very subtle
+                float alpha = 0.6;
+                
+                gl_FragColor = vec4(color, alpha);
+            }
+        `;
+
+        const geometry = new THREE.PlaneGeometry(2, 2);
+        const material = new THREE.ShaderMaterial({
+            vertexShader,
+            fragmentShader,
+            uniforms: {
+                uTime: { value: 0 },
+                uMouse: { value: new THREE.Vector2(0.5, 0.5) },
+                uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
+            },
+            transparent: true,
+            depthWrite: false
+        });
+
+        const mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+
+        // Sparse floating particles
+        const particleVertexShader = `
+            uniform float uTime;
+            uniform float uPixelRatio;
+            attribute float aScale;
+            attribute float aSpeed;
+            varying float vAlpha;
+            
+            void main() {
+                vec3 pos = position;
+                
+                // Gentle drift
+                pos.x += sin(uTime * aSpeed * 0.5 + position.y * 2.0) * 0.02;
+                pos.y += mod(uTime * aSpeed * 0.1, 2.0) - 1.0;
+                pos.y = mod(pos.y + 1.0, 2.0) - 1.0;
+                
+                gl_Position = vec4(pos, 1.0);
+                gl_PointSize = aScale * uPixelRatio * 3.0;
+                
+                // Fade at edges
+                vAlpha = smoothstep(1.0, 0.7, abs(pos.y)) * 0.4;
+            }
+        `;
+
+        const particleFragmentShader = `
+            varying float vAlpha;
+            
+            void main() {
+                float dist = length(gl_PointCoord - 0.5);
+                float alpha = smoothstep(0.5, 0.0, dist) * vAlpha;
+                vec3 color = mix(vec3(0.91, 0.73, 0.14), vec3(0.18, 0.83, 0.75), 0.5);
+                gl_FragColor = vec4(color, alpha);
+            }
+        `;
+
+        const PARTICLE_COUNT = 60;
+        const particleGeometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(PARTICLE_COUNT * 3);
+        const scales = new Float32Array(PARTICLE_COUNT);
+        const speeds = new Float32Array(PARTICLE_COUNT);
+
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 2;
+            positions[i * 3 + 1] = (Math.random() - 0.5) * 2;
+            positions[i * 3 + 2] = 0;
+            scales[i] = Math.random() * 1.5 + 0.5;
+            speeds[i] = Math.random() * 0.5 + 0.2;
+        }
+
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        particleGeometry.setAttribute('aScale', new THREE.BufferAttribute(scales, 1));
+        particleGeometry.setAttribute('aSpeed', new THREE.BufferAttribute(speeds, 1));
+
+        const particleMaterial = new THREE.ShaderMaterial({
+            vertexShader: particleVertexShader,
+            fragmentShader: particleFragmentShader,
+            uniforms: {
+                uTime: { value: 0 },
+                uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) }
+            },
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        const particles = new THREE.Points(particleGeometry, particleMaterial);
+        scene.add(particles);
+
+        // Animation
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            time += 0.016;
+            
+            mouse.x += (mouse.targetX - mouse.x) * 0.02;
+            mouse.y += (mouse.targetY - mouse.y) * 0.02;
+            
+            material.uniforms.uTime.value = time;
+            material.uniforms.uMouse.value.set(mouse.x, mouse.y);
+            
+            particleMaterial.uniforms.uTime.value = time;
+            
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            material.uniforms.uResolution.value.set(window.innerWidth, window.innerHeight);
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            // Continues running but at low cost anyway
+        });
+    })();
+    </script>
+</body>
+</html>
