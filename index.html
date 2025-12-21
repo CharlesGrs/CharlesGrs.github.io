@@ -113,10 +113,13 @@
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 3rem 2rem 6rem;
+            padding: 2rem 2rem 1.5rem;
             background: transparent;
-            min-height: 100vh;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
             position: relative;
+            overflow: hidden;
         }
 
             .container::before {
@@ -136,11 +139,12 @@
         header {
             display: grid;
             grid-template-columns: 1fr auto;
-            gap: 3rem;
-            padding-bottom: 3rem;
+            gap: 2rem;
+            padding-bottom: 1rem;
             border-bottom: 1px solid var(--border-color);
-            margin-bottom: 3rem;
+            margin-bottom: 1rem;
             animation: fadeInUp 0.6s ease-out;
+            flex-shrink: 0;
         }
 
         @keyframes fadeInUp {
@@ -156,11 +160,11 @@
         }
 
         .name-block h1 {
-            font-size: 4rem;
+            font-size: 3rem;
             font-weight: 700;
             letter-spacing: -0.03em;
             line-height: 1;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.4rem;
             background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-dim) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -168,17 +172,17 @@
         }
 
         .tagline {
-            font-size: 1.1rem;
+            font-size: 0.95rem;
             color: var(--text-secondary);
-            margin-top: 0.75rem;
+            margin-top: 0.5rem;
             font-weight: 300;
         }
 
         .titles {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.75rem;
-            margin-top: 1rem;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
         }
 
         .title-tag {
@@ -243,116 +247,78 @@
             color: var(--text-muted);
         }
 
-        /* Main Grid */
-        .main-grid {
-            display: grid;
-            grid-template-columns: 280px 1fr;
-            gap: 3rem;
-        }
-
-        /* Sidebar */
-        .sidebar {
-            animation: fadeInUp 0.6s ease-out 0.1s backwards;
-        }
-
-        .sidebar-section {
-            margin-bottom: 2.5rem;
-        }
-
-            .sidebar-section h3 {
-                font-family: 'JetBrains Mono', monospace;
-                font-size: 0.7rem;
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.15em;
-                color: var(--accent-gold);
-                margin-bottom: 1rem;
-                padding-bottom: 0.5rem;
-                border-bottom: 1px solid var(--border-color);
+        /* Reveal Animations */
+        @keyframes skillReveal {
+            0% {
+                opacity: 0;
+                transform: scale(0.8);
+                filter: brightness(1);
+                box-shadow: none;
             }
-
-        .skill-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 0.4rem;
+            50% {
+                filter: brightness(1.8);
+                box-shadow: 0 0 20px rgba(45, 212, 191, 0.6);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+                filter: brightness(1);
+                box-shadow: none;
+            }
         }
 
-        .skill {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.65rem;
-            color: var(--text-secondary);
-            padding: 0.4rem 0.3rem;
-            background: var(--bg-card);
-            border-radius: 4px;
-            text-align: center;
-            border: 1px solid var(--border-color);
-            transition: all 0.2s ease;
-            white-space: nowrap;
+        @keyframes skillRevealGold {
+            0% {
+                opacity: 0;
+                transform: scale(0.8);
+                filter: brightness(1);
+                box-shadow: none;
+            }
+            50% {
+                filter: brightness(2);
+                box-shadow: 0 0 25px rgba(232, 185, 35, 0.7);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+                filter: brightness(1);
+                box-shadow: none;
+            }
         }
 
-            .skill:hover {
-                border-color: var(--accent-teal);
-                color: var(--accent-teal);
-            }
-
-            .skill.primary {
-                border-color: var(--accent-gold);
-                color: var(--text-primary);
-            }
-
-                .skill.primary:hover {
-                    background: rgba(232, 185, 35, 0.1);
-                    color: var(--accent-gold);
-                }
-
-        /* Client logos */
-        .client-list {
+        /* Summary Section with Stats */
+        .summary-row {
             display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+            align-items: stretch;
+            flex-shrink: 0;
         }
 
-        .client-tag {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            padding: 0.4rem 0.6rem;
-            background: var(--bg-card);
-            border-radius: 4px;
+        .summary {
+            flex: 1;
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(45, 212, 191, 0.05) 100%);
             border: 1px solid var(--border-color);
-            text-decoration: none;
-            transition: all 0.2s ease;
-            cursor: pointer;
+            border-radius: 8px;
+            padding: 1rem;
         }
 
-            .client-tag:hover {
-                border-color: var(--accent-teal);
-                color: var(--accent-teal);
-                transform: translateY(-1px);
-            }
-
-            .client-tag.major {
-                color: var(--text-primary);
-                border-color: var(--accent-gold);
-            }
-
-                .client-tag.major:hover {
-                    background: rgba(232, 185, 35, 0.1);
-                    color: var(--accent-gold);
-                }
-
-        /* Stats */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
+        .stats-bar {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 0.75rem;
+            padding: 1rem 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            animation: fadeInUp 0.6s ease-out 0.15s backwards;
         }
 
         .stat-item {
-            text-align: center;
-            padding: 1rem;
-            background: var(--bg-card);
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
         }
 
         .stat-number {
@@ -360,44 +326,20 @@
             font-weight: 700;
             color: var(--accent-gold);
             line-height: 1;
+            font-family: 'JetBrains Mono', monospace;
         }
 
         .stat-label {
             font-size: 0.7rem;
-            color: var(--text-muted);
+            color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            margin-top: 0.25rem;
-        }
-
-        /* Main Content */
-        .main-content {
-            animation: fadeInUp 0.6s ease-out 0.2s backwards;
-        }
-
-        .section-title {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.7rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            color: var(--accent-gold);
-            margin-bottom: 1.5rem;
-        }
-
-        /* Summary Section */
-        .summary {
-            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(45, 212, 191, 0.05) 100%);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
         }
 
             .summary p {
                 color: var(--text-secondary);
-                font-size: 0.95rem;
-                line-height: 1.8;
+                font-size: 0.85rem;
+                line-height: 1.7;
             }
 
             .summary .highlight-text {
@@ -405,18 +347,80 @@
                 font-weight: 500;
             }
 
-        /* Project List - Vertical Scrollable */
+        /* Typewriter effect */
+        .typewriter-text {
+            position: relative;
+        }
+
+        .typewriter-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1.1em;
+            background: var(--accent-gold);
+            margin-left: 2px;
+            vertical-align: text-bottom;
+            animation: cursorBlink 0.6s infinite;
+        }
+
+        .typewriter-cursor.hidden {
+            opacity: 0;
+            animation: none;
+        }
+
+        @keyframes cursorBlink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        .typo-char {
+            color: var(--accent-teal);
+            opacity: 0.7;
+        }
+
+        .typing-indicator {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            position: absolute;
+            bottom: -1.5rem;
+            left: 0;
+            opacity: 0.6;
+        }
+
+        .typing-indicator.hidden {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .summary {
+            position: relative;
+        }
+
+        .typing-dots {
+            display: inline;
+        }
+
+        .typing-dots span {
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        .typing-dots span.visible {
+            opacity: 1;
+        }
+
+        /* Project List - Timeline Style */
         .project-list-wrapper {
             position: relative;
-            max-height: 480px;
             overflow: hidden;
+            flex: 1;
         }
 
         .project-list {
             display: flex;
             flex-direction: column;
-            gap: 1rem;
-            max-height: 480px;
+            gap: 0;
+            height: 100%;
             overflow-y: auto;
             padding-right: 0.5rem;
             scroll-behavior: smooth;
@@ -424,12 +428,11 @@
 
         /* Custom scrollbar */
         .project-list::-webkit-scrollbar {
-            width: 4px;
+            width: 3px;
         }
 
         .project-list::-webkit-scrollbar-track {
-            background: var(--bg-secondary);
-            border-radius: 2px;
+            background: transparent;
         }
 
         .project-list::-webkit-scrollbar-thumb {
@@ -448,7 +451,7 @@
             position: absolute;
             left: 0;
             right: 8px;
-            height: 50px;
+            height: 40px;
             pointer-events: none;
             z-index: 2;
             transition: opacity 0.3s ease;
@@ -481,125 +484,368 @@
 
         .project-card {
             position: relative;
-            padding: 1.25rem;
-            background: var(--bg-card);
-            border-radius: 10px;
-            border: 1px solid var(--border-color);
+            padding: 0.85rem 0 0.85rem 1rem;
+            background: transparent;
+            border: none;
+            border-left: 2px solid var(--border-color);
+            margin-left: 0.5rem;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: translateX(-10px);
+            animation: projectReveal 0.5s ease forwards;
+        }
+
+        .project-card::before {
+            content: '';
+            position: absolute;
+            left: -5px;
+            top: 1.1rem;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--border-color);
+            border: 2px solid var(--bg-primary);
             transition: all 0.3s ease;
         }
 
-            .project-card:hover {
-                border-color: var(--accent-gold);
-                transform: translateY(-2px);
-                box-shadow: 0 4px 20px rgba(232, 185, 35, 0.1);
+        @keyframes projectReveal {
+            0% {
+                opacity: 0;
+                transform: translateX(-10px);
             }
+            100% {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .project-card:hover {
+            border-left-color: var(--accent-gold);
+        }
+
+        .project-card:hover::before {
+            background: var(--accent-gold);
+            box-shadow: 0 0 10px rgba(232, 185, 35, 0.5);
+        }
 
         .project-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 0.75rem;
-            gap: 0.75rem;
+            margin-bottom: 0.3rem;
+            gap: 0.5rem;
         }
 
         .project-title {
-            font-size: 1rem;
+            font-size: 0.85rem;
             font-weight: 600;
             color: var(--text-primary);
             line-height: 1.3;
         }
 
         .project-client {
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             color: var(--accent-teal);
             font-weight: 500;
-            margin-top: 0.2rem;
         }
 
         .project-year {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: var(--text-muted);
             white-space: nowrap;
-            background: var(--bg-secondary);
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
         }
 
         .project-desc {
             color: var(--text-secondary);
-            font-size: 0.85rem;
-            line-height: 1.6;
-            flex: 1;
+            font-size: 0.75rem;
+            line-height: 1.5;
+            margin-top: 0.25rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
         .project-tags {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.4rem;
-            margin-top: 1rem;
+            gap: 0.25rem;
+            margin-top: 0.4rem;
         }
 
         .tech-tag {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.65rem;
-            padding: 0.25rem 0.6rem;
-            background: rgba(45, 212, 191, 0.1);
+            font-size: 0.55rem;
+            padding: 0.15rem 0.4rem;
+            background: transparent;
             border: 1px solid var(--accent-teal);
-            border-radius: 4px;
+            border-radius: 3px;
             color: var(--accent-teal);
+            opacity: 0.8;
         }
 
         /* Leadership card highlight */
         .leadership-card {
-            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(232, 185, 35, 0.1) 100%);
-            border-color: rgba(232, 185, 35, 0.4);
+            border-left-color: var(--accent-gold);
         }
 
-            .leadership-card .project-title {
-                color: var(--accent-gold);
-            }
+        .leadership-card::before {
+            background: var(--accent-gold);
+        }
 
-            .leadership-card .tech-tag {
-                background: rgba(232, 185, 35, 0.1);
-                border-color: var(--accent-gold);
-                color: var(--accent-gold);
-            }
+        .leadership-card .project-title {
+            color: var(--accent-gold);
+        }
+
+        .leadership-card .tech-tag {
+            border-color: var(--accent-gold);
+            color: var(--accent-gold);
+        }
 
         /* Scroll hint text */
         .scroll-hint {
             text-align: center;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: var(--text-muted);
-            margin-top: 0.75rem;
-            opacity: 0.7;
+            margin-top: 0.5rem;
+            opacity: 0.5;
         }
 
-        /* Skill Graph Section */
-        .skill-graph-section {
-            margin-top: 2.5rem;
-            padding: 2rem 0;
-            border-top: 1px solid var(--border-color);
-            animation: fadeInUp 0.6s ease-out 0.4s backwards;
+        /* Tabbed Carousel Section */
+        .tabbed-carousel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            animation: fadeInUp 0.6s ease-out 0.3s backwards;
         }
 
-        .skill-graph-section .section-title {
+        .carousel-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+
+        .carousel-tab {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 500;
+            padding: 0.6rem 1.2rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .carousel-tab:hover {
+            border-color: var(--accent-teal);
+            color: var(--text-primary);
+        }
+
+        .carousel-tab.active {
+            background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-dim) 100%);
+            border-color: var(--accent-gold);
+            color: var(--bg-primary);
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(232, 185, 35, 0.3);
+        }
+
+        .carousel-panels {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .carousel-panel {
+            display: none;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            height: 100%;
+        }
+
+        .carousel-panel.active {
+            display: flex;
+            flex-direction: column;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Skills Panel - Network Graph */
+        .skills-panel .skill-graph-container {
+            margin: 0;
+            flex: 1;
+            height: auto;
+        }
+
+        /* Career Panel - Timeline */
+        .career-panel .project-list-wrapper {
+            flex: 1;
+            max-height: none;
+        }
+
+        .career-panel .project-list {
+            max-height: 100%;
+            height: 100%;
+        }
+
+        /* Clients Panel */
+        .clients-panel {
+            padding: 1.5rem;
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(45, 212, 191, 0.03) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .clients-panel .client-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+        }
+
+        .clients-panel .client-card {
+            padding: 1.25rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
             text-align: center;
-            margin-bottom: 0.5rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: scale(0.9);
+            animation: skillReveal 0.5s ease forwards;
         }
 
-        .skill-graph-subtitle {
-            text-align: center;
+        .clients-panel .client-card:hover {
+            border-color: var(--accent-teal);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(45, 212, 191, 0.15);
+        }
+
+        .clients-panel .client-card.major {
+            border-color: var(--accent-gold);
+            animation-name: skillRevealGold;
+        }
+
+        .clients-panel .client-card.major:hover {
+            box-shadow: 0 8px 25px rgba(232, 185, 35, 0.2);
+        }
+
+        .clients-panel .client-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .clients-panel .client-card.major .client-name {
+            color: var(--accent-gold);
+        }
+
+        .clients-panel .client-type {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
             color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Testimonials Panel */
+        .testimonials-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .testimonial-card {
+            padding: 1.5rem;
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(232, 185, 35, 0.03) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            position: relative;
+            opacity: 0;
+            transform: translateX(-10px);
+            animation: projectReveal 0.5s ease forwards;
+        }
+
+        .testimonial-card::before {
+            content: '"';
+            position: absolute;
+            top: 0.5rem;
+            left: 1rem;
+            font-size: 3rem;
+            font-family: Georgia, serif;
+            color: var(--accent-gold);
+            opacity: 0.3;
+            line-height: 1;
+        }
+
+        .testimonial-quote {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            font-style: italic;
+            margin-bottom: 1rem;
+            padding-left: 1.5rem;
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding-left: 1.5rem;
+        }
+
+        .testimonial-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-teal) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: var(--bg-primary);
+        }
+
+        .testimonial-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .testimonial-name {
+            font-weight: 600;
             font-size: 0.85rem;
-            margin-bottom: 2rem;
+            color: var(--text-primary);
         }
 
+        .testimonial-role {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+
+        /* Skill Graph */
         .skill-graph-container {
             position: relative;
             width: 100%;
-            height: 380px;
+            height: 100%;
+            min-height: 250px;
             background: linear-gradient(135deg, var(--bg-card) 0%, rgba(45, 212, 191, 0.03) 100%);
             border: 1px solid var(--border-color);
             border-radius: 12px;
@@ -659,14 +905,9 @@
             }
         }
 
-        /* Footer */
+        /* Footer - Hidden for 100vh layout */
         footer {
-            margin-top: 3rem;
-            padding-top: 2rem;
-            border-top: 1px solid var(--border-color);
-            text-align: center;
-            animation: fadeInUp 0.6s ease-out 0.3s backwards;
-            background: transparent;
+            display: none;
         }
 
         .footer-links {
@@ -695,13 +936,15 @@
 
         /* Responsive */
         @media (max-width: 900px) {
-            .main-grid {
-                grid-template-columns: 1fr;
+            .container {
+                padding: 1rem;
+                height: auto;
+                min-height: 100vh;
             }
 
             header {
                 grid-template-columns: 1fr;
-                gap: 1.5rem;
+                gap: 1rem;
             }
 
             .contact-block {
@@ -713,7 +956,37 @@
             }
 
             .name-block h1 {
-                font-size: 2.5rem;
+                font-size: 2rem;
+            }
+
+            .summary-row {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .stats-bar {
+                flex-direction: row;
+                justify-content: center;
+                gap: 2rem;
+                padding: 0.75rem 1.5rem;
+            }
+
+            .carousel-tabs {
+                gap: 0.35rem;
+            }
+
+            .carousel-tab {
+                padding: 0.5rem 0.8rem;
+                font-size: 0.65rem;
+            }
+
+            .clients-panel {
+                padding: 1rem;
+            }
+
+            .clients-panel .client-grid {
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                gap: 0.75rem;
             }
         }
 
@@ -775,225 +1048,258 @@
             </div>
         </header>
 
-        <div class="main-grid">
-            <aside class="sidebar">
-                <section class="sidebar-section">
-                    <h3>At a Glance</h3>
-                    <div class="stats-grid">
-                        <div class="stat-item">
-                            <div class="stat-number">9+</div>
-                            <div class="stat-label">Years Exp.</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-number">12+</div>
-                            <div class="stat-label">Studios</div>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="sidebar-section">
-                    <h3>Core Skills</h3>
-                    <div class="skill-grid">
-                        <span class="skill primary">Unity</span>
-                        <span class="skill primary">C#</span>
-                        <span class="skill primary">HLSL/GLSL</span>
-                        <span class="skill primary">DirectX</span>
-                        <span class="skill primary">AR/VR</span>
-                        <span class="skill primary">URP/HDRP</span>
-                        <span class="skill">OpenGL</span>
-                        <span class="skill">Unreal</span>
-                        <span class="skill">Vulkan</span>
-                        <span class="skill">Python</span>
-                        <span class="skill">C++</span>
-                        <span class="skill">WPF</span>
-                        <span class="skill">Compute</span>
-                        <span class="skill">VFX Graph</span>
-                        <span class="skill">Niagara</span>
-                        <span class="skill">RenderDoc</span>
-                        <span class="skill">NSight</span>
-                        <span class="skill">PIX</span>
-                        <span class="skill">Three.js</span>
-                        <span class="skill">WebGL</span>
-                        <span class="skill">Audio React</span>
-                    </div>
-                </section>
-
-                <section class="sidebar-section">
-                    <h3>Select Clients</h3>
-                    <div class="client-list">
-                        <a href="https://nexusstudios.com/" target="_blank" class="client-tag major">Nexus Studios</a>
-                        <a href="https://www.ubisoft.com/" target="_blank" class="client-tag major">Ubisoft</a>
-                        <a href="https://www.22cans.com/" target="_blank" class="client-tag major">22cans</a>
-                        <a href="https://www.sandbox.game/" target="_blank" class="client-tag">The Sandbox</a>
-                        <a href="https://www.drest.com/" target="_blank" class="client-tag">DREST</a>
-                        <a href="https://www.linkedin.com/company/h3investments/posts/" target="_blank" class="client-tag">H3 Space</a>
-                        <a href="https://store.steampowered.com/developer/lrdg" target="_blank" class="client-tag">Little Red Dog</a>
-                        <a href="https://scapin.io/" target="_blank" class="client-tag">Scapin'</a>
-                        <a href="https://sabda.es/" target="_blank" class="client-tag">SABDA</a>
-                    </div>
-                </section>
-            </aside>
-
-            <main class="main-content">
-                <div class="summary">
-                    <p>
-                        I run <span class="highlight-text">Zylaris Ltd</span>, a specialized consultancy delivering
-                        high-performance graphics solutions for games, VR, and immersive installations. From
-                        <span class="highlight-text">GPU-based light baking</span> using SDFs to <span class="highlight-text">16K projection-mapped environments</span>,
-                        I help studios push the boundaries of real-time rendering across mobile, desktop, VR, and web platforms.
-                        I've shipped graphics systems for studios including Nexus, Ubisoft, 22cans, and The Sandbox.
-                    </p>
+        <!-- Summary + Stats Row -->
+        <div class="summary-row">
+            <div class="summary">
+                <p class="typewriter-text" id="typewriter-container"></p>
+                <div class="typing-indicator" id="typing-indicator">Charles is typing<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span></div>
+            </div>
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <div class="stat-number" id="stat-years" data-target="7" data-suffix="+">0</div>
+                    <div class="stat-label">Years Exp.</div>
                 </div>
-
-                <h2 class="section-title">Selected Projects</h2>
-
-                <div class="project-list-wrapper" id="project-list-wrapper">
-                <div class="project-list" id="project-list">
-                    <article class="project-card">
-                        <div class="project-header">
-                            <div>
-                                <div class="project-title">Technical Artist & Graphics Programmer</div>
-                                <div class="project-client">Nexus Studios</div>
-                            </div>
-                            <div class="project-year">2025</div>
-                        </div>
-                        <div class="project-desc">
-                            Built a real-time global illumination system using SDF representations of scanned VR environments.
-                            Implemented GPU compute pipelines for efficient light transport calculations optimized for VR hardware constraints.
-                        </div>
-                        <div class="project-tags">
-                            <span class="tech-tag">Compute Shaders</span>
-                            <span class="tech-tag">SDF</span>
-                            <span class="tech-tag">VR</span>
-                            <span class="tech-tag">Global Illumination</span>
-                        </div>
-                    </article>
-
-                    <article class="project-card leadership-card">
-                        <div class="project-header">
-                            <div>
-                                <div class="project-title">Chief Technology Officer</div>
-                                <div class="project-client">SABDA</div>
-                            </div>
-                            <div class="project-year">2023–2024</div>
-                        </div>
-                        <div class="project-desc">
-                            Led technical direction for a large-scale 16K immersive installation. Developed real-time 3D content,
-                            managed spatial audio systems, server infrastructure, and projection mapping pipelines.
-                            Built and led a multicultural engineering team.
-                        </div>
-                        <div class="project-tags">
-                            <span class="tech-tag">Projection Mapping</span>
-                            <span class="tech-tag">Spatial Audio</span>
-                            <span class="tech-tag">Real-time 3D</span>
-                            <span class="tech-tag">Team Leadership</span>
-                        </div>
-                    </article>
-
-                    <article class="project-card">
-                        <div class="project-header">
-                            <div>
-                                <div class="project-title">Lead Graphics Programmer</div>
-                                <div class="project-client">Little Red Dog Games</div>
-                            </div>
-                            <div class="project-year">2023</div>
-                        </div>
-                        <div class="project-desc">
-                            Directed graphics team to develop high-performance VFX using compute shaders and Burst-compiled code.
-                            Achieved significant CPU performance optimizations while maintaining visual fidelity.
-                        </div>
-                        <div class="project-tags">
-                            <span class="tech-tag">Compute Shaders</span>
-                            <span class="tech-tag">Burst</span>
-                            <span class="tech-tag">VFX</span>
-                            <span class="tech-tag">Team Lead</span>
-                        </div>
-                    </article>
-
-                    <article class="project-card">
-                        <div class="project-header">
-                            <div>
-                                <div class="project-title">Senior Graphics Programmer</div>
-                                <div class="project-client">22cans</div>
-                            </div>
-                            <div class="project-year">2022–2023</div>
-                        </div>
-                        <div class="project-desc">
-                            Created versatile shader library targeting mobile and desktop simultaneously. Developed performant
-                            grass rendering and volumetric lighting effects that maintained visual quality across hardware tiers.
-                        </div>
-                        <div class="project-tags">
-                            <span class="tech-tag">HLSL</span>
-                            <span class="tech-tag">Mobile</span>
-                            <span class="tech-tag">Volumetrics</span>
-                            <span class="tech-tag">Grass</span>
-                        </div>
-                    </article>
-
-                    <article class="project-card">
-                        <div class="project-header">
-                            <div>
-                                <div class="project-title">Graphics Programmer</div>
-                                <div class="project-client">Scapin' · The Sandbox</div>
-                            </div>
-                            <div class="project-year">2021–2022</div>
-                        </div>
-                        <div class="project-desc">
-                            Engineered custom lighting systems for web3 social applications. Built high-performance shaders
-                            optimized for mobile battery efficiency while delivering premium visual aesthetics.
-                        </div>
-                        <div class="project-tags">
-                            <span class="tech-tag">Lighting</span>
-                            <span class="tech-tag">Mobile Optimization</span>
-                            <span class="tech-tag">Web3</span>
-                        </div>
-                    </article>
-
-                    <article class="project-card">
-                        <div class="project-header">
-                            <div>
-                                <div class="project-title">Graphics Engineer & Shader Expert</div>
-                                <div class="project-client">Ubisoft · H3 Space · DREST</div>
-                            </div>
-                            <div class="project-year">2020–2022</div>
-                        </div>
-                        <div class="project-desc">
-                            Delivered graphics programming and shader expertise across AAA, AR/VR, and fashion tech verticals.
-                            Specialized in performance optimization and cross-platform rendering solutions.
-                        </div>
-                        <div class="project-tags">
-                            <span class="tech-tag">AAA</span>
-                            <span class="tech-tag">AR/VR</span>
-                            <span class="tech-tag">Fashion Tech</span>
-                        </div>
-                    </article>
+                <div class="stat-item">
+                    <div class="stat-number" id="stat-studios" data-target="12" data-suffix="+">0</div>
+                    <div class="stat-label">Studios</div>
                 </div>
-                <p class="scroll-hint">Scroll to see more</p>
-                </div>
-            </main>
+            </div>
         </div>
 
-        <!-- Skill Graph Section -->
-        <section class="skill-graph-section">
-            <h2 class="section-title">Skill Network</h2>
-            <p class="skill-graph-subtitle">Interactive visualization of my technical expertise</p>
-            <div class="skill-graph-container">
-                <canvas id="skill-graph-canvas"></canvas>
-                <div class="graph-legend">
-                    <div class="legend-item">
-                        <span class="legend-dot primary"></span>
-                        <span>Core Skills</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-dot secondary"></span>
-                        <span>Secondary</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-dot tool"></span>
-                        <span>Tools</span>
+        <!-- Tabbed Carousel -->
+        <section class="tabbed-carousel">
+            <div class="carousel-tabs">
+                <button class="carousel-tab active" data-panel="skills">Skills</button>
+                <button class="carousel-tab" data-panel="career">Career</button>
+                <button class="carousel-tab" data-panel="clients">Clients</button>
+                <button class="carousel-tab" data-panel="testimonials">Testimonials</button>
+            </div>
+
+            <div class="carousel-panels">
+                <!-- Skills Panel - Network Graph -->
+                <div class="carousel-panel skills-panel active" id="panel-skills">
+                    <div class="skill-graph-container">
+                        <canvas id="skill-graph-canvas"></canvas>
+                        <div class="graph-legend">
+                            <div class="legend-item">
+                                <span class="legend-dot primary"></span>
+                                <span>Core Skills</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot secondary"></span>
+                                <span>Secondary</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot tool"></span>
+                                <span>Tools</span>
+                            </div>
+                        </div>
+                        <div class="graph-hint">Drag nodes to explore</div>
                     </div>
                 </div>
-                <div class="graph-hint">Drag nodes to explore</div>
+
+                <!-- Career Panel - Timeline -->
+                <div class="carousel-panel career-panel" id="panel-career">
+                    <div class="project-list-wrapper" id="project-list-wrapper">
+                        <div class="project-list" id="project-list">
+                            <article class="project-card">
+                                <div class="project-header">
+                                    <div>
+                                        <div class="project-title">Technical Artist & Graphics Programmer</div>
+                                        <div class="project-client">Nexus Studios</div>
+                                    </div>
+                                    <div class="project-year">2025</div>
+                                </div>
+                                <div class="project-desc">
+                                    Built a real-time global illumination system using SDF representations of scanned VR environments.
+                                    Implemented GPU compute pipelines for efficient light transport calculations optimized for VR hardware constraints.
+                                </div>
+                                <div class="project-tags">
+                                    <span class="tech-tag">Compute Shaders</span>
+                                    <span class="tech-tag">SDF</span>
+                                    <span class="tech-tag">VR</span>
+                                    <span class="tech-tag">Global Illumination</span>
+                                </div>
+                            </article>
+
+                            <article class="project-card leadership-card">
+                                <div class="project-header">
+                                    <div>
+                                        <div class="project-title">Chief Technology Officer</div>
+                                        <div class="project-client">SABDA</div>
+                                    </div>
+                                    <div class="project-year">2023–2024</div>
+                                </div>
+                                <div class="project-desc">
+                                    Led technical direction for a large-scale 16K immersive installation. Developed real-time 3D content,
+                                    managed spatial audio systems, server infrastructure, and projection mapping pipelines.
+                                    Built and led a multicultural engineering team.
+                                </div>
+                                <div class="project-tags">
+                                    <span class="tech-tag">Projection Mapping</span>
+                                    <span class="tech-tag">Spatial Audio</span>
+                                    <span class="tech-tag">Real-time 3D</span>
+                                    <span class="tech-tag">Team Leadership</span>
+                                </div>
+                            </article>
+
+                            <article class="project-card">
+                                <div class="project-header">
+                                    <div>
+                                        <div class="project-title">Lead Graphics Programmer</div>
+                                        <div class="project-client">Little Red Dog Games</div>
+                                    </div>
+                                    <div class="project-year">2023</div>
+                                </div>
+                                <div class="project-desc">
+                                    Directed graphics team to develop high-performance VFX using compute shaders and Burst-compiled code.
+                                    Achieved significant CPU performance optimizations while maintaining visual fidelity.
+                                </div>
+                                <div class="project-tags">
+                                    <span class="tech-tag">Compute Shaders</span>
+                                    <span class="tech-tag">Burst</span>
+                                    <span class="tech-tag">VFX</span>
+                                    <span class="tech-tag">Team Lead</span>
+                                </div>
+                            </article>
+
+                            <article class="project-card">
+                                <div class="project-header">
+                                    <div>
+                                        <div class="project-title">Senior Graphics Programmer</div>
+                                        <div class="project-client">22cans</div>
+                                    </div>
+                                    <div class="project-year">2022–2023</div>
+                                </div>
+                                <div class="project-desc">
+                                    Created versatile shader library targeting mobile and desktop simultaneously. Developed performant
+                                    grass rendering and volumetric lighting effects that maintained visual quality across hardware tiers.
+                                </div>
+                                <div class="project-tags">
+                                    <span class="tech-tag">HLSL</span>
+                                    <span class="tech-tag">Mobile</span>
+                                    <span class="tech-tag">Volumetrics</span>
+                                    <span class="tech-tag">Grass</span>
+                                </div>
+                            </article>
+
+                            <article class="project-card">
+                                <div class="project-header">
+                                    <div>
+                                        <div class="project-title">Graphics Programmer</div>
+                                        <div class="project-client">Scapin' · The Sandbox</div>
+                                    </div>
+                                    <div class="project-year">2021–2022</div>
+                                </div>
+                                <div class="project-desc">
+                                    Engineered custom lighting systems for web3 social applications. Built high-performance shaders
+                                    optimized for mobile battery efficiency while delivering premium visual aesthetics.
+                                </div>
+                                <div class="project-tags">
+                                    <span class="tech-tag">Lighting</span>
+                                    <span class="tech-tag">Mobile Optimization</span>
+                                    <span class="tech-tag">Web3</span>
+                                </div>
+                            </article>
+
+                            <article class="project-card">
+                                <div class="project-header">
+                                    <div>
+                                        <div class="project-title">Graphics Engineer & Shader Expert</div>
+                                        <div class="project-client">Ubisoft · H3 Space · DREST</div>
+                                    </div>
+                                    <div class="project-year">2020–2022</div>
+                                </div>
+                                <div class="project-desc">
+                                    Delivered graphics programming and shader expertise across AAA, AR/VR, and fashion tech verticals.
+                                    Specialized in performance optimization and cross-platform rendering solutions.
+                                </div>
+                                <div class="project-tags">
+                                    <span class="tech-tag">AAA</span>
+                                    <span class="tech-tag">AR/VR</span>
+                                    <span class="tech-tag">Fashion Tech</span>
+                                </div>
+                            </article>
+                        </div>
+                        <p class="scroll-hint">Scroll to see more</p>
+                    </div>
+                </div>
+
+                <!-- Clients Panel -->
+                <div class="carousel-panel clients-panel" id="panel-clients">
+                    <div class="client-grid">
+                        <a href="https://nexusstudios.com/" target="_blank" class="client-card major">
+                            <div class="client-name">Nexus Studios</div>
+                            <div class="client-type">VR / Immersive</div>
+                        </a>
+                        <a href="https://www.ubisoft.com/" target="_blank" class="client-card major">
+                            <div class="client-name">Ubisoft</div>
+                            <div class="client-type">AAA Games</div>
+                        </a>
+                        <a href="https://www.22cans.com/" target="_blank" class="client-card major">
+                            <div class="client-name">22cans</div>
+                            <div class="client-type">Game Studio</div>
+                        </a>
+                        <a href="https://www.sandbox.game/" target="_blank" class="client-card">
+                            <div class="client-name">The Sandbox</div>
+                            <div class="client-type">Web3 Gaming</div>
+                        </a>
+                        <a href="https://www.drest.com/" target="_blank" class="client-card">
+                            <div class="client-name">DREST</div>
+                            <div class="client-type">Fashion Tech</div>
+                        </a>
+                        <a href="https://www.linkedin.com/company/h3investments/posts/" target="_blank" class="client-card">
+                            <div class="client-name">H3 Space</div>
+                            <div class="client-type">AR / VR</div>
+                        </a>
+                        <a href="https://store.steampowered.com/developer/lrdg" target="_blank" class="client-card">
+                            <div class="client-name">Little Red Dog</div>
+                            <div class="client-type">Game Studio</div>
+                        </a>
+                        <a href="https://scapin.io/" target="_blank" class="client-card">
+                            <div class="client-name">Scapin'</div>
+                            <div class="client-type">Social App</div>
+                        </a>
+                        <a href="https://sabda.es/" target="_blank" class="client-card">
+                            <div class="client-name">SABDA</div>
+                            <div class="client-type">Immersive Art</div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Testimonials Panel -->
+                <div class="carousel-panel testimonials-panel" id="panel-testimonials">
+                    <div class="testimonial-card">
+                        <p class="testimonial-quote">Charles delivered exceptional work on our VR project. His deep understanding of GPU optimization and real-time rendering made our global illumination system possible within our hardware constraints.</p>
+                        <div class="testimonial-author">
+                            <div class="testimonial-avatar">NS</div>
+                            <div class="testimonial-info">
+                                <span class="testimonial-name">Nexus Studios</span>
+                                <span class="testimonial-role">VR Production Team</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="testimonial-card">
+                        <p class="testimonial-quote">Working with Charles on our 16K immersive installation was a game-changer. His technical leadership and ability to solve complex projection mapping challenges exceeded our expectations.</p>
+                        <div class="testimonial-author">
+                            <div class="testimonial-avatar">SA</div>
+                            <div class="testimonial-info">
+                                <span class="testimonial-name">SABDA</span>
+                                <span class="testimonial-role">Creative Direction</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="testimonial-card">
+                        <p class="testimonial-quote">Charles's shader expertise helped us achieve console-quality graphics on mobile devices. His optimization work significantly improved our game's performance without sacrificing visual fidelity.</p>
+                        <div class="testimonial-author">
+                            <div class="testimonial-avatar">22</div>
+                            <div class="testimonial-info">
+                                <span class="testimonial-name">22cans</span>
+                                <span class="testimonial-role">Development Team</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -1743,6 +2049,204 @@
             animate();
         })();
 
+        // Counting animation for stats
+        (function() {
+            const stats = document.querySelectorAll('.stat-number[data-target]');
+
+            stats.forEach((stat, index) => {
+                const target = parseInt(stat.dataset.target);
+                const suffix = stat.dataset.suffix || '';
+                let current = 0;
+                const duration = 1500; // ms
+                const startDelay = 600 + index * 200; // Stagger start
+                const stepTime = duration / target;
+
+                setTimeout(() => {
+                    const interval = setInterval(() => {
+                        current++;
+                        stat.textContent = current + (current === target ? suffix : '');
+
+                        if (current >= target) {
+                            clearInterval(interval);
+                        }
+                    }, stepTime);
+                }, startDelay);
+            });
+        })();
+
+        // Staggered reveal animation for clients and projects
+        (function() {
+            const clientCards = document.querySelectorAll('.client-card');
+            const testimonialCards = document.querySelectorAll('.testimonial-card');
+            const projectCards = document.querySelectorAll('.project-card');
+
+            // Stagger client cards animation
+            clientCards.forEach((card, i) => {
+                card.style.animationDelay = `${0.6 + i * 0.08}s`;
+            });
+
+            // Stagger testimonial cards animation
+            testimonialCards.forEach((card, i) => {
+                card.style.animationDelay = `${0.6 + i * 0.15}s`;
+            });
+
+            // Stagger project cards animation
+            projectCards.forEach((card, i) => {
+                card.style.animationDelay = `${0.6 + i * 0.12}s`;
+            });
+        })();
+
+        // Typewriter effect with typos
+        (function() {
+            const container = document.getElementById('typewriter-container');
+            const typingIndicator = document.getElementById('typing-indicator');
+            const dots = typingIndicator ? typingIndicator.querySelectorAll('.typing-dots span') : [];
+            if (!container) return;
+
+            const fullText = [
+                { text: 'I run ', highlight: false },
+                { text: 'Zylaris Ltd', highlight: true },
+                { text: ', a specialized consultancy delivering high-performance graphics solutions for games, VR, and immersive installations. From ', highlight: false },
+                { text: 'GPU-based light baking', highlight: true },
+                { text: ' using SDFs to ', highlight: false },
+                { text: '16K projection-mapped environments', highlight: true },
+                { text: ', I help studios push the boundaries of real-time rendering across mobile, desktop, VR, and web platforms. I\'ve shipped graphics systems for studios including Nexus, Ubisoft, 22cans, and The Sandbox.', highlight: false }
+            ];
+
+            // Define typos: [position in full string, wrong char, correct char]
+            const typos = [
+                { pos: 15, wrong: 'x', correct: 'c' },      // "speciaxized" -> "specialized"
+                { pos: 78, wrong: 'f', correct: 'g' },      // "fames" -> "games"
+                { pos: 142, wrong: 'b', correct: 'p' },     // "berformance" -> "performance"
+                { pos: 245, wrong: 'r', correct: 't' },     // "srudios" -> "studios"
+            ];
+
+            let cursor = document.createElement('span');
+            cursor.className = 'typewriter-cursor';
+            container.appendChild(cursor);
+
+            let globalPos = 0;
+            let segmentIndex = 0;
+            let charIndex = 0;
+            let currentSpan = null;
+            let typoQueue = [...typos].sort((a, b) => a.pos - b.pos);
+            let isDeleting = false;
+            let deleteCount = 0;
+            let typoChar = null;
+            let dotIndex = 0;
+            let dotInterval = null;
+
+            // Animate dots: 0 -> 1 -> 2 -> 3 -> 0 -> 1 -> 2 -> 3
+            function animateDots() {
+                if (!dots.length) return;
+
+                // Reset all dots
+                dots.forEach((dot, i) => {
+                    dot.classList.toggle('visible', i < dotIndex);
+                });
+
+                dotIndex++;
+                if (dotIndex > 3) dotIndex = 0;
+            }
+
+            // Start dot animation
+            dotInterval = setInterval(animateDots, 300);
+
+            function getBaseDelay() {
+                return 12 + Math.random() * 18; // Faster: was 25-60, now 12-30
+            }
+
+            function finishTyping() {
+                cursor.classList.add('hidden');
+                if (typingIndicator) {
+                    typingIndicator.classList.add('hidden');
+                }
+                if (dotInterval) {
+                    clearInterval(dotInterval);
+                }
+            }
+
+            function type() {
+                if (segmentIndex >= fullText.length) {
+                    finishTyping();
+                    return;
+                }
+
+                const segment = fullText[segmentIndex];
+
+                // Create span for new segment
+                if (!currentSpan) {
+                    currentSpan = document.createElement('span');
+                    if (segment.highlight) {
+                        currentSpan.className = 'highlight-text';
+                    }
+                    container.insertBefore(currentSpan, cursor);
+                }
+
+                // Check for typo at current position
+                const currentTypo = typoQueue[0];
+                if (currentTypo && globalPos === currentTypo.pos && !isDeleting && !typoChar) {
+                    // Type wrong character
+                    typoChar = document.createElement('span');
+                    typoChar.className = 'typo-char';
+                    typoChar.textContent = currentTypo.wrong;
+                    currentSpan.appendChild(typoChar);
+                    globalPos++;
+                    charIndex++;
+
+                    // Schedule delete after brief pause
+                    setTimeout(() => {
+                        isDeleting = true;
+                        deleteCount = 1;
+                        setTimeout(type, 80 + Math.random() * 50);
+                    }, 120 + Math.random() * 80);
+                    return;
+                }
+
+                // Handle deleting typo
+                if (isDeleting && deleteCount > 0) {
+                    if (typoChar) {
+                        typoChar.remove();
+                        typoChar = null;
+                    }
+                    globalPos--;
+                    charIndex--;
+                    deleteCount--;
+                    isDeleting = false;
+                    typoQueue.shift(); // Remove processed typo
+                    setTimeout(type, 50);
+                    return;
+                }
+
+                // Normal typing
+                if (charIndex < segment.text.length) {
+                    currentSpan.textContent += segment.text[charIndex];
+                    charIndex++;
+                    globalPos++;
+
+                    // Variable delay - slower for punctuation
+                    let delay = getBaseDelay();
+                    const char = segment.text[charIndex - 1];
+                    if (['.', ',', '!', '?'].includes(char)) {
+                        delay += 80 + Math.random() * 60;
+                    } else if (char === ' ') {
+                        delay += Math.random() * 15;
+                    }
+
+                    setTimeout(type, delay);
+                } else {
+                    // Move to next segment
+                    segmentIndex++;
+                    charIndex = 0;
+                    currentSpan = null;
+                    setTimeout(type, getBaseDelay());
+                }
+            }
+
+            // Start after a delay
+            setTimeout(type, 500);
+        })();
+
         // Project List Scroll Handler
         (function() {
             const wrapper = document.getElementById('project-list-wrapper');
@@ -1774,6 +2278,73 @@
 
             list.addEventListener('scroll', updateScrollState);
             updateScrollState(); // Initial state
+        })();
+
+        // Tabbed Carousel
+        (function() {
+            const tabs = document.querySelectorAll('.carousel-tab');
+            const panels = document.querySelectorAll('.carousel-panel');
+
+            if (!tabs.length || !panels.length) return;
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const panelId = tab.dataset.panel;
+
+                    // Update active tab
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+
+                    // Update active panel with animation
+                    panels.forEach(panel => {
+                        if (panel.id === `panel-${panelId}`) {
+                            panel.classList.add('active');
+                            // Re-trigger animations for elements in this panel
+                            triggerPanelAnimations(panel);
+                        } else {
+                            panel.classList.remove('active');
+                        }
+                    });
+
+                    // Reinitialize skill graph canvas if switching to skills panel
+                    if (panelId === 'skills') {
+                        const canvas = document.getElementById('skill-graph-canvas');
+                        if (canvas) {
+                            // Trigger resize to reinitialize
+                            window.dispatchEvent(new Event('resize'));
+                        }
+                    }
+                });
+            });
+
+            function triggerPanelAnimations(panel) {
+                // Reset and re-trigger animations for client cards
+                const clientCards = panel.querySelectorAll('.client-card');
+                clientCards.forEach((card, i) => {
+                    card.style.animation = 'none';
+                    card.offsetHeight; // Trigger reflow
+                    card.style.animation = '';
+                    card.style.animationDelay = `${i * 0.08}s`;
+                });
+
+                // Reset and re-trigger animations for testimonial cards
+                const testimonialCards = panel.querySelectorAll('.testimonial-card');
+                testimonialCards.forEach((card, i) => {
+                    card.style.animation = 'none';
+                    card.offsetHeight; // Trigger reflow
+                    card.style.animation = '';
+                    card.style.animationDelay = `${i * 0.15}s`;
+                });
+
+                // Reset and re-trigger animations for project cards
+                const projectCards = panel.querySelectorAll('.project-card');
+                projectCards.forEach((card, i) => {
+                    card.style.animation = 'none';
+                    card.offsetHeight; // Trigger reflow
+                    card.style.animation = '';
+                    card.style.animationDelay = `${i * 0.12}s`;
+                });
+            }
         })();
     </script>
 </body>
