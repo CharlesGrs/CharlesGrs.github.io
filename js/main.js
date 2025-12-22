@@ -10,22 +10,56 @@ let cachedWindowHeight = window.innerHeight;
 // ============================================
 // RENDER PARAMETERS (UI-controllable)
 // ============================================
+// Planet A: Oceanic/Mountain planets (blue/green, water)
+const planetParamsA = {
+    noiseScale: 1.8,
+    terrainHeight: 0.6,
+    atmosIntensity: 0.6,
+    atmosThickness: 2.5,
+    atmosPower: 37.1,
+    scatterR: 1.0,
+    scatterG: 2.5,
+    scatterB: 5.5,
+    scatterScale: 0.5,
+    sunsetStrength: 1.0,
+    oceanRoughness: 0.55,
+    sssIntensity: 1.0,
+    seaLevel: 0.0,
+    landRoughness: 0.65,
+    normalStrength: 0.15
+};
+
+// Planet B: Lava/Desert planets (volcanic)
+const planetParamsB = {
+    noiseScale: 1.8,
+    terrainHeight: 0.6,
+    atmosIntensity: 0.8,
+    atmosThickness: 2.0,
+    atmosPower: 25.0,
+    scatterR: 5.0,
+    scatterG: 2.0,
+    scatterB: 1.0,
+    scatterScale: 0.8,
+    sunsetStrength: 0.5,
+    lavaIntensity: 3.0,
+    seaLevel: 0.0,
+    landRoughness: 0.75,
+    normalStrength: 0.2
+};
+
+// Global render params (for backwards compatibility)
 const renderParams = {
-    noiseScale: 1.8,        // Terrain noise scale (lower = bigger features)
-    terrainHeight: 0.6,     // Terrain displacement strength
-    atmosIntensity: 0.6,    // Atmosphere brightness
-    atmosThickness: 2.5,    // Atmosphere thickness/falloff
-    atmosPower: 37.1,       // Atmosphere density power/falloff curve
-    scatterR: 1.0,          // Red channel scattering coefficient
-    scatterG: 2.5,          // Green channel scattering coefficient
-    scatterB: 5.5,          // Blue channel scattering coefficient
-    scatterScale: 0.5,      // Optical depth multiplier (controls gradient range)
-    sunsetStrength: 1.0,    // How much shadow affects scattering (sunset effect)
-    lavaIntensity: 3.0,     // Lava emission intensity
-    oceanRoughness: 0.55,   // Ocean roughness (0=mirror, 1=matte)
-    sssIntensity: 1.0,      // Subsurface scattering intensity
-    seaLevel: 0.0,          // Sea level offset
     parallaxStrength: 1.0   // 3D parallax effect strength (0=off, 1=normal)
+};
+
+// Light properties (shared across all planet types)
+const lightParams = {
+    light0Intensity: 1.0,
+    light0Attenuation: 0.06,
+    light1Intensity: 1.0,
+    light1Attenuation: 0.06,
+    light2Intensity: 1.0,
+    light2Attenuation: 0.06
 };
 
 // Physics parameters (UI-controllable)
@@ -589,6 +623,7 @@ const godRaysFragmentShader = `
     let zoomCenterX = 0, zoomCenterY = 0;
     let targetZoomCenterX = 0, targetZoomCenterY = 0;
     const MIN_ZOOM = 1.0, MAX_ZOOM = 3.0;
+    let mouseLightEnabled = false; // Toggle with spacebar
 
     const tooltip = document.getElementById('skill-tooltip');
     const tooltipTitle = tooltip.querySelector('.skill-tooltip-title');
@@ -743,23 +778,49 @@ const godRaysFragmentShader = `
         sphereProgram.uLightColor0 = gl.getUniformLocation(sphereProgram, 'uLightColor0');
         sphereProgram.uLightColor1 = gl.getUniformLocation(sphereProgram, 'uLightColor1');
         sphereProgram.uLightColor2 = gl.getUniformLocation(sphereProgram, 'uLightColor2');
+        sphereProgram.uLight0Intensity = gl.getUniformLocation(sphereProgram, 'uLight0Intensity');
+        sphereProgram.uLight1Intensity = gl.getUniformLocation(sphereProgram, 'uLight1Intensity');
+        sphereProgram.uLight2Intensity = gl.getUniformLocation(sphereProgram, 'uLight2Intensity');
+        sphereProgram.uLight0Atten = gl.getUniformLocation(sphereProgram, 'uLight0Atten');
+        sphereProgram.uLight1Atten = gl.getUniformLocation(sphereProgram, 'uLight1Atten');
+        sphereProgram.uLight2Atten = gl.getUniformLocation(sphereProgram, 'uLight2Atten');
+        sphereProgram.uMouseLightEnabled = gl.getUniformLocation(sphereProgram, 'uMouseLightEnabled');
         sphereProgram.uZoom = gl.getUniformLocation(sphereProgram, 'uZoom');
         sphereProgram.uZoomCenter = gl.getUniformLocation(sphereProgram, 'uZoomCenter');
-        // UI-controllable rendering parameters
-        sphereProgram.uNoiseScale = gl.getUniformLocation(sphereProgram, 'uNoiseScale');
-        sphereProgram.uTerrainHeight = gl.getUniformLocation(sphereProgram, 'uTerrainHeight');
-        sphereProgram.uAtmosIntensity = gl.getUniformLocation(sphereProgram, 'uAtmosIntensity');
-        sphereProgram.uAtmosThickness = gl.getUniformLocation(sphereProgram, 'uAtmosThickness');
-        sphereProgram.uAtmosPower = gl.getUniformLocation(sphereProgram, 'uAtmosPower');
-        sphereProgram.uScatterR = gl.getUniformLocation(sphereProgram, 'uScatterR');
-        sphereProgram.uScatterG = gl.getUniformLocation(sphereProgram, 'uScatterG');
-        sphereProgram.uScatterB = gl.getUniformLocation(sphereProgram, 'uScatterB');
-        sphereProgram.uScatterScale = gl.getUniformLocation(sphereProgram, 'uScatterScale');
-        sphereProgram.uSunsetStrength = gl.getUniformLocation(sphereProgram, 'uSunsetStrength');
-        sphereProgram.uLavaIntensity = gl.getUniformLocation(sphereProgram, 'uLavaIntensity');
-        sphereProgram.uOceanRoughness = gl.getUniformLocation(sphereProgram, 'uOceanRoughness');
-        sphereProgram.uSSSIntensity = gl.getUniformLocation(sphereProgram, 'uSSSIntensity');
-        sphereProgram.uSeaLevel = gl.getUniformLocation(sphereProgram, 'uSeaLevel');
+
+        // Planet A (Oceanic/Mountain) uniforms
+        sphereProgram.uNoiseScaleA = gl.getUniformLocation(sphereProgram, 'uNoiseScaleA');
+        sphereProgram.uTerrainHeightA = gl.getUniformLocation(sphereProgram, 'uTerrainHeightA');
+        sphereProgram.uAtmosIntensityA = gl.getUniformLocation(sphereProgram, 'uAtmosIntensityA');
+        sphereProgram.uAtmosThicknessA = gl.getUniformLocation(sphereProgram, 'uAtmosThicknessA');
+        sphereProgram.uAtmosPowerA = gl.getUniformLocation(sphereProgram, 'uAtmosPowerA');
+        sphereProgram.uScatterRA = gl.getUniformLocation(sphereProgram, 'uScatterRA');
+        sphereProgram.uScatterGA = gl.getUniformLocation(sphereProgram, 'uScatterGA');
+        sphereProgram.uScatterBA = gl.getUniformLocation(sphereProgram, 'uScatterBA');
+        sphereProgram.uScatterScaleA = gl.getUniformLocation(sphereProgram, 'uScatterScaleA');
+        sphereProgram.uSunsetStrengthA = gl.getUniformLocation(sphereProgram, 'uSunsetStrengthA');
+        sphereProgram.uOceanRoughnessA = gl.getUniformLocation(sphereProgram, 'uOceanRoughnessA');
+        sphereProgram.uSSSIntensityA = gl.getUniformLocation(sphereProgram, 'uSSSIntensityA');
+        sphereProgram.uSeaLevelA = gl.getUniformLocation(sphereProgram, 'uSeaLevelA');
+        sphereProgram.uLandRoughnessA = gl.getUniformLocation(sphereProgram, 'uLandRoughnessA');
+        sphereProgram.uNormalStrengthA = gl.getUniformLocation(sphereProgram, 'uNormalStrengthA');
+
+        // Planet B (Lava/Desert) uniforms
+        sphereProgram.uNoiseScaleB = gl.getUniformLocation(sphereProgram, 'uNoiseScaleB');
+        sphereProgram.uTerrainHeightB = gl.getUniformLocation(sphereProgram, 'uTerrainHeightB');
+        sphereProgram.uAtmosIntensityB = gl.getUniformLocation(sphereProgram, 'uAtmosIntensityB');
+        sphereProgram.uAtmosThicknessB = gl.getUniformLocation(sphereProgram, 'uAtmosThicknessB');
+        sphereProgram.uAtmosPowerB = gl.getUniformLocation(sphereProgram, 'uAtmosPowerB');
+        sphereProgram.uScatterRB = gl.getUniformLocation(sphereProgram, 'uScatterRB');
+        sphereProgram.uScatterGB = gl.getUniformLocation(sphereProgram, 'uScatterGB');
+        sphereProgram.uScatterBB = gl.getUniformLocation(sphereProgram, 'uScatterBB');
+        sphereProgram.uScatterScaleB = gl.getUniformLocation(sphereProgram, 'uScatterScaleB');
+        sphereProgram.uSunsetStrengthB = gl.getUniformLocation(sphereProgram, 'uSunsetStrengthB');
+        sphereProgram.uLavaIntensityB = gl.getUniformLocation(sphereProgram, 'uLavaIntensityB');
+        sphereProgram.uSeaLevelB = gl.getUniformLocation(sphereProgram, 'uSeaLevelB');
+        sphereProgram.uLandRoughnessB = gl.getUniformLocation(sphereProgram, 'uLandRoughnessB');
+        sphereProgram.uNormalStrengthB = gl.getUniformLocation(sphereProgram, 'uNormalStrengthB');
+
         sphereProgram.buf = gl.createBuffer();
 
         // God rays program
@@ -864,24 +925,48 @@ const godRaysFragmentShader = `
         gl.uniform3f(sphereProgram.uLightColor0, lc0[0], lc0[1], lc0[2]);
         gl.uniform3f(sphereProgram.uLightColor1, lc1[0], lc1[1], lc1[2]);
         gl.uniform3f(sphereProgram.uLightColor2, lc2[0], lc2[1], lc2[2]);
+        gl.uniform1f(sphereProgram.uLight0Intensity, lightParams.light0Intensity);
+        gl.uniform1f(sphereProgram.uLight1Intensity, lightParams.light1Intensity);
+        gl.uniform1f(sphereProgram.uLight2Intensity, lightParams.light2Intensity);
+        gl.uniform1f(sphereProgram.uLight0Atten, lightParams.light0Attenuation);
+        gl.uniform1f(sphereProgram.uLight1Atten, lightParams.light1Attenuation);
+        gl.uniform1f(sphereProgram.uLight2Atten, lightParams.light2Attenuation);
+        gl.uniform1f(sphereProgram.uMouseLightEnabled, mouseLightEnabled ? 1.0 : 0.0);
         gl.uniform1f(sphereProgram.uZoom, zoomLevel);
         gl.uniform2f(sphereProgram.uZoomCenter, zoomCenterX, zoomCenterY);
-        // UI-controllable rendering parameters
-        gl.uniform1f(sphereProgram.uNoiseScale, renderParams.noiseScale);
-        gl.uniform1f(sphereProgram.uTerrainHeight, renderParams.terrainHeight);
-        gl.uniform1f(sphereProgram.uAtmosIntensity, renderParams.atmosIntensity);
-        gl.uniform1f(sphereProgram.uAtmosThickness, renderParams.atmosThickness);
-        gl.uniform1f(sphereProgram.uAtmosPower, renderParams.atmosPower);
-        // Per-channel scattering coefficients
-        gl.uniform1f(sphereProgram.uScatterR, renderParams.scatterR);
-        gl.uniform1f(sphereProgram.uScatterG, renderParams.scatterG);
-        gl.uniform1f(sphereProgram.uScatterB, renderParams.scatterB);
-        gl.uniform1f(sphereProgram.uScatterScale, renderParams.scatterScale);
-        gl.uniform1f(sphereProgram.uSunsetStrength, renderParams.sunsetStrength);
-        gl.uniform1f(sphereProgram.uLavaIntensity, renderParams.lavaIntensity);
-        gl.uniform1f(sphereProgram.uOceanRoughness, renderParams.oceanRoughness);
-        gl.uniform1f(sphereProgram.uSSSIntensity, renderParams.sssIntensity);
-        gl.uniform1f(sphereProgram.uSeaLevel, renderParams.seaLevel);
+
+        // Planet A (Oceanic/Mountain) uniforms
+        gl.uniform1f(sphereProgram.uNoiseScaleA, planetParamsA.noiseScale);
+        gl.uniform1f(sphereProgram.uTerrainHeightA, planetParamsA.terrainHeight);
+        gl.uniform1f(sphereProgram.uAtmosIntensityA, planetParamsA.atmosIntensity);
+        gl.uniform1f(sphereProgram.uAtmosThicknessA, planetParamsA.atmosThickness);
+        gl.uniform1f(sphereProgram.uAtmosPowerA, planetParamsA.atmosPower);
+        gl.uniform1f(sphereProgram.uScatterRA, planetParamsA.scatterR);
+        gl.uniform1f(sphereProgram.uScatterGA, planetParamsA.scatterG);
+        gl.uniform1f(sphereProgram.uScatterBA, planetParamsA.scatterB);
+        gl.uniform1f(sphereProgram.uScatterScaleA, planetParamsA.scatterScale);
+        gl.uniform1f(sphereProgram.uSunsetStrengthA, planetParamsA.sunsetStrength);
+        gl.uniform1f(sphereProgram.uOceanRoughnessA, planetParamsA.oceanRoughness);
+        gl.uniform1f(sphereProgram.uSSSIntensityA, planetParamsA.sssIntensity);
+        gl.uniform1f(sphereProgram.uSeaLevelA, planetParamsA.seaLevel);
+        gl.uniform1f(sphereProgram.uLandRoughnessA, planetParamsA.landRoughness);
+        gl.uniform1f(sphereProgram.uNormalStrengthA, planetParamsA.normalStrength);
+
+        // Planet B (Lava/Desert) uniforms
+        gl.uniform1f(sphereProgram.uNoiseScaleB, planetParamsB.noiseScale);
+        gl.uniform1f(sphereProgram.uTerrainHeightB, planetParamsB.terrainHeight);
+        gl.uniform1f(sphereProgram.uAtmosIntensityB, planetParamsB.atmosIntensity);
+        gl.uniform1f(sphereProgram.uAtmosThicknessB, planetParamsB.atmosThickness);
+        gl.uniform1f(sphereProgram.uAtmosPowerB, planetParamsB.atmosPower);
+        gl.uniform1f(sphereProgram.uScatterRB, planetParamsB.scatterR);
+        gl.uniform1f(sphereProgram.uScatterGB, planetParamsB.scatterG);
+        gl.uniform1f(sphereProgram.uScatterBB, planetParamsB.scatterB);
+        gl.uniform1f(sphereProgram.uScatterScaleB, planetParamsB.scatterScale);
+        gl.uniform1f(sphereProgram.uSunsetStrengthB, planetParamsB.sunsetStrength);
+        gl.uniform1f(sphereProgram.uLavaIntensityB, planetParamsB.lavaIntensity);
+        gl.uniform1f(sphereProgram.uSeaLevelB, planetParamsB.seaLevel);
+        gl.uniform1f(sphereProgram.uLandRoughnessB, planetParamsB.landRoughness);
+        gl.uniform1f(sphereProgram.uNormalStrengthB, planetParamsB.normalStrength);
 
         const v = [];
         const q = [[-1,-1],[1,-1],[1,1],[-1,-1],[1,1],[-1,1]];
@@ -1567,6 +1652,14 @@ const godRaysFragmentShader = `
         targetZoom = newZoom;
     }, { passive: false });
 
+    // Spacebar toggles mouse light on planets
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && !e.target.matches('input, textarea')) {
+            e.preventDefault();
+            mouseLightEnabled = !mouseLightEnabled;
+        }
+    });
+
     window.addEventListener('resize', resize);
     initSphereGL();
     resize();
@@ -1730,84 +1823,210 @@ const godRaysFragmentShader = `
         }
     });
 
+    // Intensity slider handlers
+    const intensitySliders = [
+        document.getElementById('intensity-slider-0'),
+        document.getElementById('intensity-slider-1'),
+        document.getElementById('intensity-slider-2')
+    ];
+    const intensityValues = [
+        document.getElementById('intensity-value-0'),
+        document.getElementById('intensity-value-1'),
+        document.getElementById('intensity-value-2')
+    ];
+
+    intensitySliders.forEach((slider, i) => {
+        if (slider && intensityValues[i]) {
+            slider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                if (i === 0) lightParams.light0Intensity = value;
+                else if (i === 1) lightParams.light1Intensity = value;
+                else if (i === 2) lightParams.light2Intensity = value;
+                intensityValues[i].textContent = value.toFixed(1);
+            });
+        }
+    });
+
+    // Attenuation slider handlers
+    const attenuationSliders = [
+        document.getElementById('attenuation-slider-0'),
+        document.getElementById('attenuation-slider-1'),
+        document.getElementById('attenuation-slider-2')
+    ];
+    const attenuationValues = [
+        document.getElementById('attenuation-value-0'),
+        document.getElementById('attenuation-value-1'),
+        document.getElementById('attenuation-value-2')
+    ];
+
+    attenuationSliders.forEach((slider, i) => {
+        if (slider && attenuationValues[i]) {
+            slider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                if (i === 0) lightParams.light0Attenuation = value;
+                else if (i === 1) lightParams.light1Attenuation = value;
+                else if (i === 2) lightParams.light2Attenuation = value;
+                attenuationValues[i].textContent = value.toFixed(2);
+            });
+        }
+    });
+
     // Reset button
     if (lightResetBtn) {
         lightResetBtn.addEventListener('click', () => {
             defaultKelvinTemps.forEach((temp, i) => {
                 updateLightFromKelvin(i, temp);
             });
+            // Reset intensity and attenuation to defaults
+            const defaultIntensity = 1.0;
+            const defaultAttenuation = 0.06;
+            [0, 1, 2].forEach(i => {
+                if (i === 0) {
+                    lightParams.light0Intensity = defaultIntensity;
+                    lightParams.light0Attenuation = defaultAttenuation;
+                } else if (i === 1) {
+                    lightParams.light1Intensity = defaultIntensity;
+                    lightParams.light1Attenuation = defaultAttenuation;
+                } else if (i === 2) {
+                    lightParams.light2Intensity = defaultIntensity;
+                    lightParams.light2Attenuation = defaultAttenuation;
+                }
+                if (intensitySliders[i]) intensitySliders[i].value = defaultIntensity;
+                if (intensityValues[i]) intensityValues[i].textContent = defaultIntensity.toFixed(1);
+                if (attenuationSliders[i]) attenuationSliders[i].value = defaultAttenuation;
+                if (attenuationValues[i]) attenuationValues[i].textContent = defaultAttenuation.toFixed(2);
+            });
         });
     }
 
     // ========================================
-    // RENDER CONTROLS UI
+    // PLANET A (OCEANIC) CONTROLS
     // ========================================
-    const renderControls = document.getElementById('render-controls');
-    const renderControlsToggle = document.getElementById('render-controls-toggle');
-    const renderResetBtn = document.getElementById('render-reset-btn');
+    const planetAControls = document.getElementById('planet-a-controls');
+    const planetAToggle = document.getElementById('planet-a-toggle');
+    const planetAResetBtn = document.getElementById('planet-a-reset-btn');
 
-    // Slider elements and their corresponding renderParams keys
-    const renderSliders = {
-        'render-noise-scale': { param: 'noiseScale', valueEl: 'noise-scale-value', default: 1.8, decimals: 1 },
-        'render-terrain-height': { param: 'terrainHeight', valueEl: 'terrain-height-value', default: 1.0, decimals: 1 },
-        'render-atmos-intensity': { param: 'atmosIntensity', valueEl: 'atmos-intensity-value', default: 1.0, decimals: 1 },
-        'render-atmos-thickness': { param: 'atmosThickness', valueEl: 'atmos-thickness-value', default: 1.0, decimals: 1 },
-        'render-atmos-power': { param: 'atmosPower', valueEl: 'atmos-power-value', default: 1.0, decimals: 1 },
-        'render-scatter-r': { param: 'scatterR', valueEl: 'scatter-r-value', default: 1.0, decimals: 1 },
-        'render-scatter-g': { param: 'scatterG', valueEl: 'scatter-g-value', default: 2.5, decimals: 1 },
-        'render-scatter-b': { param: 'scatterB', valueEl: 'scatter-b-value', default: 5.5, decimals: 1 },
-        'render-scatter-scale': { param: 'scatterScale', valueEl: 'scatter-scale-value', default: 0.5, decimals: 2 },
-        'render-sunset-strength': { param: 'sunsetStrength', valueEl: 'sunset-strength-value', default: 1.0, decimals: 1 },
-        'render-lava-intensity': { param: 'lavaIntensity', valueEl: 'lava-intensity-value', default: 1.0, decimals: 1 },
-        'render-ocean-roughness': { param: 'oceanRoughness', valueEl: 'ocean-roughness-value', default: 0.3, decimals: 2 },
-        'render-sss-intensity': { param: 'sssIntensity', valueEl: 'sss-intensity-value', default: 1.0, decimals: 1 },
-        'render-sea-level': { param: 'seaLevel', valueEl: 'sea-level-value', default: 0.0, decimals: 2 },
-        'render-parallax': { param: 'parallaxStrength', valueEl: 'parallax-value', default: 1.0, decimals: 1 }
+    const planetASlidersConfig = {
+        'a-noise-scale': { param: 'noiseScale', valueEl: 'a-noise-scale-value', default: 1.8, decimals: 1 },
+        'a-terrain-height': { param: 'terrainHeight', valueEl: 'a-terrain-height-value', default: 0.6, decimals: 1 },
+        'a-atmos-intensity': { param: 'atmosIntensity', valueEl: 'a-atmos-intensity-value', default: 0.6, decimals: 1 },
+        'a-atmos-thickness': { param: 'atmosThickness', valueEl: 'a-atmos-thickness-value', default: 2.5, decimals: 2 },
+        'a-atmos-power': { param: 'atmosPower', valueEl: 'a-atmos-power-value', default: 37.1, decimals: 1 },
+        'a-scatter-r': { param: 'scatterR', valueEl: 'a-scatter-r-value', default: 1.0, decimals: 2 },
+        'a-scatter-g': { param: 'scatterG', valueEl: 'a-scatter-g-value', default: 2.5, decimals: 2 },
+        'a-scatter-b': { param: 'scatterB', valueEl: 'a-scatter-b-value', default: 5.5, decimals: 2 },
+        'a-scatter-scale': { param: 'scatterScale', valueEl: 'a-scatter-scale-value', default: 0.5, decimals: 2 },
+        'a-sunset-strength': { param: 'sunsetStrength', valueEl: 'a-sunset-strength-value', default: 1.0, decimals: 2 },
+        'a-ocean-roughness': { param: 'oceanRoughness', valueEl: 'a-ocean-roughness-value', default: 0.55, decimals: 2 },
+        'a-sss-intensity': { param: 'sssIntensity', valueEl: 'a-sss-intensity-value', default: 1.0, decimals: 1 },
+        'a-sea-level': { param: 'seaLevel', valueEl: 'a-sea-level-value', default: 0.0, decimals: 2 },
+        'a-land-roughness': { param: 'landRoughness', valueEl: 'a-land-roughness-value', default: 0.65, decimals: 2 },
+        'a-normal-strength': { param: 'normalStrength', valueEl: 'a-normal-strength-value', default: 0.15, decimals: 2 }
     };
 
-    // Initialize sliders
-    Object.entries(renderSliders).forEach(([sliderId, config]) => {
+    // Initialize Planet A sliders
+    Object.entries(planetASlidersConfig).forEach(([sliderId, config]) => {
         const slider = document.getElementById(sliderId);
         const valueEl = document.getElementById(config.valueEl);
         if (slider && valueEl) {
-            slider.value = renderParams[config.param];
-            valueEl.textContent = renderParams[config.param].toFixed(config.decimals);
+            slider.value = planetParamsA[config.param];
+            valueEl.textContent = planetParamsA[config.param].toFixed(config.decimals);
 
             slider.addEventListener('input', () => {
                 const value = parseFloat(slider.value);
-                renderParams[config.param] = value;
+                planetParamsA[config.param] = value;
                 valueEl.textContent = value.toFixed(config.decimals);
             });
         }
     });
 
-    // Toggle panel
-    if (renderControlsToggle) {
-        renderControlsToggle.addEventListener('click', (e) => {
+    if (planetAToggle) {
+        planetAToggle.addEventListener('click', (e) => {
             e.stopPropagation();
-            renderControls.classList.toggle('active');
+            planetAControls.classList.toggle('active');
         });
     }
 
-    // Close panel when clicking outside
-    document.addEventListener('click', (e) => {
-        if (renderControls && !renderControls.contains(e.target)) {
-            renderControls.classList.remove('active');
-        }
-    });
-
-    // Reset button
-    if (renderResetBtn) {
-        renderResetBtn.addEventListener('click', () => {
-            Object.entries(renderSliders).forEach(([sliderId, config]) => {
+    if (planetAResetBtn) {
+        planetAResetBtn.addEventListener('click', () => {
+            Object.entries(planetASlidersConfig).forEach(([sliderId, config]) => {
                 const slider = document.getElementById(sliderId);
                 const valueEl = document.getElementById(config.valueEl);
-                renderParams[config.param] = config.default;
+                planetParamsA[config.param] = config.default;
                 if (slider) slider.value = config.default;
                 if (valueEl) valueEl.textContent = config.default.toFixed(config.decimals);
             });
         });
     }
+
+    // ========================================
+    // PLANET B (LAVA) CONTROLS
+    // ========================================
+    const planetBControls = document.getElementById('planet-b-controls');
+    const planetBToggle = document.getElementById('planet-b-toggle');
+    const planetBResetBtn = document.getElementById('planet-b-reset-btn');
+
+    const planetBSlidersConfig = {
+        'b-noise-scale': { param: 'noiseScale', valueEl: 'b-noise-scale-value', default: 1.8, decimals: 1 },
+        'b-terrain-height': { param: 'terrainHeight', valueEl: 'b-terrain-height-value', default: 0.6, decimals: 1 },
+        'b-atmos-intensity': { param: 'atmosIntensity', valueEl: 'b-atmos-intensity-value', default: 0.8, decimals: 1 },
+        'b-atmos-thickness': { param: 'atmosThickness', valueEl: 'b-atmos-thickness-value', default: 2.0, decimals: 2 },
+        'b-atmos-power': { param: 'atmosPower', valueEl: 'b-atmos-power-value', default: 25.0, decimals: 1 },
+        'b-scatter-r': { param: 'scatterR', valueEl: 'b-scatter-r-value', default: 5.0, decimals: 2 },
+        'b-scatter-g': { param: 'scatterG', valueEl: 'b-scatter-g-value', default: 2.0, decimals: 2 },
+        'b-scatter-b': { param: 'scatterB', valueEl: 'b-scatter-b-value', default: 1.0, decimals: 2 },
+        'b-scatter-scale': { param: 'scatterScale', valueEl: 'b-scatter-scale-value', default: 0.8, decimals: 2 },
+        'b-sunset-strength': { param: 'sunsetStrength', valueEl: 'b-sunset-strength-value', default: 0.5, decimals: 2 },
+        'b-lava-intensity': { param: 'lavaIntensity', valueEl: 'b-lava-intensity-value', default: 3.0, decimals: 1 },
+        'b-sea-level': { param: 'seaLevel', valueEl: 'b-sea-level-value', default: 0.0, decimals: 2 },
+        'b-land-roughness': { param: 'landRoughness', valueEl: 'b-land-roughness-value', default: 0.75, decimals: 2 },
+        'b-normal-strength': { param: 'normalStrength', valueEl: 'b-normal-strength-value', default: 0.2, decimals: 2 }
+    };
+
+    // Initialize Planet B sliders
+    Object.entries(planetBSlidersConfig).forEach(([sliderId, config]) => {
+        const slider = document.getElementById(sliderId);
+        const valueEl = document.getElementById(config.valueEl);
+        if (slider && valueEl) {
+            slider.value = planetParamsB[config.param];
+            valueEl.textContent = planetParamsB[config.param].toFixed(config.decimals);
+
+            slider.addEventListener('input', () => {
+                const value = parseFloat(slider.value);
+                planetParamsB[config.param] = value;
+                valueEl.textContent = value.toFixed(config.decimals);
+            });
+        }
+    });
+
+    if (planetBToggle) {
+        planetBToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            planetBControls.classList.toggle('active');
+        });
+    }
+
+    if (planetBResetBtn) {
+        planetBResetBtn.addEventListener('click', () => {
+            Object.entries(planetBSlidersConfig).forEach(([sliderId, config]) => {
+                const slider = document.getElementById(sliderId);
+                const valueEl = document.getElementById(config.valueEl);
+                planetParamsB[config.param] = config.default;
+                if (slider) slider.value = config.default;
+                if (valueEl) valueEl.textContent = config.default.toFixed(config.decimals);
+            });
+        });
+    }
+
+    // Close panels when clicking outside
+    document.addEventListener('click', (e) => {
+        if (planetAControls && !planetAControls.contains(e.target)) {
+            planetAControls.classList.remove('active');
+        }
+        if (planetBControls && !planetBControls.contains(e.target)) {
+            planetBControls.classList.remove('active');
+        }
+    });
 
     // ========================================
     // PHYSICS CONTROLS UI

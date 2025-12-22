@@ -20,21 +20,52 @@ uniform vec2 uLight2;
 uniform vec3 uLightColor0;
 uniform vec3 uLightColor1;
 uniform vec3 uLightColor2;
-// Controllable rendering parameters
-uniform float uNoiseScale;      // Terrain noise scale (default 1.8)
-uniform float uTerrainHeight;   // Terrain displacement strength (default 1.0)
-uniform float uAtmosIntensity;  // Atmosphere brightness (default 1.0)
-uniform float uAtmosThickness;  // Atmosphere thickness/falloff (default 1.0)
-uniform float uAtmosPower;      // Atmosphere density power/falloff curve (default 1.0)
-uniform float uScatterR;        // Red channel scattering coefficient (default 1.0)
-uniform float uScatterG;        // Green channel scattering coefficient (default 2.5)
-uniform float uScatterB;        // Blue channel scattering coefficient (default 5.5)
-uniform float uScatterScale;    // Optical depth multiplier (default 1.0)
-uniform float uSunsetStrength;  // How much shadow affects scattering (default 1.0)
-uniform float uLavaIntensity;   // Lava emission intensity (default 1.0)
-uniform float uOceanRoughness;  // Ocean roughness 0=mirror, 1=matte (default 0.3)
-uniform float uSSSIntensity;    // Subsurface scattering intensity (default 1.0)
-uniform float uSeaLevel;        // Sea level offset (default 0.0)
+uniform float uLight0Intensity;
+uniform float uLight1Intensity;
+uniform float uLight2Intensity;
+uniform float uLight0Atten;
+uniform float uLight1Atten;
+uniform float uLight2Atten;
+uniform float uMouseLightEnabled;
+
+// ========================================
+// PER-PLANET TYPE PARAMETERS
+// Set A: Oceanic/Mountain planets (biome 0 and 2)
+// Set B: Lava/Desert planets (biome 1)
+// ========================================
+
+// Planet A (Oceanic/Mountain) parameters
+uniform float uNoiseScaleA;
+uniform float uTerrainHeightA;
+uniform float uAtmosIntensityA;
+uniform float uAtmosThicknessA;
+uniform float uAtmosPowerA;
+uniform float uScatterRA;
+uniform float uScatterGA;
+uniform float uScatterBA;
+uniform float uScatterScaleA;
+uniform float uSunsetStrengthA;
+uniform float uOceanRoughnessA;
+uniform float uSSSIntensityA;
+uniform float uSeaLevelA;
+uniform float uLandRoughnessA;
+uniform float uNormalStrengthA;
+
+// Planet B (Lava/Desert) parameters
+uniform float uNoiseScaleB;
+uniform float uTerrainHeightB;
+uniform float uAtmosIntensityB;
+uniform float uAtmosThicknessB;
+uniform float uAtmosPowerB;
+uniform float uScatterRB;
+uniform float uScatterGB;
+uniform float uScatterBB;
+uniform float uScatterScaleB;
+uniform float uSunsetStrengthB;
+uniform float uLavaIntensityB;
+uniform float uLandRoughnessB;
+uniform float uSeaLevelB;
+uniform float uNormalStrengthB;
 
 #define PI 3.14159265
 
@@ -71,6 +102,15 @@ float geometrySmith(float NdV, float NdL, float roughness) {
 // F0 = 0.04 for dielectrics (non-metals)
 vec3 fresnelSchlick(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+// Fresnel-Schlick with roughness attenuation
+// For environment/rim reflections, rough surfaces reduce Fresnel effect
+// Smooth surfaces (low roughness) get full Fresnel, rough surfaces get attenuated
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
+    // The max(vec3(1.0 - roughness), F0) term ensures that at grazing angles,
+    // smooth surfaces reflect strongly while rough surfaces are attenuated
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
 // Full Cook-Torrance BRDF for a single light
@@ -232,37 +272,62 @@ void main() {
     // ========================================
     // TERRAIN HEIGHTMAP - computed first to deform planet shape
     // ========================================
-    vec2 heightCoord = uv * uNoiseScale + vIndex * 10.0;
     float eps = 0.06;
 
     // Biome type based on planet index (cycles through 3 types)
     // 0 = Oceanic (lots of water, green land)
-    // 1 = Desert (little water, sand everywhere)
+    // 1 = Desert/Lava (volcanic planet)
     // 2 = Mountain/Ice (moderate water, ice on peaks)
     float biomeSelector = mod(vIndex, 3.0);
     float isOceanic = step(0.5, 1.0 - abs(biomeSelector - 0.0));
     float isDesert = step(0.5, 1.0 - abs(biomeSelector - 1.0));
     float isMountain = step(0.5, 1.0 - abs(biomeSelector - 2.0));
 
+    // ========================================
+    // SELECT PARAMETERS BASED ON PLANET TYPE
+    // ========================================
+    // isDesert = 1.0 for lava planets, 0.0 for oceanic/mountain
+    float pNoiseScale = mix(uNoiseScaleA, uNoiseScaleB, isDesert);
+    float pTerrainHeight = mix(uTerrainHeightA, uTerrainHeightB, isDesert);
+    float pAtmosIntensity = mix(uAtmosIntensityA, uAtmosIntensityB, isDesert);
+    float pAtmosThickness = mix(uAtmosThicknessA, uAtmosThicknessB, isDesert);
+    float pAtmosPower = mix(uAtmosPowerA, uAtmosPowerB, isDesert);
+    float pScatterR = mix(uScatterRA, uScatterRB, isDesert);
+    float pScatterG = mix(uScatterGA, uScatterGB, isDesert);
+    float pScatterB = mix(uScatterBA, uScatterBB, isDesert);
+    float pScatterScale = mix(uScatterScaleA, uScatterScaleB, isDesert);
+    float pSunsetStrength = mix(uSunsetStrengthA, uSunsetStrengthB, isDesert);
+    float pOceanRoughness = uOceanRoughnessA;  // Only for oceanic planets
+    float pSSSIntensity = uSSSIntensityA;      // Only for oceanic planets
+    float pLavaIntensity = uLavaIntensityB;    // Only for lava planets
+    float pSeaLevel = mix(uSeaLevelA, uSeaLevelB, isDesert);
+    float pLandRoughness = mix(uLandRoughnessA, uLandRoughnessB, isDesert);
+    float pNormalStrength = mix(uNormalStrengthA, uNormalStrengthB, isDesert);
+
     // Multi-octave height for terrain - large continental shapes + detail (4 octaves)
+    // Now using per-planet noise scale
+    vec2 heightCoord = uv * pNoiseScale + vIndex * 10.0;
     float heightC = snoise(heightCoord) * 0.5
                   + snoise(heightCoord * 2.0 + 1.5) * 0.25
                   + snoise(heightCoord * 4.0 + 3.0) * 0.15
-                  + snoise(heightCoord * 8.0 + 5.5) * 0.1;
+                  + snoise(heightCoord * 8.0 + 5.5) * 0.1
+                  + snoise(heightCoord * 16.0 + 8.0) * 0.05;
     float heightX = snoise(heightCoord + vec2(eps, 0.0)) * 0.5
                   + snoise((heightCoord + vec2(eps, 0.0)) * 2.0 + 1.5) * 0.25
                   + snoise((heightCoord + vec2(eps, 0.0)) * 4.0 + 3.0) * 0.15
-                  + snoise((heightCoord + vec2(eps, 0.0)) * 8.0 + 5.5) * 0.1;
+                  + snoise((heightCoord + vec2(eps, 0.0)) * 8.0 + 5.5) * 0.1
+                  + snoise((heightCoord + vec2(eps, 0.0)) * 16.0 + 8.0) * 0.05;
     float heightY = snoise(heightCoord + vec2(0.0, eps)) * 0.5
                   + snoise((heightCoord + vec2(0.0, eps)) * 2.0 + 1.5) * 0.25
                   + snoise((heightCoord + vec2(0.0, eps)) * 4.0 + 3.0) * 0.15
-                  + snoise((heightCoord + vec2(0.0, eps)) * 8.0 + 5.5) * 0.1;
+                  + snoise((heightCoord + vec2(0.0, eps)) * 8.0 + 5.5) * 0.1
+                  + snoise((heightCoord + vec2(0.0, eps)) * 16.0 + 8.0) * 0.05;
 
     // Sea level varies per biome
     // Oceanic: low sea level = more water
     // Desert: very low sea level = almost no water (just oases)
     // Mountain: medium sea level = moderate water
-    float seaLevel = -0.05 * isOceanic + -0.45 * isDesert + 0.0 * isMountain + uSeaLevel;
+    float seaLevel = -0.05 * isOceanic + -0.45 * isDesert + 0.0 * isMountain + pSeaLevel;
     float oceanMask = smoothstep(seaLevel + 0.08, seaLevel - 0.02, heightC);
 
     // Deform planet radius based on terrain height
@@ -273,9 +338,9 @@ void main() {
     // Mountain biome: apply power function for sharper peaks but clamped to stay within bounds
     float mountainHeight = pow(min(landHeight, 0.6) * 1.2, 1.8) * 0.08; // Clamped exponential for sharp but contained peaks
     float normalHeight = landHeight * 0.04;
-    float terrainDisplacement = (normalHeight * (1.0 - isMountain) + mountainHeight * isMountain) * uTerrainHeight;
+    float terrainDisplacement = (normalHeight * (1.0 - isMountain) + mountainHeight * isMountain) * pTerrainHeight;
     // Clamp maximum displacement to 15% of planet radius
-    terrainDisplacement = min(terrainDisplacement, planetRadius * 0.15 * uTerrainHeight);
+    terrainDisplacement = min(terrainDisplacement, planetRadius * 0.15 * pTerrainHeight);
     float deformedRadius = planetRadius + terrainDisplacement;
 
     // Planet mask with height-deformed edge
@@ -285,12 +350,12 @@ void main() {
     vec3 baseN = d < deformedRadius ? normalize(vec3(uv, z)) : vec3(0.0, 0.0, 1.0);
     vec3 V = vec3(0.0, 0.0, 1.0);
 
-    // Compute terrain normals from heightmap gradient
-    // Flip sign so higher terrain creates outward-facing normals
+    // Compute terrain gradients from heightmap
     // Mountain biome gets stronger normals for dramatic peaks
-    float normalStrength = 0.12 * (1.0 - isMountain) + 0.35 * isMountain;
-    float terrainNx = -(heightX - heightC) / eps * normalStrength;
-    float terrainNy = -(heightY - heightC) / eps * normalStrength;
+    // Base normal strength from UI, with mountain multiplier
+    float normalStrength = pNormalStrength * (1.0 + isMountain * 1.5);
+    float terrainGradX = -(heightX - heightC) / eps * normalStrength;
+    float terrainGradY = -(heightY - heightC) / eps * normalStrength;
 
     // Ocean wave normal deformation - subtle animated ripples
     vec2 waveCoord = uv * 12.0 + vIndex * 5.0;
@@ -303,12 +368,23 @@ void main() {
                 + snoise((waveCoord + vec2(waveEps, 0.0)) * 1.3 - vec2(waveSpeed * 0.6, waveSpeed * 0.9) + 2.5) * 0.6;
     float waveY = snoise(waveCoord + vec2(0.0, waveEps) + vec2(waveSpeed, waveSpeed * 0.7))
                 + snoise((waveCoord + vec2(0.0, waveEps)) * 1.3 - vec2(waveSpeed * 0.6, waveSpeed * 0.9) + 2.5) * 0.6;
-    float waveNx = (waveX - waveC) / waveEps * 0.012;
-    float waveNy = (waveY - waveC) / waveEps * 0.012;
+    float waveGradX = (waveX - waveC) / waveEps * 0.012;
+    float waveGradY = (waveY - waveC) / waveEps * 0.012;
 
-    // Use pure spherical normal for all lighting - terrain deformation is visual only
-    // This keeps the planet looking like a perfect sphere regardless of height displacement
-    vec3 N = baseN;
+    // Build tangent space basis from spherical normal
+    // Tangent and bitangent are perpendicular to baseN and to each other
+    vec3 up = abs(baseN.y) < 0.999 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+    vec3 tangent = normalize(cross(up, baseN));
+    vec3 bitangent = cross(baseN, tangent);
+
+    // Mix terrain and wave gradients based on ocean mask
+    float gradX = mix(terrainGradX, waveGradX, oceanMask);
+    float gradY = mix(terrainGradY, waveGradY, oceanMask);
+
+    // Perturb normal in tangent space (along sphere surface), then normalize
+    // This ensures deformations follow the sphere's curvature
+    vec3 N = normalize(baseN + tangent * gradX + bitangent * gradY);
+    N = N * planetMask + baseN * (1.0 - planetMask);
 
     // ========================================
     // PBR LIGHTING SETUP
@@ -321,19 +397,21 @@ void main() {
     float oceanFresnel = 0.0;
 
     // PBR material properties for non-metallic surfaces
-    // F0 = 0.04 for dielectrics, slightly higher for water
-    vec3 landF0 = vec3(0.04);
-    vec3 oceanF0 = vec3(0.02, 0.02, 0.025);  // Water has slight blue tint at glancing angles
-    float landRoughness = 0.65;  // Land is fairly rough
-    float oceanRoughness = max(0.02, uOceanRoughness);  // Ocean roughness from UI, minimum for stability
+    // F0 values boosted for more visible reflections at normal incidence
+    // Standard dielectric F0 = 0.04, but we increase for artistic visibility
+    vec3 landF0 = vec3(0.06);  // Boosted from 0.04 for more visible land reflections
+    // Water F0 based on IOR 1.33: ((1.33-1)/(1.33+1))^2 = 0.02, but boosted for visibility
+    vec3 oceanF0 = vec3(0.04, 0.045, 0.05);  // Boosted with slight blue tint for water
+    float landRoughness = pLandRoughness;  // Land roughness from UI
+    float oceanRoughness = max(0.01, pOceanRoughness);  // Ocean roughness from UI, lower minimum for sharper reflections
 
-    // ---- MOUSE LIGHT ----
+    // ---- MOUSE LIGHT (toggle with spacebar) ----
     vec2 mouseOffset = (uMouse - vCenter);
     vec3 mouseLightPos = vec3(mouseOffset / uRes.x * 4.0, 0.3);
     vec3 mouseL = normalize(mouseLightPos);
     float mouseDist = length(mouseLightPos);
-    float mouseAtten = 0.08 / (mouseDist * mouseDist + 0.01);
-    mouseAtten = min(mouseAtten, 2.0);
+    float mouseAtten = 0.12 / (mouseDist * mouseDist + 0.01);
+    mouseAtten = min(mouseAtten, 2.5) * uMouseLightEnabled;
     float mouseNdL = max(dot(N, mouseL), 0.0);
 
     // PBR specular for land
@@ -354,57 +432,60 @@ void main() {
     vec3 light0Pos = vec3(light0Offset / uRes.x * 3.0, 0.1);
     vec3 L0 = normalize(light0Pos);
     float dist0 = length(light0Pos);
-    float atten0 = 0.06 / (dist0 * dist0 + 0.02);
-    atten0 = min(atten0, 1.5);
+    // Attenuation using uniform value
+    float atten0 = uLight0Atten / (dist0 * dist0 + 0.02);
+    atten0 = min(atten0, 2.0);
     float NdL0 = max(dot(N, L0), 0.0);
 
     vec4 pbr0 = cookTorranceBRDF(N, V, L0, landRoughness, landF0);
-    totalSpecular += uLightColor0 * pbr0.xyz * atten0;
-    totalFresnel += pbr0.w * atten0;
+    totalSpecular += uLightColor0 * pbr0.xyz * atten0 * uLight0Intensity;
+    totalFresnel += pbr0.w * atten0 * uLight0Intensity;
     vec4 oceanPBR0 = cookTorranceBRDF(N, V, L0, oceanRoughness, oceanF0);
-    oceanSpecular += uLightColor0 * oceanPBR0.xyz * atten0;
-    oceanFresnel += oceanPBR0.w * atten0;
+    oceanSpecular += uLightColor0 * oceanPBR0.xyz * atten0 * uLight0Intensity;
+    oceanFresnel += oceanPBR0.w * atten0 * uLight0Intensity;
     float diffuseWeight0 = (1.0 - pbr0.w) / PI;
-    totalDiffuse += uLightColor0 * NdL0 * atten0 * diffuseWeight0;
-    totalAttenuation += atten0;
+    totalDiffuse += uLightColor0 * NdL0 * atten0 * diffuseWeight0 * uLight0Intensity;
+    totalAttenuation += atten0 * uLight0Intensity;
 
     // ---- LIGHT 1 ----
     vec2 light1Offset = (uLight1 - vCenter);
     vec3 light1Pos = vec3(light1Offset / uRes.x * 3.0, 0.1);
     vec3 L1 = normalize(light1Pos);
     float dist1 = length(light1Pos);
-    float atten1 = 0.06 / (dist1 * dist1 + 0.02);
-    atten1 = min(atten1, 1.5);
+    // Attenuation using uniform value
+    float atten1 = uLight1Atten / (dist1 * dist1 + 0.02);
+    atten1 = min(atten1, 2.0);
     float NdL1 = max(dot(N, L1), 0.0);
 
     vec4 pbr1 = cookTorranceBRDF(N, V, L1, landRoughness, landF0);
-    totalSpecular += uLightColor1 * pbr1.xyz * atten1;
-    totalFresnel += pbr1.w * atten1;
+    totalSpecular += uLightColor1 * pbr1.xyz * atten1 * uLight1Intensity;
+    totalFresnel += pbr1.w * atten1 * uLight1Intensity;
     vec4 oceanPBR1 = cookTorranceBRDF(N, V, L1, oceanRoughness, oceanF0);
-    oceanSpecular += uLightColor1 * oceanPBR1.xyz * atten1;
-    oceanFresnel += oceanPBR1.w * atten1;
+    oceanSpecular += uLightColor1 * oceanPBR1.xyz * atten1 * uLight1Intensity;
+    oceanFresnel += oceanPBR1.w * atten1 * uLight1Intensity;
     float diffuseWeight1 = (1.0 - pbr1.w) / PI;
-    totalDiffuse += uLightColor1 * NdL1 * atten1 * diffuseWeight1;
-    totalAttenuation += atten1;
+    totalDiffuse += uLightColor1 * NdL1 * atten1 * diffuseWeight1 * uLight1Intensity;
+    totalAttenuation += atten1 * uLight1Intensity;
 
     // ---- LIGHT 2 ----
     vec2 light2Offset = (uLight2 - vCenter);
     vec3 light2Pos = vec3(light2Offset / uRes.x * 3.0, 0.1);
     vec3 L2 = normalize(light2Pos);
     float dist2 = length(light2Pos);
-    float atten2 = 0.06 / (dist2 * dist2 + 0.02);
-    atten2 = min(atten2, 1.5);
+    // Attenuation using uniform value
+    float atten2 = uLight2Atten / (dist2 * dist2 + 0.02);
+    atten2 = min(atten2, 2.0);
     float NdL2 = max(dot(N, L2), 0.0);
 
     vec4 pbr2 = cookTorranceBRDF(N, V, L2, landRoughness, landF0);
-    totalSpecular += uLightColor2 * pbr2.xyz * atten2;
-    totalFresnel += pbr2.w * atten2;
+    totalSpecular += uLightColor2 * pbr2.xyz * atten2 * uLight2Intensity;
+    totalFresnel += pbr2.w * atten2 * uLight2Intensity;
     vec4 oceanPBR2 = cookTorranceBRDF(N, V, L2, oceanRoughness, oceanF0);
-    oceanSpecular += uLightColor2 * oceanPBR2.xyz * atten2;
-    oceanFresnel += oceanPBR2.w * atten2;
+    oceanSpecular += uLightColor2 * oceanPBR2.xyz * atten2 * uLight2Intensity;
+    oceanFresnel += oceanPBR2.w * atten2 * uLight2Intensity;
     float diffuseWeight2 = (1.0 - pbr2.w) / PI;
-    totalDiffuse += uLightColor2 * NdL2 * atten2 * diffuseWeight2;
-    totalAttenuation += atten2;
+    totalDiffuse += uLightColor2 * NdL2 * atten2 * diffuseWeight2 * uLight2Intensity;
+    totalAttenuation += atten2 * uLight2Intensity;
 
     float NdV = max(dot(N, V), 0.001);
 
@@ -414,7 +495,7 @@ void main() {
     // Treating the 2D quad as a 3D sphere viewed from front
     // Atmosphere shell extends from planetRadius to atmosRadius
 
-    float atmosRadius = planetRadius + 0.4 * uAtmosThickness;
+    float atmosRadius = planetRadius + 0.4 * pAtmosThickness;
     float atmosThickness = atmosRadius - planetRadius;
      
 
@@ -535,7 +616,7 @@ void main() {
 
     // Scattering coefficients (UI controlled, default to Rayleigh ratios)
     // Higher values = more absorption of that channel
-    vec3 beta = vec3(uScatterR, uScatterG, uScatterB);
+    vec3 beta = vec3(pScatterR, pScatterG, pScatterB);
 
     // ========================================
     // PHYSICALLY-BASED ATMOSPHERIC SCATTERING
@@ -543,7 +624,7 @@ void main() {
     // Adapted for 2D quad rendering
     // ========================================
 
-    float densityFalloff = uAtmosPower;
+    float densityFalloff = pAtmosPower;
 
     // For a 2D quad faking a 3D sphere, we need to compute the optical depth
     // (integral of density along the view ray through the atmosphere)
@@ -605,7 +686,7 @@ void main() {
     }
 
     // Scale by user control
-    opticalDepth *= uScatterScale;
+    opticalDepth *= pScatterScale;
 
     // ========================================
     // ATMOSPHERE DENSITY (visibility/alpha)
@@ -615,7 +696,7 @@ void main() {
     if (d < atmosRadius) {
         float normalizedDist = d / atmosRadius;
         atmosDensity = exp(-normalizedDist * normalizedDist * densityFalloff * 0.1) * (1.0 - normalizedDist);
-        atmosDensity *= uAtmosThickness;
+        atmosDensity *= pAtmosThickness;
     }
 
     // Quad edge fade
@@ -655,7 +736,7 @@ void main() {
     }
 
     // Blend from blue (low depth) to transmitted color (high depth = orange/red)
-    float depthFactor = 1.0 - exp(-opticalDepth * 2.0 * uSunsetStrength);
+    float depthFactor = 1.0 - exp(-opticalDepth * 2.0 * pSunsetStrength);
     vec3 blueScatter = vec3(0.4, 0.7, 1.0);
     vec3 scatterColor = mix(blueScatter, transmitColor, depthFactor);
 
@@ -667,7 +748,7 @@ void main() {
     scatteredLight = mix(scatteredLight, incomingLight * lavaAtmosTint, isDesert * 0.7);
 
     // Final atmosphere color
-    vec3 atmosColor = scatteredLight * atmosDensity * uAtmosIntensity * 1.5;
+    vec3 atmosColor = scatteredLight * atmosDensity * pAtmosIntensity * 1.5;
 
     // Alpha follows density
     float atmosAlpha = clamp(atmosDensity * 0.8, 0.0, 1.0);
@@ -676,10 +757,20 @@ void main() {
     // ========================================
     vec3 col = vec3(0.0);
 
-    // Ocean color - deep blue with depth variation based on terrain height
-    vec3 oceanColor = vec3(0.05, 0.15, 0.35);
-    float oceanDepth = smoothstep(seaLevel - 0.3, seaLevel, heightC);
-    oceanColor = mix(vec3(0.02, 0.08, 0.2), vec3(0.2078, 0.5137, 0.6902), oceanDepth);
+    // Ocean color - vibrant stylized water with depth variation
+    // Deep areas are rich dark blue, shallow areas are vibrant turquoise
+    vec3 oceanDeep = vec3(0.02, 0.06, 0.18);      // Deep ocean - dark rich blue
+    vec3 oceanMid = vec3(0.05, 0.2, 0.45);        // Mid depth - saturated blue
+    vec3 oceanShallow = vec3(0.1, 0.5, 0.6);      // Shallow - vibrant teal/turquoise
+    float oceanDepth = smoothstep(seaLevel - 0.4, seaLevel, heightC);
+    float shallowMask = smoothstep(seaLevel - 0.1, seaLevel - 0.02, heightC);
+    vec3 oceanColor = mix(oceanDeep, oceanMid, oceanDepth);
+    oceanColor = mix(oceanColor, oceanShallow, shallowMask * 0.7);
+
+    // View-dependent color enhancement - water looks more vibrant at grazing angles
+    float oceanViewFactor = pow(1.0 - NdV, 2.0);
+    vec3 oceanGrazing = vec3(0.15, 0.55, 0.7);    // Bright teal at edges
+    oceanColor = mix(oceanColor, oceanGrazing, oceanViewFactor * 0.4 * oceanMask);
 
     // ========================================
     // BIOME-SPECIFIC SURFACE COLORS
@@ -742,56 +833,104 @@ void main() {
     col += surfaceColor * totalDiffuse * diffuseStrength * planetMask;
 
     // Specular - PBR handles intensity via BRDF, just need scene-level scaling
-    float iceSpecular = snowMask * isMountain * 0.5; // Ice gets extra boost
-    float landSpecStrength = 1.0 + iceSpecular;
-    float oceanSpecStrength = 1.5;  // Water is more reflective
-    vec3 specColor = mix(vec3(1.0), vec3(1.0), oceanMask);  // White specular for both (PBR)
+    // Significantly boosted specular strength for clearly visible reflections
+    // The Cook-Torrance BRDF output is physically correct but can appear dim without proper HDR
+    float iceSpecular = snowMask * isMountain * 1.5; // Ice gets extra boost
+    float landSpecStrength = 3.0 + iceSpecular;      // Boosted from 2.0 for visible land highlights
+    float oceanSpecStrength = 6.5;  // Water is highly reflective - boosted for stylized look
+
+    // Specular color - tinted by environment for stylized reflections
+    vec3 landSpecColor = vec3(1.0);  // White specular for land (PBR standard)
     // Ice/snow gets tinted specular
-    specColor = mix(specColor, vec3(0.95, 0.97, 1.0), snowMask * isMountain * 0.3);
+    landSpecColor = mix(landSpecColor, vec3(0.95, 0.97, 1.0), snowMask * isMountain * 0.3);
+
+    // Ocean specular picks up environment color for vibrant reflections
+    vec3 lightEnvColor = (uLightColor0 * atten0 + uLightColor1 * atten1 + uLightColor2 * atten2) / max(totalAttenuation, 0.001);
+    // Blend between white specular and environment-tinted specular
+    // This creates colorful sun reflections on water
+    vec3 oceanSpecColor = mix(vec3(1.0), lightEnvColor, 0.4);
+    // Add slight cyan tint to complement the water color
+    oceanSpecColor = mix(oceanSpecColor, vec3(0.85, 0.95, 1.0), 0.2);
+
+    vec3 specColor = mix(landSpecColor, oceanSpecColor, oceanMask);
+
     // Use oceanSpecular (low roughness) for ocean, totalSpecular (high roughness) for land
     vec3 finalSpecular = mix(totalSpecular * landSpecStrength, oceanSpecular * oceanSpecStrength, oceanMask);
+
+    // Add extra sparkle on wave peaks for stylized look
+    float waveHighlight = smoothstep(0.3, 0.8, waveC) * oceanMask;
+    finalSpecular += oceanSpecular * waveHighlight * 2.0 * oceanMask;
+
     col += specColor * finalSpecular * planetMask;
 
-    // Ocean SSS - translucent turquoise subsurface scattering
-    vec3 sssColor = vec3(0.15, 0.6, 0.65); // Turquoise/cyan tint
-    // Tighter wrap for focused translucency effect
-    float sssWrap = 0.15;
-    // Back-lighting component - light shining through from behind
-    float backLight0 = pow(max(0.0, -dot(N, L0) * 0.5 + 0.5), 3.0);
-    float backLight1 = pow(max(0.0, -dot(N, L1) * 0.5 + 0.5), 3.0);
-    float backLight2 = pow(max(0.0, -dot(N, L2) * 0.5 + 0.5), 3.0);
-    float backLightMouse = pow(max(0.0, -dot(N, mouseL) * 0.5 + 0.5), 3.0);
+    // Ocean SSS - dramatic stylized subsurface scattering
+    // Vibrant turquoise/cyan that glows when backlit
+    vec3 sssColorDeep = vec3(0.1, 0.4, 0.55);     // Deep water SSS - rich blue
+    vec3 sssColorShallow = vec3(0.2, 0.7, 0.75);  // Shallow water SSS - vibrant cyan
+    vec3 sssColor = mix(sssColorDeep, sssColorShallow, shallowMask);
+
+    // Wider wrap for more dramatic translucency
+    float sssWrap = 0.25;
+
+    // Back-lighting component - light shining through from behind (dramatic glow)
+    float backLight0 = pow(max(0.0, -dot(N, L0) * 0.5 + 0.5), 2.5);
+    float backLight1 = pow(max(0.0, -dot(N, L1) * 0.5 + 0.5), 2.5);
+    float backLight2 = pow(max(0.0, -dot(N, L2) * 0.5 + 0.5), 2.5);
+    float backLightMouse = pow(max(0.0, -dot(N, mouseL) * 0.5 + 0.5), 2.5);
+
     // Wrap lighting for edge translucency
-    float sssNdL0 = pow(max(0.0, (dot(N, L0) + sssWrap) / (1.0 + sssWrap)), 1.5);
-    float sssNdL1 = pow(max(0.0, (dot(N, L1) + sssWrap) / (1.0 + sssWrap)), 1.5);
-    float sssNdL2 = pow(max(0.0, (dot(N, L2) + sssWrap) / (1.0 + sssWrap)), 1.5);
-    float sssMouseNdL = pow(max(0.0, (dot(N, mouseL) + sssWrap) / (1.0 + sssWrap)), 1.5);
-    // Combine wrap and backlight for translucent look
+    float sssNdL0 = pow(max(0.0, (dot(N, L0) + sssWrap) / (1.0 + sssWrap)), 1.2);
+    float sssNdL1 = pow(max(0.0, (dot(N, L1) + sssWrap) / (1.0 + sssWrap)), 1.2);
+    float sssNdL2 = pow(max(0.0, (dot(N, L2) + sssWrap) / (1.0 + sssWrap)), 1.2);
+    float sssMouseNdL = pow(max(0.0, (dot(N, mouseL) + sssWrap) / (1.0 + sssWrap)), 1.2);
+
+    // Terminator glow - extra SSS intensity at the day/night boundary
+    float terminatorGlow = smoothstep(-0.1, 0.2, NdL0) * smoothstep(0.5, 0.2, NdL0);
+    terminatorGlow += smoothstep(-0.1, 0.2, NdL1) * smoothstep(0.5, 0.2, NdL1);
+    terminatorGlow += smoothstep(-0.1, 0.2, NdL2) * smoothstep(0.5, 0.2, NdL2);
+    terminatorGlow = clamp(terminatorGlow, 0.0, 1.0);
+
+    // Combine wrap and backlight for translucent look - boosted intensity
     vec3 sss = sssColor * (
-        uLightColor0 * (sssNdL0 * 0.6 + backLight0 * 1.2) * atten0 +
-        uLightColor1 * (sssNdL1 * 0.6 + backLight1 * 1.2) * atten1 +
-        uLightColor2 * (sssNdL2 * 0.6 + backLight2 * 1.2) * atten2 +
-        vec3(1.0) * (sssMouseNdL * 0.6 + backLightMouse * 1.2) * mouseAtten
-    ) * 2.0 * uSSSIntensity;
+        uLightColor0 * (sssNdL0 * 0.8 + backLight0 * 1.5) * atten0 +
+        uLightColor1 * (sssNdL1 * 0.8 + backLight1 * 1.5) * atten1 +
+        uLightColor2 * (sssNdL2 * 0.8 + backLight2 * 1.5) * atten2 +
+        vec3(1.0) * (sssMouseNdL * 0.8 + backLightMouse * 1.5) * mouseAtten
+    ) * 2.5 * pSSSIntensity;
+
+    // Extra glow at terminator for dramatic effect
+    sss += sssColor * terminatorGlow * totalAttenuation * 0.5 * pSSSIntensity;
+
     // Apply SSS only to ocean areas (not lava)
     col += sss * oceanMask * planetMask * (1.0 - isDesert);
 
     // Lava emission - glowing lava emits its own light (super bright)
     float lavaEmission = oceanMask * isDesert * (lavaPulse * 0.5 + 0.5) * (lavaPulse2 * 0.3 + 0.7);
-    col += lavaColor * lavaEmission * 3.5 * uLavaIntensity * planetMask;
+    col += lavaColor * lavaEmission * 3.5 * pLavaIntensity * planetMask;
     // Add extra bloom-like glow for hottest areas
-    col += lavaHot * lavaEmission * lavaPulse * 0.8 * uLavaIntensity * planetMask;
+    col += lavaHot * lavaEmission * lavaPulse * 0.8 * pLavaIntensity * planetMask;
 
     // No ambient light in space
 
-    // Fresnel rim on surface - using Schlick approximation for PBR
-    // This adds the view-dependent rim reflection at grazing angles
+    // Fresnel rim on surface - using roughness-adjusted Schlick for physically correct PBR
+    // Smooth surfaces (ocean) get strong rim reflections, rough surfaces (land) get weak rims
     vec3 rimF0 = mix(landF0, oceanF0, oceanMask);
-    vec3 fresnelRim = fresnelSchlick(NdV, rimF0) * planetMask;
-    // Rim lighting from environment/atmosphere reflection
-    vec3 rimColor = mix(vec3(0.5, 0.6, 0.7), vec3(0.6, 0.8, 1.0), oceanMask);
-    col += rimColor * fresnelRim * totalAttenuation * 0.3;
-    col += planetColor * vGlow * (0.15 + fresnelRim.r * 0.3);
+    float rimRoughness = mix(landRoughness, oceanRoughness, oceanMask);
+    // Use roughness-adjusted Fresnel: smooth = strong rim, rough = weak rim
+    vec3 fresnelRim = fresnelSchlickRoughness(NdV, rimF0, rimRoughness) * planetMask;
+
+    // Enhanced rim lighting from environment/atmosphere reflection
+    // The rim intensity scales inversely with roughness for physically correct behavior
+    // Smooth ocean gets bright, sharp rim; rough land gets subtle, diffuse rim
+    float rimIntensityByRoughness = mix(0.4, 1.5, 1.0 - rimRoughness);  // Smooth = 1.5x, rough = 0.4x
+
+    // Environment color for fresnel reflections - derived from actual light sources
+    // This makes fresnel reflect the scene's lighting rather than arbitrary colors
+    vec3 envColor = (uLightColor0 * atten0 + uLightColor1 * atten1 + uLightColor2 * atten2) / max(totalAttenuation, 0.001);
+    envColor = mix(envColor, scatterColor, 0.3); // Blend with atmosphere scatter color
+    vec3 rimColor = mix(envColor * 0.6, envColor * 1.0, oceanMask); // Ocean reflects more
+    col += rimColor * fresnelRim * totalAttenuation * rimIntensityByRoughness;
+    col += planetColor * vGlow * (0.15 + fresnelRim.r * 0.4);
 
     // Blend atmosphere with surface
     // The atmosphere affects both:
@@ -856,11 +995,11 @@ void main() {
         vec3 lavaGlowOuter = vec3(1.0, 0.4, 0.1);  // Bright orange
         vec3 lavaGlowHot = vec3(1.0, 0.7, 0.3);    // Hot yellow-white core
         vec3 lavaGlowColor = mix(lavaGlowOuter, lavaGlowHot, glowPulse2 * 0.5);
-        lavaGlowColor *= lavaGlowAccum * glowPulse * 4.0 * uLavaIntensity;
+        lavaGlowColor *= lavaGlowAccum * glowPulse * 4.0 * pLavaIntensity;
         col += lavaGlowColor * (1.0 - planetMask);
 
         // Store lava glow alpha for later (alpha not declared yet)
-        lavaGlowAlpha = lavaGlowAccum * glowPulse * 0.8 * uLavaIntensity * (1.0 - planetMask);
+        lavaGlowAlpha = lavaGlowAccum * glowPulse * 0.8 * pLavaIntensity * (1.0 - planetMask);
     }
 
     // Tone mapping

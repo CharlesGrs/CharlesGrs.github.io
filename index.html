@@ -106,7 +106,7 @@
     </div>
 
     <!-- Version Badge -->
-    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.10</span></div>
+    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.11</span></div>
 
     <a href="mailto:contact.charles.grassi@gmail.com" class="contact-btn" aria-label="Send email to Charles Grassi">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -179,123 +179,240 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
                         </button>
                     </div>
-                    <!-- Render Controls Panel -->
-                    <div class="render-controls" id="render-controls">
-                        <button class="render-controls-toggle" id="render-controls-toggle" aria-label="Toggle render controls">
+                    <!-- Planet A (Oceanic) Controls Panel -->
+                    <div class="planet-controls planet-a" id="planet-a-controls">
+                        <button class="planet-controls-toggle" id="planet-a-toggle" aria-label="Toggle oceanic planet controls">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="3"/>
-                                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-                                <circle cx="12" cy="12" r="10" stroke-dasharray="4 2"/>
+                                <circle cx="12" cy="12" r="8"/>
+                                <path d="M8 14c1-2 3-2 4 0s3 2 4 0" stroke-linecap="round"/>
+                                <circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.3"/>
                             </svg>
+                            <span class="planet-label">A</span>
                         </button>
-                        <div class="render-controls-panel" id="render-controls-panel">
-                            <div class="render-control-header">Planet Rendering</div>
+                        <div class="planet-controls-panel" id="planet-a-panel">
+                            <div class="planet-control-header">Oceanic Planet</div>
                             <div class="render-control-item">
-                                <label class="render-label" for="render-noise-scale">
+                                <label class="render-label" for="a-noise-scale">
                                     <span class="render-name">Noise Scale</span>
-                                    <span class="render-value" id="noise-scale-value">1.8</span>
+                                    <span class="render-value" id="a-noise-scale-value">1.8</span>
                                 </label>
-                                <input type="range" id="render-noise-scale" class="render-slider" min="0.5" max="4" step="0.1" value="1.8">
+                                <input type="range" id="a-noise-scale" class="render-slider" min="0.5" max="4" step="0.1" value="1.8">
                             </div>
                             <div class="render-control-item">
-                                <label class="render-label" for="render-terrain-height">
+                                <label class="render-label" for="a-terrain-height">
                                     <span class="render-name">Terrain Height</span>
-                                    <span class="render-value" id="terrain-height-value">0.6</span>
+                                    <span class="render-value" id="a-terrain-height-value">0.6</span>
                                 </label>
-                                <input type="range" id="render-terrain-height" class="render-slider" min="0" max="3" step="0.1" value="0.6">
+                                <input type="range" id="a-terrain-height" class="render-slider" min="0" max="3" step="0.1" value="0.6">
                             </div>
                             <div class="render-control-item">
-                                <label class="render-label" for="render-atmos-intensity">
-                                    <span class="render-name">Atmos Brightness</span>
-                                    <span class="render-value" id="atmos-intensity-value">0.6</span>
+                                <label class="render-label" for="a-land-roughness">
+                                    <span class="render-name">Land Roughness</span>
+                                    <span class="render-value" id="a-land-roughness-value">0.65</span>
                                 </label>
-                                <input type="range" id="render-atmos-intensity" class="render-slider" min="0" max="10" step="0.1" value="0.6">
+                                <input type="range" id="a-land-roughness" class="render-slider" min="0.1" max="1" step="0.05" value="0.65">
                             </div>
                             <div class="render-control-item">
-                                <label class="render-label" for="render-atmos-thickness">
-                                    <span class="render-name">Atmos Radius</span>
-                                    <span class="render-value" id="atmos-thickness-value">2.5</span>
+                                <label class="render-label" for="a-normal-strength">
+                                    <span class="render-name">Normal Strength</span>
+                                    <span class="render-value" id="a-normal-strength-value">0.15</span>
                                 </label>
-                                <input type="range" id="render-atmos-thickness" class="render-slider" min="1" max="3" step="0.01" value="2.5">
+                                <input type="range" id="a-normal-strength" class="render-slider" min="0" max="0.5" step="0.01" value="0.15">
                             </div>
                             <div class="render-control-item">
-                                <label class="render-label" for="render-atmos-power">
-                                    <span class="render-name">Density Falloff</span>
-                                    <span class="render-value" id="atmos-power-value">37.1</span>
-                                </label>
-                                <input type="range" id="render-atmos-power" class="render-slider" min="0.1" max="50" step="0.1" value="37.1">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="render-scatter-r">
-                                    <span class="render-name">Scatter R</span>
-                                    <span class="render-value" id="scatter-r-value">1.0</span>
-                                </label>
-                                <input type="range" id="render-scatter-r" class="render-slider" min="0" max="10" step="0.01" value="1.0">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="render-scatter-g">
-                                    <span class="render-name">Scatter G</span>
-                                    <span class="render-value" id="scatter-g-value">2.5</span>
-                                </label>
-                                <input type="range" id="render-scatter-g" class="render-slider" min="0" max="10" step="0.01" value="2.5">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="render-scatter-b">
-                                    <span class="render-name">Scatter B</span>
-                                    <span class="render-value" id="scatter-b-value">5.5</span>
-                                </label>
-                                <input type="range" id="render-scatter-b" class="render-slider" min="0" max="10" step="0.01" value="5.5">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="render-scatter-scale">
-                                    <span class="render-name">Scatter Scale</span>
-                                    <span class="render-value" id="scatter-scale-value">0.50</span>
-                                </label>
-                                <input type="range" id="render-scatter-scale" class="render-slider" min="0" max="20" step="0.1" value="0.5">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="render-sunset-strength">
-                                    <span class="render-name">Sunset Strength</span>
-                                    <span class="render-value" id="sunset-strength-value">1.0</span>
-                                </label>
-                                <input type="range" id="render-sunset-strength" class="render-slider" min="0" max="1" step="0.01" value="1">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="render-lava-intensity">
-                                    <span class="render-name">Lava Glow</span>
-                                    <span class="render-value" id="lava-intensity-value">3.0</span>
-                                </label>
-                                <input type="range" id="render-lava-intensity" class="render-slider" min="0" max="3" step="0.1" value="3.0">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="render-ocean-roughness">
+                                <label class="render-label" for="a-ocean-roughness">
                                     <span class="render-name">Ocean Roughness</span>
-                                    <span class="render-value" id="ocean-roughness-value">0.55</span>
+                                    <span class="render-value" id="a-ocean-roughness-value">0.55</span>
                                 </label>
-                                <input type="range" id="render-ocean-roughness" class="render-slider" min="0" max="1" step="0.05" value="0.55">
+                                <input type="range" id="a-ocean-roughness" class="render-slider" min="0" max="1" step="0.05" value="0.55">
                             </div>
                             <div class="render-control-item">
-                                <label class="render-label" for="render-sss-intensity">
-                                    <span class="render-name">SSS Intensity</span>
-                                    <span class="render-value" id="sss-intensity-value">1.0</span>
-                                </label>
-                                <input type="range" id="render-sss-intensity" class="render-slider" min="0" max="3" step="0.1" value="1">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="render-sea-level">
+                                <label class="render-label" for="a-sea-level">
                                     <span class="render-name">Sea Level</span>
-                                    <span class="render-value" id="sea-level-value">0.0</span>
+                                    <span class="render-value" id="a-sea-level-value">0.0</span>
                                 </label>
-                                <input type="range" id="render-sea-level" class="render-slider" min="-0.5" max="0.5" step="0.02" value="0">
+                                <input type="range" id="a-sea-level" class="render-slider" min="-0.5" max="0.5" step="0.02" value="0">
                             </div>
                             <div class="render-control-item">
-                                <label class="render-label" for="render-parallax">
-                                    <span class="render-name">3D Parallax</span>
-                                    <span class="render-value" id="parallax-value">1.0</span>
+                                <label class="render-label" for="a-sss-intensity">
+                                    <span class="render-name">SSS Intensity</span>
+                                    <span class="render-value" id="a-sss-intensity-value">1.0</span>
                                 </label>
-                                <input type="range" id="render-parallax" class="render-slider" min="0" max="3" step="0.1" value="1">
+                                <input type="range" id="a-sss-intensity" class="render-slider" min="0" max="3" step="0.1" value="1">
                             </div>
-                            <button class="render-reset-btn" id="render-reset-btn">Reset All</button>
+                            <div class="planet-control-subheader">Atmosphere</div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="a-atmos-intensity">
+                                    <span class="render-name">Brightness</span>
+                                    <span class="render-value" id="a-atmos-intensity-value">0.6</span>
+                                </label>
+                                <input type="range" id="a-atmos-intensity" class="render-slider" min="0" max="10" step="0.1" value="0.6">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="a-atmos-thickness">
+                                    <span class="render-name">Radius</span>
+                                    <span class="render-value" id="a-atmos-thickness-value">2.5</span>
+                                </label>
+                                <input type="range" id="a-atmos-thickness" class="render-slider" min="1" max="3" step="0.01" value="2.5">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="a-atmos-power">
+                                    <span class="render-name">Density</span>
+                                    <span class="render-value" id="a-atmos-power-value">37.1</span>
+                                </label>
+                                <input type="range" id="a-atmos-power" class="render-slider" min="0.1" max="50" step="0.1" value="37.1">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="a-scatter-r">
+                                    <span class="render-name">Scatter R</span>
+                                    <span class="render-value" id="a-scatter-r-value">1.0</span>
+                                </label>
+                                <input type="range" id="a-scatter-r" class="render-slider" min="0" max="10" step="0.01" value="1.0">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="a-scatter-g">
+                                    <span class="render-name">Scatter G</span>
+                                    <span class="render-value" id="a-scatter-g-value">2.5</span>
+                                </label>
+                                <input type="range" id="a-scatter-g" class="render-slider" min="0" max="10" step="0.01" value="2.5">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="a-scatter-b">
+                                    <span class="render-name">Scatter B</span>
+                                    <span class="render-value" id="a-scatter-b-value">5.5</span>
+                                </label>
+                                <input type="range" id="a-scatter-b" class="render-slider" min="0" max="10" step="0.01" value="5.5">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="a-scatter-scale">
+                                    <span class="render-name">Scatter Scale</span>
+                                    <span class="render-value" id="a-scatter-scale-value">0.50</span>
+                                </label>
+                                <input type="range" id="a-scatter-scale" class="render-slider" min="0" max="20" step="0.1" value="0.5">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="a-sunset-strength">
+                                    <span class="render-name">Sunset</span>
+                                    <span class="render-value" id="a-sunset-strength-value">1.0</span>
+                                </label>
+                                <input type="range" id="a-sunset-strength" class="render-slider" min="0" max="1" step="0.01" value="1">
+                            </div>
+                            <button class="render-reset-btn" id="planet-a-reset-btn">Reset</button>
+                        </div>
+                    </div>
+
+                    <!-- Planet B (Lava) Controls Panel -->
+                    <div class="planet-controls planet-b" id="planet-b-controls">
+                        <button class="planet-controls-toggle" id="planet-b-toggle" aria-label="Toggle lava planet controls">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="8"/>
+                                <path d="M9 10c0.5-1 1.5-1 2 0s1.5 1 2 0M11 14c0.5-1 1.5-1 2 0" stroke-linecap="round"/>
+                                <circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.5"/>
+                            </svg>
+                            <span class="planet-label">B</span>
+                        </button>
+                        <div class="planet-controls-panel" id="planet-b-panel">
+                            <div class="planet-control-header lava">Lava Planet</div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="b-noise-scale">
+                                    <span class="render-name">Noise Scale</span>
+                                    <span class="render-value" id="b-noise-scale-value">1.8</span>
+                                </label>
+                                <input type="range" id="b-noise-scale" class="render-slider" min="0.5" max="4" step="0.1" value="1.8">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="b-terrain-height">
+                                    <span class="render-name">Terrain Height</span>
+                                    <span class="render-value" id="b-terrain-height-value">0.6</span>
+                                </label>
+                                <input type="range" id="b-terrain-height" class="render-slider" min="0" max="3" step="0.1" value="0.6">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="b-land-roughness">
+                                    <span class="render-name">Rock Roughness</span>
+                                    <span class="render-value" id="b-land-roughness-value">0.75</span>
+                                </label>
+                                <input type="range" id="b-land-roughness" class="render-slider" min="0.1" max="1" step="0.05" value="0.75">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="b-normal-strength">
+                                    <span class="render-name">Normal Strength</span>
+                                    <span class="render-value" id="b-normal-strength-value">0.20</span>
+                                </label>
+                                <input type="range" id="b-normal-strength" class="render-slider" min="0" max="0.5" step="0.01" value="0.2">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="b-lava-intensity">
+                                    <span class="render-name">Lava Glow</span>
+                                    <span class="render-value" id="b-lava-intensity-value">3.0</span>
+                                </label>
+                                <input type="range" id="b-lava-intensity" class="render-slider" min="0" max="5" step="0.1" value="3.0">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="b-sea-level">
+                                    <span class="render-name">Lava Level</span>
+                                    <span class="render-value" id="b-sea-level-value">0.0</span>
+                                </label>
+                                <input type="range" id="b-sea-level" class="render-slider" min="-0.5" max="0.5" step="0.02" value="0">
+                            </div>
+                            <div class="planet-control-subheader">Atmosphere</div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="b-atmos-intensity">
+                                    <span class="render-name">Brightness</span>
+                                    <span class="render-value" id="b-atmos-intensity-value">0.8</span>
+                                </label>
+                                <input type="range" id="b-atmos-intensity" class="render-slider" min="0" max="10" step="0.1" value="0.8">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="b-atmos-thickness">
+                                    <span class="render-name">Radius</span>
+                                    <span class="render-value" id="b-atmos-thickness-value">2.0</span>
+                                </label>
+                                <input type="range" id="b-atmos-thickness" class="render-slider" min="1" max="3" step="0.01" value="2.0">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="b-atmos-power">
+                                    <span class="render-name">Density</span>
+                                    <span class="render-value" id="b-atmos-power-value">25.0</span>
+                                </label>
+                                <input type="range" id="b-atmos-power" class="render-slider" min="0.1" max="50" step="0.1" value="25.0">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="b-scatter-r">
+                                    <span class="render-name">Scatter R</span>
+                                    <span class="render-value" id="b-scatter-r-value">5.0</span>
+                                </label>
+                                <input type="range" id="b-scatter-r" class="render-slider" min="0" max="10" step="0.01" value="5.0">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="b-scatter-g">
+                                    <span class="render-name">Scatter G</span>
+                                    <span class="render-value" id="b-scatter-g-value">2.0</span>
+                                </label>
+                                <input type="range" id="b-scatter-g" class="render-slider" min="0" max="10" step="0.01" value="2.0">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="b-scatter-b">
+                                    <span class="render-name">Scatter B</span>
+                                    <span class="render-value" id="b-scatter-b-value">1.0</span>
+                                </label>
+                                <input type="range" id="b-scatter-b" class="render-slider" min="0" max="10" step="0.01" value="1.0">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="b-scatter-scale">
+                                    <span class="render-name">Scatter Scale</span>
+                                    <span class="render-value" id="b-scatter-scale-value">0.80</span>
+                                </label>
+                                <input type="range" id="b-scatter-scale" class="render-slider" min="0" max="20" step="0.1" value="0.8">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="b-sunset-strength">
+                                    <span class="render-name">Sunset</span>
+                                    <span class="render-value" id="b-sunset-strength-value">0.5</span>
+                                </label>
+                                <input type="range" id="b-sunset-strength" class="render-slider" min="0" max="1" step="0.01" value="0.5">
+                            </div>
+                            <button class="render-reset-btn" id="planet-b-reset-btn">Reset</button>
                         </div>
                     </div>
                     <!-- Light Controls Panel -->
@@ -326,6 +443,16 @@
                                     <input type="range" id="kelvin-slider-0" class="kelvin-slider" min="2000" max="15000" step="100" value="15000">
                                     <span class="star-class hot">O</span>
                                 </div>
+                                <div class="light-property-row">
+                                    <span class="light-property-label">Intensity</span>
+                                    <input type="range" id="intensity-slider-0" class="light-property-slider" min="0" max="3" step="0.1" value="1.0">
+                                    <span class="light-property-value" id="intensity-value-0">1.0</span>
+                                </div>
+                                <div class="light-property-row">
+                                    <span class="light-property-label">Attenuation</span>
+                                    <input type="range" id="attenuation-slider-0" class="light-property-slider" min="0.01" max="0.2" step="0.01" value="0.06">
+                                    <span class="light-property-value" id="attenuation-value-0">0.06</span>
+                                </div>
                             </div>
                             <div class="light-control-item kelvin-item">
                                 <div class="kelvin-label-row">
@@ -338,6 +465,16 @@
                                     <input type="range" id="kelvin-slider-1" class="kelvin-slider" min="2000" max="15000" step="100" value="2000">
                                     <span class="star-class hot">O</span>
                                 </div>
+                                <div class="light-property-row">
+                                    <span class="light-property-label">Intensity</span>
+                                    <input type="range" id="intensity-slider-1" class="light-property-slider" min="0" max="3" step="0.1" value="1.0">
+                                    <span class="light-property-value" id="intensity-value-1">1.0</span>
+                                </div>
+                                <div class="light-property-row">
+                                    <span class="light-property-label">Attenuation</span>
+                                    <input type="range" id="attenuation-slider-1" class="light-property-slider" min="0.01" max="0.2" step="0.01" value="0.06">
+                                    <span class="light-property-value" id="attenuation-value-1">0.06</span>
+                                </div>
                             </div>
                             <div class="light-control-item kelvin-item">
                                 <div class="kelvin-label-row">
@@ -349,6 +486,16 @@
                                     <span class="star-class cold">M</span>
                                     <input type="range" id="kelvin-slider-2" class="kelvin-slider" min="2000" max="15000" step="100" value="5000">
                                     <span class="star-class hot">O</span>
+                                </div>
+                                <div class="light-property-row">
+                                    <span class="light-property-label">Intensity</span>
+                                    <input type="range" id="intensity-slider-2" class="light-property-slider" min="0" max="3" step="0.1" value="1.0">
+                                    <span class="light-property-value" id="intensity-value-2">1.0</span>
+                                </div>
+                                <div class="light-property-row">
+                                    <span class="light-property-label">Attenuation</span>
+                                    <input type="range" id="attenuation-slider-2" class="light-property-slider" min="0.01" max="0.2" step="0.01" value="0.06">
+                                    <span class="light-property-value" id="attenuation-value-2">0.06</span>
                                 </div>
                             </div>
                             <div class="star-class-legend">

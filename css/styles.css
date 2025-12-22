@@ -891,11 +891,11 @@ header {
     top: 0.75rem;
     right: 0.75rem;
     display: flex;
-    gap: 0.25rem;
+    gap: 0.5rem;
     z-index: 10;
     background: rgba(21, 29, 38, 0.8);
-    padding: 0.25rem;
-    border-radius: 6px;
+    padding: 0.5rem;
+    border-radius: 12px;
     border: 1px solid var(--border-color);
 }
 
@@ -903,18 +903,18 @@ header {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 56px;
+    height: 56px;
     background: transparent;
     border: none;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
 .view-toggle-btn svg {
-    width: 16px;
-    height: 16px;
+    width: 32px;
+    height: 32px;
     stroke: var(--text-muted);
     transition: stroke 0.2s ease;
 }
@@ -962,11 +962,11 @@ header {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 64px;
+    height: 64px;
     background: rgba(21, 29, 38, 0.85);
     border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border-radius: 12px;
     cursor: pointer;
     transition: all 0.3s ease;
     backdrop-filter: blur(8px);
@@ -974,8 +974,8 @@ header {
 }
 
 .light-controls-toggle svg {
-    width: 18px;
-    height: 18px;
+    width: 36px;
+    height: 36px;
     stroke: var(--text-muted);
     transition: all 0.3s ease;
 }
@@ -1179,6 +1179,66 @@ header {
     box-shadow: 0 0 6px rgba(232, 185, 35, 0.4);
 }
 
+/* Light property sliders (intensity, attenuation) */
+.light-property-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+}
+
+.light-property-label {
+    min-width: 70px;
+    color: var(--text-secondary);
+}
+
+.light-property-slider {
+    flex: 1;
+    height: 3px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.light-property-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    border: 2px solid var(--accent-teal);
+    cursor: pointer;
+    box-shadow: 0 0 4px rgba(45, 212, 191, 0.4);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.light-property-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 8px rgba(45, 212, 191, 0.6);
+}
+
+.light-property-slider::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    border: 2px solid var(--accent-teal);
+    cursor: pointer;
+    box-shadow: 0 0 4px rgba(45, 212, 191, 0.4);
+}
+
+.light-property-value {
+    min-width: 35px;
+    text-align: right;
+    color: var(--accent-teal);
+    font-weight: 600;
+}
+
 .star-class-legend {
     display: flex;
     flex-direction: column;
@@ -1231,7 +1291,7 @@ header {
 .physics-controls {
     position: absolute;
     top: 0.75rem;
-    left: 3.25rem; /* Next to light controls */
+    left: 5.5rem; /* Next to light controls */
     z-index: 20;
 }
 
@@ -1239,11 +1299,11 @@ header {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 64px;
+    height: 64px;
     background: rgba(21, 29, 38, 0.85);
     border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border-radius: 12px;
     cursor: pointer;
     transition: all 0.3s ease;
     backdrop-filter: blur(8px);
@@ -1251,8 +1311,8 @@ header {
 }
 
 .physics-controls-toggle svg {
-    width: 18px;
-    height: 18px;
+    width: 36px;
+    height: 36px;
     stroke: var(--text-muted);
     transition: all 0.3s ease;
 }
@@ -1575,10 +1635,208 @@ header {
     border-color: var(--accent-teal-dim);
 }
 
+/* Planet Controls (A and B) */
+.planet-controls {
+    position: absolute;
+    top: 0.75rem;
+    z-index: 20;
+}
+
+.planet-controls.planet-a {
+    left: 10.25rem;
+}
+
+.planet-controls.planet-b {
+    left: 15rem;
+}
+
+.planet-controls-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    background: rgba(21, 29, 38, 0.85);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    position: relative;
+}
+
+.planet-controls-toggle svg {
+    width: 36px;
+    height: 36px;
+    stroke: var(--text-muted);
+    transition: all 0.3s ease;
+}
+
+.planet-label {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--bg-primary);
+    background: var(--text-muted);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.planet-a .planet-controls-toggle:hover,
+.planet-a.active .planet-controls-toggle {
+    border-color: var(--accent-teal-dim);
+    background: rgba(45, 212, 191, 0.1);
+}
+
+.planet-a .planet-controls-toggle:hover svg,
+.planet-a.active .planet-controls-toggle svg {
+    stroke: var(--accent-teal);
+}
+
+.planet-a .planet-controls-toggle:hover .planet-label,
+.planet-a.active .planet-label {
+    background: var(--accent-teal);
+}
+
+.planet-b .planet-controls-toggle:hover,
+.planet-b.active .planet-controls-toggle {
+    border-color: rgba(255, 140, 50, 0.5);
+    background: rgba(255, 140, 50, 0.1);
+}
+
+.planet-b .planet-controls-toggle:hover svg,
+.planet-b.active .planet-controls-toggle svg {
+    stroke: #ff8c32;
+}
+
+.planet-b .planet-controls-toggle:hover .planet-label,
+.planet-b.active .planet-label {
+    background: #ff8c32;
+}
+
+.planet-controls-panel {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    min-width: 200px;
+    max-height: 70vh;
+    overflow-y: auto;
+    background: rgba(21, 29, 38, 0.95);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.75rem;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px) scale(0.95);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+.planet-controls-panel::-webkit-scrollbar {
+    width: 4px;
+}
+
+.planet-controls-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.planet-controls-panel::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+.planet-controls.active .planet-controls-panel {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+}
+
+.planet-control-header {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent-teal);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.planet-control-header.lava {
+    color: #ff8c32;
+}
+
+.planet-control-subheader {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-top: 0.75rem;
+    margin-bottom: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.planet-b .render-slider::-webkit-slider-thumb {
+    background: #ff8c32;
+    box-shadow: 0 0 8px #ff8c32;
+}
+
+.planet-b .render-slider::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 12px #ff8c32;
+}
+
+.planet-b .render-slider::-moz-range-thumb {
+    background: #ff8c32;
+    box-shadow: 0 0 8px #ff8c32;
+}
+
+.planet-b .render-slider::-moz-range-thumb:hover {
+    box-shadow: 0 0 12px #ff8c32;
+}
+
+.planet-b .render-value {
+    color: #ff8c32;
+}
+
+.planet-b .render-reset-btn:hover {
+    color: #ff8c32;
+    background: rgba(255, 140, 50, 0.1);
+    border-color: rgba(255, 140, 50, 0.5);
+}
+
 @media (max-width: 900px) {
-    .render-controls {
-        top: 0.5rem;
+    .planet-controls.planet-a {
         left: 4.5rem;
+    }
+
+    .planet-controls.planet-b {
+        left: 6.75rem;
+    }
+
+    .planet-controls-panel {
+        max-height: 60vh;
+    }
+}
+
+@media (max-width: 900px) {
+    .physics-controls {
+        top: 0.5rem;
+        left: 2.5rem;
     }
 
     .physics-controls {
