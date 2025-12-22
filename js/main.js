@@ -175,6 +175,35 @@ const sphereFragmentShader = `
 
     #define PI 3.14159265
 
+    // Simplex noise for rocky texture
+    vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+    vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+    vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+
+    float snoise(vec2 v) {
+        const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+                           -0.577350269189626, 0.024390243902439);
+        vec2 i  = floor(v + dot(v, C.yy));
+        vec2 x0 = v - i + dot(i, C.xx);
+        vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+        vec4 x12 = x0.xyxy + C.xxzz;
+        x12.xy -= i1;
+        i = mod289(i);
+        vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
+        vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+        m = m*m;
+        m = m*m;
+        vec3 x = 2.0 * fract(p * C.www) - 1.0;
+        vec3 h = abs(x) - 0.5;
+        vec3 ox = floor(x + 0.5);
+        vec3 a0 = x - ox;
+        m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
+        vec3 g;
+        g.x = a0.x * x0.x + h.x * x0.y;
+        g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+        return 130.0 * dot(m, g);
+    }
+
     void main() {
         vec2 uv = vUV;
         float d = length(uv);
@@ -190,18 +219,73 @@ const sphereFragmentShader = `
         float atmosphereOuter = planetRadius + atmosphereThickness;
 
         if (vIsLight > 0.5) {
+            // Original sizing with flowing liquid effect
             float coreMask = 1.0 - smoothstep(0.0, 0.5, d);
             float glowMask = 1.0 - smoothstep(0.0, 1.0, d);
             float outerHalo = 0.03 / (d * d + 0.03);
+
+            // Spherical coordinates for flow
+            float zSq = 0.25 - d * d; // 0.5^2 = 0.25
+            float z = zSq > 0.0 ? sqrt(zSq) : 0.0;
+            vec3 sphereNormal = d < 0.5 ? normalize(vec3(uv, z)) : vec3(0.0, 0.0, 1.0);
+
+            // Simplex-like noise for organic flow
+            float flowT = t * 0.4;
+            vec2 flowUV = uv * 4.0;
+
+            // Organic noise layers (not regular sine patterns)
+            float n1 = sin(flowUV.x * 2.3 + flowUV.y * 1.7 + flowT) * cos(flowUV.y * 3.1 - flowT * 0.7);
+            float n2 = sin(flowUV.x * 1.1 - flowUV.y * 2.9 + flowT * 1.3 + 2.0) * cos(flowUV.x * 2.7 + flowT * 0.5);
+            float n3 = sin((flowUV.x + flowUV.y) * 1.9 + flowT * 0.9) * cos((flowUV.x - flowUV.y) * 2.3 - flowT * 0.6);
+
+            // Combine with varied weights for organic look
+            float flowNoise = n1 * 0.4 + n2 * 0.35 + n3 * 0.25;
+            flowNoise = flowNoise * 0.5 + 0.5; // Normalize to 0-1
+
+            // Create veins/channels of flowing liquid
+            float veins = pow(abs(sin(flowNoise * 6.28 + flowT)), 2.0);
+
+            // Hot spots where flow concentrates
+            float hotSpots = pow(flowNoise, 3.0);
+
+            // Slow vertical drift for gravity effect
+            float drift = sin(uv.x * 5.0 + flowT * 0.3) * 0.5 + 0.5;
+            drift *= smoothstep(-0.5, 0.3, -uv.y); // Stronger at bottom
+
+            // Combined liquid pattern
+            float liquid = flowNoise * 0.5 + veins * 0.3 + hotSpots * 0.2;
+            liquid = liquid + drift * 0.15;
+            liquid = clamp(liquid, 0.0, 1.0);
+
+            // Pulsing
             float pulse = sin(t * 2.0) * 0.5 + 0.5;
             float breathe = 0.85 + pulse * 0.15;
-            vec3 emissive = vColor * 1.5;
+
+            // Color: dark cracks -> glowing -> white hot
+            vec3 darkCol = vColor * 0.2;
+            vec3 glowCol = vColor * 1.4;
+            vec3 hotCol = vColor + vec3(0.4, 0.25, 0.1);
+            hotCol = min(hotCol, vec3(1.4));
+
+            vec3 emissive = mix(darkCol, glowCol, liquid);
+            emissive = mix(emissive, hotCol, hotSpots * 0.7);
+            emissive *= breathe;
+
+            // Fresnel rim
+            float NdV = max(dot(sphereNormal, vec3(0.0, 0.0, 1.0)), 0.0);
+            float rim = pow(1.0 - NdV, 2.5) * coreMask;
+            emissive += vColor * rim * 0.4;
+
+            // Final composition
             vec3 col = vec3(0.0);
-            col += emissive * coreMask * 2.0 * breathe;
-            col += emissive * glowMask * 0.8;
-            col += emissive * outerHalo * 0.6;
-            col += vColor * vGlow * 0.5;
+            col += emissive * coreMask * 1.8;
+            col += vColor * glowMask * 0.6 * (1.0 - coreMask * 0.8);
+            col += vColor * outerHalo * 0.5;
+            col += vColor * vGlow * 0.4;
+
+            // Tone mapping
             col = col / (col + vec3(0.5));
+
             float alpha = coreMask * 0.95 + glowMask * 0.5 + outerHalo * 0.4;
             alpha = clamp(alpha, 0.0, 1.0) * outerFade;
             alpha *= smoothstep(0.0, 0.5, ap) * vAlpha;
@@ -223,8 +307,18 @@ const sphereFragmentShader = `
         float planetMask = 1.0 - smoothstep(planetRadius - 0.0002, planetRadius, d);
         float zSq = planetRadius * planetRadius - d * d;
         float z = zSq > 0.0 ? sqrt(zSq) : 0.0;
-        vec3 N = d < planetRadius ? normalize(vec3(uv, z)) : vec3(0.0, 0.0, 1.0);
+        vec3 baseN = d < planetRadius ? normalize(vec3(uv, z)) : vec3(0.0, 0.0, 1.0);
         vec3 V = vec3(0.0, 0.0, 1.0);
+
+        // Rocky normal perturbation using simplex noise - large scale for small planets
+        vec2 noiseCoord = uv * 3.0 + vIndex * 10.0;
+        float eps = 0.08;
+        float nC = snoise(noiseCoord);
+        float nX = snoise(noiseCoord + vec2(eps, 0.0));
+        float nY = snoise(noiseCoord + vec2(0.0, eps));
+        float nx = (nX - nC) / eps * 0.05;
+        float ny = (nY - nC) / eps * 0.05;
+        vec3 N = normalize(baseN + vec3(nx, ny, 0.0) * planetMask);
 
         vec3 totalDiffuse = vec3(0.0);
         vec3 totalSpecular = vec3(0.0);
@@ -445,66 +539,107 @@ const sphereFragmentShader = `
         bgCard: '#151d26'
     };
 
+    // Color palette - brighter, more saturated for visibility:
+    // - Graphics APIs: Blue/purple family (distinct shades)
+    // - Unity ecosystem: Brighter teal variations
+    // - Unreal ecosystem: Vibrant orange/coral
+    // - Tools: Purple with good contrast
     const skills = [
-        { id: 'unity', label: 'Unity', category: 'primary', baseSize: 34, isLight: true, lightColor: '#ffaa33',
+        { id: 'unity', label: 'Unity', category: 'primary', baseSize: 34, isLight: true, lightColor: '#e8b923',
           desc: 'Primary game engine', usage: 'Daily since 2017 - shipped 12+ titles across mobile, PC, and VR platforms' },
-        { id: 'csharp', label: 'C#', category: 'primary', baseSize: 33, isLight: true, lightColor: '#9b4dca',
+        { id: 'csharp', label: 'C#', category: 'primary', baseSize: 33, isLight: true, lightColor: '#2dd4bf',
           desc: 'Main programming language', usage: '7+ years - gameplay systems, editor tools, and performance-critical code' },
-        { id: 'hlsl', label: 'HLSL/GLSL', category: 'primary', baseSize: 31, isLight: true, lightColor: '#33ddff',
+        { id: 'hlsl', label: 'HLSL/GLSL', category: 'primary', baseSize: 31, isLight: true, lightColor: '#E6319F',
           desc: 'Shader programming', usage: 'Custom rendering pipelines, VFX, post-processing, and compute shaders' },
-        { id: 'directx', label: 'DirectX', category: 'secondary', baseSize: 15,
+        // Graphics APIs - Blue/indigo family (brighter)
+        { id: 'directx', label: 'DirectX', category: 'secondary', baseSize: 15, color: '#5090e0',
           desc: 'Graphics API', usage: 'DX11/DX12 for Windows and Xbox development' },
-        { id: 'arvr', label: 'AR/VR', category: 'secondary', baseSize: 13,
-          desc: 'Immersive experiences', usage: 'Meta Quest, HoloLens, and mobile AR projects' },
-        { id: 'urp', label: 'URP/HDRP', category: 'secondary', baseSize: 13,
-          desc: 'Unity render pipelines', usage: 'Custom render features, shader graphs, and pipeline extensions' },
-        { id: 'opengl', label: 'OpenGL', category: 'secondary', baseSize: 14,
+        { id: 'opengl', label: 'OpenGL', category: 'secondary', baseSize: 14, color: '#5c7cfa',
           desc: 'Cross-platform graphics', usage: 'Mobile and Linux rendering targets' },
-        { id: 'unreal', label: 'Unreal', category: 'secondary', baseSize: 16,
-          desc: 'Secondary engine', usage: 'Blueprint systems and material editor for specific projects' },
-        { id: 'vulkan', label: 'Vulkan', category: 'secondary', baseSize: 15,
+        { id: 'vulkan', label: 'Vulkan', category: 'secondary', baseSize: 15, color: '#e04040',
           desc: 'Low-level graphics API', usage: 'Performance optimization on Android and Linux' },
-        { id: 'python', label: 'Python', category: 'secondary', baseSize: 14,
-          desc: 'Scripting & tools', usage: 'Build automation, asset pipelines, and data processing' },
-        { id: 'cpp', label: 'C++', category: 'secondary', baseSize: 8,
-          desc: 'Systems programming', usage: 'Native plugins, engine modifications, and Unreal development' },
-        { id: 'wpf', label: 'WPF', category: 'secondary', baseSize: 12,
-          desc: 'Desktop UI framework', usage: 'Internal tools and editors for game development' },
-        { id: 'compute', label: 'Compute', category: 'secondary', baseSize: 17,
-          desc: 'GPU compute shaders', usage: 'Particle simulations, procedural generation, and physics' },
-        { id: 'vfx', label: 'VFX Graph', category: 'secondary', baseSize: 12,
-          desc: 'Unity visual effects', usage: 'GPU-driven particle systems and real-time simulations' },
-        { id: 'niagara', label: 'Niagara', category: 'secondary', baseSize: 17,
-          desc: 'Unreal VFX system', usage: 'Complex particle effects for Unreal projects' },
-        { id: 'threejs', label: 'Three.js', category: 'secondary', baseSize: 8,
-          desc: 'WebGL framework', usage: 'Interactive 3D web experiences and visualizations' },
-        { id: 'webgl', label: 'WebGL', category: 'secondary', baseSize: 6,
+        { id: 'webgl', label: 'WebGL', category: 'secondary', baseSize: 6, color: '#74b9ff',
           desc: 'Browser graphics', usage: 'Custom shaders and real-time web graphics' },
-        { id: 'renderdoc', label: 'RenderDoc', category: 'tool', baseSize: 16,
+        // Unity ecosystem - Brighter teal/cyan shades
+        { id: 'urp', label: 'URP/HDRP', category: 'secondary', baseSize: 13, color: '#20d6c2',
+          desc: 'Unity render pipelines', usage: 'Custom render features, shader graphs, and pipeline extensions' },
+        { id: 'arvr', label: 'AR/VR', category: 'secondary', baseSize: 13, color: '#00d9b5',
+          desc: 'Immersive experiences', usage: 'Meta Quest, HoloLens, and mobile AR projects' },
+        { id: 'compute', label: 'Compute', category: 'secondary', baseSize: 17, color: '#38d9a9',
+          desc: 'GPU compute shaders', usage: 'Particle simulations, procedural generation, and physics' },
+        { id: 'wpf', label: 'WPF', category: 'secondary', baseSize: 12, color: '#63e6be',
+          desc: 'Desktop UI framework', usage: 'Internal tools and editors for game development' },
+        { id: 'vfx', label: 'VFX Graph', category: 'secondary', baseSize: 12, color: '#3bc9a5',
+          desc: 'Unity visual effects', usage: 'GPU-driven particle systems and real-time simulations' },
+        // Unreal ecosystem - Vibrant orange/coral
+        { id: 'unreal', label: 'Unreal', category: 'secondary', baseSize: 16, color: '#ff8c42',
+          desc: 'Secondary engine', usage: 'Blueprint systems and material editor for specific projects' },
+        { id: 'cpp', label: 'C++', category: 'secondary', baseSize: 8, color: '#6c8ebf',
+          desc: 'Systems programming', usage: 'Native plugins, engine modifications, and Unreal development' },
+        { id: 'niagara', label: 'Niagara', category: 'secondary', baseSize: 17, color: '#ffa066',
+          desc: 'Unreal VFX system', usage: 'Complex particle effects for Unreal projects' },
+        // Languages - Vibrant yellow
+        { id: 'python', label: 'Python', category: 'secondary', baseSize: 14, color: '#ffd43b',
+          desc: 'Scripting & tools', usage: 'Build automation, asset pipelines, and data processing' },
+        // Web - Bright cyan
+        { id: 'threejs', label: 'Three.js', category: 'secondary', baseSize: 8, color: '#66d9ef',
+          desc: 'WebGL framework', usage: 'Interactive 3D web experiences and visualizations' },
+        // Tools - Distinct purples and NVIDIA green
+        { id: 'renderdoc', label: 'RenderDoc', category: 'tool', baseSize: 16, color: '#b87fd8',
           desc: 'Graphics debugger', usage: 'Frame analysis and shader debugging' },
-        { id: 'nsight', label: 'NSight', category: 'tool', baseSize: 14,
+        { id: 'nsight', label: 'NSight', category: 'tool', baseSize: 14, color: '#76b900',
           desc: 'NVIDIA profiler', usage: 'GPU performance analysis and optimization' },
-        { id: 'pix', label: 'PIX', category: 'tool', baseSize: 6,
+        { id: 'pix', label: 'PIX', category: 'tool', baseSize: 6, color: '#9775fa',
           desc: 'DirectX debugger', usage: 'Windows and Xbox graphics debugging' }
     ];
 
     const BASE_DIMENSION = 400;
     let sizeScale = 1;
 
+    // Meaningful connections between related skills
     const connections = [
-        ['unity', 'csharp'], ['unity', 'hlsl'], ['unity', 'urp'], ['unity', 'arvr'],
-        ['unity', 'vfx'], ['unity', 'compute'],
-        ['csharp', 'wpf'], ['csharp', 'compute'],
-        ['hlsl', 'directx'], ['hlsl', 'opengl'], ['hlsl', 'vulkan'], ['hlsl', 'urp'],
-        ['directx', 'renderdoc'], ['directx', 'pix'], ['directx', 'nsight'],
-        ['opengl', 'vulkan'], ['opengl', 'webgl'],
-        ['unreal', 'cpp'], ['unreal', 'niagara'], ['unreal', 'hlsl'],
-        ['cpp', 'directx'], ['cpp', 'vulkan'],
-        ['compute', 'vfx'], ['compute', 'hlsl'],
-        ['threejs', 'webgl'], ['threejs', 'hlsl'],
-        ['arvr', 'urp'], ['arvr', 'compute'],
-        ['vfx', 'niagara'],
-        ['python', 'unity']
+        // Unity core ecosystem
+        ['unity', 'csharp'],
+        ['unity', 'hlsl'],
+        ['unity', 'urp'],
+        ['unity', 'vfx'],
+        ['unity', 'arvr'],
+        ['csharp', 'wpf'],
+        ['csharp', 'compute'],
+        ['urp', 'vfx'],
+        ['vfx', 'compute'],
+
+        // Shader languages connect to graphics APIs
+        ['hlsl', 'directx'],
+        ['hlsl', 'opengl'],
+        ['hlsl', 'vulkan'],
+        ['opengl', 'webgl'],
+        ['webgl', 'threejs'],
+
+        // Graphics APIs interconnected
+        ['directx', 'vulkan'],
+        ['opengl', 'vulkan'],
+
+        // Debugging/profiling tools connect to APIs
+        ['directx', 'pix'],
+        ['directx', 'renderdoc'],
+        ['vulkan', 'renderdoc'],
+        ['vulkan', 'nsight'],
+        ['renderdoc', 'nsight'],
+
+        // Unreal ecosystem
+        ['unreal', 'cpp'],
+        ['unreal', 'niagara'],
+        ['niagara', 'hlsl'],
+        ['cpp', 'vulkan'],
+
+        // Scripting/tooling
+        ['python', 'unity'],
+        ['python', 'unreal'],
+
+        // Cross-engine shader knowledge
+        ['hlsl', 'urp'],
+        ['compute', 'niagara']
     ];
 
     let nodes = skills.map((skill, i) => {
@@ -781,6 +916,7 @@ const sphereFragmentShader = `
 
             let c;
             if (n.isLight && n.lightColor) c = hex2vec(n.lightColor);
+            else if (n.color) c = hex2vec(n.color);
             else if (n.category === 'primary') c = hex2vec(colors.gold);
             else if (n.category === 'secondary') c = hex2vec(colors.teal);
             else c = hex2vec(colors.textMuted);
