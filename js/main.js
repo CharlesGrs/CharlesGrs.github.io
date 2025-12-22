@@ -1509,6 +1509,19 @@ const sphereFragmentShader = `
                 window.dispatchEvent(new Event('skillsTabActivated'));
                 window.dispatchEvent(new Event('resize'));
             }
+            // Lazy load portfolio videos when Portfolio tab is activated
+            if (panelId === 'portfolio') {
+                const portfolioPanel = document.getElementById('panel-portfolio');
+                if (portfolioPanel) {
+                    portfolioPanel.querySelectorAll('video[data-src]').forEach(video => {
+                        if (!video.src) {
+                            video.src = video.dataset.src;
+                            video.load();
+                            video.play().catch(() => {}); // Ignore autoplay errors
+                        }
+                    });
+                }
+            }
         });
     });
 })();
