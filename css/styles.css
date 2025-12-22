@@ -1096,6 +1096,116 @@ header {
     border-radius: 4px;
 }
 
+/* Kelvin Temperature Slider Styles */
+.kelvin-item {
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.kelvin-label-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.kelvin-value {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--accent-gold);
+    min-width: 48px;
+    text-align: right;
+}
+
+.kelvin-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    width: 100%;
+}
+
+.star-class {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.55rem;
+    font-weight: 600;
+    width: 12px;
+    text-align: center;
+}
+
+.star-class.cold {
+    color: #ff6030;
+}
+
+.star-class.hot {
+    color: #aaccff;
+}
+
+.kelvin-slider {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: linear-gradient(to right, #ff3300, #ff6030, #ffaa44, #ffcc66, #fff4e0, #ffffff, #cce0ff, #aaccff);
+    border-radius: 2px;
+    cursor: pointer;
+}
+
+.kelvin-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    border: 2px solid var(--accent-gold);
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(232, 185, 35, 0.4);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.kelvin-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 10px rgba(232, 185, 35, 0.6);
+}
+
+.kelvin-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    border: 2px solid var(--accent-gold);
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(232, 185, 35, 0.4);
+}
+
+.star-class-legend {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.star-class-legend > span:first-child {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.55rem;
+    font-weight: 600;
+    letter-spacing: 0.35em;
+    background: linear-gradient(to right, #ff3300, #ff6030, #ffaa44, #ffcc66, #fff4e0, #ffffff, #aaccff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.star-class-legend .legend-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.5rem;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+}
+
 .light-reset-btn {
     width: 100%;
     margin-top: 0.75rem;
@@ -1117,23 +1227,387 @@ header {
     border-color: var(--text-muted);
 }
 
+/* Physics Controls */
+.physics-controls {
+    position: absolute;
+    top: 0.75rem;
+    left: 3.25rem; /* Next to light controls */
+    z-index: 20;
+}
+
+.physics-controls-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: rgba(21, 29, 38, 0.85);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.physics-controls-toggle svg {
+    width: 18px;
+    height: 18px;
+    stroke: var(--text-muted);
+    transition: all 0.3s ease;
+}
+
+.physics-controls-toggle:hover {
+    border-color: var(--accent-teal-dim);
+    background: rgba(45, 212, 191, 0.1);
+}
+
+.physics-controls-toggle:hover svg {
+    stroke: var(--accent-teal);
+}
+
+.physics-controls.active .physics-controls-toggle {
+    border-color: var(--accent-teal);
+    background: rgba(45, 212, 191, 0.15);
+}
+
+.physics-controls.active .physics-controls-toggle svg {
+    stroke: var(--accent-teal);
+}
+
+.physics-controls-panel {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    min-width: 200px;
+    background: rgba(21, 29, 38, 0.95);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.75rem;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px) scale(0.95);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+.physics-controls.active .physics-controls-panel {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+}
+
+.physics-control-header {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.physics-control-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.35rem 0;
+}
+
+.physics-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+}
+
+.physics-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    transition: color 0.2s ease;
+}
+
+.physics-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--accent-teal);
+    min-width: 50px;
+    text-align: right;
+}
+
+.physics-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    cursor: pointer;
+}
+
+.physics-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent-teal);
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(45, 212, 191, 0.5);
+    transition: all 0.2s ease;
+}
+
+.physics-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 12px rgba(45, 212, 191, 0.8);
+}
+
+.physics-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: none;
+    border-radius: 50%;
+    background: var(--accent-teal);
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(45, 212, 191, 0.5);
+}
+
+.physics-reset-btn {
+    width: 100%;
+    margin-top: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.physics-reset-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--text-muted);
+}
+
+/* Render Controls */
+.render-controls {
+    position: absolute;
+    top: 0.75rem;
+    left: 5.75rem; /* Next to physics controls */
+    z-index: 20;
+}
+
+.render-controls-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: rgba(21, 29, 38, 0.85);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.render-controls-toggle svg {
+    width: 18px;
+    height: 18px;
+    stroke: var(--text-muted);
+    transition: all 0.3s ease;
+}
+
+.render-controls-toggle:hover {
+    border-color: var(--accent-teal-dim);
+    background: rgba(45, 212, 191, 0.1);
+}
+
+.render-controls-toggle:hover svg {
+    stroke: var(--accent-teal);
+}
+
+.render-controls.active .render-controls-toggle {
+    border-color: var(--accent-teal);
+    background: rgba(45, 212, 191, 0.15);
+}
+
+.render-controls.active .render-controls-toggle svg {
+    stroke: var(--accent-teal);
+}
+
+.render-controls-panel {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    min-width: 220px;
+    background: rgba(21, 29, 38, 0.95);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.75rem;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px) scale(0.95);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+.render-controls.active .render-controls-panel {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+}
+
+.render-control-header {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.render-control-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.4rem 0;
+}
+
+.render-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+}
+
+.render-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    transition: color 0.2s ease;
+}
+
+.render-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--accent-teal);
+    min-width: 2.5rem;
+    text-align: right;
+}
+
+.render-slider {
+    width: 100%;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.render-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    background: var(--accent-teal);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 8px var(--accent-teal);
+}
+
+.render-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 12px var(--accent-teal);
+}
+
+.render-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background: var(--accent-teal);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 8px var(--accent-teal);
+}
+
+.render-slider::-moz-range-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 12px var(--accent-teal);
+}
+
+.render-reset-btn {
+    width: 100%;
+    margin-top: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.render-reset-btn:hover {
+    color: var(--accent-teal);
+    background: rgba(45, 212, 191, 0.1);
+    border-color: var(--accent-teal-dim);
+}
+
 @media (max-width: 900px) {
+    .render-controls {
+        top: 0.5rem;
+        left: 4.5rem;
+    }
+
+    .physics-controls {
+        top: 0.5rem;
+        left: 2.5rem;
+    }
+
     .light-controls {
         top: 0.5rem;
         left: 0.5rem;
     }
 
-    .light-controls-toggle {
+    .light-controls-toggle,
+    .physics-controls-toggle,
+    .render-controls-toggle {
         width: 28px;
         height: 28px;
     }
 
-    .light-controls-toggle svg {
+    .light-controls-toggle svg,
+    .physics-controls-toggle svg,
+    .render-controls-toggle svg {
         width: 14px;
         height: 14px;
     }
 
-    .light-controls-panel {
+    .light-controls-panel,
+    .physics-controls-panel,
+    .render-controls-panel {
         min-width: 160px;
         padding: 0.6rem;
     }

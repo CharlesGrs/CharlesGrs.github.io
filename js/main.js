@@ -7,6 +7,41 @@
 let cachedWindowWidth = window.innerWidth;
 let cachedWindowHeight = window.innerHeight;
 
+// ============================================
+// RENDER PARAMETERS (UI-controllable)
+// ============================================
+const renderParams = {
+    noiseScale: 1.8,        // Terrain noise scale (lower = bigger features)
+    terrainHeight: 1.0,     // Terrain displacement strength
+    atmosIntensity: 1.0,    // Atmosphere brightness
+    atmosThickness: 1.0,    // Atmosphere thickness/falloff
+    atmosPower: 1.0,        // Atmosphere density power/falloff curve
+    scatterR: 1.0,          // Red channel scattering coefficient
+    scatterG: 2.5,          // Green channel scattering coefficient
+    scatterB: 5.5,          // Blue channel scattering coefficient
+    scatterScale: 0.5,     // Optical depth multiplier (controls gradient range)
+    sunsetStrength: 1.0,   // How much shadow affects scattering (sunset effect)
+    lavaIntensity: 1.0,     // Lava emission intensity
+    oceanRoughness: 0.3,    // Ocean roughness (0=mirror, 1=matte)
+    sssIntensity: 1.0,      // Subsurface scattering intensity
+    seaLevel: 0.0,          // Sea level offset
+    parallaxStrength: 1.0   // 3D parallax effect strength (0=off, 1=normal)
+};
+
+// Physics parameters (UI-controllable)
+const physicsParams = {
+    springStrength: 0.005,     // Connection spring strength
+    rotationForce: 0.0001,     // Rotation around connection centroid
+    separationZone: 2.0,       // Separation distance multiplier
+    separationForce: 0.5,      // Collision separation force
+    damping: 0.96,             // Velocity damping (friction)
+    maxSpeed: 1.5,             // Maximum velocity
+    centerPull: 0.0003,        // How strongly suns are pulled to center
+    repelStrength: 20.0,       // Unconnected planet repulsion
+    sunRepel: 1.0,             // Sun-to-sun repulsion
+    mouseAttraction: 0.008     // How strongly nodes are attracted to mouse
+};
+
 // Update cache on resize (debounced elsewhere)
 window.addEventListener('resize', () => {
     cachedWindowWidth = window.innerWidth;
@@ -90,8 +125,10 @@ const backgroundFragmentShader = `
 const particleVertexShader = `
     uniform float uTime;
     uniform float uPixelRatio;
+    uniform vec2 uParallax;
     attribute float aScale;
     attribute float aSpeed;
+    attribute float aDepth;
     varying float vAlpha;
 
     void main() {
@@ -99,6 +136,11 @@ const particleVertexShader = `
         pos.x += sin(uTime * aSpeed * 0.5 + position.y * 2.0) * 0.02;
         pos.y += mod(uTime * aSpeed * 0.1, 2.0) - 1.0;
         pos.y = mod(pos.y + 1.0, 2.0) - 1.0;
+
+        // Apply parallax based on depth - far particles move less
+        float parallaxFactor = 0.1 + aDepth * 0.9; // Far=10%, Near=100%
+        pos.xy += uParallax * parallaxFactor;
+
         gl_Position = vec4(pos, 1.0);
         gl_PointSize = aScale * uPixelRatio * 3.0;
         vAlpha = smoothstep(1.0, 0.7, abs(pos.y)) * 0.4;
@@ -115,578 +157,18 @@ const particleFragmentShader = `
     }
 `;
 
-// Skill Sphere WebGL Shaders
-const sphereVertexShader = `
-    attribute vec2 aPos;
-    attribute vec2 aCenter;
-    attribute float aRadius;
-    attribute vec3 aColor;
-    attribute float aAlpha;
-    attribute float aAppear;
-    attribute float aGlow;
-    attribute float aIndex;
-    attribute float aIsLight;
-    varying vec2 vUV;
-    varying vec2 vCenter;
-    varying float vRadius;
-    varying vec3 vColor;
-    varying float vAlpha;
-    varying float vAppear;
-    varying float vGlow;
-    varying float vIndex;
-    varying float vIsLight;
-    uniform vec2 uRes;
-    void main() {
-        vUV = aPos;
-        vCenter = aCenter;
-        vRadius = aRadius;
-        vColor = aColor;
-        vAlpha = aAlpha;
-        vAppear = aAppear;
-        vGlow = aGlow;
-        vIndex = aIndex;
-        vIsLight = aIsLight;
-        vec2 p = aCenter + aPos * aRadius * 3.0;
-        vec2 c = (p / uRes) * 2.0 - 1.0;
-        gl_Position = vec4(c.x, -c.y, 0.0, 1.0);
-    }
-`;
-
-const sphereFragmentShader = `
-    precision highp float;
-    varying vec2 vUV;
-    varying vec2 vCenter;
-    varying float vRadius;
-    varying vec3 vColor;
-    varying float vAlpha;
-    varying float vAppear;
-    varying float vGlow;
-    varying float vIndex;
-    varying float vIsLight;
-    uniform vec2 uRes;
-    uniform vec2 uMouse;
-    uniform float uTime;
-    uniform vec2 uLight0;
-    uniform vec2 uLight1;
-    uniform vec2 uLight2;
-    uniform vec3 uLightColor0;
-    uniform vec3 uLightColor1;
-    uniform vec3 uLightColor2;
-
-    #define PI 3.14159265
-
-    // Simplex noise for rocky texture
-    vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-    vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-    vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
-
-    float snoise(vec2 v) {
-        const vec4 C = vec4(0.211324865405187, 0.366025403784439,
-                           -0.577350269189626, 0.024390243902439);
-        vec2 i  = floor(v + dot(v, C.yy));
-        vec2 x0 = v - i + dot(i, C.xx);
-        vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-        vec4 x12 = x0.xyxy + C.xxzz;
-        x12.xy -= i1;
-        i = mod289(i);
-        vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
-        vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
-        m = m*m;
-        m = m*m;
-        vec3 x = 2.0 * fract(p * C.www) - 1.0;
-        vec3 h = abs(x) - 0.5;
-        vec3 ox = floor(x + 0.5);
-        vec3 a0 = x - ox;
-        m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
-        vec3 g;
-        g.x = a0.x * x0.x + h.x * x0.y;
-        g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-        return 130.0 * dot(m, g);
-    }
-
-    void main() {
-        vec2 uv = vUV;
-        float d = length(uv);
-        float animOffset = vIndex * 0.5;
-        float t = uTime + animOffset;
-        float ap = clamp(vAppear, 0.0, 1.0);
-        float scaledD = d / max(ap, 0.001);
-        float outerFade = 1.0 - smoothstep(1.2, 1.45, scaledD);
-        if (outerFade < 0.001) discard;
-
-        float planetRadius = 0.40;
-        float atmosphereThickness = 0.65;
-        float atmosphereOuter = planetRadius + atmosphereThickness;
-
-        if (vIsLight > 0.5) {
-            // Original sizing with flowing liquid effect
-            float coreMask = 1.0 - smoothstep(0.0, 0.5, d);
-            float glowMask = 1.0 - smoothstep(0.0, 1.0, d);
-            float outerHalo = 0.03 / (d * d + 0.03);
-
-            // Spherical coordinates for flow
-            float zSq = 0.25 - d * d; // 0.5^2 = 0.25
-            float z = zSq > 0.0 ? sqrt(zSq) : 0.0;
-            vec3 sphereNormal = d < 0.5 ? normalize(vec3(uv, z)) : vec3(0.0, 0.0, 1.0);
-
-            // Simplex-like noise for organic flow
-            float flowT = t * 0.4;
-            vec2 flowUV = uv * 4.0;
-
-            // Organic noise layers (not regular sine patterns)
-            float n1 = sin(flowUV.x * 2.3 + flowUV.y * 1.7 + flowT) * cos(flowUV.y * 3.1 - flowT * 0.7);
-            float n2 = sin(flowUV.x * 1.1 - flowUV.y * 2.9 + flowT * 1.3 + 2.0) * cos(flowUV.x * 2.7 + flowT * 0.5);
-            float n3 = sin((flowUV.x + flowUV.y) * 1.9 + flowT * 0.9) * cos((flowUV.x - flowUV.y) * 2.3 - flowT * 0.6);
-
-            // Combine with varied weights for organic look
-            float flowNoise = n1 * 0.4 + n2 * 0.35 + n3 * 0.25;
-            flowNoise = flowNoise * 0.5 + 0.5; // Normalize to 0-1
-
-            // Create veins/channels of flowing liquid
-            float veins = pow(abs(sin(flowNoise * 6.28 + flowT)), 2.0);
-
-            // Hot spots where flow concentrates
-            float hotSpots = pow(flowNoise, 3.0);
-
-            // Slow vertical drift for gravity effect
-            float drift = sin(uv.x * 5.0 + flowT * 0.3) * 0.5 + 0.5;
-            drift *= smoothstep(-0.5, 0.3, -uv.y); // Stronger at bottom
-
-            // Combined liquid pattern
-            float liquid = flowNoise * 0.5 + veins * 0.3 + hotSpots * 0.2;
-            liquid = liquid + drift * 0.15;
-            liquid = clamp(liquid, 0.0, 1.0);
-
-            // Pulsing
-            float pulse = sin(t * 2.0) * 0.5 + 0.5;
-            float breathe = 0.85 + pulse * 0.15;
-
-            // Color: dark cracks -> glowing -> white hot
-            vec3 darkCol = vColor * 0.2;
-            vec3 glowCol = vColor * 1.4;
-            vec3 hotCol = vColor + vec3(0.4, 0.25, 0.1);
-            hotCol = min(hotCol, vec3(1.4));
-
-            vec3 emissive = mix(darkCol, glowCol, liquid);
-            emissive = mix(emissive, hotCol, hotSpots * 0.7);
-            emissive *= breathe;
-
-            // Fresnel rim
-            float NdV = max(dot(sphereNormal, vec3(0.0, 0.0, 1.0)), 0.0);
-            float rim = pow(1.0 - NdV, 2.5) * coreMask;
-            emissive += vColor * rim * 0.4;
-
-            // Final composition
-            vec3 col = vec3(0.0);
-            col += emissive * coreMask * 1.8;
-            col += vColor * glowMask * 0.6 * (1.0 - coreMask * 0.8);
-            col += vColor * outerHalo * 0.5;
-            col += vColor * vGlow * 0.4;
-
-            // Tone mapping
-            col = col / (col + vec3(0.5));
-
-            // Full alpha including glow for proper blending
-            float alpha = coreMask * 0.95 + glowMask * 0.5 + outerHalo * 0.4;
-            alpha = clamp(alpha, 0.0, 1.0) * outerFade;
-            alpha *= smoothstep(0.0, 0.5, ap) * vAlpha;
-
-            // Standard alpha blending output (not premultiplied)
-            gl_FragColor = vec4(col, alpha);
-            return;
-        }
-
-        float varSeed = vIndex * 1.618;
-        vec3 planetColor = vColor;
-        float hueShift = sin(varSeed) * 0.1;
-        planetColor.r += hueShift;
-        planetColor.g += hueShift;
-        planetColor.b -= hueShift;
-        float satVar = cos(varSeed * 2.3) * 0.5;
-        vec3 gray = vec3(dot(planetColor, vec3(0.299, 0.587, 0.114)));
-        planetColor = mix(planetColor, gray, .8);
-        planetColor *= 0.9 + sin(varSeed * 3.7) * 0.15;
-
-        // ========================================
-        // TERRAIN HEIGHTMAP - computed first to deform planet shape
-        // ========================================
-        vec2 heightCoord = uv * 2.5 + vIndex * 10.0;
-        float eps = 0.06;
-
-        // Biome type based on planet index (cycles through 3 types)
-        // 0 = Oceanic (lots of water, green land)
-        // 1 = Desert (little water, sand everywhere)
-        // 2 = Mountain/Ice (moderate water, ice on peaks)
-        float biomeSelector = mod(vIndex, 3.0);
-        float isOceanic = step(0.5, 1.0 - abs(biomeSelector - 0.0));
-        float isDesert = step(0.5, 1.0 - abs(biomeSelector - 1.0));
-        float isMountain = step(0.5, 1.0 - abs(biomeSelector - 2.0));
-
-        // Multi-octave height for terrain - large continental shapes + detail
-        float heightC = snoise(heightCoord) * 0.6
-                      + snoise(heightCoord * 2.0 + 1.5) * 0.25
-                      + snoise(heightCoord * 4.0 + 3.0) * 0.15;
-        float heightX = snoise(heightCoord + vec2(eps, 0.0)) * 0.6
-                      + snoise((heightCoord + vec2(eps, 0.0)) * 2.0 + 1.5) * 0.25
-                      + snoise((heightCoord + vec2(eps, 0.0)) * 4.0 + 3.0) * 0.15;
-        float heightY = snoise(heightCoord + vec2(0.0, eps)) * 0.6
-                      + snoise((heightCoord + vec2(0.0, eps)) * 2.0 + 1.5) * 0.25
-                      + snoise((heightCoord + vec2(0.0, eps)) * 4.0 + 3.0) * 0.15;
-
-        // Sea level varies per biome
-        // Oceanic: low sea level = more water
-        // Desert: very low sea level = almost no water (just oases)
-        // Mountain: medium sea level = moderate water
-        float seaLevel = -0.05 * isOceanic + -0.45 * isDesert + 0.0 * isMountain;
-        float oceanMask = smoothstep(seaLevel + 0.08, seaLevel - 0.02, heightC);
-
-        // Deform planet radius based on terrain height
-        // Higher terrain = larger radius (mountains bulge out)
-        // Clamp land height to positive values for displacement
-        float landHeight = max(heightC - seaLevel, 0.0);
-
-        // Mountain biome: apply power function for sharper peaks but clamped to stay within bounds
-        float mountainHeight = pow(min(landHeight, 0.6) * 1.2, 1.8) * 0.08; // Clamped exponential for sharp but contained peaks
-        float normalHeight = landHeight * 0.04;
-        float terrainDisplacement = normalHeight * (1.0 - isMountain) + mountainHeight * isMountain;
-        // Clamp maximum displacement to 15% of planet radius
-        terrainDisplacement = min(terrainDisplacement, planetRadius * 0.15);
-        float deformedRadius = planetRadius + terrainDisplacement;
-
-        // Planet mask with height-deformed edge
-        float planetMask = 1.0 - smoothstep(deformedRadius - 0.003, deformedRadius + 0.001, d);
-        float zSq = planetRadius * planetRadius - d * d;
-        float z = zSq > 0.0 ? sqrt(zSq) : 0.0;
-        vec3 baseN = d < deformedRadius ? normalize(vec3(uv, z)) : vec3(0.0, 0.0, 1.0);
-        vec3 V = vec3(0.0, 0.0, 1.0);
-
-        // Compute terrain normals from heightmap gradient
-        // Flip sign so higher terrain creates outward-facing normals
-        // Mountain biome gets stronger normals for dramatic peaks
-        float normalStrength = 0.12 * (1.0 - isMountain) + 0.35 * isMountain;
-        float terrainNx = -(heightX - heightC) / eps * normalStrength;
-        float terrainNy = -(heightY - heightC) / eps * normalStrength;
-
-        // Ocean wave normal deformation - subtle animated ripples
-        vec2 waveCoord = uv * 12.0 + vIndex * 5.0;
-        float waveSpeed = t * 0.2;
-        float wave1 = snoise(waveCoord + vec2(waveSpeed, waveSpeed * 0.7));
-        float wave2 = snoise(waveCoord * 1.3 - vec2(waveSpeed * 0.6, waveSpeed * 0.9) + 2.5);
-        float waveEps = 0.03;
-        float waveC = (wave1 + wave2 * 0.6);
-        float waveX = snoise(waveCoord + vec2(waveEps, 0.0) + vec2(waveSpeed, waveSpeed * 0.7))
-                    + snoise((waveCoord + vec2(waveEps, 0.0)) * 1.3 - vec2(waveSpeed * 0.6, waveSpeed * 0.9) + 2.5) * 0.6;
-        float waveY = snoise(waveCoord + vec2(0.0, waveEps) + vec2(waveSpeed, waveSpeed * 0.7))
-                    + snoise((waveCoord + vec2(0.0, waveEps)) * 1.3 - vec2(waveSpeed * 0.6, waveSpeed * 0.9) + 2.5) * 0.6;
-        float waveNx = (waveX - waveC) / waveEps * 0.012;
-        float waveNy = (waveY - waveC) / waveEps * 0.012;
-
-        // Land uses terrain heightmap normals, ocean uses flat base + subtle waves
-        vec3 landNormal = baseN + vec3(terrainNx, terrainNy, 0.0);
-        vec3 oceanNormal = baseN + vec3(waveNx, waveNy, 0.0);
-        vec3 N = normalize(mix(landNormal, oceanNormal, oceanMask) * planetMask + baseN * (1.0 - planetMask));
-
-        vec3 totalDiffuse = vec3(0.0);
-        vec3 totalSpecular = vec3(0.0);
-        float totalAttenuation = 0.0;
-
-        vec2 mouseOffset = (uMouse - vCenter);
-        vec3 mouseLightPos = vec3(mouseOffset / uRes.x * 4.0, 0.3);
-        vec3 mouseL = normalize(mouseLightPos);
-        float mouseDist = length(mouseLightPos);
-        float mouseAtten = 0.08 / (mouseDist * mouseDist + 0.01);
-        mouseAtten = min(mouseAtten, 2.0);
-        float mouseNdL = max(dot(N, mouseL), 0.0);
-        vec3 mouseH = normalize(mouseL + V);
-        float mouseNdH = max(dot(N, mouseH), 0.0);
-        totalDiffuse += vec3(1.0) * mouseNdL * mouseAtten;
-        totalSpecular += vec3(1.0) * pow(mouseNdH, 32.0) * mouseAtten;
-        totalAttenuation += mouseAtten;
-
-        vec2 light0Offset = (uLight0 - vCenter);
-        vec3 light0Pos = vec3(light0Offset / uRes.x * 3.0, 0.1);
-        vec3 L0 = normalize(light0Pos);
-        float dist0 = length(light0Pos);
-        float atten0 = 0.06 / (dist0 * dist0 + 0.02);
-        atten0 = min(atten0, 1.5);
-        float NdL0 = max(dot(N, L0), 0.0);
-        vec3 H0 = normalize(L0 + V);
-        float NdH0 = max(dot(N, H0), 0.0);
-        totalDiffuse += uLightColor0 * NdL0 * atten0;
-        totalSpecular += uLightColor0 * pow(NdH0, 32.0) * atten0;
-        totalAttenuation += atten0;
-
-        vec2 light1Offset = (uLight1 - vCenter);
-        vec3 light1Pos = vec3(light1Offset / uRes.x * 3.0, 0.1);
-        vec3 L1 = normalize(light1Pos);
-        float dist1 = length(light1Pos);
-        float atten1 = 0.06 / (dist1 * dist1 + 0.02);
-        atten1 = min(atten1, 1.5);
-        float NdL1 = max(dot(N, L1), 0.0);
-        vec3 H1 = normalize(L1 + V);
-        float NdH1 = max(dot(N, H1), 0.0);
-        totalDiffuse += uLightColor1 * NdL1 * atten1;
-        totalSpecular += uLightColor1 * pow(NdH1, 32.0) * atten1;
-        totalAttenuation += atten1;
-
-        vec2 light2Offset = (uLight2 - vCenter);
-        vec3 light2Pos = vec3(light2Offset / uRes.x * 3.0, 0.1);
-        vec3 L2 = normalize(light2Pos);
-        float dist2 = length(light2Pos);
-        float atten2 = 0.06 / (dist2 * dist2 + 0.02);
-        atten2 = min(atten2, 1.5);
-        float NdL2 = max(dot(N, L2), 0.0);
-        vec3 H2 = normalize(L2 + V);
-        float NdH2 = max(dot(N, H2), 0.0);
-        totalDiffuse += uLightColor2 * NdL2 * atten2;
-        totalSpecular += uLightColor2 * pow(NdH2, 32.0) * atten2;
-        totalAttenuation += atten2;
-
-        float NdV = max(dot(N, V), 0.0);
-
-        // ========================================
-        // ATMOSPHERIC SCATTERING
-        // ========================================
-        // Atmosphere extends from planet center outward with smooth falloff
-        float atmosOuter = planetRadius + 0.35;
-
-        // Calculate light contributions for atmosphere
-        vec3 lightContrib = vec3(0.0);
-        vec2 pixelDir = d > 0.001 ? normalize(uv) : vec2(0.0, 1.0);
-
-        // Directional scattering from each light
-        vec2 l0dir = normalize(uLight0 - vCenter);
-        float l0dot = dot(pixelDir, l0dir) * 0.5 + 0.5;
-        lightContrib += uLightColor0 * l0dot * atten0;
-
-        vec2 l1dir = normalize(uLight1 - vCenter);
-        float l1dot = dot(pixelDir, l1dir) * 0.5 + 0.5;
-        lightContrib += uLightColor1 * l1dot * atten1;
-
-        vec2 l2dir = normalize(uLight2 - vCenter);
-        float l2dot = dot(pixelDir, l2dir) * 0.5 + 0.5;
-        lightContrib += uLightColor2 * l2dot * atten2;
-
-        vec2 mdir = normalize(uMouse - vCenter);
-        float mdot = dot(pixelDir, mdir) * 0.5 + 0.5;
-        lightContrib += vec3(1.0) * mdot * mouseAtten * 0.5;
-
-        // Rayleigh scattering - blue tint
-        vec3 rayleighColor = vec3(0.4, 0.6, 1.0);
-        vec3 scatterColor = lightContrib * rayleighColor;
-
-        // Atmosphere density based on distance from center
-        // Uses smooth falloff that works both inside and outside planet
-        float atmosStrength = 0.0;
-
-        // Limb factor - smooth gradient from center to edge
-        // Uses a very gradual curve to avoid harsh transitions
-        float normalizedDist = d / planetRadius;
-
-        // Smooth limb glow that gradually increases toward edge
-        // Starts very faint from center and builds up smoothly
-        float limbFactor = 0.0;
-        if (d < atmosOuter) {
-            // Cubic curve for very smooth inner transition
-            limbFactor = smoothstep(0.0, 1.0, normalizedDist);
-            limbFactor = limbFactor * limbFactor; // Square for smoother falloff from center
-        }
-
-        // Atmosphere shell outside the planet
-        if (d > planetRadius) {
-            float shellDist = (d - planetRadius) / (atmosOuter - planetRadius);
-            // Exponential falloff from planet surface
-            atmosStrength = exp(-shellDist * 3.0);
-            // Add limb glow contribution
-            atmosStrength += limbFactor * 0.4;
-        }
-        // Inside planet - very gradual atmosphere rim
-        else {
-            // Smooth cubic ramp that peaks at the edge
-            float innerFade = smoothstep(0.3, 1.0, normalizedDist);
-            atmosStrength = limbFactor * innerFade * 0.6;
-        }
-
-        // Soft outer glow beyond main atmosphere
-        float outerGlow = 0.0;
-        if (d > atmosOuter) {
-            float glowDist = d - atmosOuter;
-            outerGlow = exp(-glowDist * 7.0) * 0.4;
-            atmosStrength += outerGlow;
-        }
-
-        vec3 atmosColor = scatterColor * atmosStrength * 1.2;
-        float atmosAlpha = atmosStrength * 0.7;
-
-        // ========================================
-        // PLANET SURFACE RENDERING
-        // ========================================
-        vec3 col = vec3(0.0);
-
-        // Ocean color - deep blue with depth variation based on terrain height
-        vec3 oceanColor = vec3(0.05, 0.15, 0.35);
-        float oceanDepth = smoothstep(seaLevel - 0.3, seaLevel, heightC);
-        oceanColor = mix(vec3(0.02, 0.08, 0.2), vec3(0.1, 0.25, 0.45), oceanDepth);
-
-        // ========================================
-        // BIOME-SPECIFIC SURFACE COLORS
-        // ========================================
-
-        // --- OCEANIC BIOME: Green land with white sand beaches ---
-        vec3 oceanicLand = vec3(0.15, 0.45, 0.2);
-        oceanicLand = mix(oceanicLand, vec3(0.1, 0.35, 0.15), smoothstep(0.1, 0.4, heightC));
-        vec3 oceanicSand = vec3(0.95, 0.9, 0.75);
-        float oceanicSandMask = smoothstep(seaLevel, seaLevel + 0.03, heightC) * smoothstep(seaLevel + 0.08, seaLevel + 0.03, heightC);
-        vec3 oceanicSurface = mix(oceanicLand, oceanicSand, oceanicSandMask);
-
-        // --- DESERT BIOME: Sand everywhere with rocky outcrops ---
-        vec3 desertSand = vec3(0.85, 0.7, 0.45); // Golden sand base
-        vec3 desertRock = vec3(0.55, 0.4, 0.3);  // Brown rocky areas
-        vec3 desertDark = vec3(0.7, 0.55, 0.35); // Darker sand in valleys
-        // Blend based on height - valleys are darker sand, peaks are rocky
-        float rockMask = smoothstep(0.2, 0.5, heightC);
-        vec3 desertSurface = mix(desertDark, desertSand, smoothstep(-0.3, 0.1, heightC));
-        desertSurface = mix(desertSurface, desertRock, rockMask);
-        // Small oasis water is more turquoise in desert
-        vec3 desertWater = vec3(0.1, 0.4, 0.45);
-        oceanColor = mix(oceanColor, desertWater, isDesert);
-
-        // --- MOUNTAIN/ICE BIOME: Rocky with ice caps ---
-        vec3 mountainRock = vec3(0.35, 0.32, 0.3);  // Gray rock base
-        vec3 mountainGrass = vec3(0.2, 0.35, 0.2); // Some grass at low altitudes
-        vec3 mountainSnow = vec3(0.95, 0.97, 1.0); // White ice/snow
-        // Height-based layering: grass -> rock -> snow
-        float grassMask = smoothstep(seaLevel, seaLevel + 0.15, heightC) * smoothstep(0.2, 0.1, heightC);
-        float snowMask = smoothstep(0.25, 0.45, heightC);
-        vec3 mountainSurface = mountainRock;
-        mountainSurface = mix(mountainSurface, mountainGrass, grassMask);
-        mountainSurface = mix(mountainSurface, mountainSnow, snowMask);
-        // Thin sand/gravel beach at water edge
-        vec3 mountainBeach = vec3(0.6, 0.55, 0.5);
-        float mountainBeachMask = smoothstep(seaLevel, seaLevel + 0.02, heightC) * smoothstep(seaLevel + 0.06, seaLevel + 0.02, heightC);
-        mountainSurface = mix(mountainSurface, mountainBeach, mountainBeachMask);
-
-        // Select biome surface color
-        vec3 landColor = oceanicSurface * isOceanic + desertSurface * isDesert + mountainSurface * isMountain;
-
-        // Blend land with ocean
-        vec3 surfaceColor = mix(landColor, oceanColor, oceanMask);
-
-        // Diffuse lighting - reduced for ocean (darker water)
-        float diffuseStrength = mix(1.5, 0.8, oceanMask);
-        col += surfaceColor * totalDiffuse * diffuseStrength * planetMask;
-
-        // Specular - higher for ocean (reflective water) and ice (mountain peaks)
-        float iceSpecular = snowMask * isMountain * 1.8; // Ice is very reflective
-        float specStrength = mix(0.3 + iceSpecular, 2.5, oceanMask);
-        vec3 specColor = mix(planetColor, vec3(1.0), max(oceanMask * 0.7, snowMask * isMountain * 0.9));
-        col += specColor * totalSpecular * specStrength * planetMask;
-
-        // Ocean SSS - translucent turquoise subsurface scattering
-        vec3 sssColor = vec3(0.15, 0.6, 0.65); // Turquoise/cyan tint
-        // Tighter wrap for focused translucency effect
-        float sssWrap = 0.15;
-        // Back-lighting component - light shining through from behind
-        float backLight0 = pow(max(0.0, -dot(N, L0) * 0.5 + 0.5), 3.0);
-        float backLight1 = pow(max(0.0, -dot(N, L1) * 0.5 + 0.5), 3.0);
-        float backLight2 = pow(max(0.0, -dot(N, L2) * 0.5 + 0.5), 3.0);
-        float backLightMouse = pow(max(0.0, -dot(N, mouseL) * 0.5 + 0.5), 3.0);
-        // Wrap lighting for edge translucency
-        float sssNdL0 = pow(max(0.0, (dot(N, L0) + sssWrap) / (1.0 + sssWrap)), 1.5);
-        float sssNdL1 = pow(max(0.0, (dot(N, L1) + sssWrap) / (1.0 + sssWrap)), 1.5);
-        float sssNdL2 = pow(max(0.0, (dot(N, L2) + sssWrap) / (1.0 + sssWrap)), 1.5);
-        float sssMouseNdL = pow(max(0.0, (dot(N, mouseL) + sssWrap) / (1.0 + sssWrap)), 1.5);
-        // Combine wrap and backlight for translucent look
-        vec3 sss = sssColor * (
-            uLightColor0 * (sssNdL0 * 0.6 + backLight0 * 1.2) * atten0 +
-            uLightColor1 * (sssNdL1 * 0.6 + backLight1 * 1.2) * atten1 +
-            uLightColor2 * (sssNdL2 * 0.6 + backLight2 * 1.2) * atten2 +
-            vec3(1.0) * (sssMouseNdL * 0.6 + backLightMouse * 1.2) * mouseAtten
-        ) * 2.0;
-        // Apply SSS only to ocean areas
-        col += sss * oceanMask * planetMask;
-
-        // Ambient
-        col += surfaceColor * 0.02 * planetMask;
-
-        // Fresnel rim on surface - enhanced to blend with atmosphere
-        float fresnel = pow(1.0 - NdV, 3.0) * planetMask;
-        // Ocean gets stronger fresnel reflection
-        float fresnelStrength = mix(0.15, 0.4, oceanMask);
-        col += mix(planetColor, vec3(0.6, 0.8, 1.0), oceanMask) * fresnel * totalAttenuation * fresnelStrength;
-        col += planetColor * vGlow * (0.15 + fresnel * 0.3);
-
-        // Blend atmosphere with surface at the limb
-        // Inside planet: atmosphere adds rim glow
-        // Outside planet: atmosphere is the main contribution
-        col += atmosColor * (1.0 - planetMask * 0.3);
-
-        // Tone mapping
-        col = col / (col + vec3(0.7));
-        col = pow(col, vec3(0.95));
-
-        // Alpha calculation
-        float alpha = 0.0;
-        alpha += planetMask * 0.98;
-        alpha += atmosAlpha * (1.0 - planetMask * 0.5);
-        alpha = clamp(alpha, 0.0, 1.0);
-        alpha *= outerFade;
-        alpha *= smoothstep(0.0, 0.5, ap);
-        alpha *= vAlpha;
-
-        // ========================================
-        // ASTEROIDS - orbiting around desert planets
-        // ========================================
-        if (isDesert > 0.5) {
-            float orbitRadius = planetRadius * 1.5;
-            float asteroidSize = planetRadius * 0.095;
-
-            // Multiple asteroids at different orbit phases
-            for (int i = 0; i < 4; i++) {
-                float fi = float(i);
-                float phase = fi * 1.5708; // PI/2 spacing
-                float orbitSpeed = 0.25 + fi * 0.06;
-                float asteroidAngle = t * orbitSpeed + phase + vIndex * 2.0;
-
-                // Elliptical orbit with some variation
-                float orbitA = orbitRadius * (1.0 + fi * 0.1);
-                float orbitB = orbitRadius * (0.6 + fi * 0.08);
-                vec2 asteroidPos = vec2(
-                    cos(asteroidAngle) * orbitA,
-                    sin(asteroidAngle) * orbitB
-                );
-
-                // Vary asteroid size per asteroid
-                float thisSize = asteroidSize * (0.5 + fi * 0.2);
-
-                // Irregular asteroid shape using noise
-                vec2 asteroidUV = (uv - asteroidPos) / thisSize;
-                float asteroidNoise = snoise(asteroidUV * 3.0 + fi * 5.0) * 0.25;
-                float asteroidShape = length(asteroidUV) - (1.0 + asteroidNoise);
-                float asteroidMask = 1.0 - smoothstep(-0.15, 0.05, asteroidShape);
-
-                // Simple lighting for asteroid
-                vec3 asteroidN = normalize(vec3(asteroidUV * 0.8, sqrt(max(0.0, 1.0 - dot(asteroidUV, asteroidUV) * 0.7))));
-                float asteroidLight = max(0.0, dot(asteroidN, normalize(vec3(0.5, 0.5, 1.0))));
-
-                // Rocky brown/gray asteroid color
-                vec3 asteroidColor = vec3(0.35, 0.3, 0.25) * (0.4 + asteroidLight * 0.6);
-                asteroidColor += vec3(0.08, 0.06, 0.04) * snoise(asteroidUV * 6.0 + fi);
-
-                // Tone map asteroid
-                asteroidColor = asteroidColor / (asteroidColor + vec3(0.7));
-
-                // Hide asteroid when behind planet (simple depth test)
-                float inFront = step(planetRadius * 0.9, length(asteroidPos));
-
-                col = mix(col, asteroidColor, asteroidMask * inFront);
-                alpha = max(alpha, asteroidMask * 0.85 * inFront);
-            }
-        }
-
-        gl_FragColor = vec4(col, alpha);
-    }
-`;
+// Skill Sphere WebGL Shaders - loaded from external .glsl.js files
+// Edit shaders in: shaders/planet.vert.glsl.js and shaders/planet.frag.glsl.js
+// These are loaded via <script> tags in index.html BEFORE main.js
+const sphereVertexShader = window.PLANET_VERTEX_SHADER;
+const sphereFragmentShader = window.PLANET_FRAGMENT_SHADER;
+
+// Verify shaders loaded correctly
+if (!sphereVertexShader || !sphereFragmentShader) {
+    console.error('Planet shaders not loaded! Make sure shader script tags are before main.js');
+} else {
+    console.log('Planet shaders loaded from external .glsl.js files');
+}
 
 // ============================================
 // BACKGROUND AURORA EFFECT (Three.js)
@@ -733,6 +215,7 @@ const sphereFragmentShader = `
     const positions = new Float32Array(PARTICLE_COUNT * 3);
     const scales = new Float32Array(PARTICLE_COUNT);
     const speeds = new Float32Array(PARTICLE_COUNT);
+    const depths = new Float32Array(PARTICLE_COUNT);
 
     for (let i = 0; i < PARTICLE_COUNT; i++) {
         positions[i * 3] = (Math.random() - 0.5) * 2;
@@ -740,18 +223,21 @@ const sphereFragmentShader = `
         positions[i * 3 + 2] = 0;
         scales[i] = Math.random() * 1.5 + 0.5;
         speeds[i] = Math.random() * 0.5 + 0.2;
+        depths[i] = Math.random(); // Random depth 0-1 for parallax
     }
 
     particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     particleGeometry.setAttribute('aScale', new THREE.BufferAttribute(scales, 1));
     particleGeometry.setAttribute('aSpeed', new THREE.BufferAttribute(speeds, 1));
+    particleGeometry.setAttribute('aDepth', new THREE.BufferAttribute(depths, 1));
 
     const particleMaterial = new THREE.ShaderMaterial({
         vertexShader: particleVertexShader,
         fragmentShader: particleFragmentShader,
         uniforms: {
             uTime: { value: 0 },
-            uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) }
+            uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+            uParallax: { value: new THREE.Vector2(0, 0) }
         },
         transparent: true,
         blending: THREE.AdditiveBlending,
@@ -770,6 +256,10 @@ const sphereFragmentShader = `
         material.uniforms.uTime.value = time;
         material.uniforms.uMouse.value.set(mouse.x, mouse.y);
         particleMaterial.uniforms.uTime.value = time;
+
+        // Background particles don't use parallax (skill graph uses zoom-based parallax)
+        particleMaterial.uniforms.uParallax.value.set(0, 0);
+
         renderer.render(scene, camera);
     }
 
@@ -802,6 +292,8 @@ const godRaysFragmentShader = `
     uniform vec3 uLightColor0;
     uniform vec3 uLightColor1;
     uniform vec3 uLightColor2;
+    uniform float uZoom;
+    uniform vec2 uZoomCenter;
 
     // Simple hash for cheap noise
     float hash(vec2 p) {
@@ -870,10 +362,14 @@ const godRaysFragmentShader = `
     }
 
     void main() {
-        vec2 uv = vUV;
+        // Apply inverse zoom to UV to keep god rays aligned with zoomed content
+        vec2 zoomCenterUV = uZoomCenter / uResolution;
+        zoomCenterUV.y = 1.0 - zoomCenterUV.y;
+        vec2 uv = (vUV - zoomCenterUV) / uZoom + zoomCenterUV;
+
         vec3 fog = vec3(0.0);
 
-        // Compute glow from each light
+        // Compute glow from each light (light positions are zoomed in shader)
         fog += computeGlow(uv, uLight0, uLightColor0, 0.8);
         fog += computeGlow(uv, uLight1, uLightColor1, 0.8);
         fog += computeGlow(uv, uLight2, uLightColor2, 0.8);
@@ -923,52 +419,53 @@ const godRaysFragmentShader = `
     // - Unreal ecosystem: Vibrant orange/coral
     // - Tools: Purple with good contrast
     const skills = [
-        { id: 'unity', label: 'Unity', category: 'primary', baseSize: 34, isLight: true, lightColor: '#e8b923',
+        // === SUNS (3 main hubs) - Kelvin temperature colors ===
+        { id: 'unity', label: 'Unity', category: 'primary', baseSize: 50, isLight: true, lightColor: '#aaccff',
           desc: 'Primary game engine', usage: 'Daily since 2017 - shipped 12+ titles across mobile, PC, and VR platforms' },
-        { id: 'csharp', label: 'C#', category: 'primary', baseSize: 33, isLight: true, lightColor: '#2dd4bf',
+        { id: 'unreal', label: 'Unreal', category: 'primary', baseSize: 35, isLight: true, lightColor: '#ff6030',
+          desc: 'Secondary engine', usage: 'Blueprint systems and material editor for specific projects' },
+        { id: 'graphics', label: 'Graphics APIs', category: 'primary', baseSize: 42, isLight: true, lightColor: '#ffcc66',
+          desc: 'Low-level rendering', usage: 'DirectX, OpenGL, Vulkan for engine and tools development' },
+
+        // === Unity ecosystem ===
+        { id: 'csharp', label: 'C#', category: 'secondary', baseSize: 22, color: '#2dd4bf',
           desc: 'Main programming language', usage: '7+ years - gameplay systems, editor tools, and performance-critical code' },
-        { id: 'hlsl', label: 'HLSL/GLSL', category: 'primary', baseSize: 31, isLight: true, lightColor: '#E6319F',
-          desc: 'Shader programming', usage: 'Custom rendering pipelines, VFX, post-processing, and compute shaders' },
-        // Graphics APIs - Blue/indigo family (brighter)
-        { id: 'directx', label: 'DirectX', category: 'secondary', baseSize: 15, color: '#5090e0',
+        { id: 'hdrp', label: 'HDRP', category: 'secondary', baseSize: 16, color: '#f472b6',
+          desc: 'High Definition Render Pipeline', usage: 'AAA-quality visuals for high-end platforms' },
+        { id: 'urp', label: 'URP', category: 'secondary', baseSize: 15, color: '#fb923c',
+          desc: 'Universal Render Pipeline', usage: 'Optimized rendering for mobile and cross-platform' },
+        { id: 'vfx', label: 'VFX Graph', category: 'secondary', baseSize: 14, color: '#3bc9a5',
+          desc: 'Unity visual effects', usage: 'GPU-driven particle systems and real-time simulations' },
+        { id: 'arvr', label: 'AR/VR', category: 'secondary', baseSize: 14, color: '#00d9b5',
+          desc: 'Immersive experiences', usage: 'Meta Quest, HoloLens, and mobile AR projects' },
+
+        // === Unreal ecosystem ===
+        { id: 'cpp', label: 'C++', category: 'secondary', baseSize: 14, color: '#6c8ebf',
+          desc: 'Systems programming', usage: 'Native plugins, engine modifications, and Unreal development' },
+        { id: 'niagara', label: 'Niagara', category: 'secondary', baseSize: 13, color: '#ffa066',
+          desc: 'Unreal VFX system', usage: 'Complex particle effects for Unreal projects' },
+
+        // === Graphics ecosystem ===
+        { id: 'hlsl', label: 'HLSL', category: 'secondary', baseSize: 18, color: '#c850c0',
+          desc: 'DirectX shader language', usage: 'Custom rendering pipelines, VFX, and compute shaders' },
+        { id: 'glsl', label: 'GLSL', category: 'secondary', baseSize: 16, color: '#a855f7',
+          desc: 'OpenGL shader language', usage: 'Cross-platform shaders and WebGL effects' },
+        { id: 'directx', label: 'DirectX', category: 'secondary', baseSize: 17, color: '#5090e0',
           desc: 'Graphics API', usage: 'DX11/DX12 for Windows and Xbox development' },
         { id: 'opengl', label: 'OpenGL', category: 'secondary', baseSize: 14, color: '#5c7cfa',
-          desc: 'Cross-platform graphics', usage: 'Mobile and Linux rendering targets' },
-        { id: 'vulkan', label: 'Vulkan', category: 'secondary', baseSize: 15, color: '#e04040',
-          desc: 'Low-level graphics API', usage: 'Performance optimization on Android and Linux' },
-        { id: 'webgl', label: 'WebGL', category: 'secondary', baseSize: 6, color: '#74b9ff',
-          desc: 'Browser graphics', usage: 'Custom shaders and real-time web graphics' },
-        // Unity ecosystem - Brighter teal/cyan shades
-        { id: 'urp', label: 'URP/HDRP', category: 'secondary', baseSize: 13, color: '#20d6c2',
-          desc: 'Unity render pipelines', usage: 'Custom render features, shader graphs, and pipeline extensions' },
-        { id: 'arvr', label: 'AR/VR', category: 'secondary', baseSize: 13, color: '#00d9b5',
-          desc: 'Immersive experiences', usage: 'Meta Quest, HoloLens, and mobile AR projects' },
-        { id: 'compute', label: 'Compute', category: 'secondary', baseSize: 17, color: '#38d9a9',
+          desc: 'Cross-platform graphics', usage: 'Mobile and desktop rendering' },
+        { id: 'compute', label: 'Compute', category: 'secondary', baseSize: 14, color: '#38d9a9',
           desc: 'GPU compute shaders', usage: 'Particle simulations, procedural generation, and physics' },
-        { id: 'wpf', label: 'WPF', category: 'secondary', baseSize: 12, color: '#63e6be',
-          desc: 'Desktop UI framework', usage: 'Internal tools and editors for game development' },
-        { id: 'vfx', label: 'VFX Graph', category: 'secondary', baseSize: 12, color: '#3bc9a5',
-          desc: 'Unity visual effects', usage: 'GPU-driven particle systems and real-time simulations' },
-        // Unreal ecosystem - Vibrant orange/coral
-        { id: 'unreal', label: 'Unreal', category: 'secondary', baseSize: 16, color: '#ff8c42',
-          desc: 'Secondary engine', usage: 'Blueprint systems and material editor for specific projects' },
-        { id: 'cpp', label: 'C++', category: 'secondary', baseSize: 8, color: '#6c8ebf',
-          desc: 'Systems programming', usage: 'Native plugins, engine modifications, and Unreal development' },
-        { id: 'niagara', label: 'Niagara', category: 'secondary', baseSize: 17, color: '#ffa066',
-          desc: 'Unreal VFX system', usage: 'Complex particle effects for Unreal projects' },
-        // Languages - Vibrant yellow
+
+        // === Tools & other ===
+        { id: 'threejs', label: 'Three.js', category: 'secondary', baseSize: 11, color: '#66d9ef',
+          desc: 'WebGL framework', usage: 'Interactive 3D web experiences and visualizations' },
         { id: 'python', label: 'Python', category: 'secondary', baseSize: 14, color: '#ffd43b',
           desc: 'Scripting & tools', usage: 'Build automation, asset pipelines, and data processing' },
-        // Web - Bright cyan
-        { id: 'threejs', label: 'Three.js', category: 'secondary', baseSize: 8, color: '#66d9ef',
-          desc: 'WebGL framework', usage: 'Interactive 3D web experiences and visualizations' },
-        // Tools - Distinct purples and NVIDIA green
-        { id: 'renderdoc', label: 'RenderDoc', category: 'tool', baseSize: 16, color: '#b87fd8',
+        { id: 'renderdoc', label: 'RenderDoc', category: 'tool', baseSize: 13, color: '#b87fd8',
           desc: 'Graphics debugger', usage: 'Frame analysis and shader debugging' },
-        { id: 'nsight', label: 'NSight', category: 'tool', baseSize: 14, color: '#76b900',
-          desc: 'NVIDIA profiler', usage: 'GPU performance analysis and optimization' },
-        { id: 'pix', label: 'PIX', category: 'tool', baseSize: 6, color: '#9775fa',
-          desc: 'DirectX debugger', usage: 'Windows and Xbox graphics debugging' }
+        { id: 'nsight', label: 'NSight', category: 'tool', baseSize: 12, color: '#76b900',
+          desc: 'NVIDIA profiler', usage: 'GPU performance analysis and optimization' }
     ];
 
     const BASE_DIMENSION = 400;
@@ -976,67 +473,108 @@ const godRaysFragmentShader = `
 
     // Meaningful connections between related skills
     const connections = [
-        // Unity core ecosystem
+        // Unity ecosystem
         ['unity', 'csharp'],
-        ['unity', 'hlsl'],
+        ['unity', 'hdrp'],
         ['unity', 'urp'],
         ['unity', 'vfx'],
         ['unity', 'arvr'],
-        ['csharp', 'wpf'],
-        ['csharp', 'compute'],
+        ['hdrp', 'vfx'],
         ['urp', 'vfx'],
-        ['vfx', 'compute'],
-
-        // Shader languages connect to graphics APIs
-        ['hlsl', 'directx'],
-        ['hlsl', 'opengl'],
-        ['hlsl', 'vulkan'],
-        ['opengl', 'webgl'],
-        ['webgl', 'threejs'],
-
-        // Graphics APIs interconnected
-        ['directx', 'vulkan'],
-        ['opengl', 'vulkan'],
-
-        // Debugging/profiling tools connect to APIs
-        ['directx', 'pix'],
-        ['directx', 'renderdoc'],
-        ['vulkan', 'renderdoc'],
-        ['vulkan', 'nsight'],
-        ['renderdoc', 'nsight'],
+        ['csharp', 'vfx'],
 
         // Unreal ecosystem
         ['unreal', 'cpp'],
         ['unreal', 'niagara'],
-        ['niagara', 'hlsl'],
-        ['cpp', 'vulkan'],
+        ['cpp', 'niagara'],
 
-        // Scripting/tooling
+        // Graphics APIs ecosystem
+        ['graphics', 'hlsl'],
+        ['graphics', 'glsl'],
+        ['graphics', 'directx'],
+        ['graphics', 'opengl'],
+        ['graphics', 'compute'],
+        ['hlsl', 'directx'],
+        ['glsl', 'opengl'],
+        ['hlsl', 'compute'],
+
+        // Cross-system connections (engines use graphics)
+        ['unity', 'graphics'],
+        ['unreal', 'graphics'],
+
+        // Tools connect to graphics
+        ['graphics', 'renderdoc'],
+        ['graphics', 'nsight'],
+        ['renderdoc', 'nsight'],
+
+        // Three.js uses WebGL/OpenGL
+        ['glsl', 'threejs'],
+        ['opengl', 'threejs'],
+
+        // Python for tooling
         ['python', 'unity'],
-        ['python', 'unreal'],
-
-        // Cross-engine shader knowledge
-        ['hlsl', 'urp'],
-        ['compute', 'niagara']
+        ['python', 'unreal']
     ];
 
+    // Solar system definitions: suns orbit canvas center, moons orbit their sun
+    const solarSystems = {
+        // Unity system (gold sun) - positioned left
+        unity: {
+            orbitRadius: 0.28,      // % of canvas size from center
+            orbitSpeed: 0.0006,     // VERY slow - radians per frame
+            orbitPhase: Math.PI,    // start on left
+            moons: ['csharp', 'vfx', 'arvr']
+        },
+        // Unreal system (orange sun) - positioned right
+        unreal: {
+            orbitRadius: 0.30,
+            orbitSpeed: -0.0005,    // opposite direction
+            orbitPhase: 0,          // start on right
+            moons: ['cpp', 'niagara']
+        },
+        // Shader/Graphics system (pink sun) - positioned bottom
+        hlsl: {
+            orbitRadius: 0.26,
+            orbitSpeed: 0.0007,
+            orbitPhase: Math.PI * 1.5, // start at bottom
+            moons: ['glsl', 'directx', 'opengl', 'compute']
+        }
+    };
+
+    // Moon orbit configurations - MUCH slower, tighter orbits
+    const moonOrbits = {
+        // Unity moons - spread evenly around
+        csharp:   { radius: 2.8, speed: 0.003, phase: 0 },
+        vfx:      { radius: 4.0, speed: -0.0025, phase: Math.PI * 0.66 },
+        arvr:     { radius: 5.2, speed: 0.002, phase: Math.PI * 1.33 },
+        // Unreal moons
+        cpp:      { radius: 3.0, speed: 0.0035, phase: 0 },
+        niagara:  { radius: 4.5, speed: -0.0028, phase: Math.PI },
+        // HLSL moons - spread evenly
+        glsl:     { radius: 2.5, speed: 0.004, phase: 0 },
+        directx:  { radius: 3.5, speed: -0.0032, phase: Math.PI * 0.5 },
+        opengl:   { radius: 4.5, speed: 0.0025, phase: Math.PI },
+        compute:  { radius: 5.5, speed: -0.002, phase: Math.PI * 1.5 }
+    };
+
+    // Free floaters - these drift on their own, not part of any solar system
+    const freeFloaters = ['renderdoc', 'nsight', 'python', 'threejs'];
+
     let nodes = skills.map((skill, i) => {
+        // Compute depth based on size: larger = closer (depth 1), smaller = farther (depth 0)
+        const depth = Math.min(1.0, Math.max(0.0, (skill.baseSize - 6) / 28));
+
         return {
             ...skill,
             size: skill.baseSize,
-            x: 0, y: 0, vx: 0, vy: 0, baseX: 0, baseY: 0,
-            floatSpeed: 0.03 + Math.random() * 0.03,
-            floatRadius: 2 + Math.random() * 3,
-            floatPhase: Math.random() * Math.PI * 2,
-            floatSpeed2: 0.02 + Math.random() * 0.02,
-            floatRadius2: 1 + Math.random() * 2,
+            x: 0, y: 0, vx: 0, vy: 0,
+            renderX: 0, renderY: 0, // Parallax-adjusted render positions
+            depth: depth, // Depth for parallax (0=far, 1=near)
+            // Visual effects
             pulseSpeed: 0.05 + Math.random() * 0.1,
             pulsePhase: Math.random() * Math.PI * 2,
             rotation: Math.random() * Math.PI * 2,
             rotationSpeed: (Math.random() - 0.5) * 0.001,
-            orbitAngle: Math.random() * Math.PI * 2,
-            orbitSpeed: 0.02 + Math.random() * 0.02,
-            orbitRadius: 2 + Math.random() * 4,
             glowIntensity: 0, targetGlowIntensity: 0, glowDelay: 0,
             shrinkProgress: 1, targetShrink: 1
         };
@@ -1047,6 +585,10 @@ const godRaysFragmentShader = `
     let mouseX = 0, mouseY = 0;
     let settled = false, settleTimer = 0;
     let startupPhase = true, globalFadeIn = 0;
+    let zoomLevel = 1.0, targetZoom = 1.0;
+    let zoomCenterX = 0, zoomCenterY = 0;
+    let targetZoomCenterX = 0, targetZoomCenterY = 0;
+    const MIN_ZOOM = 1.0, MAX_ZOOM = 3.0;
 
     const tooltip = document.getElementById('skill-tooltip');
     const tooltipTitle = tooltip.querySelector('.skill-tooltip-title');
@@ -1058,47 +600,6 @@ const godRaysFragmentShader = `
     const lineAnimDuration = 300;
     let tooltipSide = 'right';
 
-    let showcaseNode = null, showcaseActive = false, lastShowcaseTime = 0;
-    const showcaseInterval = 2000, showcaseDuration = 4000;
-
-    function startRandomShowcase() {
-        if (hoveredNode || isDragging || startupPhase) return;
-        const availableNodes = nodes.filter(n => n !== showcaseNode);
-        if (availableNodes.length === 0) return;
-        showcaseNode = availableNodes[Math.floor(Math.random() * availableNodes.length)];
-        showcaseActive = true;
-        generateTooltipPosition(showcaseNode);
-        tooltipTarget = showcaseNode;
-        tooltipTitle.textContent = showcaseNode.label;
-        tooltipDesc.textContent = showcaseNode.desc || '';
-        tooltipUsage.textContent = showcaseNode.usage || '';
-        tooltip.className = 'skill-tooltip ' + showcaseNode.category;
-        tooltip.style.left = tooltipPos.x + 'px';
-        tooltip.style.top = tooltipPos.y + 'px';
-        lastShowcaseTime = performance.now();
-    }
-
-    function updateShowcase() {
-        const now = performance.now();
-        if (startupPhase) { lastShowcaseTime = now; return; }
-        if (hoveredNode || isDragging) {
-            if (showcaseActive && tooltipTarget === showcaseNode) {
-                showcaseActive = false; showcaseNode = null;
-            }
-            lastShowcaseTime = now; return;
-        }
-        if (showcaseActive) {
-            if (now - lastShowcaseTime > showcaseDuration) {
-                showcaseActive = false;
-                tooltip.classList.remove('visible');
-                tooltipTarget = null;
-                lineAnimProgress = 0;
-                lastShowcaseTime = now;
-            }
-            return;
-        }
-        if (now - lastShowcaseTime > showcaseInterval) startRandomShowcase();
-    }
 
     let tooltipOffset = { x: 0, y: 0 };
     const tooltipWidth = 260, tooltipHeight = 120;
@@ -1242,6 +743,23 @@ const godRaysFragmentShader = `
         sphereProgram.uLightColor0 = gl.getUniformLocation(sphereProgram, 'uLightColor0');
         sphereProgram.uLightColor1 = gl.getUniformLocation(sphereProgram, 'uLightColor1');
         sphereProgram.uLightColor2 = gl.getUniformLocation(sphereProgram, 'uLightColor2');
+        sphereProgram.uZoom = gl.getUniformLocation(sphereProgram, 'uZoom');
+        sphereProgram.uZoomCenter = gl.getUniformLocation(sphereProgram, 'uZoomCenter');
+        // UI-controllable rendering parameters
+        sphereProgram.uNoiseScale = gl.getUniformLocation(sphereProgram, 'uNoiseScale');
+        sphereProgram.uTerrainHeight = gl.getUniformLocation(sphereProgram, 'uTerrainHeight');
+        sphereProgram.uAtmosIntensity = gl.getUniformLocation(sphereProgram, 'uAtmosIntensity');
+        sphereProgram.uAtmosThickness = gl.getUniformLocation(sphereProgram, 'uAtmosThickness');
+        sphereProgram.uAtmosPower = gl.getUniformLocation(sphereProgram, 'uAtmosPower');
+        sphereProgram.uScatterR = gl.getUniformLocation(sphereProgram, 'uScatterR');
+        sphereProgram.uScatterG = gl.getUniformLocation(sphereProgram, 'uScatterG');
+        sphereProgram.uScatterB = gl.getUniformLocation(sphereProgram, 'uScatterB');
+        sphereProgram.uScatterScale = gl.getUniformLocation(sphereProgram, 'uScatterScale');
+        sphereProgram.uSunsetStrength = gl.getUniformLocation(sphereProgram, 'uSunsetStrength');
+        sphereProgram.uLavaIntensity = gl.getUniformLocation(sphereProgram, 'uLavaIntensity');
+        sphereProgram.uOceanRoughness = gl.getUniformLocation(sphereProgram, 'uOceanRoughness');
+        sphereProgram.uSSSIntensity = gl.getUniformLocation(sphereProgram, 'uSSSIntensity');
+        sphereProgram.uSeaLevel = gl.getUniformLocation(sphereProgram, 'uSeaLevel');
         sphereProgram.buf = gl.createBuffer();
 
         // God rays program
@@ -1264,6 +782,8 @@ const godRaysFragmentShader = `
                 godRaysProgram.uLightColor0 = gl.getUniformLocation(godRaysProgram, 'uLightColor0');
                 godRaysProgram.uLightColor1 = gl.getUniformLocation(godRaysProgram, 'uLightColor1');
                 godRaysProgram.uLightColor2 = gl.getUniformLocation(godRaysProgram, 'uLightColor2');
+                godRaysProgram.uZoom = gl.getUniformLocation(godRaysProgram, 'uZoom');
+                godRaysProgram.uZoomCenter = gl.getUniformLocation(godRaysProgram, 'uZoomCenter');
 
                 // Fullscreen quad buffer
                 godRaysQuadBuffer = gl.createBuffer();
@@ -1323,6 +843,8 @@ const godRaysFragmentShader = `
             gl.uniform3f(godRaysProgram.uLightColor0, lc0[0], lc0[1], lc0[2]);
             gl.uniform3f(godRaysProgram.uLightColor1, lc1[0], lc1[1], lc1[2]);
             gl.uniform3f(godRaysProgram.uLightColor2, lc2[0], lc2[1], lc2[2]);
+            gl.uniform1f(godRaysProgram.uZoom, zoomLevel);
+            gl.uniform2f(godRaysProgram.uZoomCenter, zoomCenterX, zoomCenterY);
 
             gl.bindBuffer(gl.ARRAY_BUFFER, godRaysQuadBuffer);
             gl.enableVertexAttribArray(godRaysProgram.aPosition);
@@ -1342,13 +864,33 @@ const godRaysFragmentShader = `
         gl.uniform3f(sphereProgram.uLightColor0, lc0[0], lc0[1], lc0[2]);
         gl.uniform3f(sphereProgram.uLightColor1, lc1[0], lc1[1], lc1[2]);
         gl.uniform3f(sphereProgram.uLightColor2, lc2[0], lc2[1], lc2[2]);
+        gl.uniform1f(sphereProgram.uZoom, zoomLevel);
+        gl.uniform2f(sphereProgram.uZoomCenter, zoomCenterX, zoomCenterY);
+        // UI-controllable rendering parameters
+        gl.uniform1f(sphereProgram.uNoiseScale, renderParams.noiseScale);
+        gl.uniform1f(sphereProgram.uTerrainHeight, renderParams.terrainHeight);
+        gl.uniform1f(sphereProgram.uAtmosIntensity, renderParams.atmosIntensity);
+        gl.uniform1f(sphereProgram.uAtmosThickness, renderParams.atmosThickness);
+        gl.uniform1f(sphereProgram.uAtmosPower, renderParams.atmosPower);
+        // Per-channel scattering coefficients
+        gl.uniform1f(sphereProgram.uScatterR, renderParams.scatterR);
+        gl.uniform1f(sphereProgram.uScatterG, renderParams.scatterG);
+        gl.uniform1f(sphereProgram.uScatterB, renderParams.scatterB);
+        gl.uniform1f(sphereProgram.uScatterScale, renderParams.scatterScale);
+        gl.uniform1f(sphereProgram.uSunsetStrength, renderParams.sunsetStrength);
+        gl.uniform1f(sphereProgram.uLavaIntensity, renderParams.lavaIntensity);
+        gl.uniform1f(sphereProgram.uOceanRoughness, renderParams.oceanRoughness);
+        gl.uniform1f(sphereProgram.uSSSIntensity, renderParams.sssIntensity);
+        gl.uniform1f(sphereProgram.uSeaLevel, renderParams.seaLevel);
 
         const v = [];
         const q = [[-1,-1],[1,-1],[1,1],[-1,-1],[1,1],[-1,1]];
 
         nodes.forEach((n, idx) => {
-            const shrink = n.shrinkProgress !== undefined ? n.shrinkProgress : 1;
-            if (shrink < 0.01) return;
+            const fadeAmount = n.shrinkProgress !== undefined ? n.shrinkProgress : 1;
+            // Instead of disappearing, fade to 0.3 alpha when not selected
+            const minAlpha = 0.3;
+            const alphaMultiplier = minAlpha + fadeAmount * (1 - minAlpha);
 
             let c;
             if (n.isLight && n.lightColor) c = hex2vec(n.lightColor);
@@ -1359,13 +901,14 @@ const godRaysFragmentShader = `
 
             const g = n.glowIntensity || 0;
             const p = Math.sin(time * n.pulseSpeed + n.pulsePhase);
-            const r = (n.size + p * 0.5 + g * 3) * shrink;
-            const ap = globalFadeIn * shrink;
-            const a = shrink * globalFadeIn;
+            const r = n.size + p * 0.5 + g * 3; // No longer shrink size
+            const ap = globalFadeIn * alphaMultiplier;
+            const a = alphaMultiplier * globalFadeIn;
             const isLight = n.isLight ? 1.0 : 0.0;
 
+            // Use pre-calculated parallax render positions
             q.forEach(([qx,qy]) => {
-                v.push(qx, qy, n.x, n.y, r, c[0], c[1], c[2], a, ap, g, idx, isLight);
+                v.push(qx, qy, n.renderX, n.renderY, r, c[0], c[1], c[2], a, ap, g, idx, isLight);
             });
         });
 
@@ -1373,7 +916,7 @@ const godRaysFragmentShader = `
         gl.bindBuffer(gl.ARRAY_BUFFER, sphereProgram.buf);
         gl.bufferData(gl.ARRAY_BUFFER, d, gl.DYNAMIC_DRAW);
 
-        const st = 13 * 4;
+        const st = 13 * 4; // 13 floats per vertex
         gl.enableVertexAttribArray(sphereProgram.aPos);
         gl.vertexAttribPointer(sphereProgram.aPos, 2, gl.FLOAT, false, st, 0);
         gl.enableVertexAttribArray(sphereProgram.aCenter);
@@ -1450,22 +993,92 @@ const godRaysFragmentShader = `
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         centerX = width / 2;
         centerY = height / 2;
+        // Initialize zoom center to canvas center
+        if (zoomCenterX === 0 && zoomCenterY === 0) {
+            zoomCenterX = centerX;
+            zoomCenterY = centerY;
+            targetZoomCenterX = centerX;
+            targetZoomCenterY = centerY;
+        }
         settled = false;
         settleTimer = 0;
 
         const minDim = Math.min(width, height);
         sizeScale = Math.max(0.5, Math.min(1.2, minDim / BASE_DIMENSION));
 
+        // Initialize node sizes and velocities
         nodes.forEach((node, i) => {
-            const angle = (i / nodes.length) * Math.PI * 2 + Math.PI / 4;
-            const radius = Math.min(width, height) * 0.35;
-            node.x = centerX + Math.cos(angle) * radius * (0.6 + Math.random() * 0.4);
-            node.y = centerY + Math.sin(angle) * radius * (0.6 + Math.random() * 0.4);
-            node.baseX = node.x;
-            node.baseY = node.y;
-            node.vx = 0;
-            node.vy = 0;
             node.size = node.baseSize * sizeScale;
+            node.vx = (Math.random() - 0.5) * 0.5;
+            node.vy = (Math.random() - 0.5) * 0.5;
+            node.x = 0;
+            node.y = 0;
+            node.placed = false;
+        });
+
+        // Place suns first, spread around center at good distance
+        const suns = nodes.filter(n => n.isLight);
+        suns.forEach((sun, i) => {
+            const angle = (i / suns.length) * Math.PI * 2 + Math.random() * 0.3;
+            const radius = minDim * 0.35;
+            sun.x = centerX + Math.cos(angle) * radius;
+            sun.y = centerY + Math.sin(angle) * radius;
+            sun.placed = true;
+        });
+
+        // Place other nodes near their connected suns, but pushed outward
+        const maxIterations = 10;
+        for (let iter = 0; iter < maxIterations; iter++) {
+            nodes.forEach(node => {
+                if (node.placed) return;
+
+                // Find placed connected nodes
+                const connectedIds = connectionMap.get(node.id);
+                if (!connectedIds) return;
+
+                const placedConnections = nodes.filter(n => n.placed && connectedIds.has(n.id));
+                if (placedConnections.length === 0) return;
+
+                // Average position of connected nodes
+                let avgX = 0, avgY = 0;
+                placedConnections.forEach(n => { avgX += n.x; avgY += n.y; });
+                avgX /= placedConnections.length;
+                avgY /= placedConnections.length;
+
+                // Direction away from center
+                const toCenterX = centerX - avgX;
+                const toCenterY = centerY - avgY;
+                const toCenterDist = Math.sqrt(toCenterX * toCenterX + toCenterY * toCenterY) || 1;
+
+                // Place outward from center, relative to connected node
+                const offset = node.size * 4 + Math.random() * 60;
+                const outwardBias = 0.7; // How much to push outward vs random
+                const randomAngle = Math.random() * Math.PI * 2;
+
+                // Combine outward direction with some randomness
+                const outX = -toCenterX / toCenterDist;
+                const outY = -toCenterY / toCenterDist;
+                const randX = Math.cos(randomAngle);
+                const randY = Math.sin(randomAngle);
+
+                const dirX = outX * outwardBias + randX * (1 - outwardBias);
+                const dirY = outY * outwardBias + randY * (1 - outwardBias);
+
+                node.x = avgX + dirX * offset;
+                node.y = avgY + dirY * offset;
+                node.placed = true;
+            });
+        }
+
+        // Place any remaining unplaced nodes at edges
+        nodes.forEach(node => {
+            if (!node.placed) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = minDim * 0.4 + Math.random() * minDim * 0.1;
+                node.x = centerX + Math.cos(angle) * radius;
+                node.y = centerY + Math.sin(angle) * radius;
+            }
+            delete node.placed;
         });
 
         resizeSphereGL();
@@ -1489,85 +1102,197 @@ const godRaysFragmentShader = `
         return connected;
     }
 
+    // Build connection lookup for fast access
+    const connectionMap = new Map();
+    connections.forEach(([a, b]) => {
+        if (!connectionMap.has(a)) connectionMap.set(a, new Set());
+        if (!connectionMap.has(b)) connectionMap.set(b, new Set());
+        connectionMap.get(a).add(b);
+        connectionMap.get(b).add(a);
+    });
+
     function simulate() {
         if (globalFadeIn < 1 && time > 1.5) globalFadeIn = Math.min(1, (time - 1.5) / 2);
         if (globalFadeIn >= 1) startupPhase = false;
 
-        const scaleSquared = sizeScale * sizeScale;
-        const repulsion = (dragNode ? 5000 : 3000) * scaleSquared;
-        const attraction = dragNode ? 0.0015 : 0.003;
-        const damping = 0.95;
-        const centerPull = 0.002;
-        let totalMovement = 0;
+        const minDim = Math.min(width, height);
 
-        nodes.forEach((nodeA, idxA) => {
-            if (nodeA === dragNode) return;
+        nodes.forEach(node => {
+            if (node === dragNode) return;
+
             let fx = 0, fy = 0;
+            const mass = node.size * 0.5;
 
-            nodes.forEach((nodeB) => {
-                if (nodeA === nodeB) return;
-                const dx = nodeA.x - nodeB.x, dy = nodeA.y - nodeB.y;
-                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                const force = repulsion / (dist * dist + 100);
-                fx += (dx / dist) * force;
-                fy += (dy / dist) * force;
+            // === RULE 1: Connection springs + Rotation around centroid ===
+            const nodeConnections = connectionMap.get(node.id);
+            let centroidX = 0, centroidY = 0, connectionCount = 0;
+
+            if (nodeConnections) {
+                // First pass: calculate centroid of connected nodes
+                nodes.forEach(other => {
+                    if (!nodeConnections.has(other.id)) return;
+                    centroidX += other.x;
+                    centroidY += other.y;
+                    connectionCount++;
+                });
+
+                if (connectionCount > 0) {
+                    centroidX /= connectionCount;
+                    centroidY /= connectionCount;
+
+                    // Apply rotation force around centroid (not for suns)
+                    if (physicsParams.rotationForce > 0 && !node.isLight) {
+                        const toCentroidX = centroidX - node.x;
+                        const toCentroidY = centroidY - node.y;
+                        const distToCentroid = Math.sqrt(toCentroidX * toCentroidX + toCentroidY * toCentroidY) || 1;
+                        // Tangent vector (perpendicular to radius)
+                        const tangentX = -toCentroidY / distToCentroid;
+                        const tangentY = toCentroidX / distToCentroid;
+                        // Rotation force scales with distance
+                        const rotForce = distToCentroid * physicsParams.rotationForce;
+                        fx += tangentX * rotForce;
+                        fy += tangentY * rotForce;
+                    }
+                }
+
+                // Second pass: spring forces to connected nodes
+                nodes.forEach(other => {
+                    if (!nodeConnections.has(other.id)) return;
+                    const dx = other.x - node.x;
+                    const dy = other.y - node.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                    const idealDist = (node.size + other.size) * 2.5;
+                    // Spring force: pull if too far, push if too close
+                    const springForce = (dist - idealDist) * physicsParams.springStrength;
+                    fx += (dx / dist) * springForce;
+                    fy += (dy / dist) * springForce;
+                });
+            }
+
+            // === RULE 2: Repulsion from unconnected nodes ===
+            // Unconnected nodes push each other away
+            nodes.forEach(other => {
+                if (other === node) return;
+                const isConnected = nodeConnections && nodeConnections.has(other.id);
+                if (isConnected) return; // Skip connected nodes
+
+                const dx = node.x - other.x;
+                const dy = node.y - other.y;
+                const distSq = dx * dx + dy * dy;
+                const dist = Math.sqrt(distSq) || 1;
+
+                // Repulsion falls off with distance squared
+                const repelForce = physicsParams.separationForce * physicsParams.repelStrength * 50 / (distSq + 100);
+                fx += (dx / dist) * repelForce;
+                fy += (dy / dist) * repelForce;
             });
 
-            connections.forEach(([a, b]) => {
-                let other = null;
-                if (a === nodeA.id) other = nodes.find(n => n.id === b);
-                if (b === nodeA.id) other = nodes.find(n => n.id === a);
-                if (other) {
-                    const dx = other.x - nodeA.x, dy = other.y - nodeA.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    const idealDist = 180 * sizeScale;
-                    const isDragConnected = dragNode && (other === dragNode || nodeA === dragNode);
-                    const mult = isDragConnected ? 15 : 1;
-                    if (dist > idealDist || isDragConnected) {
-                        const str = Math.max((dist - idealDist) * attraction, isDragConnected ? 0.05 : 0) * mult;
-                        fx += (dx / dist) * str;
-                        fy += (dy / dist) * str;
-                    }
+            // === RULE 3: Center pull (all nodes) ===
+            const centerDx = centerX - node.x;
+            const centerDy = centerY - node.y;
+            const centerDist = Math.sqrt(centerDx * centerDx + centerDy * centerDy) || 1;
+            const centerPullForce = centerDist * physicsParams.centerPull;
+            fx += (centerDx / centerDist) * centerPullForce;
+            fy += (centerDy / centerDist) * centerPullForce;
+
+            // === RULE 3b: Suns repel each other ===
+            if (node.isLight) {
+                nodes.forEach(other => {
+                    if (other === node || !other.isLight) return;
+                    const dx = node.x - other.x;
+                    const dy = node.y - other.y;
+                    const distSq = dx * dx + dy * dy;
+                    const dist = Math.sqrt(distSq) || 1;
+                    const sunRepelForce = physicsParams.sunRepel * 100 / (distSq + 100);
+                    fx += (dx / dist) * sunRepelForce;
+                    fy += (dy / dist) * sunRepelForce;
+                });
+            }
+
+            // === RULE 4: Separation (hard collision) ===
+            nodes.forEach(other => {
+                if (other === node) return;
+                const dx = node.x - other.x;
+                const dy = node.y - other.y;
+                const dist = Math.sqrt(dx * dx + dy * dy) || 0.1;
+                const minSep = (node.size + other.size) * physicsParams.separationZone;
+                if (dist < minSep) {
+                    const sepForce = (minSep - dist) * physicsParams.separationForce * 0.05;
+                    fx += (dx / dist) * sepForce;
+                    fy += (dy / dist) * sepForce;
                 }
             });
 
-            if (nodeA.isLight) {
-                const orbitRadius = 80 * sizeScale;
-                const orbitSpeed = 0.06 + idxA * 0.01;
-                const orbitPhase = idxA * (Math.PI * 2 / 3);
-                fx += (centerX + Math.cos(time * orbitSpeed + orbitPhase) * orbitRadius - nodeA.x) * 0.02;
-                fy += (centerY + Math.sin(time * orbitSpeed + orbitPhase) * orbitRadius - nodeA.y) * 0.02;
-            }
-
-            fx += (centerX - nodeA.x) * centerPull;
-            fy += (centerY - nodeA.y) * centerPull;
-
-            const mDx = mouseX - nodeA.x, mDy = mouseY - nodeA.y;
+            // === RULE 5: Mouse interaction ===
+            const mDx = mouseX - node.x;
+            const mDy = mouseY - node.y;
             const mDist = Math.sqrt(mDx * mDx + mDy * mDy);
-            if (mDist < 200 * sizeScale && mDist > 30) {
-                const mForce = 0.5 / (mDist * 0.1 + 1);
-                fx -= (mDx / mDist) * mForce;
-                fy -= (mDy / mDist) * mForce;
+            const attractRadius = 150 * sizeScale;
+            if (mDist < attractRadius && mDist > 20) {
+                const t = 1 - (mDist / attractRadius);
+                fx += (mDx / mDist) * t * physicsParams.mouseAttraction;
+                fy += (mDy / mDist) * t * physicsParams.mouseAttraction;
             }
 
-            nodeA.vx = (nodeA.vx + fx * 0.08) * damping;
-            nodeA.vy = (nodeA.vy + fy * 0.08) * damping;
-            nodeA.x += nodeA.vx;
-            nodeA.y += nodeA.vy;
-            totalMovement += Math.abs(nodeA.vx) + Math.abs(nodeA.vy);
+            // === RULE 6: Boundary - soft zone + hard push ===
+            const softMargin = node.size * 5;
+            const hardMargin = node.size * 1.5;
 
-            const padding = 60;
-            if (nodeA.x < padding) { nodeA.x = padding; nodeA.vx *= -0.5; }
-            if (nodeA.x > width - padding) { nodeA.x = width - padding; nodeA.vx *= -0.5; }
-            if (nodeA.y < padding) { nodeA.y = padding; nodeA.vy *= -0.5; }
-            if (nodeA.y > height - padding) { nodeA.y = height - padding; nodeA.vy *= -0.5; }
+            // Soft push when getting close
+            if (node.x < softMargin) {
+                const t = 1 - (node.x / softMargin);
+                fx += t * t * 3;
+            }
+            if (node.x > width - softMargin) {
+                const t = 1 - ((width - node.x) / softMargin);
+                fx -= t * t * 3;
+            }
+            if (node.y < softMargin) {
+                const t = 1 - (node.y / softMargin);
+                fy += t * t * 3;
+            }
+            if (node.y > height - softMargin) {
+                const t = 1 - ((height - node.y) / softMargin);
+                fy -= t * t * 3;
+            }
 
-            nodeA.baseX = nodeA.x;
-            nodeA.baseY = nodeA.y;
+            // Hard clamp - never go past edge
+            if (node.x < hardMargin) {
+                node.x = hardMargin;
+                node.vx = Math.abs(node.vx) * 0.5;
+            }
+            if (node.x > width - hardMargin) {
+                node.x = width - hardMargin;
+                node.vx = -Math.abs(node.vx) * 0.5;
+            }
+            if (node.y < hardMargin) {
+                node.y = hardMargin;
+                node.vy = Math.abs(node.vy) * 0.5;
+            }
+            if (node.y > height - hardMargin) {
+                node.y = height - hardMargin;
+                node.vy = -Math.abs(node.vy) * 0.5;
+            }
+
+            // === Apply forces ===
+            node.vx += fx / mass;
+            node.vy += fy / mass;
+
+            // Damping
+            node.vx *= physicsParams.damping;
+            node.vy *= physicsParams.damping;
+
+            // Speed limit
+            const speed = Math.sqrt(node.vx * node.vx + node.vy * node.vy);
+            if (speed > physicsParams.maxSpeed) {
+                node.vx = (node.vx / speed) * physicsParams.maxSpeed;
+                node.vy = (node.vy / speed) * physicsParams.maxSpeed;
+            }
+
+            // Update position
+            node.x += node.vx;
+            node.y += node.vy;
         });
-
-        if (totalMovement < 0.5) { settleTimer++; if (settleTimer > 60) settled = true; }
-        else { settleTimer = 0; settled = false; }
     }
 
     let lastHoveredNode = null, hoverStartTime = 0;
@@ -1575,6 +1300,17 @@ const godRaysFragmentShader = `
     function draw() {
         ctx.clearRect(0, 0, width, height);
         time += 0.016;
+
+        // Smooth zoom interpolation (slower for smoother feel)
+        zoomLevel += (targetZoom - zoomLevel) * 0.05;
+        zoomCenterX += (targetZoomCenterX - zoomCenterX) * 0.05;
+        zoomCenterY += (targetZoomCenterY - zoomCenterY) * 0.05;
+
+        // Apply zoom transform centered on mouse position
+        ctx.save();
+        ctx.translate(zoomCenterX, zoomCenterY);
+        ctx.scale(zoomLevel, zoomLevel);
+        ctx.translate(-zoomCenterX, -zoomCenterY);
 
         const connectedToHovered = hoveredNode ? getConnectedNodes(hoveredNode) : new Set();
         if (hoveredNode !== lastHoveredNode) { hoverStartTime = time; lastHoveredNode = hoveredNode; }
@@ -1600,103 +1336,134 @@ const godRaysFragmentShader = `
             if (node.shrinkProgress > 0.99) node.shrinkProgress = 1;
         });
 
+        // Update rotation for visual spinning of planets
         nodes.forEach(node => {
-            if (node === dragNode) return;
-            const floatX = Math.sin(time * node.floatSpeed + node.floatPhase) * node.floatRadius;
-            const floatY = Math.cos(time * node.floatSpeed * 0.7 + node.floatPhase) * node.floatRadius * 0.8;
-            const wobbleX = Math.sin(time * node.floatSpeed2 + node.floatPhase * 2.0) * node.floatRadius2;
-            const wobbleY = Math.cos(time * node.floatSpeed2 * 1.3 + node.floatPhase * 2.0) * node.floatRadius2;
-            node.orbitAngle += node.orbitSpeed * 0.016;
-            const orbitX = Math.cos(node.orbitAngle) * node.orbitRadius;
-            const orbitY = Math.sin(node.orbitAngle) * node.orbitRadius * 0.6;
-
-            if (settled) { node.x = node.baseX + floatX + wobbleX + orbitX; node.y = node.baseY + floatY + wobbleY + orbitY; }
-            else { node.x += (floatX + wobbleX) * 0.02; node.y += (floatY + wobbleY) * 0.02; }
             node.rotation += node.rotationSpeed;
         });
 
-        const primaryNodes = new Set(['unity', 'csharp', 'hlsl']);
+        // CPU-based parallax: based on zoom level and zoom center offset
+        // Parallax only appears when zoomed in, based on where you're looking
+        const parallaxStrength = renderParams.parallaxStrength || 1.0;
+        const zoomFactor = (zoomLevel - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM); // 0 at min zoom, 1 at max
+        const parallaxBaseX = (zoomCenterX - centerX) * 0.25 * parallaxStrength * zoomFactor;
+        const parallaxBaseY = (zoomCenterY - centerY) * 0.25 * parallaxStrength * zoomFactor;
+
+        nodes.forEach(node => {
+            // Near objects (depth=1) move more, far objects (depth=0) move less
+            const parallaxFactor = 0.15 + node.depth * 0.85; // Far=15%, Near=100%
+            node.renderX = node.x + parallaxBaseX * parallaxFactor;
+            node.renderY = node.y + parallaxBaseY * parallaxFactor;
+        });
+
+        // Only draw connections when hovered (invisible otherwise)
+        // Draw all connections (teal 10% opacity)
         connections.forEach(([a, b]) => {
             const nodeA = nodes.find(n => n.id === a);
             const nodeB = nodes.find(n => n.id === b);
             if (!nodeA || !nodeB) return;
 
-            const isHighlighted = hoveredNode && (hoveredNode.id === a || hoveredNode.id === b);
-            const shrinkA = nodeA.shrinkProgress !== undefined ? nodeA.shrinkProgress : 1;
-            const shrinkB = nodeB.shrinkProgress !== undefined ? nodeB.shrinkProgress : 1;
-            const connectionFade = Math.min(shrinkA, shrinkB) * globalFadeIn;
-            if (connectionFade < 0.01) return;
+            const ax = nodeA.renderX, ay = nodeA.renderY;
+            const bx = nodeB.renderX, by = nodeB.renderY;
 
-            if (isHighlighted) {
-                const gradient = ctx.createLinearGradient(nodeA.x, nodeA.y, nodeB.x, nodeB.y);
-                const alpha = 0.8 * connectionFade;
-                gradient.addColorStop(0, `rgba(255, 170, 50, ${alpha})`);
-                gradient.addColorStop(0.5, `rgba(255, 220, 100, ${alpha})`);
-                gradient.addColorStop(1, `rgba(255, 170, 50, ${alpha})`);
-                ctx.strokeStyle = gradient;
-                ctx.lineWidth = 2;
-            } else {
-                if (hoveredNode) return;
-                if (!primaryNodes.has(a) && !primaryNodes.has(b)) return;
-                ctx.strokeStyle = `rgba(255, 255, 255, ${0.055 * connectionFade})`;
-                ctx.lineWidth = 0.5;
-            }
-
+            ctx.strokeStyle = `rgba(45, 212, 191, ${0.03 * globalFadeIn})`;
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
-            ctx.moveTo(nodeA.x, nodeA.y);
-            ctx.lineTo(nodeB.x, nodeB.y);
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(bx, by);
             ctx.stroke();
         });
 
+        // Draw highlighted connections on top (yellow opaque)
+        if (hoveredNode) {
+            connections.forEach(([a, b]) => {
+                const isHighlighted = hoveredNode.id === a || hoveredNode.id === b;
+                if (!isHighlighted) return;
+
+                const nodeA = nodes.find(n => n.id === a);
+                const nodeB = nodes.find(n => n.id === b);
+                if (!nodeA || !nodeB) return;
+
+                const ax = nodeA.renderX, ay = nodeA.renderY;
+                const bx = nodeB.renderX, by = nodeB.renderY;
+
+                ctx.strokeStyle = `rgba(232, 185, 35, ${globalFadeIn})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(ax, ay);
+                ctx.lineTo(bx, by);
+                ctx.stroke();
+            });
+        }
+
         if (!renderSpheresGL(nodes, hoveredNode, connectedToHovered)) {
             nodes.forEach(node => {
-                const shrink = node.shrinkProgress !== undefined ? node.shrinkProgress : 1;
-                if (shrink < 0.01 || globalFadeIn < 0.01) return;
+                const fadeAmount = node.shrinkProgress !== undefined ? node.shrinkProgress : 1;
+                if (globalFadeIn < 0.01) return;
+                const minAlpha = 0.3;
+                const alphaMultiplier = minAlpha + fadeAmount * (1 - minAlpha);
                 const pulse = Math.sin(time * node.pulseSpeed + node.pulsePhase);
-                const displaySize = (node.size + pulse * 0.5 + node.glowIntensity * 3) * shrink;
+                const displaySize = node.size + pulse * 0.5 + node.glowIntensity * 3;
                 let baseColor = node.category === 'primary' ? colors.gold : node.category === 'secondary' ? colors.teal : colors.textMuted;
-                drawLitSphere(node.x, node.y, displaySize, baseColor, shrink * globalFadeIn, globalFadeIn * shrink, node.glowIntensity);
+                // Use parallax-adjusted positions
+                drawLitSphere(node.renderX, node.renderY, displaySize, baseColor, alphaMultiplier * globalFadeIn, globalFadeIn * alphaMultiplier, node.glowIntensity);
             });
         }
 
         nodes.forEach(node => {
-            const shrink = node.shrinkProgress !== undefined ? node.shrinkProgress : 1;
-            if (shrink < 0.1 || globalFadeIn < 0.5) return;
-            const labelAlpha = Math.min(1, (globalFadeIn - 0.5) * 2) * shrink;
+            const fadeAmount = node.shrinkProgress !== undefined ? node.shrinkProgress : 1;
+            if (globalFadeIn < 0.5) return;
+            const minAlpha = 0.3;
+            const alphaMultiplier = minAlpha + fadeAmount * (1 - minAlpha);
+            const labelAlpha = Math.min(1, (globalFadeIn - 0.5) * 2) * alphaMultiplier;
             const pulse = Math.sin(time * node.pulseSpeed + node.pulsePhase);
-            const displaySize = (node.size + pulse * 0.5 + node.glowIntensity * 3) * shrink;
-            const labelY = node.y + displaySize + 12 * sizeScale + 6;
+            const displaySize = node.size + pulse * 0.5 + node.glowIntensity * 3;
+            // Use parallax-adjusted positions for labels
+            const labelX = node.renderX;
+            const labelY = node.renderY + displaySize + 12 * sizeScale + 6;
             const fontWeight = node.glowIntensity > 0.5 ? '600' : '500';
-            const fontSize = (9.5 + 2.5 * sizeScale + node.glowIntensity) * (0.7 + shrink * 0.3);
+            const fontSize = 9.5 + 2.5 * sizeScale + node.glowIntensity;
             ctx.font = `${fontWeight} ${fontSize}px "JetBrains Mono", monospace`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             const textWidth = ctx.measureText(node.label).width;
             const paddingX = 3 * sizeScale + 1, paddingY = 5 * sizeScale + 2;
             ctx.globalAlpha = labelAlpha;
-            ctx.fillStyle = `rgba(21, 29, 38, ${0.8 * shrink})`;
+            ctx.fillStyle = `rgba(21, 29, 38, ${0.8 * alphaMultiplier})`;
             ctx.beginPath();
-            ctx.roundRect(node.x - textWidth / 2 - paddingX, labelY - paddingY, textWidth + paddingX * 2, paddingY * 2, 3);
+            ctx.roundRect(labelX - textWidth / 2 - paddingX, labelY - paddingY, textWidth + paddingX * 2, paddingY * 2, 3);
             ctx.fill();
             ctx.fillStyle = colors.textPrimary;
-            ctx.fillText(node.label, node.x, labelY);
+            ctx.fillText(node.label, labelX, labelY);
             ctx.globalAlpha = 1;
         });
 
         drawTooltipConnector();
+
+        // Restore canvas state after zoom transform
+        ctx.restore();
     }
 
     function animate() {
         simulate();
         draw();
-        updateShowcase();
         requestAnimationFrame(animate);
+    }
+
+    // Convert screen coords to world coords (accounting for zoom centered on mouse)
+    function screenToWorld(sx, sy) {
+        return {
+            x: (sx - zoomCenterX) / zoomLevel + zoomCenterX,
+            y: (sy - zoomCenterY) / zoomLevel + zoomCenterY
+        };
     }
 
     canvas.addEventListener('mousedown', (e) => {
         const rect = canvas.getBoundingClientRect();
-        mouseX = e.clientX - rect.left;
-        mouseY = e.clientY - rect.top;
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+        const world = screenToWorld(screenX, screenY);
+        mouseX = world.x;
+        mouseY = world.y;
         dragNode = getNodeAt(mouseX, mouseY);
         if (dragNode) {
             isDragging = true;
@@ -1711,8 +1478,11 @@ const godRaysFragmentShader = `
 
     canvas.addEventListener('mousemove', (e) => {
         const rect = canvas.getBoundingClientRect();
-        mouseX = e.clientX - rect.left;
-        mouseY = e.clientY - rect.top;
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+        const world = screenToWorld(screenX, screenY);
+        mouseX = world.x;
+        mouseY = world.y;
         if (isDragging && dragNode) {
             dragNode.x = mouseX; dragNode.y = mouseY;
             dragNode.baseX = mouseX; dragNode.baseY = mouseY;
@@ -1741,8 +1511,11 @@ const godRaysFragmentShader = `
         e.preventDefault();
         const touch = e.touches[0];
         const rect = canvas.getBoundingClientRect();
-        mouseX = touch.clientX - rect.left;
-        mouseY = touch.clientY - rect.top;
+        const screenX = touch.clientX - rect.left;
+        const screenY = touch.clientY - rect.top;
+        const world = screenToWorld(screenX, screenY);
+        mouseX = world.x;
+        mouseY = world.y;
         dragNode = getNodeAt(mouseX, mouseY);
         if (dragNode) {
             isDragging = true; settled = false;
@@ -1757,8 +1530,11 @@ const godRaysFragmentShader = `
         if (!isDragging || !dragNode) return;
         const touch = e.touches[0];
         const rect = canvas.getBoundingClientRect();
-        dragNode.x = touch.clientX - rect.left;
-        dragNode.y = touch.clientY - rect.top;
+        const screenX = touch.clientX - rect.left;
+        const screenY = touch.clientY - rect.top;
+        const world = screenToWorld(screenX, screenY);
+        dragNode.x = world.x;
+        dragNode.y = world.y;
         dragNode.baseX = dragNode.x; dragNode.baseY = dragNode.y;
         dragNode.vx = 0; dragNode.vy = 0;
         settled = false;
@@ -1767,37 +1543,63 @@ const godRaysFragmentShader = `
 
     canvas.addEventListener('touchend', () => { isDragging = false; dragNode = null; });
 
+    // Mouse wheel zoom - zooms toward mouse position
+    canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const mouseScreenX = e.clientX - rect.left;
+        const mouseScreenY = e.clientY - rect.top;
+
+        const zoomSpeed = 0.0008;
+        const delta = -e.deltaY * zoomSpeed;
+        const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, targetZoom + delta * targetZoom));
+
+        // Don't change zoom center if already at max zoom
+        if (targetZoom >= MAX_ZOOM && newZoom >= MAX_ZOOM) {
+            return;
+        }
+
+        // Only update zoom center when zooming in, not when at min zoom
+        if (newZoom > MIN_ZOOM) {
+            targetZoomCenterX = mouseScreenX;
+            targetZoomCenterY = mouseScreenY;
+        }
+        targetZoom = newZoom;
+    }, { passive: false });
+
     window.addEventListener('resize', resize);
     initSphereGL();
     resize();
-    lastShowcaseTime = performance.now();
 
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
             time = 0; globalFadeIn = 0; startupPhase = true;
-            lastShowcaseTime = performance.now();
             tooltip.classList.remove('visible');
-            tooltipTarget = null; showcaseActive = false; showcaseNode = null;
+            tooltipTarget = null;
         }
     });
 
     window.addEventListener('skillsTabActivated', () => {
         time = 0; globalFadeIn = 0; startupPhase = true;
-        lastShowcaseTime = performance.now();
         tooltip.classList.remove('visible');
-        tooltipTarget = null; showcaseActive = false; showcaseNode = null;
+        tooltipTarget = null;
     });
 
     // ========================================
-    // LIGHT CONTROLS UI
+    // LIGHT CONTROLS UI - Kelvin Temperature
     // ========================================
     const lightControls = document.getElementById('light-controls');
     const lightControlsToggle = document.getElementById('light-controls-toggle');
     const lightResetBtn = document.getElementById('light-reset-btn');
-    const lightColorInputs = [
-        document.getElementById('light-color-0'),
-        document.getElementById('light-color-1'),
-        document.getElementById('light-color-2')
+    const kelvinSliders = [
+        document.getElementById('kelvin-slider-0'),
+        document.getElementById('kelvin-slider-1'),
+        document.getElementById('kelvin-slider-2')
+    ];
+    const kelvinValues = [
+        document.getElementById('kelvin-value-0'),
+        document.getElementById('kelvin-value-1'),
+        document.getElementById('kelvin-value-2')
     ];
     const lightPreviews = [
         document.getElementById('light-preview-0'),
@@ -1805,37 +1607,103 @@ const godRaysFragmentShader = `
         document.getElementById('light-preview-2')
     ];
 
-    // Default colors for reset
-    const defaultLightColors = ['#e8b923', '#2dd4bf', '#E6319F'];
+    // Default Kelvin temperatures (Unity hot, Unreal cold, Graphics medium)
+    const defaultKelvinTemps = [15000, 2000, 5000];
 
-    // Get light nodes (primary skill nodes)
-    const lightNodeIds = ['unity', 'csharp', 'hlsl'];
+    // Get light nodes (primary skill nodes - suns)
+    const lightNodeIds = ['unity', 'unreal', 'graphics'];
 
-    function updateLightColor(index, color) {
+    // Convert Kelvin temperature to RGB color
+    // Enhanced algorithm for more saturated extremes
+    function kelvinToRGB(kelvin) {
+        const temp = kelvin / 100;
+        let r, g, b;
+
+        // Red
+        if (temp <= 66) {
+            r = 255;
+        } else {
+            r = temp - 60;
+            r = 329.698727446 * Math.pow(r, -0.1332047592);
+            r = Math.max(0, Math.min(255, r));
+        }
+
+        // Green
+        if (temp <= 66) {
+            g = temp;
+            g = 99.4708025861 * Math.log(g) - 161.1195681661;
+            g = Math.max(0, Math.min(255, g));
+        } else {
+            g = temp - 60;
+            g = 288.1221695283 * Math.pow(g, -0.0755148492);
+            g = Math.max(0, Math.min(255, g));
+        }
+
+        // Blue
+        if (temp >= 66) {
+            b = 255;
+        } else if (temp <= 19) {
+            b = 0;
+        } else {
+            b = temp - 10;
+            b = 138.5177312231 * Math.log(b) - 305.0447927307;
+            b = Math.max(0, Math.min(255, b));
+        }
+
+        // Boost saturation at extremes for more vivid colors
+        // Cold stars: boost red, reduce green/blue
+        if (kelvin < 4000) {
+            const coldFactor = 1 - (kelvin - 2000) / 2000; // 1 at 2000K, 0 at 4000K
+            r = Math.min(255, r + coldFactor * 40);
+            g = Math.max(0, g * (1 - coldFactor * 0.4));
+            b = Math.max(0, b * (1 - coldFactor * 0.6));
+        }
+        // Hot stars: boost blue, reduce red
+        if (kelvin > 8000) {
+            const hotFactor = Math.min(1, (kelvin - 8000) / 7000); // 0 at 8000K, 1 at 15000K
+            r = Math.max(0, r * (1 - hotFactor * 0.35));
+            g = Math.max(0, g * (1 - hotFactor * 0.15));
+            b = Math.min(255, b + hotFactor * 30);
+        }
+
+        return `#${Math.round(r).toString(16).padStart(2, '0')}${Math.round(g).toString(16).padStart(2, '0')}${Math.round(b).toString(16).padStart(2, '0')}`;
+    }
+
+    // Get star classification from Kelvin
+    function getStarClass(kelvin) {
+        if (kelvin >= 30000) return 'O';
+        if (kelvin >= 10000) return 'B';
+        if (kelvin >= 7500) return 'A';
+        if (kelvin >= 6000) return 'F';
+        if (kelvin >= 5200) return 'G';
+        if (kelvin >= 3700) return 'K';
+        return 'M';
+    }
+
+    function updateLightFromKelvin(index, kelvin) {
+        const color = kelvinToRGB(kelvin);
+        const starClass = getStarClass(kelvin);
         const node = nodes.find(n => n.id === lightNodeIds[index]);
+
         if (node) {
             node.lightColor = color;
             node.color = color;
         }
         if (lightPreviews[index]) {
             lightPreviews[index].style.backgroundColor = color;
-            lightPreviews[index].style.color = color;
+            lightPreviews[index].style.boxShadow = `0 0 8px ${color}`;
         }
-        if (lightColorInputs[index]) {
-            lightColorInputs[index].value = color;
+        if (kelvinValues[index]) {
+            kelvinValues[index].textContent = `${kelvin}K (${starClass})`;
+        }
+        if (kelvinSliders[index]) {
+            kelvinSliders[index].value = kelvin;
         }
     }
 
-    // Initialize preview colors
-    lightNodeIds.forEach((id, i) => {
-        const node = nodes.find(n => n.id === id);
-        if (node && lightPreviews[i]) {
-            lightPreviews[i].style.backgroundColor = node.lightColor;
-            lightPreviews[i].style.color = node.lightColor;
-        }
-        if (node && lightColorInputs[i]) {
-            lightColorInputs[i].value = node.lightColor;
-        }
+    // Initialize from default temperatures
+    defaultKelvinTemps.forEach((temp, i) => {
+        updateLightFromKelvin(i, temp);
     });
 
     // Toggle panel
@@ -1853,11 +1721,11 @@ const godRaysFragmentShader = `
         }
     });
 
-    // Color input handlers
-    lightColorInputs.forEach((input, i) => {
-        if (input) {
-            input.addEventListener('input', (e) => {
-                updateLightColor(i, e.target.value);
+    // Kelvin slider handlers
+    kelvinSliders.forEach((slider, i) => {
+        if (slider) {
+            slider.addEventListener('input', (e) => {
+                updateLightFromKelvin(i, parseInt(e.target.value));
             });
         }
     });
@@ -1865,8 +1733,143 @@ const godRaysFragmentShader = `
     // Reset button
     if (lightResetBtn) {
         lightResetBtn.addEventListener('click', () => {
-            defaultLightColors.forEach((color, i) => {
-                updateLightColor(i, color);
+            defaultKelvinTemps.forEach((temp, i) => {
+                updateLightFromKelvin(i, temp);
+            });
+        });
+    }
+
+    // ========================================
+    // RENDER CONTROLS UI
+    // ========================================
+    const renderControls = document.getElementById('render-controls');
+    const renderControlsToggle = document.getElementById('render-controls-toggle');
+    const renderResetBtn = document.getElementById('render-reset-btn');
+
+    // Slider elements and their corresponding renderParams keys
+    const renderSliders = {
+        'render-noise-scale': { param: 'noiseScale', valueEl: 'noise-scale-value', default: 1.8, decimals: 1 },
+        'render-terrain-height': { param: 'terrainHeight', valueEl: 'terrain-height-value', default: 1.0, decimals: 1 },
+        'render-atmos-intensity': { param: 'atmosIntensity', valueEl: 'atmos-intensity-value', default: 1.0, decimals: 1 },
+        'render-atmos-thickness': { param: 'atmosThickness', valueEl: 'atmos-thickness-value', default: 1.0, decimals: 1 },
+        'render-atmos-power': { param: 'atmosPower', valueEl: 'atmos-power-value', default: 1.0, decimals: 1 },
+        'render-scatter-r': { param: 'scatterR', valueEl: 'scatter-r-value', default: 1.0, decimals: 1 },
+        'render-scatter-g': { param: 'scatterG', valueEl: 'scatter-g-value', default: 2.5, decimals: 1 },
+        'render-scatter-b': { param: 'scatterB', valueEl: 'scatter-b-value', default: 5.5, decimals: 1 },
+        'render-scatter-scale': { param: 'scatterScale', valueEl: 'scatter-scale-value', default: 0.5, decimals: 2 },
+        'render-sunset-strength': { param: 'sunsetStrength', valueEl: 'sunset-strength-value', default: 1.0, decimals: 1 },
+        'render-lava-intensity': { param: 'lavaIntensity', valueEl: 'lava-intensity-value', default: 1.0, decimals: 1 },
+        'render-ocean-roughness': { param: 'oceanRoughness', valueEl: 'ocean-roughness-value', default: 0.3, decimals: 2 },
+        'render-sss-intensity': { param: 'sssIntensity', valueEl: 'sss-intensity-value', default: 1.0, decimals: 1 },
+        'render-sea-level': { param: 'seaLevel', valueEl: 'sea-level-value', default: 0.0, decimals: 2 },
+        'render-parallax': { param: 'parallaxStrength', valueEl: 'parallax-value', default: 1.0, decimals: 1 }
+    };
+
+    // Initialize sliders
+    Object.entries(renderSliders).forEach(([sliderId, config]) => {
+        const slider = document.getElementById(sliderId);
+        const valueEl = document.getElementById(config.valueEl);
+        if (slider && valueEl) {
+            slider.value = renderParams[config.param];
+            valueEl.textContent = renderParams[config.param].toFixed(config.decimals);
+
+            slider.addEventListener('input', () => {
+                const value = parseFloat(slider.value);
+                renderParams[config.param] = value;
+                valueEl.textContent = value.toFixed(config.decimals);
+            });
+        }
+    });
+
+    // Toggle panel
+    if (renderControlsToggle) {
+        renderControlsToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            renderControls.classList.toggle('active');
+        });
+    }
+
+    // Close panel when clicking outside
+    document.addEventListener('click', (e) => {
+        if (renderControls && !renderControls.contains(e.target)) {
+            renderControls.classList.remove('active');
+        }
+    });
+
+    // Reset button
+    if (renderResetBtn) {
+        renderResetBtn.addEventListener('click', () => {
+            Object.entries(renderSliders).forEach(([sliderId, config]) => {
+                const slider = document.getElementById(sliderId);
+                const valueEl = document.getElementById(config.valueEl);
+                renderParams[config.param] = config.default;
+                if (slider) slider.value = config.default;
+                if (valueEl) valueEl.textContent = config.default.toFixed(config.decimals);
+            });
+        });
+    }
+
+    // ========================================
+    // PHYSICS CONTROLS UI
+    // ========================================
+    const physicsControls = document.getElementById('physics-controls');
+    const physicsControlsToggle = document.getElementById('physics-controls-toggle');
+    const physicsResetBtn = document.getElementById('physics-reset-btn');
+
+    // Slider elements and their corresponding physicsParams keys
+    const physicsSliders = {
+        'physics-spring': { param: 'springStrength', valueEl: 'spring-value', default: 0.005, decimals: 4 },
+        'physics-rotation': { param: 'rotationForce', valueEl: 'rotation-value', default: 0.0001, decimals: 4 },
+        'physics-separation-zone': { param: 'separationZone', valueEl: 'separation-zone-value', default: 2.0, decimals: 2 },
+        'physics-separation-force': { param: 'separationForce', valueEl: 'separation-force-value', default: 0.5, decimals: 2 },
+        'physics-damping': { param: 'damping', valueEl: 'damping-value', default: 0.96, decimals: 3 },
+        'physics-max-speed': { param: 'maxSpeed', valueEl: 'max-speed-value', default: 1.5, decimals: 2 },
+        'physics-center-pull': { param: 'centerPull', valueEl: 'center-pull-value', default: 0.0003, decimals: 5 },
+        'physics-repel': { param: 'repelStrength', valueEl: 'repel-value', default: 20.0, decimals: 2 },
+        'physics-sun-repel': { param: 'sunRepel', valueEl: 'sun-repel-value', default: 1.0, decimals: 2 },
+        'physics-mouse': { param: 'mouseAttraction', valueEl: 'mouse-value', default: 0.008, decimals: 3 }
+    };
+
+    // Initialize physics sliders
+    Object.entries(physicsSliders).forEach(([sliderId, config]) => {
+        const slider = document.getElementById(sliderId);
+        const valueEl = document.getElementById(config.valueEl);
+        if (slider && valueEl) {
+            slider.value = physicsParams[config.param];
+            valueEl.textContent = physicsParams[config.param].toFixed(config.decimals);
+
+            slider.addEventListener('input', () => {
+                const value = parseFloat(slider.value);
+                physicsParams[config.param] = value;
+                valueEl.textContent = value.toFixed(config.decimals);
+            });
+        }
+    });
+
+    // Toggle physics panel
+    if (physicsControlsToggle) {
+        physicsControlsToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            physicsControls.classList.toggle('active');
+        });
+    }
+
+    // Close physics panel when clicking outside
+    document.addEventListener('click', (e) => {
+        if (physicsControls && !physicsControls.contains(e.target)) {
+            physicsControls.classList.remove('active');
+        }
+    });
+
+    // Physics reset button
+    if (physicsResetBtn) {
+        physicsResetBtn.addEventListener('click', () => {
+            Object.entries(physicsSliders).forEach(([sliderId, config]) => {
+                const slider = document.getElementById(sliderId);
+                const valueEl = document.getElementById(config.valueEl);
+                physicsParams[config.param] = config.default;
+                if (slider) slider.value = config.default;
+                if (valueEl) valueEl.textContent = config.default.toFixed(config.decimals);
             });
         });
     }

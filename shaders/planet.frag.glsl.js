@@ -1,0 +1,866 @@
+// Planet Fragment Shader - Edit this file for IDE syntax highlighting
+// The GLSL code is inside the template literal string below
+window.PLANET_FRAGMENT_SHADER = `
+precision highp float;
+varying vec2 vUV;
+varying vec2 vCenter;
+varying float vRadius;
+varying vec3 vColor;
+varying float vAlpha;
+varying float vAppear;
+varying float vGlow;
+varying float vIndex;
+varying float vIsLight;
+uniform vec2 uRes;
+uniform vec2 uMouse;
+uniform float uTime;
+uniform vec2 uLight0;
+uniform vec2 uLight1;
+uniform vec2 uLight2;
+uniform vec3 uLightColor0;
+uniform vec3 uLightColor1;
+uniform vec3 uLightColor2;
+// Controllable rendering parameters
+uniform float uNoiseScale;      // Terrain noise scale (default 1.8)
+uniform float uTerrainHeight;   // Terrain displacement strength (default 1.0)
+uniform float uAtmosIntensity;  // Atmosphere brightness (default 1.0)
+uniform float uAtmosThickness;  // Atmosphere thickness/falloff (default 1.0)
+uniform float uAtmosPower;      // Atmosphere density power/falloff curve (default 1.0)
+uniform float uScatterR;        // Red channel scattering coefficient (default 1.0)
+uniform float uScatterG;        // Green channel scattering coefficient (default 2.5)
+uniform float uScatterB;        // Blue channel scattering coefficient (default 5.5)
+uniform float uScatterScale;    // Optical depth multiplier (default 1.0)
+uniform float uSunsetStrength;  // How much shadow affects scattering (default 1.0)
+uniform float uLavaIntensity;   // Lava emission intensity (default 1.0)
+uniform float uOceanRoughness;  // Ocean roughness 0=mirror, 1=matte (default 0.3)
+uniform float uSSSIntensity;    // Subsurface scattering intensity (default 1.0)
+uniform float uSeaLevel;        // Sea level offset (default 0.0)
+
+#define PI 3.14159265
+
+// Simplex noise for rocky texture
+vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+
+float snoise(vec2 v) {
+    const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+                       -0.577350269189626, 0.024390243902439);
+    vec2 i  = floor(v + dot(v, C.yy));
+    vec2 x0 = v - i + dot(i, C.xx);
+    vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+    vec4 x12 = x0.xyxy + C.xxzz;
+    x12.xy -= i1;
+    i = mod289(i);
+    vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
+    vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+    m = m*m;
+    m = m*m;
+    vec3 x = 2.0 * fract(p * C.www) - 1.0;
+    vec3 h = abs(x) - 0.5;
+    vec3 ox = floor(x + 0.5);
+    vec3 a0 = x - ox;
+    m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
+    vec3 g;
+    g.x = a0.x * x0.x + h.x * x0.y;
+    g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+    return 130.0 * dot(m, g);
+}
+
+void main() {
+    vec2 uv = vUV;
+    float d = length(uv);
+    float animOffset = vIndex * 0.5;
+    float t = uTime + animOffset;
+    float ap = clamp(vAppear, 0.0, 1.0);
+    float scaledD = d / max(ap, 0.001);
+    float outerFade = 1.0 - smoothstep(1.2, 1.45, scaledD);
+    if (outerFade < 0.001) discard;
+
+    float planetRadius = 0.40;
+    float atmosphereThickness = 0.65;
+    float atmosphereOuter = planetRadius + atmosphereThickness;
+
+    if (vIsLight > 0.5) {
+        // Original sizing with flowing liquid effect
+        float coreMask = 1.0 - smoothstep(0.0, 0.5, d);
+        float glowMask = 1.0 - smoothstep(0.0, 1.0, d);
+        float outerHalo = 0.03 / (d * d + 0.03);
+
+        // Spherical coordinates for flow
+        float zSq = 0.25 - d * d; // 0.5^2 = 0.25
+        float z = zSq > 0.0 ? sqrt(zSq) : 0.0;
+        vec3 sphereNormal = d < 0.5 ? normalize(vec3(uv, z)) : vec3(0.0, 0.0, 1.0);
+
+        // Simplex-like noise for organic flow
+        float flowT = t * 0.4;
+        vec2 flowUV = uv * 4.0;
+
+        // Organic noise layers (not regular sine patterns)
+        float n1 = sin(flowUV.x * 2.3 + flowUV.y * 1.7 + flowT) * cos(flowUV.y * 3.1 - flowT * 0.7);
+        float n2 = sin(flowUV.x * 1.1 - flowUV.y * 2.9 + flowT * 1.3 + 2.0) * cos(flowUV.x * 2.7 + flowT * 0.5);
+        float n3 = sin((flowUV.x + flowUV.y) * 1.9 + flowT * 0.9) * cos((flowUV.x - flowUV.y) * 2.3 - flowT * 0.6);
+
+        // Combine with varied weights for organic look
+        float flowNoise = n1 * 0.4 + n2 * 0.35 + n3 * 0.25;
+        flowNoise = flowNoise * 0.5 + 0.5; // Normalize to 0-1
+
+        // Create veins/channels of flowing liquid
+        float veins = pow(abs(sin(flowNoise * 6.28 + flowT)), 2.0);
+
+        // Hot spots where flow concentrates
+        float hotSpots = pow(flowNoise, 3.0);
+
+        // Slow vertical drift for gravity effect
+        float drift = sin(uv.x * 5.0 + flowT * 0.3) * 0.5 + 0.5;
+        drift *= smoothstep(-0.5, 0.3, -uv.y); // Stronger at bottom
+
+        // Combined liquid pattern
+        float liquid = flowNoise * 0.5 + veins * 0.3 + hotSpots * 0.2;
+        liquid = liquid + drift * 0.15;
+        liquid = clamp(liquid, 0.0, 1.0);
+
+        // Pulsing
+        float pulse = sin(t * 2.0) * 0.5 + 0.5;
+        float breathe = 0.85 + pulse * 0.15;
+
+        // Color: dark cracks -> glowing -> white hot
+        vec3 darkCol = vColor * 0.2;
+        vec3 glowCol = vColor * 1.4;
+        vec3 hotCol = vColor + vec3(0.4, 0.25, 0.1);
+        hotCol = min(hotCol, vec3(1.4));
+
+        vec3 emissive = mix(darkCol, glowCol, liquid);
+        emissive = mix(emissive, hotCol, hotSpots * 0.7);
+        emissive *= breathe;
+
+        // Fresnel rim
+        float NdV = max(dot(sphereNormal, vec3(0.0, 0.0, 1.0)), 0.0);
+        float rim = pow(1.0 - NdV, 2.5) * coreMask;
+        emissive += vColor * rim * 0.4;
+
+        // Final composition
+        vec3 col = vec3(0.0);
+        col += emissive * coreMask * 1.8;
+        col += vColor * glowMask * 0.6 * (1.0 - coreMask * 0.8);
+        col += vColor * outerHalo * 0.5;
+        col += vColor * vGlow * 0.4;
+
+        // Tone mapping
+        col = col / (col + vec3(0.5));
+
+        // Full alpha including glow for proper blending
+        float alpha = coreMask * 0.95 + glowMask * 0.5 + outerHalo * 0.4;
+        alpha = clamp(alpha, 0.0, 1.0) * outerFade;
+        alpha *= smoothstep(0.0, 0.5, ap) * vAlpha;
+
+        // Standard alpha blending output (not premultiplied)
+        gl_FragColor = vec4(col, alpha);
+        return;
+    }
+
+    float varSeed = vIndex * 1.618;
+    vec3 planetColor = vColor;
+    float hueShift = sin(varSeed) * 0.1;
+    planetColor.r += hueShift;
+    planetColor.g += hueShift;
+    planetColor.b -= hueShift;
+    float satVar = cos(varSeed * 2.3) * 0.5;
+    vec3 gray = vec3(dot(planetColor, vec3(0.299, 0.587, 0.114)));
+    planetColor = mix(planetColor, gray, .8);
+    planetColor *= 0.9 + sin(varSeed * 3.7) * 0.15;
+
+    // ========================================
+    // TERRAIN HEIGHTMAP - computed first to deform planet shape
+    // ========================================
+    vec2 heightCoord = uv * uNoiseScale + vIndex * 10.0;
+    float eps = 0.06;
+
+    // Biome type based on planet index (cycles through 3 types)
+    // 0 = Oceanic (lots of water, green land)
+    // 1 = Desert (little water, sand everywhere)
+    // 2 = Mountain/Ice (moderate water, ice on peaks)
+    float biomeSelector = mod(vIndex, 3.0);
+    float isOceanic = step(0.5, 1.0 - abs(biomeSelector - 0.0));
+    float isDesert = step(0.5, 1.0 - abs(biomeSelector - 1.0));
+    float isMountain = step(0.5, 1.0 - abs(biomeSelector - 2.0));
+
+    // Multi-octave height for terrain - large continental shapes + detail (4 octaves)
+    float heightC = snoise(heightCoord) * 0.5
+                  + snoise(heightCoord * 2.0 + 1.5) * 0.25
+                  + snoise(heightCoord * 4.0 + 3.0) * 0.15
+                  + snoise(heightCoord * 8.0 + 5.5) * 0.1;
+    float heightX = snoise(heightCoord + vec2(eps, 0.0)) * 0.5
+                  + snoise((heightCoord + vec2(eps, 0.0)) * 2.0 + 1.5) * 0.25
+                  + snoise((heightCoord + vec2(eps, 0.0)) * 4.0 + 3.0) * 0.15
+                  + snoise((heightCoord + vec2(eps, 0.0)) * 8.0 + 5.5) * 0.1;
+    float heightY = snoise(heightCoord + vec2(0.0, eps)) * 0.5
+                  + snoise((heightCoord + vec2(0.0, eps)) * 2.0 + 1.5) * 0.25
+                  + snoise((heightCoord + vec2(0.0, eps)) * 4.0 + 3.0) * 0.15
+                  + snoise((heightCoord + vec2(0.0, eps)) * 8.0 + 5.5) * 0.1;
+
+    // Sea level varies per biome
+    // Oceanic: low sea level = more water
+    // Desert: very low sea level = almost no water (just oases)
+    // Mountain: medium sea level = moderate water
+    float seaLevel = -0.05 * isOceanic + -0.45 * isDesert + 0.0 * isMountain + uSeaLevel;
+    float oceanMask = smoothstep(seaLevel + 0.08, seaLevel - 0.02, heightC);
+
+    // Deform planet radius based on terrain height
+    // Higher terrain = larger radius (mountains bulge out)
+    // Clamp land height to positive values for displacement
+    float landHeight = max(heightC - seaLevel, 0.0);
+
+    // Mountain biome: apply power function for sharper peaks but clamped to stay within bounds
+    float mountainHeight = pow(min(landHeight, 0.6) * 1.2, 1.8) * 0.08; // Clamped exponential for sharp but contained peaks
+    float normalHeight = landHeight * 0.04;
+    float terrainDisplacement = (normalHeight * (1.0 - isMountain) + mountainHeight * isMountain) * uTerrainHeight;
+    // Clamp maximum displacement to 15% of planet radius
+    terrainDisplacement = min(terrainDisplacement, planetRadius * 0.15 * uTerrainHeight);
+    float deformedRadius = planetRadius + terrainDisplacement;
+
+    // Planet mask with height-deformed edge
+    float planetMask = 1.0 - smoothstep(deformedRadius - 0.003, deformedRadius + 0.001, d);
+    float zSq = planetRadius * planetRadius - d * d;
+    float z = zSq > 0.0 ? sqrt(zSq) : 0.0;
+    vec3 baseN = d < deformedRadius ? normalize(vec3(uv, z)) : vec3(0.0, 0.0, 1.0);
+    vec3 V = vec3(0.0, 0.0, 1.0);
+
+    // Compute terrain normals from heightmap gradient
+    // Flip sign so higher terrain creates outward-facing normals
+    // Mountain biome gets stronger normals for dramatic peaks
+    float normalStrength = 0.12 * (1.0 - isMountain) + 0.35 * isMountain;
+    float terrainNx = -(heightX - heightC) / eps * normalStrength;
+    float terrainNy = -(heightY - heightC) / eps * normalStrength;
+
+    // Ocean wave normal deformation - subtle animated ripples
+    vec2 waveCoord = uv * 12.0 + vIndex * 5.0;
+    float waveSpeed = t * 0.2;
+    float wave1 = snoise(waveCoord + vec2(waveSpeed, waveSpeed * 0.7));
+    float wave2 = snoise(waveCoord * 1.3 - vec2(waveSpeed * 0.6, waveSpeed * 0.9) + 2.5);
+    float waveEps = 0.03;
+    float waveC = (wave1 + wave2 * 0.6);
+    float waveX = snoise(waveCoord + vec2(waveEps, 0.0) + vec2(waveSpeed, waveSpeed * 0.7))
+                + snoise((waveCoord + vec2(waveEps, 0.0)) * 1.3 - vec2(waveSpeed * 0.6, waveSpeed * 0.9) + 2.5) * 0.6;
+    float waveY = snoise(waveCoord + vec2(0.0, waveEps) + vec2(waveSpeed, waveSpeed * 0.7))
+                + snoise((waveCoord + vec2(0.0, waveEps)) * 1.3 - vec2(waveSpeed * 0.6, waveSpeed * 0.9) + 2.5) * 0.6;
+    float waveNx = (waveX - waveC) / waveEps * 0.012;
+    float waveNy = (waveY - waveC) / waveEps * 0.012;
+
+    // Land uses terrain heightmap normals, ocean uses flat base + subtle waves
+    vec3 landNormal = baseN + vec3(terrainNx, terrainNy, 0.0);
+    vec3 oceanNormal = baseN + vec3(waveNx, waveNy, 0.0);
+    vec3 N = normalize(mix(landNormal, oceanNormal, oceanMask) * planetMask + baseN * (1.0 - planetMask));
+
+    vec3 totalDiffuse = vec3(0.0);
+    vec3 totalSpecular = vec3(0.0);
+    vec3 oceanSpecular = vec3(0.0);  // Separate specular for ocean with roughness control
+    float totalAttenuation = 0.0;
+
+    // Specular power from roughness: low roughness = sharp highlight, high roughness = broad
+    float landSpecPow = 32.0;
+    float oceanSpecPow = mix(256.0, 8.0, uOceanRoughness); // 0=mirror(256), 1=rough(8)
+
+    vec2 mouseOffset = (uMouse - vCenter);
+    vec3 mouseLightPos = vec3(mouseOffset / uRes.x * 4.0, 0.3);
+    vec3 mouseL = normalize(mouseLightPos);
+    float mouseDist = length(mouseLightPos);
+    float mouseAtten = 0.08 / (mouseDist * mouseDist + 0.01);
+    mouseAtten = min(mouseAtten, 2.0);
+    float mouseNdL = max(dot(N, mouseL), 0.0);
+    vec3 mouseH = normalize(mouseL + V);
+    float mouseNdH = max(dot(N, mouseH), 0.0);
+    totalDiffuse += vec3(1.0) * mouseNdL * mouseAtten;
+    totalSpecular += vec3(1.0) * pow(mouseNdH, landSpecPow) * mouseAtten;
+    oceanSpecular += vec3(1.0) * pow(mouseNdH, oceanSpecPow) * mouseAtten;
+    totalAttenuation += mouseAtten;
+
+    vec2 light0Offset = (uLight0 - vCenter);
+    vec3 light0Pos = vec3(light0Offset / uRes.x * 3.0, 0.1);
+    vec3 L0 = normalize(light0Pos);
+    float dist0 = length(light0Pos);
+    float atten0 = 0.06 / (dist0 * dist0 + 0.02);
+    atten0 = min(atten0, 1.5);
+    float NdL0 = max(dot(N, L0), 0.0);
+    vec3 H0 = normalize(L0 + V);
+    float NdH0 = max(dot(N, H0), 0.0);
+    totalDiffuse += uLightColor0 * NdL0 * atten0;
+    totalSpecular += uLightColor0 * pow(NdH0, landSpecPow) * atten0;
+    oceanSpecular += uLightColor0 * pow(NdH0, oceanSpecPow) * atten0;
+    totalAttenuation += atten0;
+
+    vec2 light1Offset = (uLight1 - vCenter);
+    vec3 light1Pos = vec3(light1Offset / uRes.x * 3.0, 0.1);
+    vec3 L1 = normalize(light1Pos);
+    float dist1 = length(light1Pos);
+    float atten1 = 0.06 / (dist1 * dist1 + 0.02);
+    atten1 = min(atten1, 1.5);
+    float NdL1 = max(dot(N, L1), 0.0);
+    vec3 H1 = normalize(L1 + V);
+    float NdH1 = max(dot(N, H1), 0.0);
+    totalDiffuse += uLightColor1 * NdL1 * atten1;
+    totalSpecular += uLightColor1 * pow(NdH1, landSpecPow) * atten1;
+    oceanSpecular += uLightColor1 * pow(NdH1, oceanSpecPow) * atten1;
+    totalAttenuation += atten1;
+
+    vec2 light2Offset = (uLight2 - vCenter);
+    vec3 light2Pos = vec3(light2Offset / uRes.x * 3.0, 0.1);
+    vec3 L2 = normalize(light2Pos);
+    float dist2 = length(light2Pos);
+    float atten2 = 0.06 / (dist2 * dist2 + 0.02);
+    atten2 = min(atten2, 1.5);
+    float NdL2 = max(dot(N, L2), 0.0);
+    vec3 H2 = normalize(L2 + V);
+    float NdH2 = max(dot(N, H2), 0.0);
+    totalDiffuse += uLightColor2 * NdL2 * atten2;
+    totalSpecular += uLightColor2 * pow(NdH2, landSpecPow) * atten2;
+    oceanSpecular += uLightColor2 * pow(NdH2, oceanSpecPow) * atten2;
+    totalAttenuation += atten2;
+
+    float NdV = max(dot(N, V), 0.0);
+
+    // ========================================
+    // PHYSICALLY-BASED ATMOSPHERIC SCATTERING
+    // ========================================
+    // Treating the 2D quad as a 3D sphere viewed from front
+    // Atmosphere shell extends from planetRadius to atmosRadius
+
+    float atmosRadius = planetRadius + 0.4 * uAtmosThickness;
+    float atmosThickness = atmosRadius - planetRadius;
+     
+
+    // Reconstruct 3D sphere normal from 2D UV (sphere is centered, viewed from front)
+    // For a sphere: z = sqrt(r^2 - x^2 - y^2)
+    vec3 sphereNormal = vec3(0.0, 0.0, 1.0);
+    float sphereZ = 0.0;
+    if (d < planetRadius) {
+        float zSq = planetRadius * planetRadius - d * d;
+        sphereZ = sqrt(max(0.0, zSq));
+        sphereNormal = normalize(vec3(uv, sphereZ));
+    }
+
+    // View direction (looking straight at screen)
+    vec3 viewDir = vec3(0.0, 0.0, 1.0);
+
+    // Calculate primary light direction in 3D (from planet center toward light)
+    // Reuse existing light offsets from surface lighting
+    vec3 lightDir0 = normalize(vec3(light0Offset * 0.003, 0.5));
+    vec3 lightDir1 = normalize(vec3(light1Offset * 0.003, 0.5));
+    vec3 lightDir2 = normalize(vec3(light2Offset * 0.003, 0.5));
+    vec3 mouseLightDir = normalize(vec3(mouseOffset * 0.003, 0.4));
+
+    // Combined light direction (weighted average of all lights)
+    vec3 combinedLightDir = normalize(
+        lightDir0 * atten0 +
+        lightDir1 * atten1 +
+        lightDir2 * atten2 +
+        mouseLightDir * mouseAtten * 0.5
+    );
+
+    // ---- LIGHT/SHADOW CALCULATION ----
+    // How much this point on the sphere faces the light
+    float lightDot = d < planetRadius ? max(0.0, dot(sphereNormal, combinedLightDir)) : 0.5;
+
+    // Shadow: areas facing away from light are in shadow
+    // Soft shadow transition at terminator
+    float shadowFactor = smoothstep(-0.1, 0.3, lightDot);
+
+    // ---- PER-LIGHT ATMOSPHERE SHADOWS ----
+    // Calculate shadow for each light source individually
+    float atmosShadow0 = 1.0;
+    float atmosShadow1 = 1.0;
+    float atmosShadow2 = 1.0;
+    float atmosShadowMouse = 1.0;
+
+    if (d > planetRadius && d < atmosRadius) {
+        vec2 rayOrigin = uv;
+        float distFromPlanet = d - planetRadius;
+        float shadowSoftness = distFromPlanet / atmosThickness;
+        float r2 = planetRadius * planetRadius;
+        float c_base = dot(rayOrigin, rayOrigin) - r2;
+
+        // Helper: compute shadow for a given light direction
+        // Light 0 shadow
+        vec2 toLightDir0 = normalize(lightDir0.xy + vec2(0.0001));
+        float b0 = 2.0 * dot(rayOrigin, toLightDir0);
+        float disc0 = b0 * b0 - 4.0 * c_base;
+        if (disc0 >= 0.0) {
+            float t1_0 = (-b0 - sqrt(disc0)) * 0.5;
+            if (t1_0 > 0.01) {
+                float penumbra = 0.05 + shadowSoftness * 0.2;
+                float perpDist = abs(rayOrigin.x * toLightDir0.y - rayOrigin.y * toLightDir0.x);
+                float shadowEdge = planetRadius - perpDist;
+                atmosShadow0 = 1.0 - smoothstep(0.0, penumbra, shadowEdge / planetRadius);
+                atmosShadow0 = mix(atmosShadow0, 1.0, shadowSoftness * 0.4);
+                atmosShadow0 = max(atmosShadow0, 0.1);
+            }
+        }
+
+        // Light 1 shadow
+        vec2 toLightDir1 = normalize(lightDir1.xy + vec2(0.0001));
+        float b1 = 2.0 * dot(rayOrigin, toLightDir1);
+        float disc1 = b1 * b1 - 4.0 * c_base;
+        if (disc1 >= 0.0) {
+            float t1_1 = (-b1 - sqrt(disc1)) * 0.5;
+            if (t1_1 > 0.01) {
+                float penumbra = 0.05 + shadowSoftness * 0.2;
+                float perpDist = abs(rayOrigin.x * toLightDir1.y - rayOrigin.y * toLightDir1.x);
+                float shadowEdge = planetRadius - perpDist;
+                atmosShadow1 = 1.0 - smoothstep(0.0, penumbra, shadowEdge / planetRadius);
+                atmosShadow1 = mix(atmosShadow1, 1.0, shadowSoftness * 0.4);
+                atmosShadow1 = max(atmosShadow1, 0.1);
+            }
+        }
+
+        // Light 2 shadow
+        vec2 toLightDir2 = normalize(lightDir2.xy + vec2(0.0001));
+        float b2 = 2.0 * dot(rayOrigin, toLightDir2);
+        float disc2 = b2 * b2 - 4.0 * c_base;
+        if (disc2 >= 0.0) {
+            float t1_2 = (-b2 - sqrt(disc2)) * 0.5;
+            if (t1_2 > 0.01) {
+                float penumbra = 0.05 + shadowSoftness * 0.2;
+                float perpDist = abs(rayOrigin.x * toLightDir2.y - rayOrigin.y * toLightDir2.x);
+                float shadowEdge = planetRadius - perpDist;
+                atmosShadow2 = 1.0 - smoothstep(0.0, penumbra, shadowEdge / planetRadius);
+                atmosShadow2 = mix(atmosShadow2, 1.0, shadowSoftness * 0.4);
+                atmosShadow2 = max(atmosShadow2, 0.1);
+            }
+        }
+
+        // Mouse light shadow
+        vec2 toLightDirMouse = normalize(mouseLightDir.xy + vec2(0.0001));
+        float bM = 2.0 * dot(rayOrigin, toLightDirMouse);
+        float discM = bM * bM - 4.0 * c_base;
+        if (discM >= 0.0) {
+            float t1_M = (-bM - sqrt(discM)) * 0.5;
+            if (t1_M > 0.01) {
+                float penumbra = 0.05 + shadowSoftness * 0.2;
+                float perpDist = abs(rayOrigin.x * toLightDirMouse.y - rayOrigin.y * toLightDirMouse.x);
+                float shadowEdge = planetRadius - perpDist;
+                atmosShadowMouse = 1.0 - smoothstep(0.0, penumbra, shadowEdge / planetRadius);
+                atmosShadowMouse = mix(atmosShadowMouse, 1.0, shadowSoftness * 0.4);
+                atmosShadowMouse = max(atmosShadowMouse, 0.1);
+            }
+        }
+    }
+
+    // ========================================
+    // RAYLEIGH SCATTERING (based on Dimas Leenman's atmosphere shader)
+    // ========================================
+    // For a 2D quad faking a sphere:
+    // - Center (d=0) = looking straight down through thin atmosphere = low optical depth
+    // - Edge (d=planetRadius) = grazing angle through thick atmosphere = high optical depth
+    // - Beyond planet = in the atmosphere shell itself
+    //
+    // Rayleigh scattering: beta coefficients determine color
+    // Real Earth values ratio: R:G:B ≈ 1 : 2.4 : 4.1 (from 5.5e-6, 13.0e-6, 22.4e-6)
+    // Higher coefficient = scatters MORE = disappears faster from transmitted light
+
+    // Scattering coefficients (UI controlled, default to Rayleigh ratios)
+    // Higher values = more absorption of that channel
+    vec3 beta = vec3(uScatterR, uScatterG, uScatterB);
+
+    // ========================================
+    // PHYSICALLY-BASED ATMOSPHERIC SCATTERING
+    // Based on Sebastian Lague's atmosphere shader
+    // Adapted for 2D quad rendering
+    // ========================================
+
+    float densityFalloff = uAtmosPower;
+
+    // For a 2D quad faking a 3D sphere, we need to compute the optical depth
+    // (integral of density along the view ray through the atmosphere)
+    //
+    // The view ray goes from camera (at +Z infinity) through the pixel toward -Z
+    // For a sphere centered at origin with radius R:
+    // - At pixel (x,y), the ray enters/exits the sphere at z = ±sqrt(R² - x² - y²)
+    // - The path length through the sphere depends on d = length(uv)
+
+    float opticalDepth = 0.0;
+
+    if (d < atmosRadius) {
+        // Ray intersects atmosphere sphere
+        // Compute entry and exit points of ray through atmosphere
+
+        // For atmosphere shell (outer sphere)
+        float atmosZ = sqrt(max(0.0, atmosRadius * atmosRadius - d * d));
+        // Ray travels from +atmosZ to -atmosZ (total = 2 * atmosZ) through atmosphere
+
+        if (d < planetRadius) {
+            // Ray hits planet surface
+            // Entry: atmosZ, Exit: planetZ (blocked by planet on the way back)
+            float planetZ = sqrt(max(0.0, planetRadius * planetRadius - d * d));
+
+            // Path through atmosphere = (atmosZ - planetZ) on entry side only
+            // (light coming from behind the planet is blocked)
+            float pathLength = atmosZ - planetZ;
+
+            // Integrate density along this path
+            // Sample at a few heights and average
+            float numSamples = 4.0;
+            for (float i = 0.0; i < 4.0; i++) {
+                float t = (i + 0.5) / numSamples;
+                float sampleZ = planetZ + t * (atmosZ - planetZ);
+                float sampleR = sqrt(d * d + sampleZ * sampleZ);
+                float sampleHeight01 = (sampleR - planetRadius) / atmosThickness;
+                float sampleDensity = exp(-sampleHeight01 * densityFalloff) * (1.0 - sampleHeight01);
+                opticalDepth += sampleDensity * (pathLength / numSamples);
+            }
+        } else {
+            // Ray passes through atmosphere only (above planet surface)
+            // Full path through atmosphere at this distance
+
+            // Entry at +atmosZ, exit at -atmosZ
+            float pathLength = 2.0 * atmosZ;
+
+            // Integrate density along this path
+            float numSamples = 6.0;
+            for (float i = 0.0; i < 6.0; i++) {
+                float t = (i + 0.5) / numSamples;
+                float sampleZ = atmosZ * (1.0 - 2.0 * t);  // +atmosZ to -atmosZ
+                float sampleR = sqrt(d * d + sampleZ * sampleZ);
+                float sampleHeight01 = (sampleR - planetRadius) / atmosThickness;
+                sampleHeight01 = clamp(sampleHeight01, 0.0, 1.0);
+                float sampleDensity = exp(-sampleHeight01 * densityFalloff) * (1.0 - sampleHeight01);
+                opticalDepth += sampleDensity * (pathLength / numSamples);
+            }
+        }
+    }
+
+    // Scale by user control
+    opticalDepth *= uScatterScale;
+
+    // ========================================
+    // RAYLEIGH SCATTERING COLOR CALCULATION
+    // ========================================
+    // Transmitted light: exp(-beta * opticalDepth)
+    // - Low optical depth: transmittance ≈ 1 (all colors pass)
+    // - High optical depth: blue drops first (high beta), red remains
+    //
+    // Scattered light (what we see in atmosphere glow):
+    // - proportional to beta * (1 - transmittance)
+    // - Blue scatters most, so thin atmosphere glows blue
+    // - Thick atmosphere: blue saturates, orange/red catch up
+
+    vec3 transmittance = exp(-beta * opticalDepth);
+
+    // Rayleigh scattering color calculation:
+    // - Low optical depth: blue sky (blue scatters most toward viewer)
+    // - High optical depth: sunset colors (blue saturates, red/orange remain)
+    //
+    // We use transmittance (what passes through) to derive the sunset color,
+    // then blend with blue for low depths.
+
+    vec3 scatterColor;
+    float depth = opticalDepth;
+
+    // Transmitted color (sunset/sunrise color - what passes through)
+    vec3 transmitColor = transmittance;
+    float maxT = max(transmitColor.r, max(transmitColor.g, transmitColor.b));
+    if (maxT > 0.001) {
+        transmitColor = transmitColor / maxT;  // Normalize to preserve hue
+    } else {
+        transmitColor = vec3(1.0, 0.3, 0.1);  // Deep red for very thick atmosphere
+    }
+
+    // Scattered color (sky blue at low depth)
+    // At low depth, blue scatters most → blue glow
+    // At high depth, all colors scatter → white/neutral
+    // uSunsetStrength controls how fast the transition happens (higher = more orange/red)
+    float scatterStrength = 1.0 - exp(-depth * 2.0 * uSunsetStrength);  // 0 at low depth, 1 at high
+    vec3 blueScatter = vec3(0.4, 0.7, 1.0);
+
+    // Blend: low depth = blue, high depth = transmitted color (orange/red)
+    scatterColor = mix(blueScatter, transmitColor, scatterStrength);
+
+    // For lava planets, use orange atmosphere
+    vec3 lavaAtmosTint = vec3(1.0, 0.4, 0.1);
+    scatterColor = mix(scatterColor, lavaAtmosTint, isDesert * 0.7);
+
+    // ========================================
+    // ATMOSPHERE DENSITY (visibility/alpha)
+    // ========================================
+    // Smooth gradient from planet center to atmosphere edge
+    // Uses optical depth to create physically-based density falloff
+
+    float atmosDensity = 0.0;
+
+    if (d < atmosRadius) {
+        // Normalize distance: 0 at planet center, 1 at atmosphere edge
+        float normalizedDist = d / atmosRadius;
+
+        // Smooth falloff from center to edge
+        // densityFalloff controls how quickly it drops off (scaled down for usable range)
+        atmosDensity = exp(-normalizedDist * normalizedDist * densityFalloff * 0.1) * (1.0 - normalizedDist);
+
+        // Scale by atmosphere thickness control
+        atmosDensity *= uAtmosThickness;
+    }
+
+    // Quad edge fade - smooth to zero at quad boundary
+    float quadEdgeFade = 1.0 - smoothstep(0.85, 1.4, scaledD);
+    atmosDensity *= quadEdgeFade;
+
+    // Apply surface shadow factor (terminator)
+    atmosDensity *= mix(0.3, 1.0, shadowFactor);
+
+    // ---- PER-LIGHT ATMOSPHERE COLOR WITH SHADOWS ----
+    // Each light contributes its color, attenuated by its own shadow
+    vec3 atmosLitColor = vec3(0.0);
+    atmosLitColor += uLightColor0 * atten0 * atmosShadow0;
+    atmosLitColor += uLightColor1 * atten1 * atmosShadow1;
+    atmosLitColor += uLightColor2 * atten2 * atmosShadow2;
+    atmosLitColor += vec3(1.0) * mouseAtten * 0.3 * atmosShadowMouse;
+
+    // Minimum ambient so fully shadowed areas aren't pure black
+    vec3 lightColor = max(atmosLitColor, vec3(0.03));
+
+    // Final atmosphere color
+    vec3 atmosColor = scatterColor * lightColor * atmosDensity * uAtmosIntensity * 1.5;
+
+    // Alpha follows density, not boosted by intensity
+    float atmosAlpha = clamp(atmosDensity * 0.8, 0.0, 1.0);
+    // ========================================
+    // PLANET SURFACE RENDERING
+    // ========================================
+    vec3 col = vec3(0.0);
+
+    // Ocean color - deep blue with depth variation based on terrain height
+    vec3 oceanColor = vec3(0.05, 0.15, 0.35);
+    float oceanDepth = smoothstep(seaLevel - 0.3, seaLevel, heightC);
+    oceanColor = mix(vec3(0.02, 0.08, 0.2), vec3(0.2078, 0.5137, 0.6902), oceanDepth);
+
+    // ========================================
+    // BIOME-SPECIFIC SURFACE COLORS
+    // ========================================
+
+    // --- OCEANIC BIOME: Green land with white sand beaches ---
+    vec3 oceanicLand = vec3(0.15, 0.45, 0.2);
+    oceanicLand = mix(oceanicLand, vec3(0.1, 0.35, 0.15), smoothstep(0.1, 0.4, heightC));
+    vec3 oceanicSand = vec3(0.95, 0.9, 0.75);
+    float oceanicSandMask = smoothstep(seaLevel, seaLevel + 0.03, heightC) * smoothstep(seaLevel + 0.08, seaLevel + 0.03, heightC);
+    vec3 oceanicSurface = mix(oceanicLand, oceanicSand, oceanicSandMask);
+
+    // --- LAVA/VOLCANIC BIOME: Dark rock with glowing lava rivers ---
+    vec3 lavaRockDark = vec3(0.12, 0.08, 0.06);  // Very dark volcanic rock
+    vec3 lavaRockMid = vec3(0.25, 0.15, 0.1);    // Medium volcanic rock
+    vec3 lavaRockLight = vec3(0.35, 0.2, 0.12); // Lighter rock on peaks
+    // Height-based rock coloring
+    vec3 lavaSurface = mix(lavaRockDark, lavaRockMid, smoothstep(-0.3, 0.1, heightC));
+    lavaSurface = mix(lavaSurface, lavaRockLight, smoothstep(0.2, 0.5, heightC));
+    // Glowing lava color for the "ocean" (low areas) - ultra bright and emissive
+    vec3 lavaGlow = vec3(1.0, 0.5, 0.1);        // Very bright orange-yellow lava
+    vec3 lavaHot = vec3(1.0, 0.8, 0.3);         // White-hot center
+    vec3 lavaCool = vec3(0.9, 0.2, 0.05);       // Cooler orange lava
+    // Lava pulses with time for animated glow - faster and more intense
+    float lavaPulse = sin(t * 0.8 + heightC * 6.0) * 0.5 + 0.5;
+    float lavaPulse2 = sin(t * 1.2 + heightC * 3.0) * 0.3 + 0.7;
+    vec3 lavaColor = mix(lavaCool, lavaGlow, lavaPulse * 0.6 + 0.4);
+    lavaColor = mix(lavaColor, lavaHot, lavaPulse2 * lavaPulse * 0.4);
+    oceanColor = mix(oceanColor, lavaColor, isDesert);
+
+    // --- MOUNTAIN/ICE BIOME: Rocky with ice caps ---
+    vec3 mountainRock = vec3(0.35, 0.32, 0.3);  // Gray rock base
+    vec3 mountainGrass = vec3(0.2, 0.35, 0.2); // Some grass at low altitudes
+    vec3 mountainSnow = vec3(0.95, 0.97, 1.0); // White ice/snow
+    // Height-based layering: grass -> rock -> snow
+    float grassMask = smoothstep(seaLevel, seaLevel + 0.15, heightC) * smoothstep(0.2, 0.1, heightC);
+    float snowMask = smoothstep(0.25, 0.45, heightC);
+    vec3 mountainSurface = mountainRock;
+    mountainSurface = mix(mountainSurface, mountainGrass, grassMask);
+    mountainSurface = mix(mountainSurface, mountainSnow, snowMask);
+    // Thin sand/gravel beach at water edge
+    vec3 mountainBeach = vec3(0.6, 0.55, 0.5);
+    float mountainBeachMask = smoothstep(seaLevel, seaLevel + 0.02, heightC) * smoothstep(seaLevel + 0.06, seaLevel + 0.02, heightC);
+    mountainSurface = mix(mountainSurface, mountainBeach, mountainBeachMask);
+
+    // Select biome surface color
+    vec3 landColor = oceanicSurface * isOceanic + lavaSurface * isDesert + mountainSurface * isMountain;
+
+    // Blend land with ocean
+    vec3 surfaceColor = mix(landColor, oceanColor, oceanMask);
+
+    // Diffuse lighting - reduced for ocean (darker water)
+    float diffuseStrength = mix(1.5, 0.8, oceanMask);
+    col += surfaceColor * totalDiffuse * diffuseStrength * planetMask;
+
+    // Specular - higher for ocean (reflective water) and ice (mountain peaks)
+    float iceSpecular = snowMask * isMountain * 1.8; // Ice is very reflective
+    float landSpecStrength = 0.3 + iceSpecular;
+    float oceanSpecStrength = 3.2;
+    vec3 specColor = mix(planetColor, vec3(1.0), max(oceanMask * 0.7, snowMask * isMountain * 0.9));
+    // Use oceanSpecular (roughness-controlled) for ocean, totalSpecular for land
+    vec3 finalSpecular = mix(totalSpecular * landSpecStrength, oceanSpecular * oceanSpecStrength, oceanMask);
+    col += specColor * finalSpecular * planetMask;
+
+    // Ocean SSS - translucent turquoise subsurface scattering
+    vec3 sssColor = vec3(0.15, 0.6, 0.65); // Turquoise/cyan tint
+    // Tighter wrap for focused translucency effect
+    float sssWrap = 0.15;
+    // Back-lighting component - light shining through from behind
+    float backLight0 = pow(max(0.0, -dot(N, L0) * 0.5 + 0.5), 3.0);
+    float backLight1 = pow(max(0.0, -dot(N, L1) * 0.5 + 0.5), 3.0);
+    float backLight2 = pow(max(0.0, -dot(N, L2) * 0.5 + 0.5), 3.0);
+    float backLightMouse = pow(max(0.0, -dot(N, mouseL) * 0.5 + 0.5), 3.0);
+    // Wrap lighting for edge translucency
+    float sssNdL0 = pow(max(0.0, (dot(N, L0) + sssWrap) / (1.0 + sssWrap)), 1.5);
+    float sssNdL1 = pow(max(0.0, (dot(N, L1) + sssWrap) / (1.0 + sssWrap)), 1.5);
+    float sssNdL2 = pow(max(0.0, (dot(N, L2) + sssWrap) / (1.0 + sssWrap)), 1.5);
+    float sssMouseNdL = pow(max(0.0, (dot(N, mouseL) + sssWrap) / (1.0 + sssWrap)), 1.5);
+    // Combine wrap and backlight for translucent look
+    vec3 sss = sssColor * (
+        uLightColor0 * (sssNdL0 * 0.6 + backLight0 * 1.2) * atten0 +
+        uLightColor1 * (sssNdL1 * 0.6 + backLight1 * 1.2) * atten1 +
+        uLightColor2 * (sssNdL2 * 0.6 + backLight2 * 1.2) * atten2 +
+        vec3(1.0) * (sssMouseNdL * 0.6 + backLightMouse * 1.2) * mouseAtten
+    ) * 2.0 * uSSSIntensity;
+    // Apply SSS only to ocean areas (not lava)
+    col += sss * oceanMask * planetMask * (1.0 - isDesert);
+
+    // Lava emission - glowing lava emits its own light (super bright)
+    float lavaEmission = oceanMask * isDesert * (lavaPulse * 0.5 + 0.5) * (lavaPulse2 * 0.3 + 0.7);
+    col += lavaColor * lavaEmission * 3.5 * uLavaIntensity * planetMask;
+    // Add extra bloom-like glow for hottest areas
+    col += lavaHot * lavaEmission * lavaPulse * 0.8 * uLavaIntensity * planetMask;
+
+    // Ambient
+    col += surfaceColor * 0.02 * planetMask;
+
+    // Fresnel rim on surface - enhanced to blend with atmosphere
+    float fresnel = pow(1.0 - NdV, 3.0) * planetMask;
+    // Ocean gets stronger fresnel reflection
+    float fresnelStrength = mix(0.15, 0.4, oceanMask);
+    col += mix(planetColor, vec3(0.6, 0.8, 1.0), oceanMask) * fresnel * totalAttenuation * fresnelStrength;
+    col += planetColor * vGlow * (0.15 + fresnel * 0.3);
+
+    // Blend atmosphere with surface at the limb
+    // Atmosphere is masked out by deformed terrain - only shows outside the deformed planet
+    // Inside deformed surface: minimal atmosphere (just rim glow on very edge)
+    // Outside deformed surface: full atmosphere contribution
+    col += atmosColor * (1.0 - planetMask);
+    
+
+    // ========================================
+    // LAVA GLOW EMISSION - light projected outside the planet
+    // ========================================
+    float lavaGlowAlpha = 0.0;
+    if (isDesert > 0.5 && d > planetRadius * 0.9) {
+        // Sample lava intensity from the planet edge toward center
+        // Use radial direction to find where lava would be
+        vec2 dir = d > 0.001 ? normalize(uv) : vec2(0.0, 1.0);
+
+        // Check multiple sample points along the edge
+        float lavaGlowAccum = 0.0;
+        for (int i = 0; i < 8; i++) {
+            // Sample at different angles around this pixel
+            float sampleAngle = float(i) * 0.785398; // PI/4 increments
+            vec2 rotDir = vec2(
+                dir.x * cos(sampleAngle) - dir.y * sin(sampleAngle),
+                dir.x * sin(sampleAngle) + dir.y * cos(sampleAngle)
+            );
+
+            // Sample height at edge of planet in this direction
+            vec2 edgeSampleUV = rotDir * planetRadius * 0.95;
+            vec2 edgeHeightCoord = edgeSampleUV * 2.5 + vIndex * 10.0;
+            float edgeHeight = snoise(edgeHeightCoord) * 0.6
+                             + snoise(edgeHeightCoord * 2.0 + 1.5) * 0.25;
+
+            // Check if this edge point has lava (below sea level)
+            float edgeLavaMask = smoothstep(seaLevel + 0.08, seaLevel - 0.02, edgeHeight);
+
+            // Distance falloff from planet - slower falloff for longer rays
+            float distFromPlanet = max(0.0, d - planetRadius);
+            float glowFalloff = exp(-distFromPlanet * 4.0);
+
+            // Directional factor - stronger glow in direction of lava
+            float dirFactor = max(0.0, dot(dir, rotDir));
+
+            lavaGlowAccum += edgeLavaMask * glowFalloff * dirFactor;
+        }
+        lavaGlowAccum /= 8.0;
+
+        // Pulsing glow synced with lava animation - brighter
+        float glowPulse = sin(t * 0.8) * 0.35 + 0.65;
+        float glowPulse2 = sin(t * 1.3) * 0.2 + 0.8;
+
+        // Add lava glow color outside the planet - much brighter orange-red
+        vec3 lavaGlowOuter = vec3(1.0, 0.4, 0.1);  // Bright orange
+        vec3 lavaGlowHot = vec3(1.0, 0.7, 0.3);    // Hot yellow-white core
+        vec3 lavaGlowColor = mix(lavaGlowOuter, lavaGlowHot, glowPulse2 * 0.5);
+        lavaGlowColor *= lavaGlowAccum * glowPulse * 4.0 * uLavaIntensity;
+        col += lavaGlowColor * (1.0 - planetMask);
+
+        // Store lava glow alpha for later (alpha not declared yet)
+        lavaGlowAlpha = lavaGlowAccum * glowPulse * 0.8 * uLavaIntensity * (1.0 - planetMask);
+    }
+
+    // Tone mapping
+    col = col / (col + vec3(0.7));
+    col = pow(col, vec3(0.95));
+
+    // Alpha calculation
+    float alpha = 0.0;
+    alpha += planetMask * 0.98;
+    alpha += atmosAlpha * (1.0 - planetMask * 0.5);
+    alpha = clamp(alpha, 0.0, 1.0);
+    alpha *= outerFade;
+    alpha *= smoothstep(0.0, 0.5, ap);
+    alpha *= vAlpha;
+
+    // Add lava glow alpha for visibility outside planet
+    alpha = max(alpha, lavaGlowAlpha);
+
+    // ========================================
+    // ASTEROIDS - orbiting around desert planets
+    // ========================================
+    if (isDesert > 0.5) {
+        float orbitRadius = planetRadius * 1.5;
+        float asteroidSize = planetRadius * 0.095;
+
+        // Multiple asteroids at different orbit phases
+        for (int i = 0; i < 4; i++) {
+            float fi = float(i);
+            float phase = fi * 1.5708; // PI/2 spacing
+            float orbitSpeed = 0.25 + fi * 0.06;
+            float asteroidAngle = t * orbitSpeed + phase + vIndex * 2.0;
+
+            // Elliptical orbit with some variation
+            float orbitA = orbitRadius * (1.0 + fi * 0.1);
+            float orbitB = orbitRadius * (0.6 + fi * 0.08);
+            vec2 asteroidPos = vec2(
+                cos(asteroidAngle) * orbitA,
+                sin(asteroidAngle) * orbitB
+            );
+
+            // Vary asteroid size per asteroid
+            float thisSize = asteroidSize * (0.5 + fi * 0.2);
+
+            // Irregular asteroid shape using noise
+            vec2 asteroidUV = (uv - asteroidPos) / thisSize;
+            float asteroidNoise = snoise(asteroidUV * 3.0 + fi * 5.0) * 0.25;
+            float asteroidShape = length(asteroidUV) - (1.0 + asteroidNoise);
+            float asteroidMask = 1.0 - smoothstep(-0.15, 0.05, asteroidShape);
+
+            // Simple lighting for asteroid
+            vec3 asteroidN = normalize(vec3(asteroidUV * 0.8, sqrt(max(0.0, 1.0 - dot(asteroidUV, asteroidUV) * 0.7))));
+            float asteroidLight = max(0.0, dot(asteroidN, normalize(vec3(0.5, 0.5, 1.0))));
+
+            // Rocky brown/gray asteroid color
+            vec3 asteroidColor = vec3(0.35, 0.3, 0.25) * (0.4 + asteroidLight * 0.6);
+            asteroidColor += vec3(0.08, 0.06, 0.04) * snoise(asteroidUV * 6.0 + fi);
+
+            // Tone map asteroid
+            asteroidColor = asteroidColor / (asteroidColor + vec3(0.7));
+
+            // Hide asteroid when behind planet (simple depth test)
+            float inFront = step(planetRadius * 0.9, length(asteroidPos));
+
+            col = mix(col, asteroidColor, asteroidMask * inFront);
+            alpha = max(alpha, asteroidMask * 0.85 * inFront);
+        }
+    }
+
+    gl_FragColor = vec4(col, alpha);
+}
+`;
