@@ -3,6 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Charles Grassi - Graphics Programmer & Technical Artist specializing in shader development, real-time rendering, VFX, and GPU compute. 7+ years experience with Unity, Unreal, HLSL/GLSL across 12+ studios including Ubisoft, Nexus Studios, and The Sandbox.">
+    <meta name="keywords" content="graphics programmer, technical artist, shader developer, HLSL, GLSL, Unity, Unreal Engine, VFX, real-time rendering, GPU compute">
+    <meta name="author" content="Charles Grassi">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://charlesgrs.github.io/">
+    <meta property="og:title" content="Charles Grassi | Graphics Programmer & Technical Artist">
+    <meta property="og:description" content="Shader specialist with 7+ years crafting real-time graphics, VFX, and GPU compute solutions for games and immersive experiences.">
+    <meta property="og:image" content="https://charlesgrs.github.io/og-image.png">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@charles_grassi">
+    <meta name="twitter:creator" content="@charles_grassi">
+    <meta name="twitter:title" content="Charles Grassi | Graphics Programmer & Technical Artist">
+    <meta name="twitter:description" content="Shader specialist with 7+ years crafting real-time graphics, VFX, and GPU compute solutions for games and immersive experiences.">
+    <meta name="twitter:image" content="https://charlesgrs.github.io/og-image.png">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://charlesgrs.github.io/">
+
     <title>Charles Grassi | Graphics Programmer & Technical Artist</title>
     <link rel="icon" type="image/png" id="favicon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABISURBVFhH7c0xAQAgDMCwgX/PYAdxdkGxSPquzj47AAAAAAAAAADABw+wAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAsw1HUBKABKOl4R5FAAAAAASUVORK5CYII=">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,23 +35,26 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-    <canvas id="gpu-canvas"></canvas>
-    <div class="noise-overlay"></div>
+    <!-- Skip to main content link for accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <canvas id="gpu-canvas" aria-hidden="true"></canvas>
+    <div class="noise-overlay" aria-hidden="true"></div>
 
     <!-- FPS Performance Badge -->
-    <div class="fps-badge good" id="fps-badge" title="Real-time performance metrics">
+    <div class="fps-badge good" id="fps-badge" title="Real-time performance metrics" aria-label="Performance: 60 FPS" role="status">
         <span class="fps-icon"></span>
         <span class="fps-value" id="fps-value">60</span>
         <span class="fps-label">FPS</span>
     </div>
 
-    <a href="mailto:contact.charles.grassi@gmail.com" class="contact-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+    <a href="mailto:contact.charles.grassi@gmail.com" class="contact-btn" aria-label="Send email to Charles Grassi">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
         Contact Me
     </a>
-    <div class="container">
+    <div class="container" id="main-content" role="main">
         <header>
             <div class="name-block">
                 <h1>Charles Grassi</h1>
@@ -47,8 +73,8 @@
                 <div class="company">Zylaris Ltd · Cyprus</div>
                 <a href="mailto:contact.charles.grassi@gmail.com">contact.charles.grassi@gmail.com</a>
                 <a href="tel:+33646118214">(+33) 6 46 11 82 14</a>
-                <a href="https://twitter.com/charles_grassi" target="_blank">@charles_grassi</a>
-                <a href="https://www.linkedin.com/in/charles-grassi/" target="_blank">LinkedIn</a>
+                <a href="https://twitter.com/charles_grassi" target="_blank" rel="noopener noreferrer">@charles_grassi</a>
+                <a href="https://www.linkedin.com/in/charles-grassi/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
             </div>
         </header>
 
@@ -71,18 +97,19 @@
         </div>
 
         <!-- Tabbed Carousel -->
-        <section class="tabbed-carousel">
-            <div class="carousel-tabs">
-                <button class="carousel-tab active" data-panel="skills">Skills</button>
-                <button class="carousel-tab" data-panel="portfolio">Portfolio</button>
-                <button class="carousel-tab" data-panel="career">Career</button>
-                <button class="carousel-tab" data-panel="clients">Clients</button>
-                <button class="carousel-tab" data-panel="testimonials">Testimonials</button>
+        <section class="tabbed-carousel" aria-label="Portfolio sections">
+            <div class="carousel-tabs" role="tablist" aria-label="Content sections">
+                <button class="carousel-tab active" data-panel="skills" role="tab" aria-selected="true" aria-controls="panel-skills">Skills</button>
+                <button class="carousel-tab" data-panel="portfolio" role="tab" aria-selected="false" aria-controls="panel-portfolio">Portfolio</button>
+                <button class="carousel-tab" data-panel="career" role="tab" aria-selected="false" aria-controls="panel-career">Career</button>
+                <button class="carousel-tab" data-panel="clients" role="tab" aria-selected="false" aria-controls="panel-clients">Clients</button>
+                <button class="carousel-tab" data-panel="testimonials" role="tab" aria-selected="false" aria-controls="panel-testimonials">Testimonials</button>
+                <button class="carousel-tab" data-panel="playground" role="tab" aria-selected="false" aria-controls="panel-playground">Playground</button>
             </div>
 
             <div class="carousel-panels">
                 <!-- Skills Panel - Network Graph -->
-                <div class="carousel-panel skills-panel active" id="panel-skills">
+                <div class="carousel-panel skills-panel active" id="panel-skills" role="tabpanel" aria-labelledby="tab-skills">
                     <div class="skill-graph-container">
                         <canvas id="skill-graph-canvas"></canvas>
                         <div class="skill-tooltip" id="skill-tooltip">
@@ -109,7 +136,7 @@
                 </div>
 
                 <!-- Portfolio Panel - 3D Curved Carousel -->
-                <div class="carousel-panel portfolio-panel" id="panel-portfolio">
+                <div class="carousel-panel portfolio-panel" id="panel-portfolio" role="tabpanel" aria-labelledby="tab-portfolio">
                     <div class="portfolio-carousel">
                         <div class="portfolio-header">
                             <div class="portfolio-title" id="portfolio-title">Blumhouse Enhanced Cinema - Nexus Studio</div>
@@ -124,61 +151,61 @@
                             </button>
                             <div class="portfolio-track" id="portfolio-track">
                                 <div class="portfolio-item" data-index="0" data-title="Blumhouse Enhanced Cinema - Nexus Studio" data-url="">
-                                    <img src="https://scontent-mad1-1.oculuscdn.com/v/t64.5771-25/491820855_1330335225127412_3510880302341334513_n.webp?stp=dst-webp_s1440x1440&_nc_cat=102&ccb=1-7&_nc_sid=6e7a0a&_nc_ohc=jwaHnWVg7NAQ7kNvwFFSFiQ&_nc_oc=Adnl6kOUV3vSINwS7ZNYAAt56PdBcTgpZZdDMhcxLrkPTZ1KSHNTZuv-WyvLGabMSEg&_nc_zt=3&_nc_ht=scontent-mad1-1.oculuscdn.com&oh=00_Afk6_PCtYpRQNGym1aFIWwlW1aIZgJSfSRW8Y-tCCqQtLQ&oe=694E49C6" alt="Blumhouse Enhanced Cinema - Nexus Studio">
+                                    <img src="https://scontent-mad1-1.oculuscdn.com/v/t64.5771-25/491820855_1330335225127412_3510880302341334513_n.webp?stp=dst-webp_s1440x1440&_nc_cat=102&ccb=1-7&_nc_sid=6e7a0a&_nc_ohc=jwaHnWVg7NAQ7kNvwFFSFiQ&_nc_oc=Adnl6kOUV3vSINwS7ZNYAAt56PdBcTgpZZdDMhcxLrkPTZ1KSHNTZuv-WyvLGabMSEg&_nc_zt=3&_nc_ht=scontent-mad1-1.oculuscdn.com&oh=00_Afk6_PCtYpRQNGym1aFIWwlW1aIZgJSfSRW8Y-tCCqQtLQ&oe=694E49C6" alt="Blumhouse Enhanced Cinema - Nexus Studio" loading="lazy">
                                 </div>
                                 <div class="portfolio-item" data-index="1" data-title="Blumhouse Enhanced Cinema - Nexus Studio" data-url="">
-                                    <img src="https://scontent-mad2-1.oculuscdn.com/v/t64.5771-25/491818938_683528594784504_5440229394557734527_n.webp?stp=dst-webp_s1440x1440&_nc_cat=104&ccb=1-7&_nc_sid=6e7a0a&_nc_ohc=wm6Kr92OVIsQ7kNvwGPjwum&_nc_oc=AdlhPx0vcVBCXKZh2X_XudgsSOqa1W6mWZJAP7R5aZVM1iZTKgUHrcXPg3IKzMEv7q8&_nc_zt=3&_nc_ht=scontent-mad2-1.oculuscdn.com&oh=00_AflKWVO2pimeWortG7zmjf6Nnz4hRXR5ARPp9MC_u2_rIg&oe=694E5A96" alt="Blumhouse Enhanced Cinema - Nexus Studio">
+                                    <img src="https://scontent-mad2-1.oculuscdn.com/v/t64.5771-25/491818938_683528594784504_5440229394557734527_n.webp?stp=dst-webp_s1440x1440&_nc_cat=104&ccb=1-7&_nc_sid=6e7a0a&_nc_ohc=wm6Kr92OVIsQ7kNvwGPjwum&_nc_oc=AdlhPx0vcVBCXKZh2X_XudgsSOqa1W6mWZJAP7R5aZVM1iZTKgUHrcXPg3IKzMEv7q8&_nc_zt=3&_nc_ht=scontent-mad2-1.oculuscdn.com&oh=00_AflKWVO2pimeWortG7zmjf6Nnz4hRXR5ARPp9MC_u2_rIg&oe=694E5A96" alt="Blumhouse Enhanced Cinema - Nexus Studio" loading="lazy">
                                 </div>
                                 <div class="portfolio-item" data-index="2" data-title="Cave 360° Scene Composition" data-url="https://www.artstation.com/artwork/V216yN">
-                                    <img src="https://cdna.artstation.com/p/assets/images/images/084/284/470/large/charles-grassi-screenshot-2025-01-11-181036-2.jpg" alt="Cave 360° Scene Composition">
+                                    <img src="https://cdna.artstation.com/p/assets/images/images/084/284/470/large/charles-grassi-screenshot-2025-01-11-181036-2.jpg" alt="Cave 360° Scene Composition" loading="lazy">
                                 </div>
                                 <div class="portfolio-item" data-index="3" data-title="Volumetric Fog | Cloud With Rain & Thunder" data-url="https://www.artstation.com/artwork/V216JZ">
-                                    <img src="https://cdna.artstation.com/p/assets/images/images/084/274/870/large/charles-grassi-screenshot-2024-10-08-064527.jpg" alt="Volumetric Fog | Cloud With Rain & Thunder">
+                                    <img src="https://cdna.artstation.com/p/assets/images/images/084/274/870/large/charles-grassi-screenshot-2024-10-08-064527.jpg" alt="Volumetric Fog | Cloud With Rain & Thunder" loading="lazy">
                                 </div>
                                 <div class="portfolio-item" data-index="4" data-title="Maelstrom - Unreal Engine" data-url="https://www.artstation.com/artwork/WXKB2E">
                                     <video src="https://cdn.artstation.com/p/video_sources/002/151/772/out-3.mp4" poster="https://cdnb.artstation.com/p/assets/images/images/079/164/965/large/charles-grassi-screenshot-2024-08-15-031337.jpg" autoplay muted loop playsinline preload="metadata"></video>
                                 </div>
                                 <div class="portfolio-item" data-index="5" data-title="Cartoon Ocean Shader & Breakdown" data-url="https://www.artstation.com/artwork/x3AvG2">
-                                    <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/424/977/large/charles-grassi-thumb.jpg" alt="Cartoon Ocean Shader">
+                                    <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/424/977/large/charles-grassi-thumb.jpg" alt="Cartoon Ocean Shader" loading="lazy">
                                 </div>
                                 <div class="portfolio-item" data-index="6" data-title="Raytraced Mountain Scene in a Single Shader" data-url="https://www.artstation.com/artwork/EzqE08">
-                                    <img src="https://cdnb.artstation.com/p/assets/images/images/078/404/623/large/charles-grassi-screenshot-2024-03-06-030921.jpg" alt="Raytraced Mountain Scene">
+                                    <img src="https://cdnb.artstation.com/p/assets/images/images/078/404/623/large/charles-grassi-screenshot-2024-03-06-030921.jpg" alt="Raytraced Mountain Scene" loading="lazy">
                                 </div>
                                 <div class="portfolio-item" data-index="7" data-title="SABDA - Projection Mapping Immersive 360° Scenes" data-url="https://www.artstation.com/artwork/6LnRor">
-                                    <img src="https://cdna.artstation.com/p/assets/images/images/078/403/874/large/charles-grassi-screenshot-2023-11-01-200540.jpg" alt="SABDA Projection Mapping">
+                                    <img src="https://cdna.artstation.com/p/assets/images/images/078/403/874/large/charles-grassi-screenshot-2023-11-01-200540.jpg" alt="SABDA Projection Mapping" loading="lazy">
                                 </div>
                                 <div class="portfolio-item" data-index="8" data-title="SABDA - Projection Mapping Immersive 360° Scenes" data-url="https://www.artstation.com/artwork/6LnRor">
-                                    <img src="https://cdnb.artstation.com/p/assets/images/images/078/403/499/large/charles-grassi-copy-of-sabda-20240118-005.jpg" alt="SABDA Projection Mapping">
+                                    <img src="https://cdnb.artstation.com/p/assets/images/images/078/403/499/large/charles-grassi-copy-of-sabda-20240118-005.jpg" alt="SABDA Projection Mapping" loading="lazy">
                                 </div>
                                 <div class="portfolio-item" data-index="9" data-title="SABDA - Projection Mapping Immersive 360° Scenes" data-url="https://www.artstation.com/artwork/6LnRor">
-                                    <img src="https://cdnb.artstation.com/p/assets/images/images/078/435/209/large/charles-grassi-copy-of-sabda-20240118-010.jpg" alt="SABDA Projection Mapping">
+                                    <img src="https://cdnb.artstation.com/p/assets/images/images/078/435/209/large/charles-grassi-copy-of-sabda-20240118-010.jpg" alt="SABDA Projection Mapping" loading="lazy">
                                 </div>
                                 <div class="portfolio-item" data-index="10" data-title="Multi-Threaded Space Colonization Algorithm" data-url="https://www.artstation.com/artwork/zxKvQw">
-                                    <img src="https://cdnb.artstation.com/p/assets/images/images/084/275/951/large/charles-grassi-screenshot-2023-12-25-213543.jpg" alt="Space Colonization Algorithm">
+                                    <img src="https://cdnb.artstation.com/p/assets/images/images/084/275/951/large/charles-grassi-screenshot-2023-12-25-213543.jpg" alt="Space Colonization Algorithm" loading="lazy">
                                 </div>
                                 <div class="portfolio-item" data-index="11" data-title="Alien Egg Shader" data-url="https://www.artstation.com/artwork/K36Por">
                                     <video src="https://cdn.artstation.com/p/video_sources/002/099/541/alienegg.mp4" poster="https://cdna.artstation.com/p/assets/images/images/078/403/954/large/charles-grassi-screenshot-2023-10-18-193823.jpg" autoplay muted loop playsinline preload="metadata"></video>
                                 </div>
                                 <div class="portfolio-item" data-index="12" data-title="Sandbox Stylized Cloud & God Rays Shader" data-url="https://www.artstation.com/artwork/nJwNLO">
-                                    <img src="https://cdna.artstation.com/p/assets/images/images/078/429/084/large/charles-grassi-sandbox-stylized-cloud-night.jpg" alt="Sandbox Stylized Cloud Shaders">
+                                    <img src="https://cdna.artstation.com/p/assets/images/images/078/429/084/large/charles-grassi-sandbox-stylized-cloud-night.jpg" alt="Sandbox Stylized Cloud Shaders" loading="lazy">
                                 </div>
                                 <div class="portfolio-item" data-index="13" data-title="Oily Ocean Surface Shader" data-url="https://www.artstation.com/artwork/gRgVEK">
-                                    <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/425/435/large/charles-grassi-thumb.jpg" alt="Oily Ocean Surface Shader">
+                                    <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/425/435/large/charles-grassi-thumb.jpg" alt="Oily Ocean Surface Shader" loading="lazy">
                                 </div>
                                 <div class="portfolio-item" data-index="14" data-title="Baked Volumetric Colored Fog" data-url="https://www.artstation.com/artwork/JraPGz">
-                                    <img src="https://cdnb.artstation.com/p/assets/images/images/078/404/507/large/charles-grassi-screenshot-2023-03-27-145100.jpg" alt="Baked Volumetric Colored Fog">
+                                    <img src="https://cdnb.artstation.com/p/assets/images/images/078/404/507/large/charles-grassi-screenshot-2023-03-27-145100.jpg" alt="Baked Volumetric Colored Fog" loading="lazy">
                                 </div>
                                 <div class="portfolio-item" data-index="15" data-title="Single Draw Call Grass Shader" data-url="https://www.artstation.com/artwork/V2oaP4">
-                                    <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/425/261/large/charles-grassi-thumb.jpg" alt="Single Draw Call Grass Shader">
+                                    <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/425/261/large/charles-grassi-thumb.jpg" alt="Single Draw Call Grass Shader" loading="lazy">
                                 </div>
                                 <div class="portfolio-item" data-index="16" data-title="CPU Multi-Threaded Burst Marching Cube Terrain" data-url="https://www.artstation.com/artwork/Ovqgby">
-                                    <img src="https://cdna.artstation.com/p/assets/video_clips/images/078/425/098/large/charles-grassi-thumb.jpg" alt="Marching Cube Terrain">
+                                    <img src="https://cdna.artstation.com/p/assets/video_clips/images/078/425/098/large/charles-grassi-thumb.jpg" alt="Marching Cube Terrain" loading="lazy">
                                 </div>
                                 <div class="portfolio-item" data-index="17" data-title="HDRP - Interior Lighting Scenarios" data-url="https://www.artstation.com/artwork/Bko5el">
-                                    <img src="https://cdna.artstation.com/p/assets/images/images/078/519/226/large/charles-grassi-screenshot-2023-10-29-140203-2.jpg" alt="HDRP Interior Lighting">
+                                    <img src="https://cdna.artstation.com/p/assets/images/images/078/519/226/large/charles-grassi-screenshot-2023-10-29-140203-2.jpg" alt="HDRP Interior Lighting" loading="lazy">
                                 </div>
                                 <div class="portfolio-item" data-index="18" data-title="Orthographic Water Surface" data-url="https://www.artstation.com/artwork/wrAvRL">
-                                    <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/425/243/large/charles-grassi-thumb.jpg" alt="Orthographic Water Surface">
+                                    <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/425/243/large/charles-grassi-thumb.jpg" alt="Orthographic Water Surface" loading="lazy">
                                 </div>
                             </div>
                         </div>
@@ -187,7 +214,7 @@
                 </div>
 
                 <!-- Career Panel - Timeline -->
-                <div class="carousel-panel career-panel" id="panel-career">
+                <div class="carousel-panel career-panel" id="panel-career" role="tabpanel" aria-labelledby="tab-career">
                     <div class="project-list-wrapper" id="project-list-wrapper">
                         <div class="project-list" id="project-list">
                             <article class="project-card">
@@ -390,49 +417,49 @@
                 </div>
 
                 <!-- Clients Panel -->
-                <div class="carousel-panel clients-panel" id="panel-clients">
+                <div class="carousel-panel clients-panel" id="panel-clients" role="tabpanel" aria-labelledby="tab-clients">
                     <div class="client-grid">
-                        <a href="https://nexusstudios.com/" target="_blank" class="client-card">
+                        <a href="https://nexusstudios.com/" target="_blank" rel="noopener noreferrer" class="client-card">
                             <span class="client-name">Nexus Studios</span>
                         </a>
-                        <a href="https://www.ubisoft.com/" target="_blank" class="client-card">
+                        <a href="https://www.ubisoft.com/" target="_blank" rel="noopener noreferrer" class="client-card">
                             <span class="client-name">Ubisoft</span>
                         </a>
-                        <a href="https://www.22cans.com/" target="_blank" class="client-card">
+                        <a href="https://www.22cans.com/" target="_blank" rel="noopener noreferrer" class="client-card">
                             <span class="client-name">22cans</span>
                         </a>
-                        <a href="https://www.sandbox.game/" target="_blank" class="client-card">
+                        <a href="https://www.sandbox.game/" target="_blank" rel="noopener noreferrer" class="client-card">
                             <span class="client-name">The Sandbox</span>
                         </a>
-                        <a href="https://www.nexile.se/" target="_blank" class="client-card">
+                        <a href="https://www.nexile.se/" target="_blank" rel="noopener noreferrer" class="client-card">
                             <span class="client-name">Nexile AB</span>
                         </a>
-                        <a href="https://www.drest.com/" target="_blank" class="client-card">
+                        <a href="https://www.drest.com/" target="_blank" rel="noopener noreferrer" class="client-card">
                             <span class="client-name">DREST</span>
                         </a>
-                        <a href="https://www.linkedin.com/company/h3investments/posts/" target="_blank" class="client-card">
+                        <a href="https://www.linkedin.com/company/h3investments/posts/" target="_blank" rel="noopener noreferrer" class="client-card">
                             <span class="client-name">H3 Space</span>
                         </a>
-                        <a href="https://store.steampowered.com/developer/lrdg" target="_blank" class="client-card">
+                        <a href="https://store.steampowered.com/developer/lrdg" target="_blank" rel="noopener noreferrer" class="client-card">
                             <span class="client-name">Little Red Dog</span>
                         </a>
-                        <a href="https://scapin.io/" target="_blank" class="client-card">
+                        <a href="https://scapin.io/" target="_blank" rel="noopener noreferrer" class="client-card">
                             <span class="client-name">Scapin'</span>
                         </a>
-                        <a href="https://sabda.es/" target="_blank" class="client-card">
+                        <a href="https://sabda.es/" target="_blank" rel="noopener noreferrer" class="client-card">
                             <span class="client-name">SABDA</span>
                         </a>
-                        <a href="https://www.genera.so/" target="_blank" class="client-card">
+                        <a href="https://www.genera.so/" target="_blank" rel="noopener noreferrer" class="client-card">
                             <span class="client-name">GN3RA</span>
                         </a>
-                        <a href="https://lunchboxentertainment.com/" target="_blank" class="client-card">
+                        <a href="https://lunchboxentertainment.com/" target="_blank" rel="noopener noreferrer" class="client-card">
                             <span class="client-name">Lunchbox Ent.</span>
                         </a>
                     </div>
                 </div>
 
                 <!-- Testimonials Panel -->
-                <div class="carousel-panel testimonials-panel" id="panel-testimonials">
+                <div class="carousel-panel testimonials-panel" id="panel-testimonials" role="tabpanel" aria-labelledby="tab-testimonials">
                     <div class="testimonial-card">
                         <p class="testimonial-quote">He has consistently delivered the shaders I requested quickly and exactly as I needed. I would recommend him to anyone looking for a reliable expert in shader development.</p>
                         <div class="testimonial-author">
@@ -451,6 +478,79 @@
                                 <span class="testimonial-name">Felix Wahlström</span>
                                 <span class="testimonial-role">Co-founder Nexile AB, Artist and Game Developer</span>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Playground Panel - Interactive Shader -->
+                <div class="carousel-panel playground-panel" id="panel-playground" role="tabpanel" aria-labelledby="tab-playground">
+                    <div class="playground-container">
+                        <div class="playground-canvas-wrapper">
+                            <canvas id="playground-canvas"></canvas>
+                            <div class="playground-stats">
+                                <div class="playground-fps" id="playground-fps">60 FPS</div>
+                                <div class="playground-particles" id="playground-particles">1M Particles</div>
+                            </div>
+                        </div>
+                        <div class="playground-controls">
+                            <div class="playground-header">
+                                <h3 class="playground-title">GPU Particle System</h3>
+                                <p class="playground-subtitle">Transform Feedback · WebGL 2</p>
+                            </div>
+                            <div class="shader-selector">
+                                <label class="control-label">Effect</label>
+                                <div class="shader-buttons">
+                                    <button class="shader-btn active" data-shader="particles">Particles</button>
+                                    <button class="shader-btn" data-shader="voronoi">Voronoi</button>
+                                    <button class="shader-btn" data-shader="raymarching">Raymarching</button>
+                                    <button class="shader-btn" data-shader="fractal">Fractal</button>
+                                </div>
+                            </div>
+                            <div class="control-group" id="particle-controls">
+                                <div class="control-row">
+                                    <label class="control-label">Attraction</label>
+                                    <input type="range" class="control-slider" id="ctrl-attraction" min="0" max="200" value="100">
+                                    <span class="control-value" id="val-attraction">1.0x</span>
+                                </div>
+                                <div class="control-row">
+                                    <label class="control-label">Turbulence</label>
+                                    <input type="range" class="control-slider" id="ctrl-turbulence" min="0" max="200" value="80">
+                                    <span class="control-value" id="val-turbulence">0.8x</span>
+                                </div>
+                                <div class="control-row">
+                                    <label class="control-label">Speed</label>
+                                    <input type="range" class="control-slider" id="ctrl-speed" min="0" max="200" value="100">
+                                    <span class="control-value" id="val-speed">1.0x</span>
+                                </div>
+                                <div class="control-row">
+                                    <label class="control-label">Color Shift</label>
+                                    <input type="range" class="control-slider" id="ctrl-hue" min="0" max="360" value="0">
+                                    <span class="control-value" id="val-hue">0°</span>
+                                </div>
+                            </div>
+                            <div class="control-group shader-only-controls" style="display: none;">
+                                <div class="control-row">
+                                    <label class="control-label">Speed</label>
+                                    <input type="range" class="control-slider" id="ctrl-shader-speed" min="0" max="200" value="100">
+                                    <span class="control-value" id="val-shader-speed">1.0x</span>
+                                </div>
+                                <div class="control-row">
+                                    <label class="control-label">Scale</label>
+                                    <input type="range" class="control-slider" id="ctrl-scale" min="10" max="200" value="100">
+                                    <span class="control-value" id="val-scale">1.0x</span>
+                                </div>
+                                <div class="control-row">
+                                    <label class="control-label">Intensity</label>
+                                    <input type="range" class="control-slider" id="ctrl-intensity" min="0" max="200" value="100">
+                                    <span class="control-value" id="val-intensity">1.0x</span>
+                                </div>
+                                <div class="control-row">
+                                    <label class="control-label">Color Shift</label>
+                                    <input type="range" class="control-slider" id="ctrl-shader-hue" min="0" max="360" value="0">
+                                    <span class="control-value" id="val-shader-hue">0°</span>
+                                </div>
+                            </div>
+                            <div class="playground-hint">Shapes morph automatically · Move mouse to scatter · Click to burst</div>
                         </div>
                     </div>
                 </div>

@@ -1563,3 +1563,1453 @@ const sphereFragmentShader = `
 
     requestAnimationFrame(updateFPS);
 })();
+
+// ============================================
+// SHADER PLAYGROUND WITH TRANSFORM FEEDBACK PARTICLES
+// ============================================
+(function initPlayground() {
+    const canvas = document.getElementById('playground-canvas');
+    const fpsDisplay = document.getElementById('playground-fps');
+    const particleDisplay = document.getElementById('playground-particles');
+    const particleControls = document.getElementById('particle-controls');
+    const shaderControls = document.querySelector('.shader-only-controls');
+    if (!canvas) return;
+
+    // Try WebGL 2 first for transform feedback
+    let gl = canvas.getContext('webgl2', { antialias: false, alpha: false });
+    const isWebGL2 = !!gl;
+
+    if (!gl) {
+        gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    }
+
+    if (!gl) {
+        console.warn('WebGL not supported for playground');
+        return;
+    }
+
+    console.log('Playground initialized with', isWebGL2 ? 'WebGL 2' : 'WebGL 1');
+
+    // ============================================
+    // TRANSFORM FEEDBACK PARTICLE SYSTEM (WebGL 2)
+    // ============================================
+    const PARTICLE_COUNT = 1048576; // 1 million particles (2^20)
+
+    // Simulation vertex shader - SDF Shape Morphing Particle System
+    // Particles are attracted to the surface of animated SDF shapes
+    const simulationVS = `#version 300 es
+        precision highp float;
+
+        in vec4 aPosition;  // xy = position, zw = velocity
+        in float aLife;
+
+        out vec4 vPosition;
+        out float vLife;
+
+        uniform float uTime;
+        uniform float uDeltaTime;
+        uniform vec2 uMouse;
+        uniform vec2 uMouseVel;
+        uniform float uAttraction;
+        uniform float uTurbulence;
+        uniform float uSpeed;
+        uniform vec2 uResolution;
+        uniform float uBurst;
+        uniform vec2 uBurstPos;
+        uniform int uMode;
+        uniform float uMouseDown;
+
+        #define PI 3.14159265359
+        #define TAU 6.28318530718
+
+        // ========== NOISE FUNCTIONS ==========
+        float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        vec2 hash2(vec2 p) {
+            p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+            return fract(sin(p) * 43758.5453);
+        }
+
+        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 permute(vec4 x) { return mod289(((x * 34.0) + 1.0) * x); }
+        vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+        float snoise(vec3 v) {
+            const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
+            const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+            vec3 i = floor(v + dot(v, C.yyy));
+            vec3 x0 = v - i + dot(i, C.xxx);
+            vec3 g = step(x0.yzx, x0.xyz);
+            vec3 l = 1.0 - g;
+            vec3 i1 = min(g.xyz, l.zxy);
+            vec3 i2 = max(g.xyz, l.zxy);
+            vec3 x1 = x0 - i1 + C.xxx;
+            vec3 x2 = x0 - i2 + C.yyy;
+            vec3 x3 = x0 - D.yyy;
+            i = mod289(i);
+            vec4 p = permute(permute(permute(
+                i.z + vec4(0.0, i1.z, i2.z, 1.0))
+                + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+                + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+            float n_ = 0.142857142857;
+            vec3 ns = n_ * D.wyz - D.xzx;
+            vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+            vec4 x_ = floor(j * ns.z);
+            vec4 y_ = floor(j - 7.0 * x_);
+            vec4 x = x_ * ns.x + ns.yyyy;
+            vec4 y = y_ * ns.x + ns.yyyy;
+            vec4 h = 1.0 - abs(x) - abs(y);
+            vec4 b0 = vec4(x.xy, y.xy);
+            vec4 b1 = vec4(x.zw, y.zw);
+            vec4 s0 = floor(b0) * 2.0 + 1.0;
+            vec4 s1 = floor(b1) * 2.0 + 1.0;
+            vec4 sh = -step(h, vec4(0.0));
+            vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+            vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+            vec3 p0 = vec3(a0.xy, h.x);
+            vec3 p1 = vec3(a0.zw, h.y);
+            vec3 p2 = vec3(a1.xy, h.z);
+            vec3 p3 = vec3(a1.zw, h.w);
+            vec4 norm = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));
+            p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+            vec4 m = max(0.6 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0);
+            m = m * m;
+            return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
+        }
+
+        vec2 curlNoise(vec2 p, float t) {
+            float eps = 0.01;
+            float n1 = snoise(vec3(p.x, p.y + eps, t));
+            float n2 = snoise(vec3(p.x, p.y - eps, t));
+            float n3 = snoise(vec3(p.x + eps, p.y, t));
+            float n4 = snoise(vec3(p.x - eps, p.y, t));
+            return vec2((n1 - n2), -(n3 - n4)) / (2.0 * eps);
+        }
+
+        // ========== SDF PRIMITIVES ==========
+
+        float sdCircle(vec2 p, float r) {
+            return length(p) - r;
+        }
+
+        float sdBox(vec2 p, vec2 b) {
+            vec2 d = abs(p) - b;
+            return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+        }
+
+        float sdTriangle(vec2 p, float r) {
+            const float k = sqrt(3.0);
+            p.x = abs(p.x) - r;
+            p.y = p.y + r / k;
+            if (p.x + k * p.y > 0.0) p = vec2(p.x - k * p.y, -k * p.x - p.y) / 2.0;
+            p.x -= clamp(p.x, -2.0 * r, 0.0);
+            return -length(p) * sign(p.y);
+        }
+
+        float sdStar5(vec2 p, float r, float rf) {
+            const vec2 k1 = vec2(0.809016994375, -0.587785252292);
+            const vec2 k2 = vec2(-k1.x, k1.y);
+            p.x = abs(p.x);
+            p -= 2.0 * max(dot(k1, p), 0.0) * k1;
+            p -= 2.0 * max(dot(k2, p), 0.0) * k2;
+            p.x = abs(p.x);
+            p.y -= r;
+            vec2 ba = rf * vec2(-k1.y, k1.x) - vec2(0, 1);
+            float h = clamp(dot(p, ba) / dot(ba, ba), 0.0, r);
+            return length(p - ba * h) * sign(p.y * ba.x - p.x * ba.y);
+        }
+
+        float sdHeart(vec2 p) {
+            p.x = abs(p.x);
+            if (p.y + p.x > 1.0)
+                return sqrt(dot(p - vec2(0.25, 0.75), p - vec2(0.25, 0.75))) - sqrt(2.0) / 4.0;
+            return sqrt(min(dot(p - vec2(0.0, 1.0), p - vec2(0.0, 1.0)),
+                           dot(p - 0.5 * max(p.x + p.y, 0.0), p - 0.5 * max(p.x + p.y, 0.0))))
+                   * sign(p.x - p.y);
+        }
+
+        float sdSpiral(vec2 p, float t) {
+            float r = length(p);
+            float a = atan(p.y, p.x);
+            // Archimedean spiral
+            float spiral = mod(a - r * 8.0 + t * 2.0, TAU) - PI;
+            return abs(spiral) * r * 0.15 - 0.02;
+        }
+
+        float sdInfinity(vec2 p, float s) {
+            p = abs(p);
+            float a = 0.7;
+            vec2 c1 = vec2(s * 0.5, 0.0);
+            float d1 = abs(length(p - c1) - s * 0.35);
+            float d2 = abs(length(p + c1 - vec2(s, 0.0)) - s * 0.35);
+            return min(d1, d2) - 0.02;
+        }
+
+        float sdHexagon(vec2 p, float r) {
+            const vec3 k = vec3(-0.866025404, 0.5, 0.577350269);
+            p = abs(p);
+            p -= 2.0 * min(dot(k.xy, p), 0.0) * k.xy;
+            p -= vec2(clamp(p.x, -k.z * r, k.z * r), r);
+            return length(p) * sign(p.y);
+        }
+
+        // Fractal - Julia set boundary approximation
+        float sdJulia(vec2 p, float t) {
+            vec2 c = vec2(-0.8 + sin(t * 0.3) * 0.2, cos(t * 0.4) * 0.3);
+            vec2 z = p * 1.5;
+            float escape = 0.0;
+            for (int i = 0; i < 12; i++) {
+                z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
+                if (dot(z, z) > 4.0) {
+                    escape = float(i);
+                    break;
+                }
+            }
+            // Distance estimate based on escape iteration
+            return (escape / 12.0 - 0.5) * 0.8;
+        }
+
+        // DNA Helix
+        float sdDNA(vec2 p, float t) {
+            float y = p.y;
+            float wave1 = sin(y * 8.0 + t * 3.0) * 0.3;
+            float wave2 = sin(y * 8.0 + t * 3.0 + PI) * 0.3;
+            float d1 = length(vec2(p.x - wave1, 0.0)) - 0.03;
+            float d2 = length(vec2(p.x - wave2, 0.0)) - 0.03;
+            // Rungs
+            float rung = mod(y * 4.0 + t, 1.0);
+            float rungD = abs(rung - 0.5) < 0.1 ? abs(p.x) - 0.25 : 1.0;
+            return min(min(d1, d2), rungD) - 0.01;
+        }
+
+        // ========== SDF OPERATIONS ==========
+
+        float opSmoothUnion(float d1, float d2, float k) {
+            float h = clamp(0.5 + 0.5 * (d2 - d1) / k, 0.0, 1.0);
+            return mix(d2, d1, h) - k * h * (1.0 - h);
+        }
+
+        float opSmoothSubtraction(float d1, float d2, float k) {
+            float h = clamp(0.5 - 0.5 * (d2 + d1) / k, 0.0, 1.0);
+            return mix(d2, -d1, h) + k * h * (1.0 - h);
+        }
+
+        vec2 opRotate(vec2 p, float a) {
+            float c = cos(a), s = sin(a);
+            return vec2(c * p.x - s * p.y, s * p.x + c * p.y);
+        }
+
+        // ========== ANIMATED COMPOSITE SHAPES ==========
+
+        float getCurrentShape(vec2 p, float t, int shapeIdx) {
+            float scale = 0.5 + sin(t * 0.5) * 0.1; // Breathing effect
+            vec2 rp = opRotate(p, t * 0.2); // Slow rotation
+
+            if (shapeIdx == 0) {
+                // Morphing star-circle
+                float star = sdStar5(rp, scale * 0.6, 0.4);
+                float circle = sdCircle(p, scale * 0.5);
+                float morph = sin(t * 0.7) * 0.5 + 0.5;
+                return mix(star, circle, morph);
+            }
+            else if (shapeIdx == 1) {
+                // Pulsing heart
+                vec2 hp = p * 1.5 + vec2(0.0, 0.3);
+                return sdHeart(hp) * 0.4 * scale;
+            }
+            else if (shapeIdx == 2) {
+                // Spiral galaxy
+                return sdSpiral(p, t);
+            }
+            else if (shapeIdx == 3) {
+                // Julia fractal
+                return sdJulia(p, t);
+            }
+            else if (shapeIdx == 4) {
+                // Infinity symbol
+                return sdInfinity(rp, scale);
+            }
+            else if (shapeIdx == 5) {
+                // DNA helix
+                return sdDNA(p, t);
+            }
+            else if (shapeIdx == 6) {
+                // Hexagon grid
+                vec2 hp = mod(p + 0.3, 0.6) - 0.3;
+                return sdHexagon(hp, 0.12);
+            }
+            else {
+                // Triangle to box morph
+                float tri = sdTriangle(rp, scale * 0.5);
+                float box = sdBox(rp, vec2(scale * 0.4));
+                float morph = sin(t * 0.6) * 0.5 + 0.5;
+                return mix(tri, box, morph);
+            }
+        }
+
+        // Get SDF with smooth morphing between shapes
+        float getAnimatedSDF(vec2 p, float t) {
+            float cycleDuration = 8.0;
+            float totalShapes = 8.0;
+            float cycleTime = mod(t, cycleDuration * totalShapes);
+
+            int currentShape = int(floor(cycleTime / cycleDuration));
+            int nextShape = int(mod(float(currentShape + 1), totalShapes));
+            float morphProgress = fract(cycleTime / cycleDuration);
+
+            // Smooth step for morphing
+            float smooth = smoothstep(0.3, 0.7, morphProgress);
+
+            float d1 = getCurrentShape(p, t, currentShape);
+            float d2 = getCurrentShape(p, t, nextShape);
+
+            return mix(d1, d2, smooth);
+        }
+
+        // Calculate SDF gradient (normal direction)
+        vec2 sdfGradient(vec2 p, float t) {
+            float eps = 0.005;
+            float d = getAnimatedSDF(p, t);
+            float dx = getAnimatedSDF(p + vec2(eps, 0.0), t) - d;
+            float dy = getAnimatedSDF(p + vec2(0.0, eps), t) - d;
+            return normalize(vec2(dx, dy) + vec2(0.0001));
+        }
+
+        void main() {
+            vec2 pos = aPosition.xy;
+            vec2 vel = aPosition.zw;
+            float life = aLife;
+
+            float dt = uDeltaTime * uSpeed;
+            vec2 mousePos = uMouse * 2.0 - 1.0;
+            vec2 force = vec2(0.0);
+
+            float particleHash = hash(pos + vec2(life));
+
+            // ========== SDF SHAPE ATTRACTION ==========
+
+            float sdf = getAnimatedSDF(pos, uTime);
+            vec2 gradient = sdfGradient(pos, uTime);
+
+            // Attraction to surface (where sdf = 0)
+            float attractStrength = uAttraction * 1.5;
+
+            // Push toward surface
+            force -= gradient * sdf * attractStrength;
+
+            // Tangent flow along surface (perpendicular to gradient)
+            vec2 tangent = vec2(-gradient.y, gradient.x);
+            float flowSpeed = 0.15 + particleHash * 0.1;
+            float flowDir = (particleHash > 0.5) ? 1.0 : -1.0; // Some particles flow opposite
+            force += tangent * flowSpeed * flowDir;
+
+            // Add noise for organic movement
+            vec2 noise = curlNoise(pos * 3.0 + vec2(particleHash * 10.0), uTime * 0.5);
+            force += noise * uTurbulence * 0.15;
+
+            // Slight outward pressure when too close to prevent collapse
+            if (abs(sdf) < 0.02) {
+                force += gradient * 0.1 * sign(sdf);
+            }
+
+            // ========== MOUSE INTERACTION ==========
+
+            vec2 toMouse = pos - mousePos;
+            float mouseDist = length(toMouse);
+
+            // Mouse repels particles
+            float repelRadius = 0.4 + uMouseDown * 0.3;
+            if (mouseDist < repelRadius) {
+                float repelStrength = (1.0 - mouseDist / repelRadius);
+                repelStrength = repelStrength * repelStrength * 2.0;
+                force += normalize(toMouse + vec2(0.001)) * repelStrength * (1.0 + uMouseDown * 2.0);
+
+                // Add swirl around mouse
+                vec2 swirl = vec2(-toMouse.y, toMouse.x);
+                force += swirl * repelStrength * 0.5;
+            }
+
+            // Moving mouse creates wake
+            float mouseSpeed = length(uMouseVel);
+            if (mouseSpeed > 0.001) {
+                vec2 mouseDir = uMouseVel / mouseSpeed;
+                vec2 perpDir = vec2(-mouseDir.y, mouseDir.x);
+                float behind = dot(toMouse, -mouseDir);
+                float across = dot(toMouse, perpDir);
+
+                if (behind > 0.0 && behind < 0.5 && abs(across) < 0.2) {
+                    float wake = exp(-behind * 5.0) * exp(-across * across * 20.0);
+                    force += perpDir * sin(behind * 30.0 - uTime * 10.0) * wake * mouseSpeed * 2.0;
+                }
+            }
+
+            // ========== BURST EFFECT ==========
+            if (uBurst > 0.0) {
+                vec2 burstCenter = uBurstPos * 2.0 - 1.0;
+                vec2 fromBurst = pos - burstCenter;
+                float burstDist = length(fromBurst);
+
+                float ringRadius = uBurst * 0.5;
+                float ringDist = abs(burstDist - ringRadius);
+                if (ringDist < 0.15) {
+                    force += normalize(fromBurst + vec2(0.001)) * (0.15 - ringDist) * uBurst * 8.0;
+                }
+
+                if (burstDist < 0.2) {
+                    force += normalize(fromBurst + vec2(0.001)) * uBurst * (0.2 - burstDist) * 5.0;
+                }
+            }
+
+            // ========== PHYSICS UPDATE ==========
+
+            vel += force * dt;
+
+            // Damping
+            vel *= 0.96;
+
+            // Velocity limit
+            float speed = length(vel);
+            if (speed > 0.6) {
+                vel = vel / speed * 0.6;
+            }
+
+            pos += vel * dt;
+
+            // Soft boundary - respawn at random position
+            float boundary = 1.3;
+            if (abs(pos.x) > boundary || abs(pos.y) > boundary) {
+                // Respawn near the shape surface
+                float angle = hash(pos + vec2(uTime)) * TAU;
+                float radius = 0.3 + hash(pos.yx + vec2(uTime)) * 0.4;
+                pos = vec2(cos(angle), sin(angle)) * radius;
+                vel *= 0.1;
+            }
+
+            // Life cycles with speed influence
+            life = mod(life + dt * 0.1 + speed * 0.1, 1.0);
+
+            vPosition = vec4(pos, vel);
+            vLife = life;
+        }
+    `;
+
+    const simulationFS = `#version 300 es
+        precision highp float;
+        out vec4 fragColor;
+        void main() {
+            fragColor = vec4(0.0);
+        }
+    `;
+
+    // Render vertex shader - displays particles with enhanced visuals
+    const renderVS = `#version 300 es
+        precision highp float;
+        precision highp int;
+
+        in vec4 aPosition;
+        in float aLife;
+
+        out float vLife;
+        out float vSpeed;
+        out vec2 vVelocity;
+        out vec2 vPosition;
+
+        uniform vec2 uResolution;
+        uniform float uHue;
+        uniform int uMode;
+
+        void main() {
+            vec2 pos = aPosition.xy;
+            vec2 vel = aPosition.zw;
+
+            vLife = aLife;
+            vSpeed = length(vel);
+            vVelocity = vel;
+            vPosition = pos;
+
+            // Adjust for aspect ratio
+            float aspect = uResolution.x / uResolution.y;
+            vec2 adjusted = pos;
+            adjusted.x /= aspect;
+
+            gl_Position = vec4(adjusted, 0.0, 1.0);
+
+            // Size based on velocity - particles on surface are slightly larger
+            gl_PointSize = 1.2 + vSpeed * 3.5;
+        }
+    `;
+
+    const renderFS = `#version 300 es
+        precision highp float;
+        precision highp int;
+
+        in float vLife;
+        in float vSpeed;
+        in vec2 vVelocity;
+        in vec2 vPosition;
+
+        uniform float uHue;
+        uniform float uTime;
+        uniform int uMode;
+
+        out vec4 fragColor;
+
+        #define PI 3.14159265359
+        #define TAU 6.28318530718
+
+        vec3 hsv2rgb(vec3 c) {
+            vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
+            vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+            return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+        }
+
+        // Beautiful gradient palettes
+        vec3 palette1(float t) {
+            // Sunset/fire palette
+            vec3 a = vec3(0.5, 0.5, 0.5);
+            vec3 b = vec3(0.5, 0.5, 0.5);
+            vec3 c = vec3(1.0, 0.7, 0.4);
+            vec3 d = vec3(0.0, 0.15, 0.2);
+            return a + b * cos(TAU * (c * t + d));
+        }
+
+        vec3 palette2(float t) {
+            // Ocean/aurora palette
+            vec3 a = vec3(0.5, 0.5, 0.5);
+            vec3 b = vec3(0.5, 0.5, 0.5);
+            vec3 c = vec3(1.0, 1.0, 1.0);
+            vec3 d = vec3(0.3, 0.2, 0.2);
+            return a + b * cos(TAU * (c * t + d));
+        }
+
+        vec3 palette3(float t) {
+            // Neon cyberpunk palette
+            vec3 a = vec3(0.5, 0.5, 0.5);
+            vec3 b = vec3(0.5, 0.5, 0.5);
+            vec3 c = vec3(2.0, 1.0, 0.0);
+            vec3 d = vec3(0.5, 0.2, 0.25);
+            return a + b * cos(TAU * (c * t + d));
+        }
+
+        void main() {
+            vec2 coord = gl_PointCoord * 2.0 - 1.0;
+            float r = length(coord);
+            if (r > 1.0) discard;
+
+            // Soft glowing particle
+            float core = 1.0 - smoothstep(0.0, 0.3, r);
+            float glow = 1.0 - smoothstep(0.2, 1.0, r);
+            float alpha = mix(glow * 0.5, 1.0, core);
+
+            // Position-based coloring
+            float posAngle = atan(vPosition.y, vPosition.x) / TAU + 0.5;
+            float distFromCenter = length(vPosition);
+            float velAngle = atan(vVelocity.y, vVelocity.x) / TAU + 0.5;
+
+            // Time-varying palette cycling
+            float cycleDuration = 64.0; // Match shape cycle
+            float palettePhase = mod(uTime / cycleDuration, 1.0);
+
+            // Base color from position angle for rainbow flow along shapes
+            float baseHue = uHue / 360.0;
+            float colorPhase = posAngle + vLife * 0.3 + uTime * 0.05 + baseHue;
+
+            // Mix between palettes based on time
+            vec3 col1 = palette1(colorPhase);
+            vec3 col2 = palette2(colorPhase + 0.1);
+            vec3 col3 = palette3(colorPhase + 0.2);
+
+            float paletteMix = sin(uTime * 0.2) * 0.5 + 0.5;
+            float paletteMix2 = sin(uTime * 0.15 + 1.0) * 0.5 + 0.5;
+
+            vec3 col = mix(mix(col1, col2, paletteMix), col3, paletteMix2 * 0.5);
+
+            // Add speed-based brightness and hue shift
+            col *= 0.6 + vSpeed * 1.2;
+
+            // Fast particles get white-hot core
+            if (vSpeed > 0.2) {
+                float heat = (vSpeed - 0.2) * 2.0;
+                col = mix(col, vec3(1.0, 0.95, 0.85), heat * core);
+            }
+
+            // Subtle shimmer based on velocity direction
+            float shimmer = sin(velAngle * TAU * 4.0 + uTime * 5.0) * 0.15 + 0.85;
+            col *= shimmer;
+
+            // Distance-based saturation - particles near center are brighter
+            col *= 0.8 + (1.0 - min(distFromCenter, 1.0)) * 0.4;
+
+            // Pulsing glow synchronized with shape breathing
+            float breathe = sin(uTime * 0.5) * 0.1 + 0.9;
+            col *= breathe;
+
+            // Core highlight
+            col += vec3(1.0, 0.98, 0.95) * core * 0.3;
+
+            // Alpha based on speed and life
+            alpha *= 0.5 + vSpeed * 0.4 + vLife * 0.1;
+
+            fragColor = vec4(col, alpha);
+        }
+    `;
+
+    // ============================================
+    // FULLSCREEN SHADER EFFECTS (WebGL 1/2)
+    // ============================================
+    const shaderSources = {
+        voronoi: `
+            precision highp float;
+            uniform float uTime;
+            uniform vec2 uResolution;
+            uniform vec2 uMouse;
+            uniform float uSpeed;
+            uniform float uScale;
+            uniform float uIntensity;
+            uniform float uHue;
+
+            vec2 hash2(vec2 p) {
+                return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
+            }
+
+            vec3 hsv2rgb(vec3 c) {
+                vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
+                vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+                return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+            }
+
+            void main() {
+                vec2 uv = gl_FragCoord.xy / uResolution;
+                vec2 p = uv * 8.0 * uScale;
+                float t = uTime * uSpeed;
+
+                vec2 n = floor(p);
+                vec2 f = fract(p);
+
+                float md = 8.0;
+                vec2 mg;
+
+                for (int j = -1; j <= 1; j++) {
+                    for (int i = -1; i <= 1; i++) {
+                        vec2 g = vec2(float(i), float(j));
+                        vec2 o = hash2(n + g);
+                        o = 0.5 + 0.5 * sin(t + 6.2831 * o);
+                        vec2 r = g + o - f;
+                        float d = dot(r, r);
+                        if (d < md) {
+                            md = d;
+                            mg = r;
+                        }
+                    }
+                }
+
+                float cellDist = sqrt(md);
+
+                vec2 m = uMouse;
+                float mouseDist = length(uv - m);
+                float mouseInfluence = smoothstep(0.3, 0.0, mouseDist);
+
+                float hue = fract(cellDist * uIntensity + t * 0.1 + uHue / 360.0);
+                float sat = 0.7 + mouseInfluence * 0.3;
+                float val = 0.3 + cellDist * 0.7;
+
+                vec3 col = hsv2rgb(vec3(hue, sat, val));
+                col += vec3(0.9, 0.7, 0.1) * mouseInfluence * 0.3;
+
+                gl_FragColor = vec4(col, 1.0);
+            }
+        `,
+        raymarching: `
+            precision highp float;
+            uniform float uTime;
+            uniform vec2 uResolution;
+            uniform vec2 uMouse;
+            uniform float uSpeed;
+            uniform float uScale;
+            uniform float uIntensity;
+            uniform float uHue;
+
+            float sdSphere(vec3 p, float r) { return length(p) - r; }
+            float sdBox(vec3 p, vec3 b) { vec3 d = abs(p) - b; return min(max(d.x, max(d.y, d.z)), 0.0) + length(max(d, 0.0)); }
+
+            mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
+
+            float scene(vec3 p) {
+                float t = uTime * uSpeed;
+                p.xz *= rot(t * 0.3);
+                p.xy *= rot(t * 0.2);
+
+                vec3 q = p;
+                q = mod(q + 2.0, 4.0) - 2.0;
+
+                float sphere = sdSphere(q, 0.8 * uScale);
+                float box = sdBox(q, vec3(0.5 * uScale));
+
+                return mix(sphere, box, sin(t) * 0.5 + 0.5);
+            }
+
+            vec3 getNormal(vec3 p) {
+                vec2 e = vec2(0.001, 0.0);
+                return normalize(vec3(
+                    scene(p + e.xyy) - scene(p - e.xyy),
+                    scene(p + e.yxy) - scene(p - e.yxy),
+                    scene(p + e.yyx) - scene(p - e.yyx)
+                ));
+            }
+
+            vec3 hsv2rgb(vec3 c) {
+                vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
+                vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+                return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+            }
+
+            void main() {
+                vec2 uv = (gl_FragCoord.xy - 0.5 * uResolution) / uResolution.y;
+
+                vec2 m = (uMouse - 0.5) * 2.0;
+
+                vec3 ro = vec3(0.0, 0.0, -5.0);
+                vec3 rd = normalize(vec3(uv + m * 0.3, 1.0));
+
+                float t = 0.0;
+                float d;
+                vec3 p;
+
+                for (int i = 0; i < 64; i++) {
+                    p = ro + rd * t;
+                    d = scene(p);
+                    if (d < 0.001 || t > 20.0) break;
+                    t += d;
+                }
+
+                vec3 col = vec3(0.02, 0.04, 0.06);
+
+                if (d < 0.001) {
+                    vec3 n = getNormal(p);
+                    vec3 light = normalize(vec3(1.0, 1.0, -1.0));
+                    float diff = max(dot(n, light), 0.0);
+                    float spec = pow(max(dot(reflect(-light, n), -rd), 0.0), 32.0);
+
+                    float hue = fract(t * 0.05 + uHue / 360.0);
+                    vec3 baseCol = hsv2rgb(vec3(hue, 0.7, 0.9));
+
+                    col = baseCol * (diff * uIntensity + 0.2) + vec3(1.0) * spec * 0.5;
+                    col *= exp(-t * 0.08);
+                }
+
+                gl_FragColor = vec4(col, 1.0);
+            }
+        `,
+        fractal: `
+            precision highp float;
+            uniform float uTime;
+            uniform vec2 uResolution;
+            uniform vec2 uMouse;
+            uniform float uSpeed;
+            uniform float uScale;
+            uniform float uIntensity;
+            uniform float uHue;
+
+            vec3 hsv2rgb(vec3 c) {
+                vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
+                vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+                return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+            }
+
+            void main() {
+                vec2 uv = (gl_FragCoord.xy - 0.5 * uResolution) / uResolution.y;
+                float t = uTime * uSpeed * 0.5;
+
+                vec2 m = (uMouse - 0.5) * 0.5;
+                vec2 c = vec2(-0.8 + m.x, 0.156 + m.y + sin(t * 0.3) * 0.1);
+
+                vec2 z = uv * 2.5 / uScale;
+
+                float iter = 0.0;
+                const float maxIter = 100.0;
+
+                for (float i = 0.0; i < maxIter; i++) {
+                    z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
+                    if (dot(z, z) > 4.0) break;
+                    iter++;
+                }
+
+                float smoothIter = iter - log2(log2(dot(z, z)));
+                float normalized = smoothIter / maxIter;
+
+                float hue = fract(normalized * uIntensity + t * 0.1 + uHue / 360.0);
+                float sat = 0.8;
+                float val = iter < maxIter ? 0.9 : 0.0;
+
+                vec3 col = hsv2rgb(vec3(hue, sat, val));
+
+                float glow = exp(-normalized * 3.0) * 0.5;
+                col += vec3(0.9, 0.7, 0.1) * glow;
+
+                gl_FragColor = vec4(col, 1.0);
+            }
+        `
+    };
+
+    const fullscreenVS = isWebGL2 ? `#version 300 es
+        in vec2 aPosition;
+        void main() {
+            gl_Position = vec4(aPosition, 0.0, 1.0);
+        }
+    ` : `
+        attribute vec2 aPosition;
+        void main() {
+            gl_Position = vec4(aPosition, 0.0, 1.0);
+        }
+    `;
+
+    // State
+    let currentShader = 'particles';
+    let currentMode = 0; // Unused - kept for shader uniform compatibility
+    let mouse = { x: 0.5, y: 0.5 };
+    let prevMouse = { x: 0.5, y: 0.5 };
+    let mouseVel = { x: 0, y: 0 };
+    let mouseDown = 0;
+    let particleParams = { attraction: 1.0, turbulence: 0.6, speed: 1.0, hue: 0 };
+    let shaderParams = { speed: 1.0, scale: 1.0, intensity: 1.0, hue: 0 };
+    let isActive = false;
+    let animationId = null;
+    let burstStrength = 0;
+    let burstPos = { x: 0.5, y: 0.5 };
+    let lastTime = performance.now();
+
+    // Particle system state (WebGL 2 only)
+    let particleSystem = null;
+
+    // Shader programs for fullscreen effects
+    let shaderPrograms = {};
+    let shaderUniforms = {};
+    let fullscreenBuffer = null;
+
+    // Helper functions
+    function checkGLError(label) {
+        const err = gl.getError();
+        if (err !== gl.NO_ERROR) {
+            console.error(`WebGL Error at ${label}:`, err);
+            return true;
+        }
+        return false;
+    }
+
+    function compileShader(source, type) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+            console.error('Shader source:', source);
+            gl.deleteShader(shader);
+            return null;
+        }
+        return shader;
+    }
+
+    function createProgramWithTransformFeedback(vsSource, fsSource, varyings) {
+        const vs = compileShader(vsSource, gl.VERTEX_SHADER);
+        const fs = compileShader(fsSource, gl.FRAGMENT_SHADER);
+        if (!vs || !fs) return null;
+
+        const program = gl.createProgram();
+        gl.attachShader(program, vs);
+        gl.attachShader(program, fs);
+
+        if (varyings) {
+            gl.transformFeedbackVaryings(program, varyings, gl.SEPARATE_ATTRIBS);
+        }
+
+        gl.linkProgram(program);
+
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            console.error('Program link error:', gl.getProgramInfoLog(program));
+            return null;
+        }
+
+        return program;
+    }
+
+    function createProgram(vsSource, fsSource) {
+        const vs = compileShader(vsSource, gl.VERTEX_SHADER);
+        const fs = compileShader(fsSource, gl.FRAGMENT_SHADER);
+        if (!vs || !fs) return null;
+
+        const program = gl.createProgram();
+        gl.attachShader(program, vs);
+        gl.attachShader(program, fs);
+        gl.linkProgram(program);
+
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            console.error('Program link error:', gl.getProgramInfoLog(program));
+            return null;
+        }
+
+        return program;
+    }
+
+    // Initialize particle system (WebGL 2 only)
+    function initParticleSystem() {
+        if (!isWebGL2) {
+            console.log('WebGL 2 not available - particle system disabled');
+            return;
+        }
+
+        try {
+            // Create simulation program with transform feedback
+            console.log('Creating simulation program...');
+            const simProgram = createProgramWithTransformFeedback(
+                simulationVS, simulationFS, ['vPosition', 'vLife']
+            );
+
+            // Create render program
+            console.log('Creating render program...');
+            const renderProgram = createProgram(renderVS, renderFS);
+
+            if (!simProgram || !renderProgram) {
+                console.error('Failed to create particle programs - particle system disabled');
+                console.error('simProgram:', simProgram, 'renderProgram:', renderProgram);
+                return;
+            }
+
+            console.log('Particle programs created successfully');
+
+        // Initialize particle data
+        const positions = new Float32Array(PARTICLE_COUNT * 4); // xy = pos, zw = vel
+        const lives = new Float32Array(PARTICLE_COUNT);
+
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            // Random position in a circular pattern
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * 0.8;
+            positions[i * 4] = Math.cos(angle) * radius;     // x
+            positions[i * 4 + 1] = Math.sin(angle) * radius; // y
+            positions[i * 4 + 2] = (Math.random() - 0.5) * 0.1; // vx
+            positions[i * 4 + 3] = (Math.random() - 0.5) * 0.1; // vy
+            lives[i] = Math.random();
+        }
+
+        // Create double buffers for ping-pong
+        const posBuffers = [gl.createBuffer(), gl.createBuffer()];
+        const lifeBuffers = [gl.createBuffer(), gl.createBuffer()];
+
+        for (let i = 0; i < 2; i++) {
+            gl.bindBuffer(gl.ARRAY_BUFFER, posBuffers[i]);
+            gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_COPY);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, lifeBuffers[i]);
+            gl.bufferData(gl.ARRAY_BUFFER, lives, gl.DYNAMIC_COPY);
+        }
+
+        // Create VAOs for simulation
+        const simVAOs = [gl.createVertexArray(), gl.createVertexArray()];
+        const simLocations = {
+            aPosition: gl.getAttribLocation(simProgram, 'aPosition'),
+            aLife: gl.getAttribLocation(simProgram, 'aLife')
+        };
+
+        for (let i = 0; i < 2; i++) {
+            gl.bindVertexArray(simVAOs[i]);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, posBuffers[i]);
+            gl.enableVertexAttribArray(simLocations.aPosition);
+            gl.vertexAttribPointer(simLocations.aPosition, 4, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, lifeBuffers[i]);
+            gl.enableVertexAttribArray(simLocations.aLife);
+            gl.vertexAttribPointer(simLocations.aLife, 1, gl.FLOAT, false, 0, 0);
+        }
+
+        // Create VAOs for rendering
+        const renderVAOs = [gl.createVertexArray(), gl.createVertexArray()];
+        const renderLocations = {
+            aPosition: gl.getAttribLocation(renderProgram, 'aPosition'),
+            aLife: gl.getAttribLocation(renderProgram, 'aLife')
+        };
+
+        for (let i = 0; i < 2; i++) {
+            gl.bindVertexArray(renderVAOs[i]);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, posBuffers[i]);
+            gl.enableVertexAttribArray(renderLocations.aPosition);
+            gl.vertexAttribPointer(renderLocations.aPosition, 4, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, lifeBuffers[i]);
+            gl.enableVertexAttribArray(renderLocations.aLife);
+            gl.vertexAttribPointer(renderLocations.aLife, 1, gl.FLOAT, false, 0, 0);
+        }
+
+        // Create transform feedbacks
+        const transformFeedbacks = [gl.createTransformFeedback(), gl.createTransformFeedback()];
+        for (let i = 0; i < 2; i++) {
+            gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, transformFeedbacks[i]);
+            gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, posBuffers[1 - i]);
+            gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 1, lifeBuffers[1 - i]);
+        }
+        gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, null);
+
+        particleSystem = {
+            simProgram,
+            renderProgram,
+            posBuffers,
+            lifeBuffers,
+            simVAOs,
+            renderVAOs,
+            transformFeedbacks,
+            simUniforms: {
+                uTime: gl.getUniformLocation(simProgram, 'uTime'),
+                uDeltaTime: gl.getUniformLocation(simProgram, 'uDeltaTime'),
+                uMouse: gl.getUniformLocation(simProgram, 'uMouse'),
+                uMouseVel: gl.getUniformLocation(simProgram, 'uMouseVel'),
+                uMouseDown: gl.getUniformLocation(simProgram, 'uMouseDown'),
+                uAttraction: gl.getUniformLocation(simProgram, 'uAttraction'),
+                uTurbulence: gl.getUniformLocation(simProgram, 'uTurbulence'),
+                uSpeed: gl.getUniformLocation(simProgram, 'uSpeed'),
+                uResolution: gl.getUniformLocation(simProgram, 'uResolution'),
+                uBurst: gl.getUniformLocation(simProgram, 'uBurst'),
+                uBurstPos: gl.getUniformLocation(simProgram, 'uBurstPos'),
+                uMode: gl.getUniformLocation(simProgram, 'uMode')
+            },
+            renderUniforms: {
+                uResolution: gl.getUniformLocation(renderProgram, 'uResolution'),
+                uHue: gl.getUniformLocation(renderProgram, 'uHue'),
+                uTime: gl.getUniformLocation(renderProgram, 'uTime'),
+                uMode: gl.getUniformLocation(renderProgram, 'uMode')
+            },
+            currentBuffer: 0
+        };
+
+            // Update particle display
+            if (particleDisplay) {
+                particleDisplay.textContent = (PARTICLE_COUNT / 1000000).toFixed(1) + 'M Particles';
+            }
+
+            console.log('Particle system initialized successfully with ' + PARTICLE_COUNT + ' particles');
+        } catch (error) {
+            console.error('Error initializing particle system:', error);
+            particleSystem = null;
+            if (particleDisplay) {
+                particleDisplay.textContent = 'Particle system error';
+            }
+        }
+    }
+
+    // Initialize fullscreen shader programs
+    function initShaderPrograms() {
+        fullscreenBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, fullscreenBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            -1, -1, 1, -1, -1, 1,
+            -1, 1, 1, -1, 1, 1
+        ]), gl.STATIC_DRAW);
+
+        for (const [name, fragSource] of Object.entries(shaderSources)) {
+            // Wrap fragment shader for WebGL 2
+            let fs;
+            if (isWebGL2) {
+                // Convert WebGL 1 shader to WebGL 2
+                // Replace gl_FragColor with fragColor globally, then add out declaration
+                const converted = fragSource.replace(/gl_FragColor/g, 'fragColor');
+                // Find void main() and insert out declaration before it
+                const mainIndex = converted.indexOf('void main()');
+                if (mainIndex !== -1) {
+                    fs = `#version 300 es
+${converted.substring(0, mainIndex)}out vec4 fragColor;
+${converted.substring(mainIndex)}`;
+                } else {
+                    fs = `#version 300 es\nout vec4 fragColor;\n${converted}`;
+                }
+            } else {
+                fs = fragSource;
+            }
+
+            const program = createProgram(fullscreenVS, fs);
+            if (program) {
+                shaderPrograms[name] = program;
+                shaderUniforms[name] = {
+                    uTime: gl.getUniformLocation(program, 'uTime'),
+                    uResolution: gl.getUniformLocation(program, 'uResolution'),
+                    uMouse: gl.getUniformLocation(program, 'uMouse'),
+                    uSpeed: gl.getUniformLocation(program, 'uSpeed'),
+                    uScale: gl.getUniformLocation(program, 'uScale'),
+                    uIntensity: gl.getUniformLocation(program, 'uIntensity'),
+                    uHue: gl.getUniformLocation(program, 'uHue'),
+                    aPosition: gl.getAttribLocation(program, 'aPosition')
+                };
+            } else {
+                console.error(`Failed to create shader program: ${name}`);
+            }
+        }
+    }
+
+    // Resize canvas
+    function resize() {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+    }
+
+    // FPS tracking
+    let frameCount = 0;
+    let lastFpsTime = performance.now();
+    let startTime = performance.now();
+
+    // Render particles
+    function renderParticles(time, deltaTime) {
+        if (!particleSystem) return;
+
+        const ps = particleSystem;
+        const current = ps.currentBuffer;
+        const next = 1 - current;
+
+        // Update mouse velocity (smoothed)
+        const mvx = (mouse.x - prevMouse.x) / Math.max(deltaTime, 0.016);
+        const mvy = (mouse.y - prevMouse.y) / Math.max(deltaTime, 0.016);
+        mouseVel.x = mouseVel.x * 0.8 + mvx * 0.2;
+        mouseVel.y = mouseVel.y * 0.8 + mvy * 0.2;
+        prevMouse.x = mouse.x;
+        prevMouse.y = mouse.y;
+
+        // Decay mouse down effect
+        if (mouseDown > 0 && !isMouseHeld) {
+            mouseDown *= 0.95;
+            if (mouseDown < 0.01) mouseDown = 0;
+        }
+
+        // === SIMULATION PASS ===
+        gl.useProgram(ps.simProgram);
+        gl.bindVertexArray(ps.simVAOs[current]);
+
+        // Set simulation uniforms
+        gl.uniform1f(ps.simUniforms.uTime, time);
+        gl.uniform1f(ps.simUniforms.uDeltaTime, Math.min(deltaTime, 0.033)); // Cap at ~30fps equivalent
+        gl.uniform2f(ps.simUniforms.uMouse, mouse.x, mouse.y);
+        gl.uniform2f(ps.simUniforms.uMouseVel, mouseVel.x, mouseVel.y);
+        gl.uniform1f(ps.simUniforms.uMouseDown, mouseDown);
+        gl.uniform1f(ps.simUniforms.uAttraction, particleParams.attraction);
+        gl.uniform1f(ps.simUniforms.uTurbulence, particleParams.turbulence);
+        gl.uniform1f(ps.simUniforms.uSpeed, particleParams.speed);
+        gl.uniform2f(ps.simUniforms.uResolution, canvas.width, canvas.height);
+        gl.uniform1f(ps.simUniforms.uBurst, burstStrength);
+        gl.uniform2f(ps.simUniforms.uBurstPos, burstPos.x, burstPos.y);
+        gl.uniform1i(ps.simUniforms.uMode, currentMode);
+
+        // Decay burst
+        burstStrength *= 0.9;
+        if (burstStrength < 0.01) burstStrength = 0;
+
+        // Enable rasterizer discard for simulation (we don't need fragments)
+        gl.enable(gl.RASTERIZER_DISCARD);
+
+        // Begin transform feedback
+        gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, ps.transformFeedbacks[current]);
+        gl.beginTransformFeedback(gl.POINTS);
+
+        gl.drawArrays(gl.POINTS, 0, PARTICLE_COUNT);
+        checkGLError('simulation draw');
+
+        gl.endTransformFeedback();
+        gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, null);
+        checkGLError('end transform feedback');
+
+        gl.disable(gl.RASTERIZER_DISCARD);
+        gl.bindVertexArray(null);
+
+        // === RENDER PASS ===
+        gl.useProgram(ps.renderProgram);
+        gl.bindVertexArray(ps.renderVAOs[next]);
+
+        // Set render uniforms
+        gl.uniform2f(ps.renderUniforms.uResolution, canvas.width, canvas.height);
+        gl.uniform1f(ps.renderUniforms.uHue, particleParams.hue);
+        gl.uniform1f(ps.renderUniforms.uTime, time);
+        gl.uniform1i(ps.renderUniforms.uMode, currentMode);
+
+        // Clear canvas
+        gl.clearColor(0.01, 0.02, 0.04, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        // Enable additive blending for particles
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+
+        gl.drawArrays(gl.POINTS, 0, PARTICLE_COUNT);
+        checkGLError('render draw');
+
+        gl.disable(gl.BLEND);
+        gl.bindVertexArray(null);
+
+        // Swap buffers
+        ps.currentBuffer = next;
+    }
+
+    // Render fullscreen shader
+    function renderShader(time) {
+        const program = shaderPrograms[currentShader];
+        const u = shaderUniforms[currentShader];
+        if (!program || !u) return;
+
+        gl.useProgram(program);
+
+        gl.uniform1f(u.uTime, time);
+        gl.uniform2f(u.uResolution, canvas.width, canvas.height);
+        gl.uniform2f(u.uMouse, mouse.x, 1.0 - mouse.y);
+        gl.uniform1f(u.uSpeed, shaderParams.speed);
+        gl.uniform1f(u.uScale, shaderParams.scale);
+        gl.uniform1f(u.uIntensity, shaderParams.intensity);
+        gl.uniform1f(u.uHue, shaderParams.hue);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, fullscreenBuffer);
+        gl.enableVertexAttribArray(u.aPosition);
+        gl.vertexAttribPointer(u.aPosition, 2, gl.FLOAT, false, 0, 0);
+
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+
+    // Main render loop
+    function render() {
+        if (!isActive) return;
+
+        const now = performance.now();
+        const time = (now - startTime) / 1000;
+        const deltaTime = (now - lastTime) / 1000;
+        lastTime = now;
+
+        if (currentShader === 'particles') {
+            if (particleSystem) {
+                renderParticles(time, deltaTime);
+            } else {
+                // Particle system not available, fallback to shader
+                if (shaderPrograms['voronoi']) {
+                    currentShader = 'voronoi';
+                    renderShader(time);
+                }
+            }
+        } else {
+            renderShader(time);
+        }
+
+        // Update FPS
+        frameCount++;
+        if (now - lastFpsTime >= 500) {
+            const fps = Math.round((frameCount * 1000) / (now - lastFpsTime));
+            if (fpsDisplay) fpsDisplay.textContent = fps + ' FPS';
+            frameCount = 0;
+            lastFpsTime = now;
+        }
+
+        animationId = requestAnimationFrame(render);
+    }
+
+    function start() {
+        if (isActive) return;
+        isActive = true;
+        resize();
+        startTime = performance.now();
+        lastTime = performance.now();
+        render();
+    }
+
+    function stop() {
+        isActive = false;
+        if (animationId) {
+            cancelAnimationFrame(animationId);
+            animationId = null;
+        }
+    }
+
+    // Update UI based on current shader
+    function updateControlsVisibility() {
+        if (currentShader === 'particles') {
+            if (particleControls) particleControls.style.display = 'flex';
+            if (shaderControls) shaderControls.style.display = 'none';
+            if (particleDisplay) particleDisplay.style.display = 'block';
+        } else {
+            if (particleControls) particleControls.style.display = 'none';
+            if (shaderControls) shaderControls.style.display = 'flex';
+            if (particleDisplay) particleDisplay.style.display = 'none';
+        }
+    }
+
+    // Event listeners
+    canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = (e.clientX - rect.left) / rect.width;
+        mouse.y = (e.clientY - rect.top) / rect.height;
+    });
+
+    // Mouse hold for black hole effect
+    let isMouseHeld = false;
+    let holdTimer = null;
+
+    canvas.addEventListener('mouseleave', () => {
+        mouse.x = 0.5;
+        mouse.y = 0.5;
+        isMouseHeld = false;
+        mouseDown = 0;
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+        if (currentShader === 'particles') {
+            isMouseHeld = true;
+            // Ramp up black hole strength while held
+            const rampUp = () => {
+                if (isMouseHeld && mouseDown < 1.0) {
+                    mouseDown = Math.min(mouseDown + 0.05, 1.0);
+                    holdTimer = requestAnimationFrame(rampUp);
+                }
+            };
+            rampUp();
+        }
+    });
+
+    canvas.addEventListener('mouseup', (e) => {
+        if (currentShader === 'particles') {
+            const rect = canvas.getBoundingClientRect();
+            burstPos.x = (e.clientX - rect.left) / rect.width;
+            burstPos.y = (e.clientY - rect.top) / rect.height;
+
+            // Burst strength based on how long held
+            burstStrength = 2.0 + mouseDown * 4.0;
+
+            isMouseHeld = false;
+            if (holdTimer) {
+                cancelAnimationFrame(holdTimer);
+                holdTimer = null;
+            }
+        }
+    });
+
+    canvas.addEventListener('click', (e) => {
+        // Click handled by mouseup for particles
+    });
+
+    window.addEventListener('resize', () => {
+        if (isActive) resize();
+    });
+
+    // Shader selector buttons
+    document.querySelectorAll('.shader-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const shaderType = btn.dataset.shader;
+
+            // Prevent switching to particles if not available
+            if (shaderType === 'particles' && !particleSystem) {
+                console.warn('Particle system not available - cannot switch to particles mode');
+                return;
+            }
+
+            document.querySelectorAll('.shader-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentShader = shaderType;
+            updateControlsVisibility();
+        });
+    });
+
+    // Particle control sliders
+    const particleSliders = {
+        attraction: { element: document.getElementById('ctrl-attraction'), display: document.getElementById('val-attraction'), format: v => (v / 100).toFixed(1) + 'x' },
+        turbulence: { element: document.getElementById('ctrl-turbulence'), display: document.getElementById('val-turbulence'), format: v => (v / 100).toFixed(1) + 'x' },
+        speed: { element: document.getElementById('ctrl-speed'), display: document.getElementById('val-speed'), format: v => (v / 100).toFixed(1) + 'x' },
+        hue: { element: document.getElementById('ctrl-hue'), display: document.getElementById('val-hue'), format: v => v + '°' }
+    };
+
+    for (const [key, slider] of Object.entries(particleSliders)) {
+        if (slider.element) {
+            slider.element.addEventListener('input', () => {
+                const value = parseFloat(slider.element.value);
+                if (key === 'hue') {
+                    particleParams[key] = value;
+                } else {
+                    particleParams[key] = value / 100;
+                }
+                if (slider.display) {
+                    slider.display.textContent = slider.format(value);
+                }
+            });
+        }
+    }
+
+    // Shader control sliders
+    const shaderSliderConfigs = {
+        'shader-speed': { param: 'speed', element: document.getElementById('ctrl-shader-speed'), display: document.getElementById('val-shader-speed'), format: v => (v / 100).toFixed(1) + 'x' },
+        scale: { param: 'scale', element: document.getElementById('ctrl-scale'), display: document.getElementById('val-scale'), format: v => (v / 100).toFixed(1) + 'x' },
+        intensity: { param: 'intensity', element: document.getElementById('ctrl-intensity'), display: document.getElementById('val-intensity'), format: v => (v / 100).toFixed(1) + 'x' },
+        'shader-hue': { param: 'hue', element: document.getElementById('ctrl-shader-hue'), display: document.getElementById('val-shader-hue'), format: v => v + '°' }
+    };
+
+    for (const [key, slider] of Object.entries(shaderSliderConfigs)) {
+        if (slider.element) {
+            slider.element.addEventListener('input', () => {
+                const value = parseFloat(slider.element.value);
+                if (slider.param === 'hue') {
+                    shaderParams[slider.param] = value;
+                } else {
+                    shaderParams[slider.param] = value / 100;
+                }
+                if (slider.display) {
+                    slider.display.textContent = slider.format(value);
+                }
+            });
+        }
+    }
+
+    // Tab activation handling
+    const playgroundPanel = document.getElementById('panel-playground');
+    if (playgroundPanel) {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class') {
+                    if (playgroundPanel.classList.contains('active')) {
+                        start();
+                    } else {
+                        stop();
+                    }
+                }
+            });
+        });
+        observer.observe(playgroundPanel, { attributes: true });
+    }
+
+    // Initialize
+    resize();
+    initParticleSystem();
+    initShaderPrograms();
+    updateControlsVisibility();
+
+    // If WebGL 2 not available or particle system failed, fallback to first shader effect
+    if (!isWebGL2 || !particleSystem) {
+        currentShader = 'voronoi';
+        const particlesBtn = document.querySelector('.shader-btn[data-shader="particles"]');
+        const voronoiBtn = document.querySelector('.shader-btn[data-shader="voronoi"]');
+
+        if (particlesBtn) {
+            particlesBtn.classList.remove('active');
+            // Optionally disable the button if particles aren't available
+            if (!particleSystem) {
+                particlesBtn.disabled = true;
+                particlesBtn.title = 'Requires WebGL 2';
+            }
+        }
+        if (voronoiBtn) {
+            voronoiBtn.classList.add('active');
+        }
+
+        updateControlsVisibility();
+
+        if (particleDisplay) {
+            if (!isWebGL2) {
+                particleDisplay.textContent = 'WebGL 2 not available';
+            } else if (!particleSystem) {
+                particleDisplay.textContent = 'Particle system unavailable';
+            }
+        }
+    }
+})();
