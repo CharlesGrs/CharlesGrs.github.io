@@ -1017,7 +1017,8 @@
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
         }
 
-        .portfolio-item img {
+        .portfolio-item img,
+        .portfolio-item video {
             width: 100%;
             height: 100%;
             object-fit: cover;
@@ -1030,7 +1031,8 @@
             cursor: pointer;
         }
 
-        .portfolio-item.active:hover img {
+        .portfolio-item.active:hover img,
+        .portfolio-item.active:hover video {
             transform: scale(1.02);
         }
 
@@ -1416,6 +1418,106 @@
                 font-size: 0.8rem;
             }
 
+            /* Portfolio mobile improvements */
+            .portfolio-panel {
+                padding: 1rem;
+            }
+
+            .portfolio-header {
+                margin-bottom: 0.5rem;
+            }
+
+            .portfolio-title {
+                font-size: 0.85rem;
+                line-height: 1.3;
+                padding: 0 2.5rem;
+            }
+
+            .portfolio-link {
+                font-size: 0.6rem;
+            }
+
+            .portfolio-scene {
+                perspective: 800px;
+            }
+
+            .portfolio-item {
+                width: 75%;
+                max-width: none;
+                border-radius: 8px;
+            }
+
+            .portfolio-item img,
+            .portfolio-item video {
+                border-radius: 8px;
+            }
+
+            /* Larger touch targets for nav buttons */
+            .portfolio-nav {
+                width: 48px;
+                height: 48px;
+                min-width: 48px;
+                min-height: 48px;
+            }
+
+            .portfolio-nav.prev {
+                left: 0.25rem;
+            }
+
+            .portfolio-nav.next {
+                right: 0.25rem;
+            }
+
+            .portfolio-nav svg {
+                width: 24px;
+                height: 24px;
+            }
+
+            .portfolio-dots {
+                gap: 0.4rem;
+                margin-top: 0.75rem;
+                flex-wrap: wrap;
+                max-width: 100%;
+                padding: 0 1rem;
+            }
+
+            .portfolio-dot {
+                width: 6px;
+                height: 6px;
+            }
+
+        }
+
+        /* Extra small screens */
+        @media (max-width: 480px) {
+            .portfolio-item {
+                width: 85%;
+            }
+
+            .portfolio-nav {
+                width: 40px;
+                height: 40px;
+                min-width: 40px;
+                min-height: 40px;
+            }
+
+            .portfolio-nav.prev {
+                left: 0.15rem;
+            }
+
+            .portfolio-nav.next {
+                right: 0.15rem;
+            }
+
+            .portfolio-title {
+                font-size: 0.75rem;
+                padding: 0 2rem;
+            }
+
+            .carousel-tab {
+                padding: 0.4rem 0.6rem;
+                font-size: 0.6rem;
+            }
         }
 
         @media print {
@@ -1543,8 +1645,8 @@
                 <div class="carousel-panel portfolio-panel" id="panel-portfolio">
                     <div class="portfolio-carousel">
                         <div class="portfolio-header">
-                            <div class="portfolio-title" id="portfolio-title">Cave 360° Scene Composition</div>
-                            <a href="https://www.artstation.com/artwork/V216yN" target="_blank" class="portfolio-link" id="portfolio-link">View on ArtStation</a>
+                            <div class="portfolio-title" id="portfolio-title">Blumhouse Enhanced Cinema - Nexus Studio</div>
+                            <a href="" target="_blank" class="portfolio-link" id="portfolio-link" style="display: none;">View on ArtStation</a>
                         </div>
                         <div class="portfolio-scene">
                             <button class="portfolio-nav prev" aria-label="Previous">
@@ -1554,55 +1656,61 @@
                                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                             </button>
                             <div class="portfolio-track" id="portfolio-track">
-                                <div class="portfolio-item" data-index="0" data-title="Cave 360° Scene Composition" data-url="https://www.artstation.com/artwork/V216yN">
+                                <div class="portfolio-item" data-index="0" data-title="Blumhouse Enhanced Cinema - Nexus Studio" data-url="">
+                                    <img src="https://scontent-mad1-1.oculuscdn.com/v/t64.5771-25/491820855_1330335225127412_3510880302341334513_n.webp?stp=dst-webp_s1440x1440&_nc_cat=102&ccb=1-7&_nc_sid=6e7a0a&_nc_ohc=jwaHnWVg7NAQ7kNvwFFSFiQ&_nc_oc=Adnl6kOUV3vSINwS7ZNYAAt56PdBcTgpZZdDMhcxLrkPTZ1KSHNTZuv-WyvLGabMSEg&_nc_zt=3&_nc_ht=scontent-mad1-1.oculuscdn.com&oh=00_Afk6_PCtYpRQNGym1aFIWwlW1aIZgJSfSRW8Y-tCCqQtLQ&oe=694E49C6" alt="Blumhouse Enhanced Cinema - Nexus Studio">
+                                </div>
+                                <div class="portfolio-item" data-index="1" data-title="Blumhouse Enhanced Cinema - Nexus Studio" data-url="">
+                                    <img src="https://scontent-mad2-1.oculuscdn.com/v/t64.5771-25/491818938_683528594784504_5440229394557734527_n.webp?stp=dst-webp_s1440x1440&_nc_cat=104&ccb=1-7&_nc_sid=6e7a0a&_nc_ohc=wm6Kr92OVIsQ7kNvwGPjwum&_nc_oc=AdlhPx0vcVBCXKZh2X_XudgsSOqa1W6mWZJAP7R5aZVM1iZTKgUHrcXPg3IKzMEv7q8&_nc_zt=3&_nc_ht=scontent-mad2-1.oculuscdn.com&oh=00_AflKWVO2pimeWortG7zmjf6Nnz4hRXR5ARPp9MC_u2_rIg&oe=694E5A96" alt="Blumhouse Enhanced Cinema - Nexus Studio">
+                                </div>
+                                <div class="portfolio-item" data-index="2" data-title="Cave 360° Scene Composition" data-url="https://www.artstation.com/artwork/V216yN">
                                     <img src="https://cdna.artstation.com/p/assets/images/images/084/284/470/large/charles-grassi-screenshot-2025-01-11-181036-2.jpg" alt="Cave 360° Scene Composition">
                                 </div>
-                                <div class="portfolio-item" data-index="1" data-title="Volumetric Fog | Cloud With Rain & Thunder" data-url="https://www.artstation.com/artwork/V216JZ">
+                                <div class="portfolio-item" data-index="3" data-title="Volumetric Fog | Cloud With Rain & Thunder" data-url="https://www.artstation.com/artwork/V216JZ">
                                     <img src="https://cdna.artstation.com/p/assets/images/images/084/274/870/large/charles-grassi-screenshot-2024-10-08-064527.jpg" alt="Volumetric Fog | Cloud With Rain & Thunder">
                                 </div>
-                                <div class="portfolio-item" data-index="2" data-title="Maelstrom (WIP)" data-url="https://www.artstation.com/artwork/WXKB2E">
-                                    <img src="https://cdnb.artstation.com/p/assets/images/images/079/164/965/large/charles-grassi-screenshot-2024-08-15-031337.jpg" alt="Maelstrom (WIP)">
+                                <div class="portfolio-item" data-index="4" data-title="Maelstrom - Unreal Engine" data-url="https://www.artstation.com/artwork/WXKB2E">
+                                    <video src="https://cdn.artstation.com/p/video_sources/002/151/772/out-3.mp4" poster="https://cdnb.artstation.com/p/assets/images/images/079/164/965/large/charles-grassi-screenshot-2024-08-15-031337.jpg" autoplay muted loop playsinline preload="metadata"></video>
                                 </div>
-                                <div class="portfolio-item" data-index="3" data-title="Cartoon Ocean Shader & Breakdown" data-url="https://www.artstation.com/artwork/x3AvG2">
+                                <div class="portfolio-item" data-index="5" data-title="Cartoon Ocean Shader & Breakdown" data-url="https://www.artstation.com/artwork/x3AvG2">
                                     <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/424/977/large/charles-grassi-thumb.jpg" alt="Cartoon Ocean Shader">
                                 </div>
-                                <div class="portfolio-item" data-index="4" data-title="Raytraced Mountain Scene in a Single Shader" data-url="https://www.artstation.com/artwork/EzqE08">
+                                <div class="portfolio-item" data-index="6" data-title="Raytraced Mountain Scene in a Single Shader" data-url="https://www.artstation.com/artwork/EzqE08">
                                     <img src="https://cdnb.artstation.com/p/assets/images/images/078/404/623/large/charles-grassi-screenshot-2024-03-06-030921.jpg" alt="Raytraced Mountain Scene">
                                 </div>
-                                <div class="portfolio-item" data-index="5" data-title="SABDA - Projection Mapping Immersive 360° Scenes" data-url="https://www.artstation.com/artwork/6LnRor">
+                                <div class="portfolio-item" data-index="7" data-title="SABDA - Projection Mapping Immersive 360° Scenes" data-url="https://www.artstation.com/artwork/6LnRor">
                                     <img src="https://cdna.artstation.com/p/assets/images/images/078/403/874/large/charles-grassi-screenshot-2023-11-01-200540.jpg" alt="SABDA Projection Mapping">
                                 </div>
-                                <div class="portfolio-item" data-index="6" data-title="SABDA - Projection Mapping Immersive 360° Scenes" data-url="https://www.artstation.com/artwork/6LnRor">
+                                <div class="portfolio-item" data-index="8" data-title="SABDA - Projection Mapping Immersive 360° Scenes" data-url="https://www.artstation.com/artwork/6LnRor">
                                     <img src="https://cdnb.artstation.com/p/assets/images/images/078/403/499/large/charles-grassi-copy-of-sabda-20240118-005.jpg" alt="SABDA Projection Mapping">
                                 </div>
-                                <div class="portfolio-item" data-index="7" data-title="SABDA - Projection Mapping Immersive 360° Scenes" data-url="https://www.artstation.com/artwork/6LnRor">
+                                <div class="portfolio-item" data-index="9" data-title="SABDA - Projection Mapping Immersive 360° Scenes" data-url="https://www.artstation.com/artwork/6LnRor">
                                     <img src="https://cdnb.artstation.com/p/assets/images/images/078/435/209/large/charles-grassi-copy-of-sabda-20240118-010.jpg" alt="SABDA Projection Mapping">
                                 </div>
-                                <div class="portfolio-item" data-index="8" data-title="Multi-Threaded Space Colonization Algorithm" data-url="https://www.artstation.com/artwork/zxKvQw">
+                                <div class="portfolio-item" data-index="10" data-title="Multi-Threaded Space Colonization Algorithm" data-url="https://www.artstation.com/artwork/zxKvQw">
                                     <img src="https://cdnb.artstation.com/p/assets/images/images/084/275/951/large/charles-grassi-screenshot-2023-12-25-213543.jpg" alt="Space Colonization Algorithm">
                                 </div>
-                                <div class="portfolio-item" data-index="9" data-title="Alien Egg Shader" data-url="https://www.artstation.com/artwork/K36Por">
-                                    <img src="https://cdna.artstation.com/p/assets/images/images/078/403/954/large/charles-grassi-screenshot-2023-10-18-193823.jpg" alt="Alien Egg Shader">
+                                <div class="portfolio-item" data-index="11" data-title="Alien Egg Shader" data-url="https://www.artstation.com/artwork/K36Por">
+                                    <video src="https://cdn.artstation.com/p/video_sources/002/099/541/alienegg.mp4" poster="https://cdna.artstation.com/p/assets/images/images/078/403/954/large/charles-grassi-screenshot-2023-10-18-193823.jpg" autoplay muted loop playsinline preload="metadata"></video>
                                 </div>
-                                <div class="portfolio-item" data-index="10" data-title="Sandbox Stylized Cloud & God Rays Shader" data-url="https://www.artstation.com/artwork/nJwNLO">
+                                <div class="portfolio-item" data-index="12" data-title="Sandbox Stylized Cloud & God Rays Shader" data-url="https://www.artstation.com/artwork/nJwNLO">
                                     <img src="https://cdna.artstation.com/p/assets/images/images/078/429/084/large/charles-grassi-sandbox-stylized-cloud-night.jpg" alt="Sandbox Stylized Cloud Shaders">
                                 </div>
-                                <div class="portfolio-item" data-index="11" data-title="Oily Ocean Surface Shader" data-url="https://www.artstation.com/artwork/gRgVEK">
+                                <div class="portfolio-item" data-index="13" data-title="Oily Ocean Surface Shader" data-url="https://www.artstation.com/artwork/gRgVEK">
                                     <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/425/435/large/charles-grassi-thumb.jpg" alt="Oily Ocean Surface Shader">
                                 </div>
-                                <div class="portfolio-item" data-index="12" data-title="Baked Volumetric Colored Fog" data-url="https://www.artstation.com/artwork/JraPGz">
+                                <div class="portfolio-item" data-index="14" data-title="Baked Volumetric Colored Fog" data-url="https://www.artstation.com/artwork/JraPGz">
                                     <img src="https://cdnb.artstation.com/p/assets/images/images/078/404/507/large/charles-grassi-screenshot-2023-03-27-145100.jpg" alt="Baked Volumetric Colored Fog">
                                 </div>
-                                <div class="portfolio-item" data-index="13" data-title="Single Draw Call Grass Shader" data-url="https://www.artstation.com/artwork/V2oaP4">
+                                <div class="portfolio-item" data-index="15" data-title="Single Draw Call Grass Shader" data-url="https://www.artstation.com/artwork/V2oaP4">
                                     <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/425/261/large/charles-grassi-thumb.jpg" alt="Single Draw Call Grass Shader">
                                 </div>
-                                <div class="portfolio-item" data-index="14" data-title="CPU Multi-Threaded Burst Marching Cube Terrain" data-url="https://www.artstation.com/artwork/Ovqgby">
+                                <div class="portfolio-item" data-index="16" data-title="CPU Multi-Threaded Burst Marching Cube Terrain" data-url="https://www.artstation.com/artwork/Ovqgby">
                                     <img src="https://cdna.artstation.com/p/assets/video_clips/images/078/425/098/large/charles-grassi-thumb.jpg" alt="Marching Cube Terrain">
                                 </div>
-                                <div class="portfolio-item" data-index="15" data-title="HDRP - Interior Lighting Scenarios" data-url="https://www.artstation.com/artwork/Bko5el">
+                                <div class="portfolio-item" data-index="17" data-title="HDRP - Interior Lighting Scenarios" data-url="https://www.artstation.com/artwork/Bko5el">
                                     <img src="https://cdna.artstation.com/p/assets/images/images/078/519/226/large/charles-grassi-screenshot-2023-10-29-140203-2.jpg" alt="HDRP Interior Lighting">
                                 </div>
-                                <div class="portfolio-item" data-index="16" data-title="Orthographic Water Surface" data-url="https://www.artstation.com/artwork/wrAvRL">
+                                <div class="portfolio-item" data-index="18" data-title="Orthographic Water Surface" data-url="https://www.artstation.com/artwork/wrAvRL">
                                     <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/425/243/large/charles-grassi-thumb.jpg" alt="Orthographic Water Surface">
                                 </div>
                             </div>
@@ -3610,6 +3718,16 @@
                 const centerX = sceneRect.width / 2;
                 const centerY = sceneRect.height / 2;
 
+                // Responsive values based on screen width
+                const isMobile = window.innerWidth <= 900;
+                const isSmallMobile = window.innerWidth <= 480;
+
+                // Adjust 3D parameters for mobile
+                const spreadX = isSmallMobile ? 100 : (isMobile ? 130 : 180);
+                const depthZ = isSmallMobile ? 80 : (isMobile ? 100 : 150);
+                const rotationAngle = isSmallMobile ? 15 : (isMobile ? 20 : 25);
+                const hiddenSpread = isSmallMobile ? 150 : (isMobile ? 200 : 300);
+
                 items.forEach((item, i) => {
                     // Calculate position relative to current index
                     let offset = i - currentIndex;
@@ -3624,14 +3742,14 @@
                     if (absOffset > Math.floor(visibleItems / 2)) {
                         item.style.opacity = '0';
                         item.style.pointerEvents = 'none';
-                        item.style.transform = `translate(-50%, -50%) translateX(${offset * 300}px) translateZ(-500px) scale(0.5)`;
+                        item.style.transform = `translate(-50%, -50%) translateX(${offset * hiddenSpread}px) translateZ(-500px) scale(0.5)`;
                         return;
                     }
 
                     // 3D positioning on a curve
-                    const angle = offset * 25; // Degrees of rotation
-                    const translateX = offset * 180; // Horizontal spread
-                    const translateZ = -Math.abs(offset) * 150; // Depth
+                    const angle = offset * rotationAngle; // Degrees of rotation
+                    const translateX = offset * spreadX; // Horizontal spread
+                    const translateZ = -Math.abs(offset) * depthZ; // Depth
                     const scale = 1 - absOffset * 0.15;
                     const opacity = 1 - absOffset * 0.3;
 
@@ -3651,7 +3769,11 @@
                 // Update title and link
                 const activeItem = items[currentIndex];
                 if (titleEl) titleEl.textContent = activeItem.dataset.title;
-                if (linkEl) linkEl.href = activeItem.dataset.url;
+                if (linkEl) {
+                    const url = activeItem.dataset.url;
+                    linkEl.href = url;
+                    linkEl.style.display = url ? '' : 'none';
+                }
 
                 // Update dots
                 dots.forEach((dot, i) => {
@@ -3715,6 +3837,13 @@
                     else goToSlide(currentIndex - 1);
                 }, { passive: false });
             }
+
+            // Update on resize (for orientation changes)
+            let resizeTimeout;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(updateCarousel, 100);
+            });
 
             // Initial setup
             updateCarousel();
