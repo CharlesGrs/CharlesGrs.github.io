@@ -1418,33 +1418,65 @@
                 font-size: 0.8rem;
             }
 
-            /* Portfolio mobile improvements */
+            /* Hide FPS counter and typing indicator on mobile */
+            .fps-badge {
+                display: none !important;
+            }
+
+            .typing-indicator {
+                display: none !important;
+            }
+
+            /* Portfolio mobile - vertical scroll layout */
             .portfolio-panel {
-                padding: 1rem;
+                padding: 0.75rem;
+                overflow: hidden;
+            }
+
+            .portfolio-carousel {
+                padding: 0;
             }
 
             .portfolio-header {
-                margin-bottom: 0.5rem;
-            }
-
-            .portfolio-title {
-                font-size: 0.85rem;
-                line-height: 1.3;
-                padding: 0 2.5rem;
-            }
-
-            .portfolio-link {
-                font-size: 0.6rem;
+                display: none;
             }
 
             .portfolio-scene {
-                perspective: 800px;
+                perspective: none;
+                overflow-y: auto;
+                overflow-x: hidden;
+                align-items: flex-start;
+                justify-content: flex-start;
+                padding: 0.5rem;
+            }
+
+            .portfolio-track {
+                position: relative;
+                width: 100%;
+                height: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+                transform-style: flat;
             }
 
             .portfolio-item {
-                width: 75%;
-                max-width: none;
+                position: relative !important;
+                left: auto !important;
+                top: auto !important;
+                width: 100% !important;
+                max-width: none !important;
+                transform: none !important;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+                z-index: 1 !important;
+                aspect-ratio: 16/10;
                 border-radius: 8px;
+                flex-shrink: 0;
+            }
+
+            .portfolio-item::after {
+                display: none;
             }
 
             .portfolio-item img,
@@ -1452,68 +1484,19 @@
                 border-radius: 8px;
             }
 
-            /* Larger touch targets for nav buttons */
+            /* Hide carousel nav and dots on mobile */
             .portfolio-nav {
-                width: 48px;
-                height: 48px;
-                min-width: 48px;
-                min-height: 48px;
-            }
-
-            .portfolio-nav.prev {
-                left: 0.25rem;
-            }
-
-            .portfolio-nav.next {
-                right: 0.25rem;
-            }
-
-            .portfolio-nav svg {
-                width: 24px;
-                height: 24px;
+                display: none !important;
             }
 
             .portfolio-dots {
-                gap: 0.4rem;
-                margin-top: 0.75rem;
-                flex-wrap: wrap;
-                max-width: 100%;
-                padding: 0 1rem;
-            }
-
-            .portfolio-dot {
-                width: 6px;
-                height: 6px;
+                display: none !important;
             }
 
         }
 
         /* Extra small screens */
         @media (max-width: 480px) {
-            .portfolio-item {
-                width: 85%;
-            }
-
-            .portfolio-nav {
-                width: 40px;
-                height: 40px;
-                min-width: 40px;
-                min-height: 40px;
-            }
-
-            .portfolio-nav.prev {
-                left: 0.15rem;
-            }
-
-            .portfolio-nav.next {
-                right: 0.15rem;
-            }
-
-            .portfolio-title {
-                font-size: 0.75rem;
-                padding: 0 2rem;
-            }
-
             .carousel-tab {
                 padding: 0.4rem 0.6rem;
                 font-size: 0.6rem;
@@ -3714,19 +3697,28 @@
             const dots = dotsContainer.querySelectorAll('.portfolio-dot');
 
             function updateCarousel() {
+                // Skip 3D transforms on mobile - CSS handles vertical scroll layout
+                const isMobile = window.innerWidth <= 900;
+                if (isMobile) {
+                    // Reset any inline styles that might interfere with CSS
+                    items.forEach((item) => {
+                        item.style.transform = '';
+                        item.style.opacity = '';
+                        item.style.zIndex = '';
+                        item.style.pointerEvents = '';
+                    });
+                    return;
+                }
+
                 const sceneRect = scene.getBoundingClientRect();
                 const centerX = sceneRect.width / 2;
                 const centerY = sceneRect.height / 2;
 
-                // Responsive values based on screen width
-                const isMobile = window.innerWidth <= 900;
-                const isSmallMobile = window.innerWidth <= 480;
-
-                // Adjust 3D parameters for mobile
-                const spreadX = isSmallMobile ? 100 : (isMobile ? 130 : 180);
-                const depthZ = isSmallMobile ? 80 : (isMobile ? 100 : 150);
-                const rotationAngle = isSmallMobile ? 15 : (isMobile ? 20 : 25);
-                const hiddenSpread = isSmallMobile ? 150 : (isMobile ? 200 : 300);
+                // 3D parameters for desktop
+                const spreadX = 180;
+                const depthZ = 150;
+                const rotationAngle = 25;
+                const hiddenSpread = 300;
 
                 items.forEach((item, i) => {
                     // Calculate position relative to current index
