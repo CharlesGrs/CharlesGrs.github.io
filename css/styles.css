@@ -368,7 +368,7 @@ header {
     color: var(--text-secondary);
     text-decoration: none;
     display: block;
-    padding: 0.15rem 0;
+    padding: 0.05rem 0;
     transition: color 0.2s ease;
 }
 
@@ -379,7 +379,7 @@ header {
 .contact-block .company {
     color: var(--accent-gold);
     font-weight: 500;
-    margin-bottom: 0.2rem;
+    margin-bottom: 0.1rem;
 }
 
 .languages {
@@ -936,15 +936,18 @@ header {
     display: none;
     opacity: 0;
     transition: opacity 0.3s ease;
+    pointer-events: none;
 }
 
 .skill-view.active {
     display: flex;
     opacity: 1;
+    pointer-events: auto;
 }
 
 .skill-graph-container.skill-view.active {
     display: block;
+    pointer-events: auto;
 }
 
 /* Skills List View */
@@ -1451,6 +1454,7 @@ header {
 #skill-graph-canvas {
     width: 100%;
     height: 100%;
+    pointer-events: auto;
 }
 
 .graph-legend {

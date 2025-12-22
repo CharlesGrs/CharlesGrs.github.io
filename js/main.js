@@ -1563,42 +1563,53 @@ const sphereFragmentShader = `
 })();
 
 // ============================================
-// ANIMATED FAVICON - BREATHING DOT
+// STATIC FAVICON - STYLIZED "CG" MONOGRAM
 // ============================================
 (function initFavicon() {
     const canvas = document.createElement('canvas');
     canvas.width = 32; canvas.height = 32;
     const ctx = canvas.getContext('2d');
     const link = document.getElementById('favicon');
-    let time = 0;
     const gold = '#e8b923';
+    const darkBg = '#0a0f14';
 
-    function draw() {
-        ctx.clearRect(0, 0, 32, 32);
-        const pulse = Math.sin(time) * 0.2 + 0.8;
-        const radius = 9 * pulse;
-        const gradient = ctx.createRadialGradient(16, 16, radius * 0.5, 16, 16, radius + 3);
-        gradient.addColorStop(0, gold);
-        gradient.addColorStop(0.7, 'rgba(232, 185, 35, 0.4)');
-        gradient.addColorStop(1, 'transparent');
-        ctx.beginPath();
-        ctx.arc(16, 16, radius + 3, 0, Math.PI * 2);
-        ctx.fillStyle = gradient;
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(16, 16, radius * 0.7, 0, Math.PI * 2);
-        ctx.fillStyle = gold;
-        ctx.fill();
-        link.href = canvas.toDataURL('image/png');
-    }
+    // Draw background
+    ctx.fillStyle = darkBg;
+    ctx.fillRect(0, 0, 32, 32);
 
-    function animate() { time += 0.04; draw(); requestAnimationFrame(animate); }
-    // Defer favicon animation to after page load for better LCP
-    if (document.readyState === 'complete') {
-        animate();
-    } else {
-        window.addEventListener('load', animate, { once: true });
+    // Draw outer glow
+    const glowGradient = ctx.createRadialGradient(16, 16, 8, 16, 16, 16);
+    glowGradient.addColorStop(0, 'rgba(232, 185, 35, 0.3)');
+    glowGradient.addColorStop(1, 'transparent');
+    ctx.fillStyle = glowGradient;
+    ctx.fillRect(0, 0, 32, 32);
+
+    // Draw hexagon shape
+    ctx.beginPath();
+    const sides = 6;
+    const radius = 12;
+    const centerX = 16, centerY = 16;
+    for (let i = 0; i < sides; i++) {
+        const angle = (Math.PI / 3) * i - Math.PI / 2;
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
     }
+    ctx.closePath();
+    ctx.strokeStyle = gold;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Draw "C" letter stylized
+    ctx.font = 'bold 14px JetBrains Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = gold;
+    ctx.fillText('C', 16, 17);
+
+    // Set favicon
+    link.href = canvas.toDataURL('image/png');
 })();
 
 // ============================================
