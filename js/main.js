@@ -12,17 +12,17 @@ let cachedWindowHeight = window.innerHeight;
 // ============================================
 const renderParams = {
     noiseScale: 1.8,        // Terrain noise scale (lower = bigger features)
-    terrainHeight: 1.0,     // Terrain displacement strength
-    atmosIntensity: 1.0,    // Atmosphere brightness
-    atmosThickness: 1.0,    // Atmosphere thickness/falloff
-    atmosPower: 1.0,        // Atmosphere density power/falloff curve
+    terrainHeight: 0.6,     // Terrain displacement strength
+    atmosIntensity: 0.6,    // Atmosphere brightness
+    atmosThickness: 2.5,    // Atmosphere thickness/falloff
+    atmosPower: 37.1,       // Atmosphere density power/falloff curve
     scatterR: 1.0,          // Red channel scattering coefficient
     scatterG: 2.5,          // Green channel scattering coefficient
     scatterB: 5.5,          // Blue channel scattering coefficient
-    scatterScale: 0.5,     // Optical depth multiplier (controls gradient range)
-    sunsetStrength: 1.0,   // How much shadow affects scattering (sunset effect)
-    lavaIntensity: 1.0,     // Lava emission intensity
-    oceanRoughness: 0.3,    // Ocean roughness (0=mirror, 1=matte)
+    scatterScale: 0.5,      // Optical depth multiplier (controls gradient range)
+    sunsetStrength: 1.0,    // How much shadow affects scattering (sunset effect)
+    lavaIntensity: 3.0,     // Lava emission intensity
+    oceanRoughness: 0.55,   // Ocean roughness (0=mirror, 1=matte)
     sssIntensity: 1.0,      // Subsurface scattering intensity
     seaLevel: 0.0,          // Sea level offset
     parallaxStrength: 1.0   // 3D parallax effect strength (0=off, 1=normal)

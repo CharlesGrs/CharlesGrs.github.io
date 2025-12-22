@@ -248,8 +248,8 @@ void main() {
     float waveNy = (waveY - waveC) / waveEps * 0.012;
 
     // Land uses terrain heightmap normals, ocean uses flat base + subtle waves
-    vec3 landNormal = baseN + vec3(terrainNx, terrainNy, 0.0);
-    vec3 oceanNormal = baseN + vec3(waveNx, waveNy, 0.0);
+    vec3 landNormal = normalize(baseN + vec3(terrainNx, terrainNy, 0.0));
+    vec3 oceanNormal = normalize(baseN + vec3(waveNx, waveNy, 0.0));
     vec3 N = normalize(mix(landNormal, oceanNormal, oceanMask) * planetMask + baseN * (1.0 - planetMask));
 
     vec3 totalDiffuse = vec3(0.0);
@@ -366,83 +366,70 @@ void main() {
     float shadowFactor = smoothstep(-0.1, 0.3, lightDot);
 
     // ---- PER-LIGHT ATMOSPHERE SHADOWS ----
-    // Calculate shadow for each light source individually
+    // Inside planet: use NdL (surface shading)
+    // Outside planet: ray-circle intersection test for each light
     float atmosShadow0 = 1.0;
     float atmosShadow1 = 1.0;
     float atmosShadow2 = 1.0;
     float atmosShadowMouse = 1.0;
 
-    if (d > planetRadius && d < atmosRadius) {
-        vec2 rayOrigin = uv;
-        float distFromPlanet = d - planetRadius;
-        float shadowSoftness = distFromPlanet / atmosThickness;
-        float r2 = planetRadius * planetRadius;
-        float c_base = dot(rayOrigin, rayOrigin) - r2;
+    if (d < planetRadius) {
+        // Inside planet - use surface NdL for atmosphere shadow
+        atmosShadow0 = smoothstep(0.0, 0.5, NdL0);
+        atmosShadow1 = smoothstep(0.0, 0.5, NdL1);
+        atmosShadow2 = smoothstep(0.0, 0.5, NdL2);
+        atmosShadowMouse = smoothstep(0.0, 0.5, mouseNdL);
 
-        // Helper: compute shadow for a given light direction
-        // Light 0 shadow
-        vec2 toLightDir0 = normalize(lightDir0.xy + vec2(0.0001));
-        float b0 = 2.0 * dot(rayOrigin, toLightDir0);
-        float disc0 = b0 * b0 - 4.0 * c_base;
-        if (disc0 >= 0.0) {
-            float t1_0 = (-b0 - sqrt(disc0)) * 0.5;
-            if (t1_0 > 0.01) {
-                float penumbra = 0.05 + shadowSoftness * 0.2;
-                float perpDist = abs(rayOrigin.x * toLightDir0.y - rayOrigin.y * toLightDir0.x);
-                float shadowEdge = planetRadius - perpDist;
-                atmosShadow0 = 1.0 - smoothstep(0.0, penumbra, shadowEdge / planetRadius);
-                atmosShadow0 = mix(atmosShadow0, 1.0, shadowSoftness * 0.4);
-                atmosShadow0 = max(atmosShadow0, 0.1);
-            }
+        atmosShadow0 = max(atmosShadow0, 0.1);
+        atmosShadow1 = max(atmosShadow1, 0.1);
+        atmosShadow2 = max(atmosShadow2, 0.1);
+        atmosShadowMouse = max(atmosShadowMouse, 0.1);
+    } else if (d < atmosRadius) {
+        // Outside planet - ray-circle intersection from this point toward each light
+        // Use perpendicular distance to light ray for soft penumbra
+        float r = planetRadius;
+
+        // Light 0
+        vec2 D0 = normalize(L0.xy);
+        float perpDist0 = abs(uv.x * D0.y - uv.y * D0.x);  // Perpendicular distance to ray
+        float alongRay0 = dot(uv, D0);  // Position along ray (negative = light is ahead)
+        if (alongRay0 < 0.0) {
+            // Light is ahead - check if ray passes through planet
+            float penumbraWidth = r * 0.4;  // Soft penumbra
+            atmosShadow0 = smoothstep(r - penumbraWidth, r + penumbraWidth, perpDist0);
         }
 
-        // Light 1 shadow
-        vec2 toLightDir1 = normalize(lightDir1.xy + vec2(0.0001));
-        float b1 = 2.0 * dot(rayOrigin, toLightDir1);
-        float disc1 = b1 * b1 - 4.0 * c_base;
-        if (disc1 >= 0.0) {
-            float t1_1 = (-b1 - sqrt(disc1)) * 0.5;
-            if (t1_1 > 0.01) {
-                float penumbra = 0.05 + shadowSoftness * 0.2;
-                float perpDist = abs(rayOrigin.x * toLightDir1.y - rayOrigin.y * toLightDir1.x);
-                float shadowEdge = planetRadius - perpDist;
-                atmosShadow1 = 1.0 - smoothstep(0.0, penumbra, shadowEdge / planetRadius);
-                atmosShadow1 = mix(atmosShadow1, 1.0, shadowSoftness * 0.4);
-                atmosShadow1 = max(atmosShadow1, 0.1);
-            }
+        // Light 1
+        vec2 D1 = normalize(L1.xy);
+        float perpDist1 = abs(uv.x * D1.y - uv.y * D1.x);
+        float alongRay1 = dot(uv, D1);
+        if (alongRay1 < 0.0) {
+            float penumbraWidth = r * 0.4;
+            atmosShadow1 = smoothstep(r - penumbraWidth, r + penumbraWidth, perpDist1);
         }
 
-        // Light 2 shadow
-        vec2 toLightDir2 = normalize(lightDir2.xy + vec2(0.0001));
-        float b2 = 2.0 * dot(rayOrigin, toLightDir2);
-        float disc2 = b2 * b2 - 4.0 * c_base;
-        if (disc2 >= 0.0) {
-            float t1_2 = (-b2 - sqrt(disc2)) * 0.5;
-            if (t1_2 > 0.01) {
-                float penumbra = 0.05 + shadowSoftness * 0.2;
-                float perpDist = abs(rayOrigin.x * toLightDir2.y - rayOrigin.y * toLightDir2.x);
-                float shadowEdge = planetRadius - perpDist;
-                atmosShadow2 = 1.0 - smoothstep(0.0, penumbra, shadowEdge / planetRadius);
-                atmosShadow2 = mix(atmosShadow2, 1.0, shadowSoftness * 0.4);
-                atmosShadow2 = max(atmosShadow2, 0.1);
-            }
+        // Light 2
+        vec2 D2 = normalize(L2.xy);
+        float perpDist2 = abs(uv.x * D2.y - uv.y * D2.x);
+        float alongRay2 = dot(uv, D2);
+        if (alongRay2 < 0.0) {
+            float penumbraWidth = r * 0.4;
+            atmosShadow2 = smoothstep(r - penumbraWidth, r + penumbraWidth, perpDist2);
         }
 
-        // Mouse light shadow
-        vec2 toLightDirMouse = normalize(mouseLightDir.xy + vec2(0.0001));
-        float bM = 2.0 * dot(rayOrigin, toLightDirMouse);
-        float discM = bM * bM - 4.0 * c_base;
-        if (discM >= 0.0) {
-            float t1_M = (-bM - sqrt(discM)) * 0.5;
-            if (t1_M > 0.01) {
-                float penumbra = 0.05 + shadowSoftness * 0.2;
-                float perpDist = abs(rayOrigin.x * toLightDirMouse.y - rayOrigin.y * toLightDirMouse.x);
-                float shadowEdge = planetRadius - perpDist;
-                atmosShadowMouse = 1.0 - smoothstep(0.0, penumbra, shadowEdge / planetRadius);
-                atmosShadowMouse = mix(atmosShadowMouse, 1.0, shadowSoftness * 0.4);
-                atmosShadowMouse = max(atmosShadowMouse, 0.1);
-            }
+        // Mouse light
+        vec2 DM = normalize(mouseL.xy);
+        float perpDistM = abs(uv.x * DM.y - uv.y * DM.x);
+        float alongRayM = dot(uv, DM);
+        if (alongRayM < 0.0) {
+            float penumbraWidth = r * 0.4;
+            atmosShadowMouse = smoothstep(r - penumbraWidth, r + penumbraWidth, perpDistM);
         }
+
+        atmosShadow0 = max(atmosShadow0, 0.05);
+        atmosShadow1 = max(atmosShadow1, 0.05);
+        atmosShadow2 = max(atmosShadow2, 0.05);
+        atmosShadowMouse = max(atmosShadowMouse, 0.05);
     }
 
     // ========================================
@@ -532,94 +519,68 @@ void main() {
     opticalDepth *= uScatterScale;
 
     // ========================================
-    // RAYLEIGH SCATTERING COLOR CALCULATION
-    // ========================================
-    // Transmitted light: exp(-beta * opticalDepth)
-    // - Low optical depth: transmittance ≈ 1 (all colors pass)
-    // - High optical depth: blue drops first (high beta), red remains
-    //
-    // Scattered light (what we see in atmosphere glow):
-    // - proportional to beta * (1 - transmittance)
-    // - Blue scatters most, so thin atmosphere glows blue
-    // - Thick atmosphere: blue saturates, orange/red catch up
-
-    vec3 transmittance = exp(-beta * opticalDepth);
-
-    // Rayleigh scattering color calculation:
-    // - Low optical depth: blue sky (blue scatters most toward viewer)
-    // - High optical depth: sunset colors (blue saturates, red/orange remain)
-    //
-    // We use transmittance (what passes through) to derive the sunset color,
-    // then blend with blue for low depths.
-
-    vec3 scatterColor;
-    float depth = opticalDepth;
-
-    // Transmitted color (sunset/sunrise color - what passes through)
-    vec3 transmitColor = transmittance;
-    float maxT = max(transmitColor.r, max(transmitColor.g, transmitColor.b));
-    if (maxT > 0.001) {
-        transmitColor = transmitColor / maxT;  // Normalize to preserve hue
-    } else {
-        transmitColor = vec3(1.0, 0.3, 0.1);  // Deep red for very thick atmosphere
-    }
-
-    // Scattered color (sky blue at low depth)
-    // At low depth, blue scatters most → blue glow
-    // At high depth, all colors scatter → white/neutral
-    // uSunsetStrength controls how fast the transition happens (higher = more orange/red)
-    float scatterStrength = 1.0 - exp(-depth * 2.0 * uSunsetStrength);  // 0 at low depth, 1 at high
-    vec3 blueScatter = vec3(0.4, 0.7, 1.0);
-
-    // Blend: low depth = blue, high depth = transmitted color (orange/red)
-    scatterColor = mix(blueScatter, transmitColor, scatterStrength);
-
-    // For lava planets, use orange atmosphere
-    vec3 lavaAtmosTint = vec3(1.0, 0.4, 0.1);
-    scatterColor = mix(scatterColor, lavaAtmosTint, isDesert * 0.7);
-
-    // ========================================
     // ATMOSPHERE DENSITY (visibility/alpha)
     // ========================================
-    // Smooth gradient from planet center to atmosphere edge
-    // Uses optical depth to create physically-based density falloff
-
     float atmosDensity = 0.0;
 
     if (d < atmosRadius) {
-        // Normalize distance: 0 at planet center, 1 at atmosphere edge
         float normalizedDist = d / atmosRadius;
-
-        // Smooth falloff from center to edge
-        // densityFalloff controls how quickly it drops off (scaled down for usable range)
         atmosDensity = exp(-normalizedDist * normalizedDist * densityFalloff * 0.1) * (1.0 - normalizedDist);
-
-        // Scale by atmosphere thickness control
         atmosDensity *= uAtmosThickness;
     }
 
-    // Quad edge fade - smooth to zero at quad boundary
+    // Quad edge fade
     float quadEdgeFade = 1.0 - smoothstep(0.85, 1.4, scaledD);
     atmosDensity *= quadEdgeFade;
 
     // Apply surface shadow factor (terminator)
     atmosDensity *= mix(0.3, 1.0, shadowFactor);
 
-    // ---- PER-LIGHT ATMOSPHERE COLOR WITH SHADOWS ----
-    // Each light contributes its color, attenuated by its own shadow
-    vec3 atmosLitColor = vec3(0.0);
-    atmosLitColor += uLightColor0 * atten0 * atmosShadow0;
-    atmosLitColor += uLightColor1 * atten1 * atmosShadow1;
-    atmosLitColor += uLightColor2 * atten2 * atmosShadow2;
-    atmosLitColor += vec3(1.0) * mouseAtten * 0.3 * atmosShadowMouse;
+    // ========================================
+    // PHYSICALLY-BASED RAYLEIGH SCATTERING
+    // ========================================
+    // The INCOMING LIGHT is what gets scattered by the atmosphere.
+    // Beta coefficients determine how much each wavelength scatters.
+    // Higher beta = scatters more = that color appears in the glow
 
-    // Minimum ambient so fully shadowed areas aren't pure black
-    vec3 lightColor = max(atmosLitColor, vec3(0.03));
+    // Gather incoming light from all sources (with shadows)
+    vec3 incomingLight = vec3(0.0);
+    incomingLight += uLightColor0 * atten0 * atmosShadow0;
+    incomingLight += uLightColor1 * atten1 * atmosShadow1;
+    incomingLight += uLightColor2 * atten2 * atmosShadow2;
+    incomingLight += vec3(1.0) * mouseAtten * 0.3 * atmosShadowMouse;
+    // No ambient light in space - only direct light sources
+
+    // TRANSMITTANCE-BASED SCATTERING for sunset colors
+    // Transmittance = what passes through: exp(-beta * depth)
+    // Blue has highest beta, so it gets removed first = red/orange remains at high depth
+    vec3 transmittance = exp(-beta * opticalDepth);
+
+    // Normalize transmittance to get the hue (what color remains after scattering)
+    vec3 transmitColor = transmittance;
+    float maxT = max(transmittance.r, max(transmittance.g, transmittance.b));
+    if (maxT > 0.001) {
+        transmitColor = transmittance / maxT;  // Normalized sunset color
+    } else {
+        transmitColor = vec3(1.0, 0.3, 0.1);  // Deep red for very thick atmosphere
+    }
+
+    // Blend from blue (low depth) to transmitted color (high depth = orange/red)
+    float depthFactor = 1.0 - exp(-opticalDepth * 2.0 * uSunsetStrength);
+    vec3 blueScatter = vec3(0.4, 0.7, 1.0);
+    vec3 scatterColor = mix(blueScatter, transmitColor, depthFactor);
+
+    // Apply the incoming light color to the scatter color
+    vec3 scatteredLight = incomingLight * scatterColor;
+
+    // For lava planets, tint toward orange
+    vec3 lavaAtmosTint = vec3(1.0, 0.4, 0.1);
+    scatteredLight = mix(scatteredLight, incomingLight * lavaAtmosTint, isDesert * 0.7);
 
     // Final atmosphere color
-    vec3 atmosColor = scatterColor * lightColor * atmosDensity * uAtmosIntensity * 1.5;
+    vec3 atmosColor = scatteredLight * atmosDensity * uAtmosIntensity * 1.5;
 
-    // Alpha follows density, not boosted by intensity
+    // Alpha follows density
     float atmosAlpha = clamp(atmosDensity * 0.8, 0.0, 1.0);
     // ========================================
     // PLANET SURFACE RENDERING
@@ -724,8 +685,7 @@ void main() {
     // Add extra bloom-like glow for hottest areas
     col += lavaHot * lavaEmission * lavaPulse * 0.8 * uLavaIntensity * planetMask;
 
-    // Ambient
-    col += surfaceColor * 0.02 * planetMask;
+    // No ambient light in space
 
     // Fresnel rim on surface - enhanced to blend with atmosphere
     float fresnel = pow(1.0 - NdV, 3.0) * planetMask;
@@ -734,10 +694,19 @@ void main() {
     col += mix(planetColor, vec3(0.6, 0.8, 1.0), oceanMask) * fresnel * totalAttenuation * fresnelStrength;
     col += planetColor * vGlow * (0.15 + fresnel * 0.3);
 
-    // Blend atmosphere with surface at the limb
-    // Atmosphere is masked out by deformed terrain - only shows outside the deformed planet
-    // Inside deformed surface: minimal atmosphere (just rim glow on very edge)
-    // Outside deformed surface: full atmosphere contribution
+    // Blend atmosphere with surface
+    // The atmosphere affects both:
+    // 1. The terrain surface (atmospheric haze tinting the ground)
+    // 2. The space around the planet (visible atmosphere shell)
+
+    // Over terrain: blend atmosphere color based on density (haze effect)
+    // Stronger at the limb (low NdV) where we look through more atmosphere
+    // Also apply shadow factor so atmosphere is darker on the night side
+    float limbFactor = pow(1.0 - NdV, 2.0);  // More atmosphere at edges
+    float terrainAtmosBlend = atmosAlpha * (0.3 + limbFactor * 0.7) * planetMask * shadowFactor;
+    col = mix(col, atmosColor / max(atmosAlpha, 0.01), terrainAtmosBlend);
+
+    // Outside planet: additive atmosphere glow (already has shadow baked into atmosColor via incomingLight)
     col += atmosColor * (1.0 - planetMask);
     
 
