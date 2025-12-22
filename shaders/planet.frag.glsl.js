@@ -38,6 +38,65 @@ uniform float uSeaLevel;        // Sea level offset (default 0.0)
 
 #define PI 3.14159265
 
+// ========================================
+// PBR FUNCTIONS (Non-metallic)
+// ========================================
+
+// GGX/Trowbridge-Reitz Normal Distribution Function
+// Models the distribution of microfacet normals
+float distributionGGX(float NdH, float roughness) {
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float NdH2 = NdH * NdH;
+    float denom = NdH2 * (a2 - 1.0) + 1.0;
+    return a2 / (PI * denom * denom);
+}
+
+// Schlick-GGX Geometry Function (single direction)
+// Models microfacet self-shadowing
+float geometrySchlickGGX(float NdV, float roughness) {
+    float r = roughness + 1.0;
+    float k = (r * r) / 8.0;  // k for direct lighting
+    return NdV / (NdV * (1.0 - k) + k);
+}
+
+// Smith's method for geometry - combines view and light directions
+float geometrySmith(float NdV, float NdL, float roughness) {
+    float ggx1 = geometrySchlickGGX(NdV, roughness);
+    float ggx2 = geometrySchlickGGX(NdL, roughness);
+    return ggx1 * ggx2;
+}
+
+// Fresnel-Schlick approximation
+// F0 = 0.04 for dielectrics (non-metals)
+vec3 fresnelSchlick(float cosTheta, vec3 F0) {
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+// Full Cook-Torrance BRDF for a single light
+// Returns vec4: xyz = specular, w = fresnel factor for energy conservation
+vec4 cookTorranceBRDF(vec3 N, vec3 V, vec3 L, float roughness, vec3 F0) {
+    vec3 H = normalize(V + L);
+    float NdV = max(dot(N, V), 0.001);
+    float NdL = max(dot(N, L), 0.0);
+    float NdH = max(dot(N, H), 0.0);
+    float HdV = max(dot(H, V), 0.0);
+
+    // D, G, F terms
+    float D = distributionGGX(NdH, roughness);
+    float G = geometrySmith(NdV, NdL, roughness);
+    vec3 F = fresnelSchlick(HdV, F0);
+
+    // Cook-Torrance specular BRDF
+    vec3 numerator = D * G * F;
+    float denominator = 4.0 * NdV * NdL + 0.0001;
+    vec3 specular = numerator / denominator;
+
+    // Return specular and average fresnel for energy conservation
+    float avgF = (F.r + F.g + F.b) / 3.0;
+    return vec4(specular * NdL, avgF);
+}
+
 // Simplex noise for rocky texture
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -247,20 +306,28 @@ void main() {
     float waveNx = (waveX - waveC) / waveEps * 0.012;
     float waveNy = (waveY - waveC) / waveEps * 0.012;
 
-    // Land uses terrain heightmap normals, ocean uses flat base + subtle waves
-    vec3 landNormal = normalize(baseN + vec3(terrainNx, terrainNy, 0.0));
-    vec3 oceanNormal = normalize(baseN + vec3(waveNx, waveNy, 0.0));
-    vec3 N = normalize(mix(landNormal, oceanNormal, oceanMask) * planetMask + baseN * (1.0 - planetMask));
+    // Use pure spherical normal for all lighting - terrain deformation is visual only
+    // This keeps the planet looking like a perfect sphere regardless of height displacement
+    vec3 N = baseN;
 
+    // ========================================
+    // PBR LIGHTING SETUP
+    // ========================================
     vec3 totalDiffuse = vec3(0.0);
     vec3 totalSpecular = vec3(0.0);
-    vec3 oceanSpecular = vec3(0.0);  // Separate specular for ocean with roughness control
+    vec3 oceanSpecular = vec3(0.0);  // Separate specular for ocean with different roughness
     float totalAttenuation = 0.0;
+    float totalFresnel = 0.0;       // Average fresnel for energy conservation
+    float oceanFresnel = 0.0;
 
-    // Specular power from roughness: low roughness = sharp highlight, high roughness = broad
-    float landSpecPow = 32.0;
-    float oceanSpecPow = mix(256.0, 8.0, uOceanRoughness); // 0=mirror(256), 1=rough(8)
+    // PBR material properties for non-metallic surfaces
+    // F0 = 0.04 for dielectrics, slightly higher for water
+    vec3 landF0 = vec3(0.04);
+    vec3 oceanF0 = vec3(0.02, 0.02, 0.025);  // Water has slight blue tint at glancing angles
+    float landRoughness = 0.65;  // Land is fairly rough
+    float oceanRoughness = max(0.02, uOceanRoughness);  // Ocean roughness from UI, minimum for stability
 
+    // ---- MOUSE LIGHT ----
     vec2 mouseOffset = (uMouse - vCenter);
     vec3 mouseLightPos = vec3(mouseOffset / uRes.x * 4.0, 0.3);
     vec3 mouseL = normalize(mouseLightPos);
@@ -268,13 +335,21 @@ void main() {
     float mouseAtten = 0.08 / (mouseDist * mouseDist + 0.01);
     mouseAtten = min(mouseAtten, 2.0);
     float mouseNdL = max(dot(N, mouseL), 0.0);
-    vec3 mouseH = normalize(mouseL + V);
-    float mouseNdH = max(dot(N, mouseH), 0.0);
-    totalDiffuse += vec3(1.0) * mouseNdL * mouseAtten;
-    totalSpecular += vec3(1.0) * pow(mouseNdH, landSpecPow) * mouseAtten;
-    oceanSpecular += vec3(1.0) * pow(mouseNdH, oceanSpecPow) * mouseAtten;
+
+    // PBR specular for land
+    vec4 mousePBR = cookTorranceBRDF(N, V, mouseL, landRoughness, landF0);
+    totalSpecular += vec3(1.0) * mousePBR.xyz * mouseAtten;
+    totalFresnel += mousePBR.w * mouseAtten;
+    // PBR specular for ocean
+    vec4 mouseOceanPBR = cookTorranceBRDF(N, V, mouseL, oceanRoughness, oceanF0);
+    oceanSpecular += vec3(1.0) * mouseOceanPBR.xyz * mouseAtten;
+    oceanFresnel += mouseOceanPBR.w * mouseAtten;
+    // Diffuse (energy conserving: reduced by fresnel)
+    float mouseDiffuseWeight = (1.0 - mousePBR.w) / PI;
+    totalDiffuse += vec3(1.0) * mouseNdL * mouseAtten * mouseDiffuseWeight;
     totalAttenuation += mouseAtten;
 
+    // ---- LIGHT 0 ----
     vec2 light0Offset = (uLight0 - vCenter);
     vec3 light0Pos = vec3(light0Offset / uRes.x * 3.0, 0.1);
     vec3 L0 = normalize(light0Pos);
@@ -282,13 +357,18 @@ void main() {
     float atten0 = 0.06 / (dist0 * dist0 + 0.02);
     atten0 = min(atten0, 1.5);
     float NdL0 = max(dot(N, L0), 0.0);
-    vec3 H0 = normalize(L0 + V);
-    float NdH0 = max(dot(N, H0), 0.0);
-    totalDiffuse += uLightColor0 * NdL0 * atten0;
-    totalSpecular += uLightColor0 * pow(NdH0, landSpecPow) * atten0;
-    oceanSpecular += uLightColor0 * pow(NdH0, oceanSpecPow) * atten0;
+
+    vec4 pbr0 = cookTorranceBRDF(N, V, L0, landRoughness, landF0);
+    totalSpecular += uLightColor0 * pbr0.xyz * atten0;
+    totalFresnel += pbr0.w * atten0;
+    vec4 oceanPBR0 = cookTorranceBRDF(N, V, L0, oceanRoughness, oceanF0);
+    oceanSpecular += uLightColor0 * oceanPBR0.xyz * atten0;
+    oceanFresnel += oceanPBR0.w * atten0;
+    float diffuseWeight0 = (1.0 - pbr0.w) / PI;
+    totalDiffuse += uLightColor0 * NdL0 * atten0 * diffuseWeight0;
     totalAttenuation += atten0;
 
+    // ---- LIGHT 1 ----
     vec2 light1Offset = (uLight1 - vCenter);
     vec3 light1Pos = vec3(light1Offset / uRes.x * 3.0, 0.1);
     vec3 L1 = normalize(light1Pos);
@@ -296,13 +376,18 @@ void main() {
     float atten1 = 0.06 / (dist1 * dist1 + 0.02);
     atten1 = min(atten1, 1.5);
     float NdL1 = max(dot(N, L1), 0.0);
-    vec3 H1 = normalize(L1 + V);
-    float NdH1 = max(dot(N, H1), 0.0);
-    totalDiffuse += uLightColor1 * NdL1 * atten1;
-    totalSpecular += uLightColor1 * pow(NdH1, landSpecPow) * atten1;
-    oceanSpecular += uLightColor1 * pow(NdH1, oceanSpecPow) * atten1;
+
+    vec4 pbr1 = cookTorranceBRDF(N, V, L1, landRoughness, landF0);
+    totalSpecular += uLightColor1 * pbr1.xyz * atten1;
+    totalFresnel += pbr1.w * atten1;
+    vec4 oceanPBR1 = cookTorranceBRDF(N, V, L1, oceanRoughness, oceanF0);
+    oceanSpecular += uLightColor1 * oceanPBR1.xyz * atten1;
+    oceanFresnel += oceanPBR1.w * atten1;
+    float diffuseWeight1 = (1.0 - pbr1.w) / PI;
+    totalDiffuse += uLightColor1 * NdL1 * atten1 * diffuseWeight1;
     totalAttenuation += atten1;
 
+    // ---- LIGHT 2 ----
     vec2 light2Offset = (uLight2 - vCenter);
     vec3 light2Pos = vec3(light2Offset / uRes.x * 3.0, 0.1);
     vec3 L2 = normalize(light2Pos);
@@ -310,14 +395,18 @@ void main() {
     float atten2 = 0.06 / (dist2 * dist2 + 0.02);
     atten2 = min(atten2, 1.5);
     float NdL2 = max(dot(N, L2), 0.0);
-    vec3 H2 = normalize(L2 + V);
-    float NdH2 = max(dot(N, H2), 0.0);
-    totalDiffuse += uLightColor2 * NdL2 * atten2;
-    totalSpecular += uLightColor2 * pow(NdH2, landSpecPow) * atten2;
-    oceanSpecular += uLightColor2 * pow(NdH2, oceanSpecPow) * atten2;
+
+    vec4 pbr2 = cookTorranceBRDF(N, V, L2, landRoughness, landF0);
+    totalSpecular += uLightColor2 * pbr2.xyz * atten2;
+    totalFresnel += pbr2.w * atten2;
+    vec4 oceanPBR2 = cookTorranceBRDF(N, V, L2, oceanRoughness, oceanF0);
+    oceanSpecular += uLightColor2 * oceanPBR2.xyz * atten2;
+    oceanFresnel += oceanPBR2.w * atten2;
+    float diffuseWeight2 = (1.0 - pbr2.w) / PI;
+    totalDiffuse += uLightColor2 * NdL2 * atten2 * diffuseWeight2;
     totalAttenuation += atten2;
 
-    float NdV = max(dot(N, V), 0.0);
+    float NdV = max(dot(N, V), 0.001);
 
     // ========================================
     // PHYSICALLY-BASED ATMOSPHERIC SCATTERING
@@ -642,16 +731,24 @@ void main() {
     // Blend land with ocean
     vec3 surfaceColor = mix(landColor, oceanColor, oceanMask);
 
-    // Diffuse lighting - reduced for ocean (darker water)
-    float diffuseStrength = mix(1.5, 0.8, oceanMask);
+    // ========================================
+    // PBR SURFACE COMPOSITION
+    // ========================================
+    // Diffuse: already energy-conserving (multiplied by (1-F)/PI in lighting loop)
+    // Specular: full Cook-Torrance BRDF already computed
+
+    // Diffuse lighting - reduced for ocean (darker water, more reflective)
+    float diffuseStrength = mix(2.5, 1.2, oceanMask);  // Boosted for PBR energy conservation
     col += surfaceColor * totalDiffuse * diffuseStrength * planetMask;
 
-    // Specular - higher for ocean (reflective water) and ice (mountain peaks)
-    float iceSpecular = snowMask * isMountain * 1.8; // Ice is very reflective
-    float landSpecStrength = 0.3 + iceSpecular;
-    float oceanSpecStrength = 3.2;
-    vec3 specColor = mix(planetColor, vec3(1.0), max(oceanMask * 0.7, snowMask * isMountain * 0.9));
-    // Use oceanSpecular (roughness-controlled) for ocean, totalSpecular for land
+    // Specular - PBR handles intensity via BRDF, just need scene-level scaling
+    float iceSpecular = snowMask * isMountain * 0.5; // Ice gets extra boost
+    float landSpecStrength = 1.0 + iceSpecular;
+    float oceanSpecStrength = 1.5;  // Water is more reflective
+    vec3 specColor = mix(vec3(1.0), vec3(1.0), oceanMask);  // White specular for both (PBR)
+    // Ice/snow gets tinted specular
+    specColor = mix(specColor, vec3(0.95, 0.97, 1.0), snowMask * isMountain * 0.3);
+    // Use oceanSpecular (low roughness) for ocean, totalSpecular (high roughness) for land
     vec3 finalSpecular = mix(totalSpecular * landSpecStrength, oceanSpecular * oceanSpecStrength, oceanMask);
     col += specColor * finalSpecular * planetMask;
 
@@ -687,12 +784,14 @@ void main() {
 
     // No ambient light in space
 
-    // Fresnel rim on surface - enhanced to blend with atmosphere
-    float fresnel = pow(1.0 - NdV, 3.0) * planetMask;
-    // Ocean gets stronger fresnel reflection
-    float fresnelStrength = mix(0.15, 0.4, oceanMask);
-    col += mix(planetColor, vec3(0.6, 0.8, 1.0), oceanMask) * fresnel * totalAttenuation * fresnelStrength;
-    col += planetColor * vGlow * (0.15 + fresnel * 0.3);
+    // Fresnel rim on surface - using Schlick approximation for PBR
+    // This adds the view-dependent rim reflection at grazing angles
+    vec3 rimF0 = mix(landF0, oceanF0, oceanMask);
+    vec3 fresnelRim = fresnelSchlick(NdV, rimF0) * planetMask;
+    // Rim lighting from environment/atmosphere reflection
+    vec3 rimColor = mix(vec3(0.5, 0.6, 0.7), vec3(0.6, 0.8, 1.0), oceanMask);
+    col += rimColor * fresnelRim * totalAttenuation * 0.3;
+    col += planetColor * vGlow * (0.15 + fresnelRim.r * 0.3);
 
     // Blend atmosphere with surface
     // The atmosphere affects both:
