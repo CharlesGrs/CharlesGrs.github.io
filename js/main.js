@@ -1514,13 +1514,49 @@ const sphereFragmentShader = `
                 const portfolioPanel = document.getElementById('panel-portfolio');
                 if (portfolioPanel) {
                     portfolioPanel.querySelectorAll('video[data-src]').forEach(video => {
-                        if (!video.src) {
+                        if (!video.src || video.src === window.location.href) {
                             video.src = video.dataset.src;
+                            video.preload = 'auto';
                             video.load();
-                            video.play().catch(() => {}); // Ignore autoplay errors
+                            // Wait for enough data before playing
+                            video.addEventListener('canplaythrough', () => {
+                                video.play().catch(() => {});
+                            }, { once: true });
                         }
                     });
                 }
+            }
+        });
+    });
+})();
+
+// ============================================
+// SKILLS VIEW TOGGLE
+// ============================================
+(function initSkillsToggle() {
+    const toggleBtns = document.querySelectorAll('.view-toggle-btn');
+    const graphView = document.getElementById('skills-graph-view');
+    const listView = document.getElementById('skills-list-view');
+
+    if (!toggleBtns.length || !graphView || !listView) return;
+
+    toggleBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const view = btn.dataset.view;
+
+            // Update button states
+            toggleBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Toggle views
+            if (view === 'graph') {
+                graphView.classList.add('active');
+                listView.classList.remove('active');
+                // Trigger resize to fix canvas
+                window.dispatchEvent(new Event('resize'));
+            } else {
+                graphView.classList.remove('active');
+                listView.classList.add('active');
             }
         });
     });

@@ -445,7 +445,7 @@ header {
 .summary-row {
     display: flex;
     gap: 1rem;
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.4rem;
     align-items: stretch;
     flex-shrink: 0;
 }
@@ -782,7 +782,7 @@ header {
     display: flex;
     justify-content: center;
     gap: 0.5rem;
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.4rem;
     flex-wrap: wrap;
     flex-shrink: 0;
 }
@@ -860,10 +860,20 @@ header {
 }
 
 /* Skills Panel - Network Graph */
+.skills-panel {
+    position: relative;
+}
+
 .skills-panel .skill-graph-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     margin: 0;
-    flex: 1;
-    height: auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
     background: transparent;
     border: none;
     backdrop-filter: none;
@@ -873,6 +883,174 @@ header {
 .skills-panel .graph-legend,
 .skills-panel .graph-hint {
     display: none;
+}
+
+/* Skills View Toggle */
+.skills-view-toggle {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    display: flex;
+    gap: 0.25rem;
+    z-index: 10;
+    background: rgba(21, 29, 38, 0.8);
+    padding: 0.25rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.view-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.view-toggle-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: var(--text-muted);
+    transition: stroke 0.2s ease;
+}
+
+.view-toggle-btn:hover svg {
+    stroke: var(--text-secondary);
+}
+
+.view-toggle-btn.active {
+    background: rgba(232, 185, 35, 0.15);
+}
+
+.view-toggle-btn.active svg {
+    stroke: var(--accent-gold);
+}
+
+/* Skills Views */
+.skill-view {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.skill-view.active {
+    display: flex;
+    opacity: 1;
+}
+
+.skill-graph-container.skill-view.active {
+    display: block;
+}
+
+/* Skills List View */
+.skills-list-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1rem 1.5rem;
+    overflow-y: auto;
+}
+
+.skills-category {
+    animation: fadeInUp 0.4s ease-out backwards;
+}
+
+.skills-category:nth-child(1) { animation-delay: 0s; }
+.skills-category:nth-child(2) { animation-delay: 0.1s; }
+.skills-category:nth-child(3) { animation-delay: 0.2s; }
+.skills-category:nth-child(4) { animation-delay: 0.3s; }
+
+.category-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 0.6rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.category-title.primary {
+    color: var(--accent-gold);
+    border-color: rgba(232, 185, 35, 0.3);
+}
+
+.category-title.secondary {
+    color: var(--accent-teal);
+    border-color: rgba(45, 212, 191, 0.3);
+}
+
+.category-skills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.skill-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    padding: 0.4rem 0.75rem;
+    background: rgba(21, 29, 38, 0.8);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+
+.skill-tag:hover {
+    border-color: var(--text-muted);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+
+.skill-tag.primary {
+    border-color: rgba(232, 185, 35, 0.4);
+    color: var(--accent-gold);
+    background: rgba(232, 185, 35, 0.1);
+}
+
+.skill-tag.primary:hover {
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 10px rgba(232, 185, 35, 0.2);
+}
+
+.skill-tag.tool {
+    border-color: rgba(155, 77, 202, 0.4);
+    color: #b794f6;
+}
+
+.skill-tag.tool:hover {
+    border-color: #9b4dca;
+    box-shadow: 0 0 10px rgba(155, 77, 202, 0.2);
+}
+
+@media (max-width: 900px) {
+    .skills-view-toggle {
+        top: 0.5rem;
+        right: 0.5rem;
+    }
+
+    .skills-list-container {
+        padding: 0.75rem 1rem;
+        gap: 1rem;
+    }
+
+    .skill-tag {
+        font-size: 0.65rem;
+        padding: 0.35rem 0.6rem;
+    }
 }
 
 /* Career Panel - Timeline */
@@ -976,7 +1154,7 @@ header {
 
 /* Portfolio Panel */
 .portfolio-panel {
-    padding: 1.5rem;
+    padding: 0.5rem 1rem;
     background: radial-gradient(ellipse at center, rgba(21, 29, 38, 0.4) 0%, rgba(21, 29, 38, 0.15) 60%, transparent 100%);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
@@ -996,7 +1174,7 @@ header {
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
-    padding: 0.5rem 0;
+    padding: 0;
     animation: portfolioFadeIn 0.8s ease-out;
 }
 
@@ -1013,29 +1191,22 @@ header {
 
 .portfolio-header {
     text-align: center;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0;
     flex-shrink: 0;
 }
 
 .portfolio-title {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 0.25rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--accent-gold);
+    margin-bottom: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
 }
 
 .portfolio-link {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--accent-teal);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    text-decoration: none;
-    transition: color 0.3s ease;
-}
-
-.portfolio-link:hover {
-    color: var(--accent-gold);
+    display: none;
 }
 
 .portfolio-scene {
@@ -1060,8 +1231,8 @@ header {
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 55%;
-    max-width: 500px;
+    width: 75%;
+    max-width: 800px;
     aspect-ratio: 16/10;
     transform-style: preserve-3d;
     transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1150,7 +1321,7 @@ header {
     display: flex;
     justify-content: center;
     gap: 0.5rem;
-    margin-top: 1rem;
+    margin-top: 0.5rem;
     flex-shrink: 0;
 }
 
