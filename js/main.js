@@ -286,9 +286,12 @@ const sphereFragmentShader = `
             // Tone mapping
             col = col / (col + vec3(0.5));
 
+            // Full alpha including glow for proper blending
             float alpha = coreMask * 0.95 + glowMask * 0.5 + outerHalo * 0.4;
             alpha = clamp(alpha, 0.0, 1.0) * outerFade;
             alpha *= smoothstep(0.0, 0.5, ap) * vAlpha;
+
+            // Standard alpha blending output (not premultiplied)
             gl_FragColor = vec4(col, alpha);
             return;
         }
@@ -376,45 +379,109 @@ const sphereFragmentShader = `
         totalSpecular += uLightColor2 * pow(NdH2, 32.0) * atten2;
         totalAttenuation += atten2;
 
-        float atmosDist = d - planetRadius;
-        float atmosMask = smoothstep(atmosphereOuter, planetRadius, d);
-        float atmosDensity = atmosMask * (1.0 - planetMask);
-        vec3 atmosColor = planetColor * 1.2 + vec3(0.05, 0.08, 0.15);
-
         float NdV = max(dot(N, V), 0.0);
-        float limbAngle = 1.0 - abs(dot(N, V));
-        float limbGlow = pow(limbAngle, 2.0) * atmosMask;
-        float ringDist = abs(d - planetRadius);
-        float atmosRing = exp(-ringDist * 8.0) * 0.6;
 
-        float outerGlow = 0.0;
-        if (d > planetRadius) {
-            float glowDist = d - planetRadius;
-            outerGlow = exp(-glowDist * 4.0) * 0.5;
-            outerGlow += 0.015 / (glowDist + 0.02);
+        // ========================================
+        // ATMOSPHERIC SCATTERING
+        // ========================================
+        // Atmosphere extends from planet center outward with smooth falloff
+        float atmosOuter = planetRadius + 0.35;
+
+        // Calculate light contributions for atmosphere
+        vec3 lightContrib = vec3(0.0);
+        vec2 pixelDir = d > 0.001 ? normalize(uv) : vec2(0.0, 1.0);
+
+        // Directional scattering from each light
+        vec2 l0dir = normalize(uLight0 - vCenter);
+        float l0dot = dot(pixelDir, l0dir) * 0.5 + 0.5;
+        lightContrib += uLightColor0 * l0dot * atten0;
+
+        vec2 l1dir = normalize(uLight1 - vCenter);
+        float l1dot = dot(pixelDir, l1dir) * 0.5 + 0.5;
+        lightContrib += uLightColor1 * l1dot * atten1;
+
+        vec2 l2dir = normalize(uLight2 - vCenter);
+        float l2dot = dot(pixelDir, l2dir) * 0.5 + 0.5;
+        lightContrib += uLightColor2 * l2dot * atten2;
+
+        vec2 mdir = normalize(uMouse - vCenter);
+        float mdot = dot(pixelDir, mdir) * 0.5 + 0.5;
+        lightContrib += vec3(1.0) * mdot * mouseAtten * 0.5;
+
+        // Rayleigh scattering - blue tint
+        vec3 rayleighColor = vec3(0.4, 0.6, 1.0);
+        vec3 scatterColor = lightContrib * rayleighColor;
+
+        // Atmosphere density based on distance from center
+        // Uses smooth falloff that works both inside and outside planet
+        float atmosStrength = 0.0;
+
+        // Limb factor - smooth gradient from center to edge
+        // Uses a very gradual curve to avoid harsh transitions
+        float normalizedDist = d / planetRadius;
+
+        // Smooth limb glow that gradually increases toward edge
+        // Starts very faint from center and builds up smoothly
+        float limbFactor = 0.0;
+        if (d < atmosOuter) {
+            // Cubic curve for very smooth inner transition
+            limbFactor = smoothstep(0.0, 1.0, normalizedDist);
+            limbFactor = limbFactor * limbFactor; // Square for smoother falloff from center
         }
 
+        // Atmosphere shell outside the planet
+        if (d > planetRadius) {
+            float shellDist = (d - planetRadius) / (atmosOuter - planetRadius);
+            // Exponential falloff from planet surface
+            atmosStrength = exp(-shellDist * 3.0);
+            // Add limb glow contribution
+            atmosStrength += limbFactor * 0.4;
+        }
+        // Inside planet - very gradual atmosphere rim
+        else {
+            // Smooth cubic ramp that peaks at the edge
+            float innerFade = smoothstep(0.3, 1.0, normalizedDist);
+            atmosStrength = limbFactor * innerFade * 0.6;
+        }
+
+        // Soft outer glow beyond main atmosphere
+        float outerGlow = 0.0;
+        if (d > atmosOuter) {
+            float glowDist = d - atmosOuter;
+            outerGlow = exp(-glowDist * 7.0) * 0.4;
+            atmosStrength += outerGlow;
+        }
+
+        vec3 atmosColor = scatterColor * atmosStrength * 1.2;
+        float atmosAlpha = atmosStrength * 0.7;
+
+        // ========================================
+        // PLANET SURFACE RENDERING
+        // ========================================
         vec3 col = vec3(0.0);
         vec3 surfaceColor = planetColor * 0.85;
         col += surfaceColor * totalDiffuse * 1.5 * planetMask;
         col += planetColor * totalSpecular * 0.3 * planetMask;
         col += surfaceColor * 0.02 * planetMask;
-        col += atmosColor * limbGlow * totalAttenuation * 0.3 * planetMask;
-        col += planetColor * atmosRing * totalAttenuation * 0.2;
-        col += planetColor * outerGlow * totalAttenuation * 0.4;
 
-        float fresnel = pow(1.0 - NdV, 4.0) * planetMask;
-        col += planetColor * fresnel * totalAttenuation * 0.2;
+        // Fresnel rim on surface - enhanced to blend with atmosphere
+        float fresnel = pow(1.0 - NdV, 3.0) * planetMask;
+        col += planetColor * fresnel * totalAttenuation * 0.15;
         col += planetColor * vGlow * (0.15 + fresnel * 0.3);
 
+        // Blend atmosphere with surface at the limb
+        // Inside planet: atmosphere adds rim glow
+        // Outside planet: atmosphere is the main contribution
+        col += atmosColor * (1.0 - planetMask * 0.3);
+
+        // Tone mapping
         col = col / (col + vec3(0.7));
         col = pow(col, vec3(0.95));
 
+        // Alpha calculation
         float alpha = 0.0;
         alpha += planetMask * 0.98;
-        alpha += atmosDensity * 0.4;
-        alpha += atmosRing * 0.2;
-        alpha += outerGlow * 0.3;
+        alpha += atmosAlpha * (1.0 - planetMask * 0.5);
         alpha = clamp(alpha, 0.0, 1.0);
         alpha *= outerFade;
         alpha *= smoothstep(0.0, 0.5, ap);
@@ -516,6 +583,120 @@ const sphereFragmentShader = `
         material.uniforms.uResolution.value.set(window.innerWidth, window.innerHeight);
     });
 })();
+
+// God Rays Fullscreen Shader
+const godRaysVertexShader = `
+    attribute vec2 aPosition;
+    varying vec2 vUV;
+    void main() {
+        vUV = aPosition * 0.5 + 0.5;
+        gl_Position = vec4(aPosition, 0.0, 1.0);
+    }
+`;
+
+const godRaysFragmentShader = `
+    precision highp float;
+    varying vec2 vUV;
+    uniform vec2 uResolution;
+    uniform float uTime;
+    uniform vec2 uLight0;
+    uniform vec2 uLight1;
+    uniform vec2 uLight2;
+    uniform vec3 uLightColor0;
+    uniform vec3 uLightColor1;
+    uniform vec3 uLightColor2;
+
+    // Simple hash for cheap noise
+    float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+    }
+
+    // Smooth noise
+    float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        float a = hash(i);
+        float b = hash(i + vec2(1.0, 0.0));
+        float c = hash(i + vec2(0.0, 1.0));
+        float d = hash(i + vec2(1.0, 1.0));
+        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+    }
+
+    // Fractal noise for wispy fog
+    float fbm(vec2 p) {
+        float v = 0.0;
+        float a = 0.5;
+        for (int i = 0; i < 4; i++) {
+            v += a * noise(p);
+            p *= 2.0;
+            a *= 0.5;
+        }
+        return v;
+    }
+
+    // Turbulent noise for wispy detail
+    float turbulence(vec2 p) {
+        float v = 0.0;
+        float a = 0.5;
+        for (int i = 0; i < 4; i++) {
+            v += a * abs(noise(p) * 2.0 - 1.0);
+            p *= 2.0;
+            a *= 0.5;
+        }
+        return v;
+    }
+
+    // Soft radial glow from a light source
+    vec3 computeGlow(vec2 uv, vec2 lightPos, vec3 lightColor, float intensity) {
+        vec2 lightUV = lightPos / uResolution;
+        lightUV.y = 1.0 - lightUV.y;
+
+        float dist = length(uv - lightUV);
+
+        // Soft exponential falloff
+        float glow = exp(-dist * 4.0) * intensity;
+
+        // Multi-layer noise for wispy, detailed fog
+        vec2 noisePos = uv * 6.0 + uTime * 0.02;
+        float n1 = fbm(noisePos + lightUV * 5.0);
+        float n2 = turbulence(noisePos * 0.7 - uTime * 0.015);
+        float detailNoise = n1 * 0.5 + n2 * 0.5;
+
+        // Noise shapes the fog with more variation
+        glow *= 0.3 + detailNoise * 1.0;
+
+        // Distance-based fade
+        glow *= smoothstep(0.55, 0.0, dist);
+
+        return lightColor * glow;
+    }
+
+    void main() {
+        vec2 uv = vUV;
+        vec3 fog = vec3(0.0);
+
+        // Compute glow from each light
+        fog += computeGlow(uv, uLight0, uLightColor0, 0.8);
+        fog += computeGlow(uv, uLight1, uLightColor1, 0.8);
+        fog += computeGlow(uv, uLight2, uLightColor2, 0.8);
+
+        // Global ambient fog with detailed turbulence
+        vec2 fogUV = uv * 4.0 + uTime * 0.008;
+        float ambientFog = turbulence(fogUV) * 0.1;
+        ambientFog += fbm(fogUV * 1.5 - uTime * 0.012) * 0.08;
+        fog += vec3(0.05, 0.06, 0.08) * ambientFog;
+
+        // Tone mapping
+        fog = fog / (fog + vec3(0.5));
+
+        // Alpha based on fog brightness
+        float alpha = (fog.r + fog.g + fog.b) * 0.7;
+        alpha = clamp(alpha, 0.0, 0.5);
+
+        gl_FragColor = vec4(fog, alpha);
+    }
+`;
 
 // ============================================
 // SKILL NETWORK GRAPH
@@ -810,7 +991,8 @@ const sphereFragmentShader = `
     }
 
     // WebGL sphere renderer
-    let gl, glCanvas, sphereProgram, glReady = false;
+    let gl, glCanvas, sphereProgram, godRaysProgram, glReady = false;
+    let godRaysQuadBuffer;
 
     function initSphereGL() {
         glCanvas = document.createElement('canvas');
@@ -865,6 +1047,40 @@ const sphereFragmentShader = `
         sphereProgram.uLightColor2 = gl.getUniformLocation(sphereProgram, 'uLightColor2');
         sphereProgram.buf = gl.createBuffer();
 
+        // God rays program
+        const grVs = comp(godRaysVertexShader, gl.VERTEX_SHADER);
+        const grFs = comp(godRaysFragmentShader, gl.FRAGMENT_SHADER);
+        if (grVs && grFs) {
+            godRaysProgram = gl.createProgram();
+            gl.attachShader(godRaysProgram, grVs);
+            gl.attachShader(godRaysProgram, grFs);
+            gl.linkProgram(godRaysProgram);
+
+            if (gl.getProgramParameter(godRaysProgram, gl.LINK_STATUS)) {
+                godRaysProgram.aPosition = gl.getAttribLocation(godRaysProgram, 'aPosition');
+                godRaysProgram.uResolution = gl.getUniformLocation(godRaysProgram, 'uResolution');
+                godRaysProgram.uTime = gl.getUniformLocation(godRaysProgram, 'uTime');
+                godRaysProgram.uMouse = gl.getUniformLocation(godRaysProgram, 'uMouse');
+                godRaysProgram.uLight0 = gl.getUniformLocation(godRaysProgram, 'uLight0');
+                godRaysProgram.uLight1 = gl.getUniformLocation(godRaysProgram, 'uLight1');
+                godRaysProgram.uLight2 = gl.getUniformLocation(godRaysProgram, 'uLight2');
+                godRaysProgram.uLightColor0 = gl.getUniformLocation(godRaysProgram, 'uLightColor0');
+                godRaysProgram.uLightColor1 = gl.getUniformLocation(godRaysProgram, 'uLightColor1');
+                godRaysProgram.uLightColor2 = gl.getUniformLocation(godRaysProgram, 'uLightColor2');
+
+                // Fullscreen quad buffer
+                godRaysQuadBuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, godRaysQuadBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                    -1, -1,  1, -1,  1, 1,
+                    -1, -1,  1, 1,  -1, 1
+                ]), gl.STATIC_DRAW);
+            } else {
+                console.error('God rays program link error:', gl.getProgramInfoLog(godRaysProgram));
+                godRaysProgram = null;
+            }
+        }
+
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.clearColor(0, 0, 0, 0);
@@ -888,21 +1104,44 @@ const sphereFragmentShader = `
         if (!glReady) return false;
 
         gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.useProgram(sphereProgram);
-        gl.uniform2f(sphereProgram.uRes, width, height);
-        gl.uniform2f(sphereProgram.uMouse, mouseX, mouseY);
-        gl.uniform1f(sphereProgram.uTime, time);
 
+        // Get light data first (needed for both god rays and spheres)
         const lightNodes = nodes.filter(n => n.isLight);
         const light0 = lightNodes[0] || { x: 0, y: 0, lightColor: '#ffaa33' };
         const light1 = lightNodes[1] || { x: 0, y: 0, lightColor: '#9b4dca' };
         const light2 = lightNodes[2] || { x: 0, y: 0, lightColor: '#33ddff' };
-        gl.uniform2f(sphereProgram.uLight0, light0.x, light0.y);
-        gl.uniform2f(sphereProgram.uLight1, light1.x, light1.y);
-        gl.uniform2f(sphereProgram.uLight2, light2.x, light2.y);
         const lc0 = hex2vec(light0.lightColor || '#ffaa33');
         const lc1 = hex2vec(light1.lightColor || '#9b4dca');
         const lc2 = hex2vec(light2.lightColor || '#33ddff');
+
+        // Render god rays first (background layer)
+        if (godRaysProgram) {
+            gl.useProgram(godRaysProgram);
+            gl.uniform2f(godRaysProgram.uResolution, width, height);
+            gl.uniform1f(godRaysProgram.uTime, time);
+            gl.uniform2f(godRaysProgram.uMouse, mouseX, mouseY);
+            gl.uniform2f(godRaysProgram.uLight0, light0.x, light0.y);
+            gl.uniform2f(godRaysProgram.uLight1, light1.x, light1.y);
+            gl.uniform2f(godRaysProgram.uLight2, light2.x, light2.y);
+            gl.uniform3f(godRaysProgram.uLightColor0, lc0[0], lc0[1], lc0[2]);
+            gl.uniform3f(godRaysProgram.uLightColor1, lc1[0], lc1[1], lc1[2]);
+            gl.uniform3f(godRaysProgram.uLightColor2, lc2[0], lc2[1], lc2[2]);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, godRaysQuadBuffer);
+            gl.enableVertexAttribArray(godRaysProgram.aPosition);
+            gl.vertexAttribPointer(godRaysProgram.aPosition, 2, gl.FLOAT, false, 0, 0);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+            gl.disableVertexAttribArray(godRaysProgram.aPosition);
+        }
+
+        // Render spheres on top
+        gl.useProgram(sphereProgram);
+        gl.uniform2f(sphereProgram.uRes, width, height);
+        gl.uniform2f(sphereProgram.uMouse, mouseX, mouseY);
+        gl.uniform1f(sphereProgram.uTime, time);
+        gl.uniform2f(sphereProgram.uLight0, light0.x, light0.y);
+        gl.uniform2f(sphereProgram.uLight1, light1.x, light1.y);
+        gl.uniform2f(sphereProgram.uLight2, light2.x, light2.y);
         gl.uniform3f(sphereProgram.uLightColor0, lc0[0], lc0[1], lc0[2]);
         gl.uniform3f(sphereProgram.uLightColor1, lc1[0], lc1[1], lc1[2]);
         gl.uniform3f(sphereProgram.uLightColor2, lc2[0], lc2[1], lc2[2]);
