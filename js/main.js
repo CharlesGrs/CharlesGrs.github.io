@@ -1596,11 +1596,11 @@ const sphereFragmentShader = `
     const PARTICLE_COUNT = 1048576; // 1 million particles (2^20)
 
     // Simulation vertex shader - SDF Shape Morphing Particle System
-    // Particles are attracted to the surface of animated SDF shapes
+    // Simplified version with 4 shapes for better GPU compatibility
     const simulationVS = `#version 300 es
         precision highp float;
 
-        in vec4 aPosition;  // xy = position, zw = velocity
+        in vec4 aPosition;
         in float aLife;
 
         out vec4 vPosition;
@@ -1622,75 +1622,32 @@ const sphereFragmentShader = `
         #define PI 3.14159265359
         #define TAU 6.28318530718
 
-        // ========== NOISE FUNCTIONS ==========
         float hash(vec2 p) {
             return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
         }
 
-        vec2 hash2(vec2 p) {
-            p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
-            return fract(sin(p) * 43758.5453);
-        }
-
-        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-        vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-        vec4 permute(vec4 x) { return mod289(((x * 34.0) + 1.0) * x); }
-        vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-
-        float snoise(vec3 v) {
-            const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
-            const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
-            vec3 i = floor(v + dot(v, C.yyy));
-            vec3 x0 = v - i + dot(i, C.xxx);
-            vec3 g = step(x0.yzx, x0.xyz);
-            vec3 l = 1.0 - g;
-            vec3 i1 = min(g.xyz, l.zxy);
-            vec3 i2 = max(g.xyz, l.zxy);
-            vec3 x1 = x0 - i1 + C.xxx;
-            vec3 x2 = x0 - i2 + C.yyy;
-            vec3 x3 = x0 - D.yyy;
-            i = mod289(i);
-            vec4 p = permute(permute(permute(
-                i.z + vec4(0.0, i1.z, i2.z, 1.0))
-                + i.y + vec4(0.0, i1.y, i2.y, 1.0))
-                + i.x + vec4(0.0, i1.x, i2.x, 1.0));
-            float n_ = 0.142857142857;
-            vec3 ns = n_ * D.wyz - D.xzx;
-            vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
-            vec4 x_ = floor(j * ns.z);
-            vec4 y_ = floor(j - 7.0 * x_);
-            vec4 x = x_ * ns.x + ns.yyyy;
-            vec4 y = y_ * ns.x + ns.yyyy;
-            vec4 h = 1.0 - abs(x) - abs(y);
-            vec4 b0 = vec4(x.xy, y.xy);
-            vec4 b1 = vec4(x.zw, y.zw);
-            vec4 s0 = floor(b0) * 2.0 + 1.0;
-            vec4 s1 = floor(b1) * 2.0 + 1.0;
-            vec4 sh = -step(h, vec4(0.0));
-            vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
-            vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
-            vec3 p0 = vec3(a0.xy, h.x);
-            vec3 p1 = vec3(a0.zw, h.y);
-            vec3 p2 = vec3(a1.xy, h.z);
-            vec3 p3 = vec3(a1.zw, h.w);
-            vec4 norm = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));
-            p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
-            vec4 m = max(0.6 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0);
-            m = m * m;
-            return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
+        // Simple noise
+        float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            float a = hash(i);
+            float b = hash(i + vec2(1.0, 0.0));
+            float c = hash(i + vec2(0.0, 1.0));
+            float d = hash(i + vec2(1.0, 1.0));
+            return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
         }
 
         vec2 curlNoise(vec2 p, float t) {
-            float eps = 0.01;
-            float n1 = snoise(vec3(p.x, p.y + eps, t));
-            float n2 = snoise(vec3(p.x, p.y - eps, t));
-            float n3 = snoise(vec3(p.x + eps, p.y, t));
-            float n4 = snoise(vec3(p.x - eps, p.y, t));
-            return vec2((n1 - n2), -(n3 - n4)) / (2.0 * eps);
+            float eps = 0.1;
+            float n1 = noise(vec2(p.x, p.y + eps) + t);
+            float n2 = noise(vec2(p.x, p.y - eps) + t);
+            float n3 = noise(vec2(p.x + eps, p.y) + t);
+            float n4 = noise(vec2(p.x - eps, p.y) + t);
+            return vec2(n1 - n2, -(n3 - n4));
         }
 
-        // ========== SDF PRIMITIVES ==========
-
+        // SDF Primitives
         float sdCircle(vec2 p, float r) {
             return length(p) - r;
         }
@@ -1700,182 +1657,67 @@ const sphereFragmentShader = `
             return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
         }
 
-        float sdTriangle(vec2 p, float r) {
-            const float k = sqrt(3.0);
-            p.x = abs(p.x) - r;
-            p.y = p.y + r / k;
-            if (p.x + k * p.y > 0.0) p = vec2(p.x - k * p.y, -k * p.x - p.y) / 2.0;
-            p.x -= clamp(p.x, -2.0 * r, 0.0);
-            return -length(p) * sign(p.y);
-        }
-
-        float sdStar5(vec2 p, float r, float rf) {
-            const vec2 k1 = vec2(0.809016994375, -0.587785252292);
-            const vec2 k2 = vec2(-k1.x, k1.y);
-            p.x = abs(p.x);
-            p -= 2.0 * max(dot(k1, p), 0.0) * k1;
-            p -= 2.0 * max(dot(k2, p), 0.0) * k2;
-            p.x = abs(p.x);
-            p.y -= r;
-            vec2 ba = rf * vec2(-k1.y, k1.x) - vec2(0, 1);
-            float h = clamp(dot(p, ba) / dot(ba, ba), 0.0, r);
-            return length(p - ba * h) * sign(p.y * ba.x - p.x * ba.y);
+        float sdStar(vec2 p, float r) {
+            float an = PI / 5.0;
+            float en = PI / 2.4;
+            vec2 acs = vec2(cos(an), sin(an));
+            vec2 ecs = vec2(cos(en), sin(en));
+            float bn = mod(atan(p.x, p.y), 2.0 * an) - an;
+            p = length(p) * vec2(cos(bn), abs(sin(bn)));
+            p -= r * acs;
+            p += ecs * clamp(-dot(p, ecs), 0.0, r * acs.y / ecs.y);
+            return length(p) * sign(p.x);
         }
 
         float sdHeart(vec2 p) {
             p.x = abs(p.x);
             if (p.y + p.x > 1.0)
-                return sqrt(dot(p - vec2(0.25, 0.75), p - vec2(0.25, 0.75))) - sqrt(2.0) / 4.0;
-            return sqrt(min(dot(p - vec2(0.0, 1.0), p - vec2(0.0, 1.0)),
-                           dot(p - 0.5 * max(p.x + p.y, 0.0), p - 0.5 * max(p.x + p.y, 0.0))))
-                   * sign(p.x - p.y);
+                return length(p - vec2(0.25, 0.75)) - 0.35;
+            return length(p - vec2(0.0, 1.0)) * 0.5 - 0.5 + p.y * 0.5;
         }
 
-        float sdSpiral(vec2 p, float t) {
-            float r = length(p);
-            float a = atan(p.y, p.x);
-            // Archimedean spiral
-            float spiral = mod(a - r * 8.0 + t * 2.0, TAU) - PI;
-            return abs(spiral) * r * 0.15 - 0.02;
-        }
-
-        float sdInfinity(vec2 p, float s) {
-            p = abs(p);
-            float a = 0.7;
-            vec2 c1 = vec2(s * 0.5, 0.0);
-            float d1 = abs(length(p - c1) - s * 0.35);
-            float d2 = abs(length(p + c1 - vec2(s, 0.0)) - s * 0.35);
-            return min(d1, d2) - 0.02;
-        }
-
-        float sdHexagon(vec2 p, float r) {
-            const vec3 k = vec3(-0.866025404, 0.5, 0.577350269);
-            p = abs(p);
-            p -= 2.0 * min(dot(k.xy, p), 0.0) * k.xy;
-            p -= vec2(clamp(p.x, -k.z * r, k.z * r), r);
-            return length(p) * sign(p.y);
-        }
-
-        // Fractal - Julia set boundary approximation
-        float sdJulia(vec2 p, float t) {
-            vec2 c = vec2(-0.8 + sin(t * 0.3) * 0.2, cos(t * 0.4) * 0.3);
-            vec2 z = p * 1.5;
-            float escape = 0.0;
-            for (int i = 0; i < 12; i++) {
-                z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
-                if (dot(z, z) > 4.0) {
-                    escape = float(i);
-                    break;
-                }
-            }
-            // Distance estimate based on escape iteration
-            return (escape / 12.0 - 0.5) * 0.8;
-        }
-
-        // DNA Helix
-        float sdDNA(vec2 p, float t) {
-            float y = p.y;
-            float wave1 = sin(y * 8.0 + t * 3.0) * 0.3;
-            float wave2 = sin(y * 8.0 + t * 3.0 + PI) * 0.3;
-            float d1 = length(vec2(p.x - wave1, 0.0)) - 0.03;
-            float d2 = length(vec2(p.x - wave2, 0.0)) - 0.03;
-            // Rungs
-            float rung = mod(y * 4.0 + t, 1.0);
-            float rungD = abs(rung - 0.5) < 0.1 ? abs(p.x) - 0.25 : 1.0;
-            return min(min(d1, d2), rungD) - 0.01;
-        }
-
-        // ========== SDF OPERATIONS ==========
-
-        float opSmoothUnion(float d1, float d2, float k) {
-            float h = clamp(0.5 + 0.5 * (d2 - d1) / k, 0.0, 1.0);
-            return mix(d2, d1, h) - k * h * (1.0 - h);
-        }
-
-        float opSmoothSubtraction(float d1, float d2, float k) {
-            float h = clamp(0.5 - 0.5 * (d2 + d1) / k, 0.0, 1.0);
-            return mix(d2, -d1, h) + k * h * (1.0 - h);
-        }
-
-        vec2 opRotate(vec2 p, float a) {
+        vec2 rotate(vec2 p, float a) {
             float c = cos(a), s = sin(a);
             return vec2(c * p.x - s * p.y, s * p.x + c * p.y);
         }
 
-        // ========== ANIMATED COMPOSITE SHAPES ==========
+        // Get animated SDF - cycles through 4 shapes
+        float getSDF(vec2 p, float t) {
+            float scale = 0.5 + sin(t * 0.5) * 0.1;
+            vec2 rp = rotate(p, t * 0.2);
 
-        float getCurrentShape(vec2 p, float t, int shapeIdx) {
-            float scale = 0.5 + sin(t * 0.5) * 0.1; // Breathing effect
-            vec2 rp = opRotate(p, t * 0.2); // Slow rotation
+            float cycleDuration = 6.0;
+            float phase = mod(t, cycleDuration * 4.0) / cycleDuration;
+            int shape = int(floor(phase));
+            float morph = smoothstep(0.7, 1.0, fract(phase));
 
-            if (shapeIdx == 0) {
-                // Morphing star-circle
-                float star = sdStar5(rp, scale * 0.6, 0.4);
-                float circle = sdCircle(p, scale * 0.5);
-                float morph = sin(t * 0.7) * 0.5 + 0.5;
-                return mix(star, circle, morph);
+            float d1, d2;
+
+            if (shape == 0) {
+                d1 = sdCircle(p, scale * 0.5);
+                d2 = sdStar(rp, scale * 0.5);
+            } else if (shape == 1) {
+                d1 = sdStar(rp, scale * 0.5);
+                d2 = sdHeart(p * 2.0 + vec2(0.0, 0.5)) * 0.3;
+            } else if (shape == 2) {
+                d1 = sdHeart(p * 2.0 + vec2(0.0, 0.5)) * 0.3;
+                d2 = sdBox(rp, vec2(scale * 0.4, scale * 0.4));
+            } else {
+                d1 = sdBox(rp, vec2(scale * 0.4, scale * 0.4));
+                d2 = sdCircle(p, scale * 0.5);
             }
-            else if (shapeIdx == 1) {
-                // Pulsing heart
-                vec2 hp = p * 1.5 + vec2(0.0, 0.3);
-                return sdHeart(hp) * 0.4 * scale;
-            }
-            else if (shapeIdx == 2) {
-                // Spiral galaxy
-                return sdSpiral(p, t);
-            }
-            else if (shapeIdx == 3) {
-                // Julia fractal
-                return sdJulia(p, t);
-            }
-            else if (shapeIdx == 4) {
-                // Infinity symbol
-                return sdInfinity(rp, scale);
-            }
-            else if (shapeIdx == 5) {
-                // DNA helix
-                return sdDNA(p, t);
-            }
-            else if (shapeIdx == 6) {
-                // Hexagon grid
-                vec2 hp = mod(p + 0.3, 0.6) - 0.3;
-                return sdHexagon(hp, 0.12);
-            }
-            else {
-                // Triangle to box morph
-                float tri = sdTriangle(rp, scale * 0.5);
-                float box = sdBox(rp, vec2(scale * 0.4));
-                float morph = sin(t * 0.6) * 0.5 + 0.5;
-                return mix(tri, box, morph);
-            }
+
+            return mix(d1, d2, morph);
         }
 
-        // Get SDF with smooth morphing between shapes
-        float getAnimatedSDF(vec2 p, float t) {
-            float cycleDuration = 8.0;
-            float totalShapes = 8.0;
-            float cycleTime = mod(t, cycleDuration * totalShapes);
-
-            int currentShape = int(floor(cycleTime / cycleDuration));
-            int nextShape = int(mod(float(currentShape + 1), totalShapes));
-            float morphProgress = fract(cycleTime / cycleDuration);
-
-            // Smooth step for morphing
-            float smooth = smoothstep(0.3, 0.7, morphProgress);
-
-            float d1 = getCurrentShape(p, t, currentShape);
-            float d2 = getCurrentShape(p, t, nextShape);
-
-            return mix(d1, d2, smooth);
-        }
-
-        // Calculate SDF gradient (normal direction)
+        // Gradient of SDF
         vec2 sdfGradient(vec2 p, float t) {
-            float eps = 0.005;
-            float d = getAnimatedSDF(p, t);
-            float dx = getAnimatedSDF(p + vec2(eps, 0.0), t) - d;
-            float dy = getAnimatedSDF(p + vec2(0.0, eps), t) - d;
-            return normalize(vec2(dx, dy) + vec2(0.0001));
+            float eps = 0.01;
+            float d = getSDF(p, t);
+            return normalize(vec2(
+                getSDF(p + vec2(eps, 0.0), t) - d,
+                getSDF(p + vec2(0.0, eps), t) - d
+            ) + 0.0001);
         }
 
         void main() {
@@ -1889,106 +1731,64 @@ const sphereFragmentShader = `
 
             float particleHash = hash(pos + vec2(life));
 
-            // ========== SDF SHAPE ATTRACTION ==========
+            // SDF attraction
+            float sdf = getSDF(pos, uTime);
+            vec2 grad = sdfGradient(pos, uTime);
 
-            float sdf = getAnimatedSDF(pos, uTime);
-            vec2 gradient = sdfGradient(pos, uTime);
+            // Attract to surface
+            force -= grad * sdf * uAttraction * 1.5;
 
-            // Attraction to surface (where sdf = 0)
-            float attractStrength = uAttraction * 1.5;
+            // Flow along surface
+            vec2 tangent = vec2(-grad.y, grad.x);
+            float flowDir = particleHash > 0.5 ? 1.0 : -1.0;
+            force += tangent * (0.15 + particleHash * 0.1) * flowDir;
 
-            // Push toward surface
-            force -= gradient * sdf * attractStrength;
+            // Noise
+            force += curlNoise(pos * 3.0, uTime * 0.3) * uTurbulence * 0.1;
 
-            // Tangent flow along surface (perpendicular to gradient)
-            vec2 tangent = vec2(-gradient.y, gradient.x);
-            float flowSpeed = 0.15 + particleHash * 0.1;
-            float flowDir = (particleHash > 0.5) ? 1.0 : -1.0; // Some particles flow opposite
-            force += tangent * flowSpeed * flowDir;
-
-            // Add noise for organic movement
-            vec2 noise = curlNoise(pos * 3.0 + vec2(particleHash * 10.0), uTime * 0.5);
-            force += noise * uTurbulence * 0.15;
-
-            // Slight outward pressure when too close to prevent collapse
-            if (abs(sdf) < 0.02) {
-                force += gradient * 0.1 * sign(sdf);
+            // Prevent collapse
+            if (abs(sdf) < 0.03) {
+                force += grad * 0.1 * sign(sdf);
             }
 
-            // ========== MOUSE INTERACTION ==========
-
+            // Mouse repulsion
             vec2 toMouse = pos - mousePos;
             float mouseDist = length(toMouse);
-
-            // Mouse repels particles
             float repelRadius = 0.4 + uMouseDown * 0.3;
+
             if (mouseDist < repelRadius) {
-                float repelStrength = (1.0 - mouseDist / repelRadius);
-                repelStrength = repelStrength * repelStrength * 2.0;
-                force += normalize(toMouse + vec2(0.001)) * repelStrength * (1.0 + uMouseDown * 2.0);
-
-                // Add swirl around mouse
-                vec2 swirl = vec2(-toMouse.y, toMouse.x);
-                force += swirl * repelStrength * 0.5;
+                float str = (1.0 - mouseDist / repelRadius);
+                str = str * str * 2.0;
+                force += normalize(toMouse + 0.001) * str * (1.0 + uMouseDown * 2.0);
+                force += vec2(-toMouse.y, toMouse.x) * str * 0.5;
             }
 
-            // Moving mouse creates wake
-            float mouseSpeed = length(uMouseVel);
-            if (mouseSpeed > 0.001) {
-                vec2 mouseDir = uMouseVel / mouseSpeed;
-                vec2 perpDir = vec2(-mouseDir.y, mouseDir.x);
-                float behind = dot(toMouse, -mouseDir);
-                float across = dot(toMouse, perpDir);
-
-                if (behind > 0.0 && behind < 0.5 && abs(across) < 0.2) {
-                    float wake = exp(-behind * 5.0) * exp(-across * across * 20.0);
-                    force += perpDir * sin(behind * 30.0 - uTime * 10.0) * wake * mouseSpeed * 2.0;
-                }
-            }
-
-            // ========== BURST EFFECT ==========
+            // Burst effect
             if (uBurst > 0.0) {
                 vec2 burstCenter = uBurstPos * 2.0 - 1.0;
                 vec2 fromBurst = pos - burstCenter;
                 float burstDist = length(fromBurst);
-
-                float ringRadius = uBurst * 0.5;
-                float ringDist = abs(burstDist - ringRadius);
-                if (ringDist < 0.15) {
-                    force += normalize(fromBurst + vec2(0.001)) * (0.15 - ringDist) * uBurst * 8.0;
-                }
-
-                if (burstDist < 0.2) {
-                    force += normalize(fromBurst + vec2(0.001)) * uBurst * (0.2 - burstDist) * 5.0;
+                if (burstDist < 0.3) {
+                    force += normalize(fromBurst + 0.001) * uBurst * (0.3 - burstDist) * 5.0;
                 }
             }
 
-            // ========== PHYSICS UPDATE ==========
-
+            // Physics
             vel += force * dt;
-
-            // Damping
             vel *= 0.96;
 
-            // Velocity limit
             float speed = length(vel);
-            if (speed > 0.6) {
-                vel = vel / speed * 0.6;
-            }
+            if (speed > 0.6) vel = vel / speed * 0.6;
 
             pos += vel * dt;
 
-            // Soft boundary - respawn at random position
-            float boundary = 1.3;
-            if (abs(pos.x) > boundary || abs(pos.y) > boundary) {
-                // Respawn near the shape surface
-                float angle = hash(pos + vec2(uTime)) * TAU;
-                float radius = 0.3 + hash(pos.yx + vec2(uTime)) * 0.4;
-                pos = vec2(cos(angle), sin(angle)) * radius;
+            // Boundary
+            if (abs(pos.x) > 1.3 || abs(pos.y) > 1.3) {
+                float angle = hash(pos + uTime) * TAU;
+                pos = vec2(cos(angle), sin(angle)) * (0.3 + hash(pos.yx) * 0.4);
                 vel *= 0.1;
             }
 
-            // Life cycles with speed influence
             life = mod(life + dt * 0.1 + speed * 0.1, 1.0);
 
             vPosition = vec4(pos, vel);
