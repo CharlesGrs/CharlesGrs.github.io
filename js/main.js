@@ -1544,7 +1544,12 @@ const sphereFragmentShader = `
     }
 
     function animate() { time += 0.04; draw(); requestAnimationFrame(animate); }
-    animate();
+    // Defer favicon animation to after page load for better LCP
+    if (document.readyState === 'complete') {
+        animate();
+    } else {
+        window.addEventListener('load', animate, { once: true });
+    }
 })();
 
 // ============================================
@@ -1605,7 +1610,7 @@ const sphereFragmentShader = `
     // ============================================
     // TRANSFORM FEEDBACK PARTICLE SYSTEM (WebGL 2)
     // ============================================
-    const PARTICLE_COUNT = 1048576; // 1 million particles (2^20)
+    const PARTICLE_COUNT = 524288; // 500k particles (2^19) - reduced for faster init
 
     // Simulation vertex shader - SDF Shape Morphing Particle System
     // Simplified version with 4 shapes for better GPU compatibility
@@ -2773,13 +2778,26 @@ ${converted.substring(mainIndex)}`;
         }
     }
 
-    // Tab activation handling
+    // Tab activation handling - DEFER heavy initialization until first activation
+    let hasInitialized = false;
     const playgroundPanel = document.getElementById('panel-playground');
+
+    function initializePlayground() {
+        if (hasInitialized) return;
+        hasInitialized = true;
+        console.log('Initializing playground on first activation...');
+        resize();
+        initParticleSystem();
+        initShaderPrograms();
+        updateControlsVisibility();
+    }
+
     if (playgroundPanel) {
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 if (mutation.attributeName === 'class') {
                     if (playgroundPanel.classList.contains('active')) {
+                        initializePlayground();
                         start();
                     } else {
                         stop();
@@ -2788,40 +2806,31 @@ ${converted.substring(mainIndex)}`;
             });
         });
         observer.observe(playgroundPanel, { attributes: true });
+
+        // Only initialize immediately if already active (unlikely on page load)
+        if (playgroundPanel.classList.contains('active')) {
+            initializePlayground();
+            start();
+        }
     }
 
-    // Initialize
-    resize();
-    initParticleSystem();
-    initShaderPrograms();
-    updateControlsVisibility();
-
-    // If WebGL 2 not available or particle system failed, fallback to first shader effect
-    if (!isWebGL2 || !particleSystem) {
+    // If WebGL 2 not available, set fallback UI immediately
+    if (!isWebGL2) {
         currentShader = 'voronoi';
         const particlesBtn = document.querySelector('.shader-btn[data-shader="particles"]');
         const voronoiBtn = document.querySelector('.shader-btn[data-shader="voronoi"]');
 
         if (particlesBtn) {
             particlesBtn.classList.remove('active');
-            // Optionally disable the button if particles aren't available
-            if (!particleSystem) {
-                particlesBtn.disabled = true;
-                particlesBtn.title = 'Requires WebGL 2';
-            }
+            particlesBtn.disabled = true;
+            particlesBtn.title = 'Requires WebGL 2';
         }
         if (voronoiBtn) {
             voronoiBtn.classList.add('active');
         }
 
-        updateControlsVisibility();
-
         if (particleDisplay) {
-            if (!isWebGL2) {
-                particleDisplay.textContent = 'WebGL 2 not available';
-            } else if (!particleSystem) {
-                particleDisplay.textContent = 'Particle system unavailable';
-            }
+            particleDisplay.textContent = 'WebGL 2 not available';
         }
     }
 })();
