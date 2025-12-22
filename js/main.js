@@ -307,21 +307,84 @@ const sphereFragmentShader = `
         planetColor = mix(planetColor, gray, .8);
         planetColor *= 0.9 + sin(varSeed * 3.7) * 0.15;
 
-        float planetMask = 1.0 - smoothstep(planetRadius - 0.0002, planetRadius, d);
+        // ========================================
+        // TERRAIN HEIGHTMAP - computed first to deform planet shape
+        // ========================================
+        vec2 heightCoord = uv * 2.5 + vIndex * 10.0;
+        float eps = 0.06;
+
+        // Biome type based on planet index (cycles through 3 types)
+        // 0 = Oceanic (lots of water, green land)
+        // 1 = Desert (little water, sand everywhere)
+        // 2 = Mountain/Ice (moderate water, ice on peaks)
+        float biomeSelector = mod(vIndex, 3.0);
+        float isOceanic = step(0.5, 1.0 - abs(biomeSelector - 0.0));
+        float isDesert = step(0.5, 1.0 - abs(biomeSelector - 1.0));
+        float isMountain = step(0.5, 1.0 - abs(biomeSelector - 2.0));
+
+        // Multi-octave height for terrain - large continental shapes + detail
+        float heightC = snoise(heightCoord) * 0.6
+                      + snoise(heightCoord * 2.0 + 1.5) * 0.25
+                      + snoise(heightCoord * 4.0 + 3.0) * 0.15;
+        float heightX = snoise(heightCoord + vec2(eps, 0.0)) * 0.6
+                      + snoise((heightCoord + vec2(eps, 0.0)) * 2.0 + 1.5) * 0.25
+                      + snoise((heightCoord + vec2(eps, 0.0)) * 4.0 + 3.0) * 0.15;
+        float heightY = snoise(heightCoord + vec2(0.0, eps)) * 0.6
+                      + snoise((heightCoord + vec2(0.0, eps)) * 2.0 + 1.5) * 0.25
+                      + snoise((heightCoord + vec2(0.0, eps)) * 4.0 + 3.0) * 0.15;
+
+        // Sea level varies per biome
+        // Oceanic: low sea level = more water
+        // Desert: very low sea level = almost no water (just oases)
+        // Mountain: medium sea level = moderate water
+        float seaLevel = -0.05 * isOceanic + -0.45 * isDesert + 0.0 * isMountain;
+        float oceanMask = smoothstep(seaLevel + 0.08, seaLevel - 0.02, heightC);
+
+        // Deform planet radius based on terrain height
+        // Higher terrain = larger radius (mountains bulge out)
+        // Clamp land height to positive values for displacement
+        float landHeight = max(heightC - seaLevel, 0.0);
+
+        // Mountain biome: apply power function for sharper peaks but clamped to stay within bounds
+        float mountainHeight = pow(min(landHeight, 0.6) * 1.2, 1.8) * 0.08; // Clamped exponential for sharp but contained peaks
+        float normalHeight = landHeight * 0.04;
+        float terrainDisplacement = normalHeight * (1.0 - isMountain) + mountainHeight * isMountain;
+        // Clamp maximum displacement to 15% of planet radius
+        terrainDisplacement = min(terrainDisplacement, planetRadius * 0.15);
+        float deformedRadius = planetRadius + terrainDisplacement;
+
+        // Planet mask with height-deformed edge
+        float planetMask = 1.0 - smoothstep(deformedRadius - 0.003, deformedRadius + 0.001, d);
         float zSq = planetRadius * planetRadius - d * d;
         float z = zSq > 0.0 ? sqrt(zSq) : 0.0;
-        vec3 baseN = d < planetRadius ? normalize(vec3(uv, z)) : vec3(0.0, 0.0, 1.0);
+        vec3 baseN = d < deformedRadius ? normalize(vec3(uv, z)) : vec3(0.0, 0.0, 1.0);
         vec3 V = vec3(0.0, 0.0, 1.0);
 
-        // Rocky normal perturbation using simplex noise - large scale for small planets
-        vec2 noiseCoord = uv * 3.0 + vIndex * 10.0;
-        float eps = 0.08;
-        float nC = snoise(noiseCoord);
-        float nX = snoise(noiseCoord + vec2(eps, 0.0));
-        float nY = snoise(noiseCoord + vec2(0.0, eps));
-        float nx = (nX - nC) / eps * 0.05;
-        float ny = (nY - nC) / eps * 0.05;
-        vec3 N = normalize(baseN + vec3(nx, ny, 0.0) * planetMask);
+        // Compute terrain normals from heightmap gradient
+        // Flip sign so higher terrain creates outward-facing normals
+        // Mountain biome gets stronger normals for dramatic peaks
+        float normalStrength = 0.12 * (1.0 - isMountain) + 0.35 * isMountain;
+        float terrainNx = -(heightX - heightC) / eps * normalStrength;
+        float terrainNy = -(heightY - heightC) / eps * normalStrength;
+
+        // Ocean wave normal deformation - subtle animated ripples
+        vec2 waveCoord = uv * 12.0 + vIndex * 5.0;
+        float waveSpeed = t * 0.2;
+        float wave1 = snoise(waveCoord + vec2(waveSpeed, waveSpeed * 0.7));
+        float wave2 = snoise(waveCoord * 1.3 - vec2(waveSpeed * 0.6, waveSpeed * 0.9) + 2.5);
+        float waveEps = 0.03;
+        float waveC = (wave1 + wave2 * 0.6);
+        float waveX = snoise(waveCoord + vec2(waveEps, 0.0) + vec2(waveSpeed, waveSpeed * 0.7))
+                    + snoise((waveCoord + vec2(waveEps, 0.0)) * 1.3 - vec2(waveSpeed * 0.6, waveSpeed * 0.9) + 2.5) * 0.6;
+        float waveY = snoise(waveCoord + vec2(0.0, waveEps) + vec2(waveSpeed, waveSpeed * 0.7))
+                    + snoise((waveCoord + vec2(0.0, waveEps)) * 1.3 - vec2(waveSpeed * 0.6, waveSpeed * 0.9) + 2.5) * 0.6;
+        float waveNx = (waveX - waveC) / waveEps * 0.012;
+        float waveNy = (waveY - waveC) / waveEps * 0.012;
+
+        // Land uses terrain heightmap normals, ocean uses flat base + subtle waves
+        vec3 landNormal = baseN + vec3(terrainNx, terrainNy, 0.0);
+        vec3 oceanNormal = baseN + vec3(waveNx, waveNy, 0.0);
+        vec3 N = normalize(mix(landNormal, oceanNormal, oceanMask) * planetMask + baseN * (1.0 - planetMask));
 
         vec3 totalDiffuse = vec3(0.0);
         vec3 totalSpecular = vec3(0.0);
@@ -459,14 +522,98 @@ const sphereFragmentShader = `
         // PLANET SURFACE RENDERING
         // ========================================
         vec3 col = vec3(0.0);
-        vec3 surfaceColor = planetColor * 0.85;
-        col += surfaceColor * totalDiffuse * 1.5 * planetMask;
-        col += planetColor * totalSpecular * 0.3 * planetMask;
+
+        // Ocean color - deep blue with depth variation based on terrain height
+        vec3 oceanColor = vec3(0.05, 0.15, 0.35);
+        float oceanDepth = smoothstep(seaLevel - 0.3, seaLevel, heightC);
+        oceanColor = mix(vec3(0.02, 0.08, 0.2), vec3(0.1, 0.25, 0.45), oceanDepth);
+
+        // ========================================
+        // BIOME-SPECIFIC SURFACE COLORS
+        // ========================================
+
+        // --- OCEANIC BIOME: Green land with white sand beaches ---
+        vec3 oceanicLand = vec3(0.15, 0.45, 0.2);
+        oceanicLand = mix(oceanicLand, vec3(0.1, 0.35, 0.15), smoothstep(0.1, 0.4, heightC));
+        vec3 oceanicSand = vec3(0.95, 0.9, 0.75);
+        float oceanicSandMask = smoothstep(seaLevel, seaLevel + 0.03, heightC) * smoothstep(seaLevel + 0.08, seaLevel + 0.03, heightC);
+        vec3 oceanicSurface = mix(oceanicLand, oceanicSand, oceanicSandMask);
+
+        // --- DESERT BIOME: Sand everywhere with rocky outcrops ---
+        vec3 desertSand = vec3(0.85, 0.7, 0.45); // Golden sand base
+        vec3 desertRock = vec3(0.55, 0.4, 0.3);  // Brown rocky areas
+        vec3 desertDark = vec3(0.7, 0.55, 0.35); // Darker sand in valleys
+        // Blend based on height - valleys are darker sand, peaks are rocky
+        float rockMask = smoothstep(0.2, 0.5, heightC);
+        vec3 desertSurface = mix(desertDark, desertSand, smoothstep(-0.3, 0.1, heightC));
+        desertSurface = mix(desertSurface, desertRock, rockMask);
+        // Small oasis water is more turquoise in desert
+        vec3 desertWater = vec3(0.1, 0.4, 0.45);
+        oceanColor = mix(oceanColor, desertWater, isDesert);
+
+        // --- MOUNTAIN/ICE BIOME: Rocky with ice caps ---
+        vec3 mountainRock = vec3(0.35, 0.32, 0.3);  // Gray rock base
+        vec3 mountainGrass = vec3(0.2, 0.35, 0.2); // Some grass at low altitudes
+        vec3 mountainSnow = vec3(0.95, 0.97, 1.0); // White ice/snow
+        // Height-based layering: grass -> rock -> snow
+        float grassMask = smoothstep(seaLevel, seaLevel + 0.15, heightC) * smoothstep(0.2, 0.1, heightC);
+        float snowMask = smoothstep(0.25, 0.45, heightC);
+        vec3 mountainSurface = mountainRock;
+        mountainSurface = mix(mountainSurface, mountainGrass, grassMask);
+        mountainSurface = mix(mountainSurface, mountainSnow, snowMask);
+        // Thin sand/gravel beach at water edge
+        vec3 mountainBeach = vec3(0.6, 0.55, 0.5);
+        float mountainBeachMask = smoothstep(seaLevel, seaLevel + 0.02, heightC) * smoothstep(seaLevel + 0.06, seaLevel + 0.02, heightC);
+        mountainSurface = mix(mountainSurface, mountainBeach, mountainBeachMask);
+
+        // Select biome surface color
+        vec3 landColor = oceanicSurface * isOceanic + desertSurface * isDesert + mountainSurface * isMountain;
+
+        // Blend land with ocean
+        vec3 surfaceColor = mix(landColor, oceanColor, oceanMask);
+
+        // Diffuse lighting - reduced for ocean (darker water)
+        float diffuseStrength = mix(1.5, 0.8, oceanMask);
+        col += surfaceColor * totalDiffuse * diffuseStrength * planetMask;
+
+        // Specular - higher for ocean (reflective water) and ice (mountain peaks)
+        float iceSpecular = snowMask * isMountain * 1.8; // Ice is very reflective
+        float specStrength = mix(0.3 + iceSpecular, 2.5, oceanMask);
+        vec3 specColor = mix(planetColor, vec3(1.0), max(oceanMask * 0.7, snowMask * isMountain * 0.9));
+        col += specColor * totalSpecular * specStrength * planetMask;
+
+        // Ocean SSS - translucent turquoise subsurface scattering
+        vec3 sssColor = vec3(0.15, 0.6, 0.65); // Turquoise/cyan tint
+        // Tighter wrap for focused translucency effect
+        float sssWrap = 0.15;
+        // Back-lighting component - light shining through from behind
+        float backLight0 = pow(max(0.0, -dot(N, L0) * 0.5 + 0.5), 3.0);
+        float backLight1 = pow(max(0.0, -dot(N, L1) * 0.5 + 0.5), 3.0);
+        float backLight2 = pow(max(0.0, -dot(N, L2) * 0.5 + 0.5), 3.0);
+        float backLightMouse = pow(max(0.0, -dot(N, mouseL) * 0.5 + 0.5), 3.0);
+        // Wrap lighting for edge translucency
+        float sssNdL0 = pow(max(0.0, (dot(N, L0) + sssWrap) / (1.0 + sssWrap)), 1.5);
+        float sssNdL1 = pow(max(0.0, (dot(N, L1) + sssWrap) / (1.0 + sssWrap)), 1.5);
+        float sssNdL2 = pow(max(0.0, (dot(N, L2) + sssWrap) / (1.0 + sssWrap)), 1.5);
+        float sssMouseNdL = pow(max(0.0, (dot(N, mouseL) + sssWrap) / (1.0 + sssWrap)), 1.5);
+        // Combine wrap and backlight for translucent look
+        vec3 sss = sssColor * (
+            uLightColor0 * (sssNdL0 * 0.6 + backLight0 * 1.2) * atten0 +
+            uLightColor1 * (sssNdL1 * 0.6 + backLight1 * 1.2) * atten1 +
+            uLightColor2 * (sssNdL2 * 0.6 + backLight2 * 1.2) * atten2 +
+            vec3(1.0) * (sssMouseNdL * 0.6 + backLightMouse * 1.2) * mouseAtten
+        ) * 2.0;
+        // Apply SSS only to ocean areas
+        col += sss * oceanMask * planetMask;
+
+        // Ambient
         col += surfaceColor * 0.02 * planetMask;
 
         // Fresnel rim on surface - enhanced to blend with atmosphere
         float fresnel = pow(1.0 - NdV, 3.0) * planetMask;
-        col += planetColor * fresnel * totalAttenuation * 0.15;
+        // Ocean gets stronger fresnel reflection
+        float fresnelStrength = mix(0.15, 0.4, oceanMask);
+        col += mix(planetColor, vec3(0.6, 0.8, 1.0), oceanMask) * fresnel * totalAttenuation * fresnelStrength;
         col += planetColor * vGlow * (0.15 + fresnel * 0.3);
 
         // Blend atmosphere with surface at the limb
@@ -486,6 +633,56 @@ const sphereFragmentShader = `
         alpha *= outerFade;
         alpha *= smoothstep(0.0, 0.5, ap);
         alpha *= vAlpha;
+
+        // ========================================
+        // ASTEROIDS - orbiting around desert planets
+        // ========================================
+        if (isDesert > 0.5) {
+            float orbitRadius = planetRadius * 1.5;
+            float asteroidSize = planetRadius * 0.095;
+
+            // Multiple asteroids at different orbit phases
+            for (int i = 0; i < 4; i++) {
+                float fi = float(i);
+                float phase = fi * 1.5708; // PI/2 spacing
+                float orbitSpeed = 0.25 + fi * 0.06;
+                float asteroidAngle = t * orbitSpeed + phase + vIndex * 2.0;
+
+                // Elliptical orbit with some variation
+                float orbitA = orbitRadius * (1.0 + fi * 0.1);
+                float orbitB = orbitRadius * (0.6 + fi * 0.08);
+                vec2 asteroidPos = vec2(
+                    cos(asteroidAngle) * orbitA,
+                    sin(asteroidAngle) * orbitB
+                );
+
+                // Vary asteroid size per asteroid
+                float thisSize = asteroidSize * (0.5 + fi * 0.2);
+
+                // Irregular asteroid shape using noise
+                vec2 asteroidUV = (uv - asteroidPos) / thisSize;
+                float asteroidNoise = snoise(asteroidUV * 3.0 + fi * 5.0) * 0.25;
+                float asteroidShape = length(asteroidUV) - (1.0 + asteroidNoise);
+                float asteroidMask = 1.0 - smoothstep(-0.15, 0.05, asteroidShape);
+
+                // Simple lighting for asteroid
+                vec3 asteroidN = normalize(vec3(asteroidUV * 0.8, sqrt(max(0.0, 1.0 - dot(asteroidUV, asteroidUV) * 0.7))));
+                float asteroidLight = max(0.0, dot(asteroidN, normalize(vec3(0.5, 0.5, 1.0))));
+
+                // Rocky brown/gray asteroid color
+                vec3 asteroidColor = vec3(0.35, 0.3, 0.25) * (0.4 + asteroidLight * 0.6);
+                asteroidColor += vec3(0.08, 0.06, 0.04) * snoise(asteroidUV * 6.0 + fi);
+
+                // Tone map asteroid
+                asteroidColor = asteroidColor / (asteroidColor + vec3(0.7));
+
+                // Hide asteroid when behind planet (simple depth test)
+                float inFront = step(planetRadius * 0.9, length(asteroidPos));
+
+                col = mix(col, asteroidColor, asteroidMask * inFront);
+                alpha = max(alpha, asteroidMask * 0.85 * inFront);
+            }
+        }
 
         gl_FragColor = vec4(col, alpha);
     }
@@ -1590,6 +1787,89 @@ const godRaysFragmentShader = `
         tooltip.classList.remove('visible');
         tooltipTarget = null; showcaseActive = false; showcaseNode = null;
     });
+
+    // ========================================
+    // LIGHT CONTROLS UI
+    // ========================================
+    const lightControls = document.getElementById('light-controls');
+    const lightControlsToggle = document.getElementById('light-controls-toggle');
+    const lightResetBtn = document.getElementById('light-reset-btn');
+    const lightColorInputs = [
+        document.getElementById('light-color-0'),
+        document.getElementById('light-color-1'),
+        document.getElementById('light-color-2')
+    ];
+    const lightPreviews = [
+        document.getElementById('light-preview-0'),
+        document.getElementById('light-preview-1'),
+        document.getElementById('light-preview-2')
+    ];
+
+    // Default colors for reset
+    const defaultLightColors = ['#e8b923', '#2dd4bf', '#E6319F'];
+
+    // Get light nodes (primary skill nodes)
+    const lightNodeIds = ['unity', 'csharp', 'hlsl'];
+
+    function updateLightColor(index, color) {
+        const node = nodes.find(n => n.id === lightNodeIds[index]);
+        if (node) {
+            node.lightColor = color;
+            node.color = color;
+        }
+        if (lightPreviews[index]) {
+            lightPreviews[index].style.backgroundColor = color;
+            lightPreviews[index].style.color = color;
+        }
+        if (lightColorInputs[index]) {
+            lightColorInputs[index].value = color;
+        }
+    }
+
+    // Initialize preview colors
+    lightNodeIds.forEach((id, i) => {
+        const node = nodes.find(n => n.id === id);
+        if (node && lightPreviews[i]) {
+            lightPreviews[i].style.backgroundColor = node.lightColor;
+            lightPreviews[i].style.color = node.lightColor;
+        }
+        if (node && lightColorInputs[i]) {
+            lightColorInputs[i].value = node.lightColor;
+        }
+    });
+
+    // Toggle panel
+    if (lightControlsToggle) {
+        lightControlsToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            lightControls.classList.toggle('active');
+        });
+    }
+
+    // Close panel when clicking outside
+    document.addEventListener('click', (e) => {
+        if (lightControls && !lightControls.contains(e.target)) {
+            lightControls.classList.remove('active');
+        }
+    });
+
+    // Color input handlers
+    lightColorInputs.forEach((input, i) => {
+        if (input) {
+            input.addEventListener('input', (e) => {
+                updateLightColor(i, e.target.value);
+            });
+        }
+    });
+
+    // Reset button
+    if (lightResetBtn) {
+        lightResetBtn.addEventListener('click', () => {
+            defaultLightColors.forEach((color, i) => {
+                updateLightColor(i, color);
+            });
+        });
+    }
 
     animate();
 })();
