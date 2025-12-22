@@ -222,6 +222,50 @@ body {
     }
 }
 
+/* Version Badge */
+.version-badge {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    padding: 0.4rem 0.7rem;
+    background: rgba(21, 29, 38, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    z-index: 100;
+    transition: all 0.3s ease;
+    cursor: default;
+    user-select: none;
+}
+
+.version-badge:hover {
+    border-color: var(--accent-gold-dim);
+    color: var(--text-secondary);
+}
+
+.version-badge span {
+    color: var(--accent-gold-dim);
+}
+
+@media (max-width: 900px) {
+    .version-badge {
+        bottom: 1rem;
+        right: 1rem;
+        padding: 0.3rem 0.5rem;
+        font-size: 0.55rem;
+    }
+}
+
+@media print {
+    .version-badge {
+        display: none !important;
+    }
+}
+
 .container {
     max-width: 1200px;
     margin: 0 auto;
