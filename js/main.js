@@ -2,6 +2,18 @@
 // All interactive functionality for the portfolio site
 
 // ============================================
+// CACHED WINDOW DIMENSIONS (avoid forced reflow)
+// ============================================
+let cachedWindowWidth = window.innerWidth;
+let cachedWindowHeight = window.innerHeight;
+
+// Update cache on resize (debounced elsewhere)
+window.addEventListener('resize', () => {
+    cachedWindowWidth = window.innerWidth;
+    cachedWindowHeight = window.innerHeight;
+}, { passive: true });
+
+// ============================================
 // SHADER DEFINITIONS
 // ============================================
 
@@ -331,16 +343,16 @@ const sphereFragmentShader = `
         alpha: true
     });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(cachedWindowWidth, cachedWindowHeight);
 
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
     const mouse = { x: 0.5, y: 0.5, targetX: 0.5, targetY: 0.5 };
     document.addEventListener('mousemove', (e) => {
-        mouse.targetX = e.clientX / window.innerWidth;
-        mouse.targetY = 1.0 - e.clientY / window.innerHeight;
-    });
+        mouse.targetX = e.clientX / cachedWindowWidth;
+        mouse.targetY = 1.0 - e.clientY / cachedWindowHeight;
+    }, { passive: true });
 
     const geometry = new THREE.PlaneGeometry(2, 2);
     const material = new THREE.ShaderMaterial({
@@ -349,7 +361,7 @@ const sphereFragmentShader = `
         uniforms: {
             uTime: { value: 0 },
             uMouse: { value: new THREE.Vector2(0.5, 0.5) },
-            uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
+            uResolution: { value: new THREE.Vector2(cachedWindowWidth, cachedWindowHeight) }
         },
         transparent: true,
         depthWrite: false
@@ -1266,7 +1278,7 @@ const sphereFragmentShader = `
     const dots = dotsContainer.querySelectorAll('.portfolio-dot');
 
     function updateCarousel() {
-        const isMobile = window.innerWidth <= 900;
+        const isMobile = cachedWindowWidth <= 900;
         if (isMobile) {
             items.forEach((item) => { item.style.transform = ''; item.style.opacity = ''; item.style.zIndex = ''; item.style.pointerEvents = ''; });
             return;

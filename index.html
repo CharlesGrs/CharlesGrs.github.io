@@ -76,18 +76,20 @@
     <title>Charles Grassi | Graphics Programmer & Technical Artist</title>
     <link rel="icon" type="image/png" id="favicon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABISURBVFhH7c0xAQAgDMCwgX/PYAdxdkGxSPquzj47AAAAAAAAAADABw+wAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAsw1HUBKABKOl4R5FAAAAAASUVORK5CYII=">
 
-    <!-- Preload Critical Resources -->
-    <link rel="preload" href="css/styles.css" as="style">
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" as="style">
+    <!-- Preconnect to critical origins (must be early in head) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="dns-prefetch" href="https://cdna.artstation.com">
     <link rel="dns-prefetch" href="https://cdnb.artstation.com">
+    <link rel="dns-prefetch" href="https://cdn.artstation.com">
 
+    <!-- Load fonts -->
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- Defer Three.js to eliminate render-blocking -->
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
     <!-- Skip to main content link for accessibility -->
@@ -622,6 +624,6 @@
         </footer>
     </div>
 
-    <script src="js/main.js"></script>
+    <script defer src="js/main.js"></script>
 </body>
 </html>
