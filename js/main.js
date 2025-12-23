@@ -2768,12 +2768,8 @@ const spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
     });
 
     window.addEventListener('resize', resize);
-    // Don't init WebGL by default - wait for graph view toggle
+    initSphereGL();
     resize();
-
-    // Expose init function for view toggle
-    window.initSkillGraphWebGL = initSphereGL;
-    window.skillGraphResize = resize;
 
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
@@ -4369,6 +4365,7 @@ const spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
     const graphView = document.getElementById('skills-graph-view');
     const listView = document.getElementById('skills-list-view');
     const shaderControls = document.getElementById('shader-controls-container');
+    const skillsPanel = document.getElementById('panel-skills');
 
     if (!viewToggleBtns.length || !graphView || !listView) return;
 
@@ -4382,7 +4379,7 @@ const spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
         btn.addEventListener('click', () => {
             const view = btn.dataset.view;
 
-            // Update button states (only view toggle buttons)
+            // Update button states
             viewToggleBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
@@ -4390,23 +4387,24 @@ const spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
             if (view === 'graph') {
                 graphView.classList.add('active');
                 listView.classList.remove('active');
-                // Show shader controls in graph view
+                // Enable fullscreen mode for graph
+                if (skillsPanel) {
+                    skillsPanel.classList.add('graph-active');
+                }
+                // Show shader controls
                 if (shaderControls) {
                     shaderControls.style.display = '';
                 }
-                // Initialize WebGL if not already done
-                if (window.initSkillGraphWebGL && !window.skillGraphWebGLInitialized) {
-                    window.initSkillGraphWebGL();
-                    window.skillGraphWebGLInitialized = true;
-                }
-                // Trigger resize after DOM updates (slight delay for layout)
-                requestAnimationFrame(() => {
-                    window.dispatchEvent(new Event('resize'));
-                });
+                // Trigger resize for canvas
+                window.dispatchEvent(new Event('resize'));
             } else {
                 graphView.classList.remove('active');
                 listView.classList.add('active');
-                // Hide shader controls in list view
+                // Disable fullscreen mode for list
+                if (skillsPanel) {
+                    skillsPanel.classList.remove('graph-active');
+                }
+                // Hide shader controls
                 if (shaderControls) {
                     shaderControls.style.display = 'none';
                 }
