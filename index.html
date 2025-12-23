@@ -106,7 +106,7 @@
     </div>
 
     <!-- Version Badge -->
-    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.11</span></div>
+    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.12</span></div>
 
     <a href="mailto:contact.charles.grassi@gmail.com" class="contact-btn" aria-label="Send email to Charles Grassi">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -263,25 +263,10 @@
                                 <input type="range" id="a-atmos-power" class="render-slider" min="0.1" max="50" step="0.1" value="37.1">
                             </div>
                             <div class="render-control-item">
-                                <label class="render-label" for="a-scatter-r">
-                                    <span class="render-name">Scatter R</span>
-                                    <span class="render-value" id="a-scatter-r-value">1.0</span>
+                                <label class="render-label" for="a-scatter-color">
+                                    <span class="render-name">Scatter Color</span>
                                 </label>
-                                <input type="range" id="a-scatter-r" class="render-slider" min="0" max="10" step="0.01" value="1.0">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="a-scatter-g">
-                                    <span class="render-name">Scatter G</span>
-                                    <span class="render-value" id="a-scatter-g-value">2.5</span>
-                                </label>
-                                <input type="range" id="a-scatter-g" class="render-slider" min="0" max="10" step="0.01" value="2.5">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="a-scatter-b">
-                                    <span class="render-name">Scatter B</span>
-                                    <span class="render-value" id="a-scatter-b-value">5.5</span>
-                                </label>
-                                <input type="range" id="a-scatter-b" class="render-slider" min="0" max="10" step="0.01" value="5.5">
+                                <input type="color" id="a-scatter-color" class="render-color-picker" value="#1a40e6">
                             </div>
                             <div class="render-control-item">
                                 <label class="render-label" for="a-scatter-scale">
@@ -378,25 +363,10 @@
                                 <input type="range" id="b-atmos-power" class="render-slider" min="0.1" max="50" step="0.1" value="25.0">
                             </div>
                             <div class="render-control-item">
-                                <label class="render-label" for="b-scatter-r">
-                                    <span class="render-name">Scatter R</span>
-                                    <span class="render-value" id="b-scatter-r-value">5.0</span>
+                                <label class="render-label" for="b-scatter-color">
+                                    <span class="render-name">Scatter Color</span>
                                 </label>
-                                <input type="range" id="b-scatter-r" class="render-slider" min="0" max="10" step="0.01" value="5.0">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="b-scatter-g">
-                                    <span class="render-name">Scatter G</span>
-                                    <span class="render-value" id="b-scatter-g-value">2.0</span>
-                                </label>
-                                <input type="range" id="b-scatter-g" class="render-slider" min="0" max="10" step="0.01" value="2.0">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="b-scatter-b">
-                                    <span class="render-name">Scatter B</span>
-                                    <span class="render-value" id="b-scatter-b-value">1.0</span>
-                                </label>
-                                <input type="range" id="b-scatter-b" class="render-slider" min="0" max="10" step="0.01" value="1.0">
+                                <input type="color" id="b-scatter-color" class="render-color-picker" value="#e63319">
                             </div>
                             <div class="render-control-item">
                                 <label class="render-label" for="b-scatter-scale">
@@ -415,6 +385,310 @@
                             <button class="render-reset-btn" id="planet-b-reset-btn">Reset</button>
                         </div>
                     </div>
+
+                    <!-- Sun/Star Controls Panel -->
+                    <div class="planet-controls sun-controls" id="sun-controls">
+                        <button class="planet-controls-toggle sun-toggle" id="sun-toggle" aria-label="Toggle sun halo controls">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="5"/>
+                                <line x1="12" y1="1" x2="12" y2="3"/>
+                                <line x1="12" y1="21" x2="12" y2="23"/>
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                                <line x1="1" y1="12" x2="3" y2="12"/>
+                                <line x1="21" y1="12" x2="23" y2="12"/>
+                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                            </svg>
+                            <span class="planet-label">S</span>
+                        </button>
+                        <div class="planet-controls-panel sun-panel" id="sun-panel">
+                            <div class="planet-control-header sun">Sun / Corona</div>
+                            <div class="planet-control-subheader">Core & Glow</div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="sun-core-size">
+                                    <span class="render-name">Core Size</span>
+                                    <span class="render-value" id="sun-core-size-value">0.50</span>
+                                </label>
+                                <input type="range" id="sun-core-size" class="render-slider" min="0.3" max="0.7" step="0.01" value="0.5">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="sun-glow-size">
+                                    <span class="render-name">Glow Size</span>
+                                    <span class="render-value" id="sun-glow-size-value">1.00</span>
+                                </label>
+                                <input type="range" id="sun-glow-size" class="render-slider" min="0.5" max="1.5" step="0.05" value="1.0">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="sun-glow-intensity">
+                                    <span class="render-name">Glow Intensity</span>
+                                    <span class="render-value" id="sun-glow-intensity-value">0.60</span>
+                                </label>
+                                <input type="range" id="sun-glow-intensity" class="render-slider" min="0" max="2" step="0.05" value="0.6">
+                            </div>
+                            <div class="planet-control-subheader">Corona</div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="sun-corona-intensity">
+                                    <span class="render-name">Corona Intensity</span>
+                                    <span class="render-value" id="sun-corona-intensity-value">1.00</span>
+                                </label>
+                                <input type="range" id="sun-corona-intensity" class="render-slider" min="0" max="3" step="0.1" value="1.0">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="sun-chromatic-shift">
+                                    <span class="render-name">Chromatic Shift</span>
+                                    <span class="render-value" id="sun-chromatic-shift-value">1.00</span>
+                                </label>
+                                <input type="range" id="sun-chromatic-shift" class="render-slider" min="0" max="3" step="0.05" value="1.0">
+                            </div>
+                            <div class="planet-control-subheader">Rays</div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="sun-ray-count">
+                                    <span class="render-name">Ray Count</span>
+                                    <span class="render-value" id="sun-ray-count-value">12</span>
+                                </label>
+                                <input type="range" id="sun-ray-count" class="render-slider" min="4" max="24" step="1" value="12">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="sun-ray-intensity">
+                                    <span class="render-name">Ray Intensity</span>
+                                    <span class="render-value" id="sun-ray-intensity-value">1.00</span>
+                                </label>
+                                <input type="range" id="sun-ray-intensity" class="render-slider" min="0" max="1" step="0.05" value="1.0">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="sun-ray-length">
+                                    <span class="render-name">Ray Length</span>
+                                    <span class="render-value" id="sun-ray-length-value">2.00</span>
+                                </label>
+                                <input type="range" id="sun-ray-length" class="render-slider" min="0.5" max="3" step="0.1" value="2.0">
+                            </div>
+                            <div class="planet-control-subheader">Streamers</div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="sun-streamer-count">
+                                    <span class="render-name">Streamer Count</span>
+                                    <span class="render-value" id="sun-streamer-count-value">6</span>
+                                </label>
+                                <input type="range" id="sun-streamer-count" class="render-slider" min="0" max="12" step="1" value="6">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="sun-streamer-intensity">
+                                    <span class="render-name">Streamer Intensity</span>
+                                    <span class="render-value" id="sun-streamer-intensity-value">1.00</span>
+                                </label>
+                                <input type="range" id="sun-streamer-intensity" class="render-slider" min="0" max="1" step="0.05" value="1.0">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="sun-streamer-length">
+                                    <span class="render-name">Streamer Length</span>
+                                    <span class="render-value" id="sun-streamer-length-value">1.50</span>
+                                </label>
+                                <input type="range" id="sun-streamer-length" class="render-slider" min="1" max="3" step="0.1" value="1.5">
+                            </div>
+                            <div class="planet-control-subheader">Halo Rings</div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="sun-halo-ring1-dist">
+                                    <span class="render-name">Ring 1 Distance</span>
+                                    <span class="render-value" id="sun-halo-ring1-dist-value">1.20</span>
+                                </label>
+                                <input type="range" id="sun-halo-ring1-dist" class="render-slider" min="0.8" max="2" step="0.05" value="1.2">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="sun-halo-ring1-intensity">
+                                    <span class="render-name">Ring 1 Intensity</span>
+                                    <span class="render-value" id="sun-halo-ring1-intensity-value">0.15</span>
+                                </label>
+                                <input type="range" id="sun-halo-ring1-intensity" class="render-slider" min="0" max="0.5" step="0.01" value="0.15">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="sun-halo-ring2-dist">
+                                    <span class="render-name">Ring 2 Distance</span>
+                                    <span class="render-value" id="sun-halo-ring2-dist-value">1.80</span>
+                                </label>
+                                <input type="range" id="sun-halo-ring2-dist" class="render-slider" min="1.5" max="3" step="0.05" value="1.8">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="sun-halo-ring2-intensity">
+                                    <span class="render-name">Ring 2 Intensity</span>
+                                    <span class="render-value" id="sun-halo-ring2-intensity-value">0.08</span>
+                                </label>
+                                <input type="range" id="sun-halo-ring2-intensity" class="render-slider" min="0" max="0.3" step="0.01" value="0.08">
+                            </div>
+                            <div class="planet-control-subheader">Animation</div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="sun-flicker-speed">
+                                    <span class="render-name">Flicker Speed</span>
+                                    <span class="render-value" id="sun-flicker-speed-value">3.00</span>
+                                </label>
+                                <input type="range" id="sun-flicker-speed" class="render-slider" min="0" max="5" step="0.1" value="3.0">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="sun-pulse-speed">
+                                    <span class="render-name">Pulse Speed</span>
+                                    <span class="render-value" id="sun-pulse-speed-value">2.00</span>
+                                </label>
+                                <input type="range" id="sun-pulse-speed" class="render-slider" min="0" max="5" step="0.1" value="2.0">
+                            </div>
+                            <button class="render-reset-btn" id="sun-reset-btn">Reset</button>
+                        </div>
+                    </div>
+
+                    <!-- God Rays Controls Panel -->
+                    <div class="planet-controls godrays-controls" id="godrays-controls">
+                        <button class="planet-controls-toggle godrays-toggle" id="godrays-toggle" aria-label="Toggle god rays controls">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="4"/>
+                                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+                                <path d="M12 8v8M8 12h8" opacity="0.5"/>
+                            </svg>
+                            <span class="planet-label">R</span>
+                        </button>
+                        <div class="planet-controls-panel godrays-panel" id="godrays-panel">
+                            <div class="planet-control-header godrays">God Rays</div>
+                            <div class="planet-control-subheader">Light Rays</div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="godrays-ray-intensity">
+                                    <span class="render-name">Ray Intensity</span>
+                                    <span class="render-value" id="godrays-ray-intensity-value">0.50</span>
+                                </label>
+                                <input type="range" id="godrays-ray-intensity" class="render-slider" min="0" max="5" step="0.05" value="0.5">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="godrays-ray-falloff">
+                                    <span class="render-name">Ray Falloff</span>
+                                    <span class="render-value" id="godrays-ray-falloff-value">4.00</span>
+                                </label>
+                                <input type="range" id="godrays-ray-falloff" class="render-slider" min="0.1" max="20" step="0.1" value="4">
+                            </div>
+                            <div class="planet-control-subheader">Glow</div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="godrays-glow-intensity">
+                                    <span class="render-name">Glow Intensity</span>
+                                    <span class="render-value" id="godrays-glow-intensity-value">0.50</span>
+                                </label>
+                                <input type="range" id="godrays-glow-intensity" class="render-slider" min="0" max="5" step="0.05" value="0.5">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="godrays-glow-size">
+                                    <span class="render-name">Glow Size</span>
+                                    <span class="render-value" id="godrays-glow-size-value">4.00</span>
+                                </label>
+                                <input type="range" id="godrays-glow-size" class="render-slider" min="0.5" max="30" step="0.5" value="4">
+                            </div>
+                            <div class="planet-control-subheader">Fog</div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="godrays-fog-density">
+                                    <span class="render-name">Fog Density</span>
+                                    <span class="render-value" id="godrays-fog-density-value">6.00</span>
+                                </label>
+                                <input type="range" id="godrays-fog-density" class="render-slider" min="0.5" max="30" step="0.5" value="6">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="godrays-ambient-fog">
+                                    <span class="render-name">Ambient Fog</span>
+                                    <span class="render-value" id="godrays-ambient-fog-value">0.08</span>
+                                </label>
+                                <input type="range" id="godrays-ambient-fog" class="render-slider" min="0" max="1" step="0.01" value="0.08">
+                            </div>
+                            <div class="planet-control-subheader">Noise</div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="godrays-noise-scale">
+                                    <span class="render-name">Noise Scale</span>
+                                    <span class="render-value" id="godrays-noise-scale-value">1.00</span>
+                                </label>
+                                <input type="range" id="godrays-noise-scale" class="render-slider" min="0.05" max="10" step="0.05" value="1">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="godrays-noise-octaves">
+                                    <span class="render-name">Noise Detail</span>
+                                    <span class="render-value" id="godrays-noise-octaves-value">1.00</span>
+                                </label>
+                                <input type="range" id="godrays-noise-octaves" class="render-slider" min="0" max="5" step="0.1" value="1">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="godrays-noise-contrast">
+                                    <span class="render-name">Noise Contrast</span>
+                                    <span class="render-value" id="godrays-noise-contrast-value">1.00</span>
+                                </label>
+                                <input type="range" id="godrays-noise-contrast" class="render-slider" min="0.1" max="5" step="0.1" value="1">
+                            </div>
+                            <div class="planet-control-subheader">Animation</div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="godrays-anim-speed">
+                                    <span class="render-name">Animation Speed</span>
+                                    <span class="render-value" id="godrays-anim-speed-value">1.00</span>
+                                </label>
+                                <input type="range" id="godrays-anim-speed" class="render-slider" min="0" max="10" step="0.1" value="1">
+                            </div>
+                            <button class="render-reset-btn" id="godrays-reset-btn">Reset</button>
+                        </div>
+                    </div>
+
+                    <!-- Space Particles Controls Panel -->
+                    <div class="planet-controls particles-controls" id="particles-controls">
+                        <button class="planet-controls-toggle particles-toggle" id="particles-toggle" aria-label="Toggle space particles controls">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="4" cy="4" r="1.5"/>
+                                <circle cx="12" cy="8" r="1"/>
+                                <circle cx="20" cy="4" r="2"/>
+                                <circle cx="6" cy="14" r="1.5"/>
+                                <circle cx="18" cy="12" r="1"/>
+                                <circle cx="10" cy="20" r="2"/>
+                                <circle cx="16" cy="18" r="1.5"/>
+                            </svg>
+                            <span class="planet-label">P</span>
+                        </button>
+                        <div class="planet-controls-panel particles-panel" id="particles-panel">
+                            <div class="planet-control-header particles">Space Particles</div>
+                            <div class="planet-control-subheader">Depth of Field</div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="particles-focal-plane">
+                                    <span class="render-name">Focal Plane</span>
+                                    <span class="render-value" id="particles-focal-plane-value">0.00</span>
+                                </label>
+                                <input type="range" id="particles-focal-plane" class="render-slider" min="-1" max="1" step="0.05" value="0">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="particles-dof-strength">
+                                    <span class="render-name">DoF Strength</span>
+                                    <span class="render-value" id="particles-dof-strength-value">1.00</span>
+                                </label>
+                                <input type="range" id="particles-dof-strength" class="render-slider" min="0" max="3" step="0.1" value="1">
+                            </div>
+                            <div class="planet-control-subheader">Appearance</div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="particles-size">
+                                    <span class="render-name">Particle Size</span>
+                                    <span class="render-value" id="particles-size-value">1.50</span>
+                                </label>
+                                <input type="range" id="particles-size" class="render-slider" min="0.5" max="5" step="0.1" value="1.5">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="particles-brightness">
+                                    <span class="render-name">Brightness</span>
+                                    <span class="render-value" id="particles-brightness-value">0.70</span>
+                                </label>
+                                <input type="range" id="particles-brightness" class="render-slider" min="0" max="1.5" step="0.05" value="0.7">
+                            </div>
+                            <div class="planet-control-subheader">Near Effect</div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="particles-near-range">
+                                    <span class="render-name">Near Range</span>
+                                    <span class="render-value" id="particles-near-range-value">0.80</span>
+                                </label>
+                                <input type="range" id="particles-near-range" class="render-slider" min="0.1" max="2" step="0.05" value="0.8">
+                            </div>
+                            <div class="render-control-item">
+                                <label class="render-label" for="particles-near-size">
+                                    <span class="render-name">Near Size</span>
+                                    <span class="render-value" id="particles-near-size-value">15.0</span>
+                                </label>
+                                <input type="range" id="particles-near-size" class="render-slider" min="1" max="50" step="1" value="15">
+                            </div>
+                            <button class="render-reset-btn" id="particles-reset-btn">Reset</button>
+                        </div>
+                    </div>
+
                     <!-- Light Controls Panel -->
                     <div class="light-controls" id="light-controls">
                         <button class="light-controls-toggle" id="light-controls-toggle" aria-label="Toggle light controls">
@@ -428,6 +702,20 @@
                                 <line x1="21" y1="12" x2="23" y2="12"/>
                                 <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
                                 <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                            </svg>
+                        </button>
+                        <button class="label-toggle-btn active" id="label-toggle" aria-label="Toggle planet labels" title="Toggle labels">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 7V4h16v3"/>
+                                <path d="M9 20h6"/>
+                                <path d="M12 4v16"/>
+                            </svg>
+                        </button>
+                        <button class="label-toggle-btn" id="debug-quad-toggle" aria-label="Toggle debug quads" title="Toggle debug quads">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                <line x1="3" y1="12" x2="21" y2="12"/>
+                                <line x1="12" y1="3" x2="12" y2="21"/>
                             </svg>
                         </button>
                         <div class="light-controls-panel" id="light-controls-panel">
@@ -450,7 +738,7 @@
                                 </div>
                                 <div class="light-property-row">
                                     <span class="light-property-label">Attenuation</span>
-                                    <input type="range" id="attenuation-slider-0" class="light-property-slider" min="0.01" max="0.2" step="0.01" value="0.06">
+                                    <input type="range" id="attenuation-slider-0" class="light-property-slider" min="0.001" max="1.0" step="0.001" value="0.06">
                                     <span class="light-property-value" id="attenuation-value-0">0.06</span>
                                 </div>
                             </div>
@@ -472,7 +760,7 @@
                                 </div>
                                 <div class="light-property-row">
                                     <span class="light-property-label">Attenuation</span>
-                                    <input type="range" id="attenuation-slider-1" class="light-property-slider" min="0.01" max="0.2" step="0.01" value="0.06">
+                                    <input type="range" id="attenuation-slider-1" class="light-property-slider" min="0.001" max="1.0" step="0.001" value="0.06">
                                     <span class="light-property-value" id="attenuation-value-1">0.06</span>
                                 </div>
                             </div>
@@ -494,8 +782,15 @@
                                 </div>
                                 <div class="light-property-row">
                                     <span class="light-property-label">Attenuation</span>
-                                    <input type="range" id="attenuation-slider-2" class="light-property-slider" min="0.01" max="0.2" step="0.01" value="0.06">
+                                    <input type="range" id="attenuation-slider-2" class="light-property-slider" min="0.001" max="1.0" step="0.001" value="0.06">
                                     <span class="light-property-value" id="attenuation-value-2">0.06</span>
+                                </div>
+                            </div>
+                            <div class="light-control-item ambient-item">
+                                <div class="light-property-row">
+                                    <span class="light-property-label">Ambient Light</span>
+                                    <input type="range" id="ambient-slider" class="light-property-slider" min="0" max="0.5" step="0.01" value="0">
+                                    <span class="light-property-value" id="ambient-value">0.00</span>
                                 </div>
                             </div>
                             <div class="star-class-legend">
@@ -1090,9 +1385,12 @@
         </footer>
     </div>
 
-    <!-- Planet shaders - load before main.js -->
+    <!-- Shaders - load before main.js -->
     <script src="shaders/planet.vert.glsl.js"></script>
     <script src="shaders/planet.frag.glsl.js"></script>
+    <script src="shaders/sun.frag.glsl.js"></script>
+    <script src="shaders/godrays.glsl.js"></script>
+    <script src="shaders/debug-quad.glsl.js"></script>
     <script defer src="js/main.js"></script>
 </body>
 </html>

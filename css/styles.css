@@ -279,16 +279,7 @@ body {
 }
 
 .container::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100vw;
-    height: 100%;
-    background: radial-gradient(ellipse 120% 100% at 20% 0%, rgba(232, 185, 35, 0.05) 0%, rgba(232, 185, 35, 0.02) 30%, transparent 70%), radial-gradient(ellipse 100% 80% at 80% 50%, rgba(45, 212, 191, 0.03) 0%, rgba(45, 212, 191, 0.01) 30%, transparent 70%);
-    pointer-events: none;
-    z-index: -1;
+    display: none;
 }
 
 /* Header */
@@ -859,25 +850,36 @@ header {
     transform: translateY(0);
 }
 
-/* Skills Panel - Network Graph */
+/* Skills Panel - Network Graph (Fullscreen viewport, breaks out of container) */
 .skills-panel {
-    position: relative;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 1;
 }
 
 .skills-panel .skill-graph-container {
     position: absolute;
     top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
+    width: 100vw;
+    height: 100vh;
     margin: 0;
-    width: 100%;
-    height: 100%;
-    min-height: 0;
+    padding: 0;
     background: transparent;
     border: none;
+    border-radius: 0;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
+}
+
+.skills-panel #skill-graph-canvas {
+    width: 100vw !important;
+    height: 100vh !important;
 }
 
 .skills-panel .graph-legend,
@@ -996,6 +998,55 @@ header {
 
 .light-controls.active .light-controls-toggle svg {
     stroke: var(--accent-gold);
+}
+
+/* Label Toggle Button */
+.label-toggle-btn {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: rgba(21, 29, 38, 0.85);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.label-toggle-btn svg {
+    width: 18px;
+    height: 18px;
+    stroke: var(--text-muted);
+    transition: all 0.3s ease;
+}
+
+.label-toggle-btn:hover {
+    border-color: var(--accent-teal);
+    background: rgba(45, 212, 191, 0.1);
+}
+
+.label-toggle-btn:hover svg {
+    stroke: var(--accent-teal);
+}
+
+.label-toggle-btn.active {
+    border-color: var(--accent-teal);
+    background: rgba(45, 212, 191, 0.15);
+}
+
+.label-toggle-btn.active svg {
+    stroke: var(--accent-teal);
+}
+
+/* Debug Quad Toggle - position next to label toggle */
+#debug-quad-toggle {
+    left: 56px;
 }
 
 .light-controls-panel {
@@ -1614,6 +1665,32 @@ header {
     box-shadow: 0 0 12px var(--accent-teal);
 }
 
+.render-color-picker {
+    width: 100%;
+    height: 28px;
+    -webkit-appearance: none;
+    appearance: none;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+    padding: 0;
+}
+
+.render-color-picker::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.render-color-picker::-webkit-color-swatch {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+.render-color-picker::-moz-color-swatch {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
 .render-reset-btn {
     width: 100%;
     margin-top: 0.75rem;
@@ -1648,6 +1725,78 @@ header {
 
 .planet-controls.planet-b {
     left: 15rem;
+}
+
+.planet-controls.sun-controls {
+    left: 19.75rem;
+}
+
+.planet-controls.godrays-controls {
+    left: 24.5rem;
+}
+
+.planet-controls.particles-controls {
+    left: 29.25rem;
+}
+
+.sun-controls .planet-controls-toggle:hover,
+.sun-controls.active .planet-controls-toggle {
+    border-color: var(--accent-gold-dim);
+    background: rgba(232, 185, 35, 0.1);
+}
+
+.sun-controls .planet-controls-toggle:hover svg,
+.sun-controls.active .planet-controls-toggle svg {
+    stroke: var(--accent-gold);
+}
+
+.sun-controls .planet-controls-toggle:hover .planet-label,
+.sun-controls.active .planet-label {
+    background: var(--accent-gold);
+}
+
+.godrays-controls .planet-controls-toggle:hover,
+.godrays-controls.active .planet-controls-toggle {
+    border-color: rgba(255, 180, 100, 0.4);
+    background: rgba(255, 180, 100, 0.1);
+}
+
+.godrays-controls .planet-controls-toggle:hover svg,
+.godrays-controls.active .planet-controls-toggle svg {
+    stroke: rgba(255, 180, 100, 0.9);
+}
+
+.godrays-controls .planet-controls-toggle:hover .planet-label,
+.godrays-controls.active .planet-label {
+    background: rgba(255, 180, 100, 0.9);
+}
+
+.particles-controls .planet-controls-toggle:hover,
+.particles-controls.active .planet-controls-toggle {
+    border-color: rgba(200, 200, 255, 0.4);
+    background: rgba(200, 200, 255, 0.1);
+}
+
+.particles-controls .planet-controls-toggle:hover svg,
+.particles-controls.active .planet-controls-toggle svg {
+    stroke: rgba(200, 200, 255, 0.9);
+}
+
+.particles-controls .planet-controls-toggle:hover .planet-label,
+.particles-controls.active .planet-label {
+    background: rgba(200, 200, 255, 0.9);
+}
+
+.planet-control-header.sun {
+    color: var(--accent-gold);
+}
+
+.planet-control-header.godrays {
+    color: rgba(255, 180, 100, 0.9);
+}
+
+.planet-control-header.particles {
+    color: rgba(200, 200, 255, 0.9);
 }
 
 .planet-controls-toggle {
@@ -1861,6 +2010,17 @@ header {
     .render-controls-toggle svg {
         width: 14px;
         height: 14px;
+    }
+
+    .label-toggle-btn {
+        width: 24px;
+        height: 24px;
+        left: 2px;
+    }
+
+    .label-toggle-btn svg {
+        width: 12px;
+        height: 12px;
     }
 
     .light-controls-panel,

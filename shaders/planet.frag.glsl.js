@@ -4,13 +4,16 @@ window.PLANET_FRAGMENT_SHADER = `
 precision highp float;
 varying vec2 vUV;
 varying vec2 vCenter;
+varying vec2 vOriginalCenter;  // Original screen-space center for lighting
 varying float vRadius;
+varying float vOriginalRadius; // Original radius for lighting
 varying vec3 vColor;
 varying float vAlpha;
 varying float vAppear;
 varying float vGlow;
 varying float vIndex;
 varying float vIsLight;
+varying float vWorldZ;  // World Z position for 3D sphere distribution
 uniform vec2 uRes;
 uniform vec2 uMouse;
 uniform float uTime;
@@ -26,7 +29,19 @@ uniform float uLight2Intensity;
 uniform float uLight0Atten;
 uniform float uLight1Atten;
 uniform float uLight2Atten;
+uniform float uLight0Z;
+uniform float uLight1Z;
+uniform float uLight2Z;
+uniform vec3 uLight0WorldPos;
+uniform vec3 uLight1WorldPos;
+uniform vec3 uLight2WorldPos;
+uniform vec2 uLight0ScreenPos;
+uniform vec2 uLight1ScreenPos;
+uniform vec2 uLight2ScreenPos;
 uniform float uMouseLightEnabled;
+uniform float uAmbientIntensity;
+uniform float uCameraRotX;  // Camera rotation around X axis (pitch)
+uniform float uCameraRotY;  // Camera rotation around Y axis (yaw)
 
 // ========================================
 // PER-PLANET TYPE PARAMETERS
@@ -139,9 +154,80 @@ vec4 cookTorranceBRDF(vec3 N, vec3 V, vec3 L, float roughness, vec3 F0) {
 
 // Simplex noise for rocky texture
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
 
+// 3D Simplex noise
+float snoise3D(vec3 v) {
+    const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+    const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+
+    // First corner
+    vec3 i  = floor(v + dot(v, C.yyy));
+    vec3 x0 = v - i + dot(i, C.xxx);
+
+    // Other corners
+    vec3 g = step(x0.yzx, x0.xyz);
+    vec3 l = 1.0 - g;
+    vec3 i1 = min(g.xyz, l.zxy);
+    vec3 i2 = max(g.xyz, l.zxy);
+
+    vec3 x1 = x0 - i1 + C.xxx;
+    vec3 x2 = x0 - i2 + C.yyy;
+    vec3 x3 = x0 - D.yyy;
+
+    // Permutations
+    i = mod289(i);
+    vec4 p = permute(permute(permute(
+             i.z + vec4(0.0, i1.z, i2.z, 1.0))
+           + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+           + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+
+    // Gradients: 7x7 points over a square, mapped onto an octahedron
+    float n_ = 0.142857142857; // 1.0/7.0
+    vec3 ns = n_ * D.wyz - D.xzx;
+
+    vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+
+    vec4 x_ = floor(j * ns.z);
+    vec4 y_ = floor(j - 7.0 * x_);
+
+    vec4 x = x_ * ns.x + ns.yyyy;
+    vec4 y = y_ * ns.x + ns.yyyy;
+    vec4 h = 1.0 - abs(x) - abs(y);
+
+    vec4 b0 = vec4(x.xy, y.xy);
+    vec4 b1 = vec4(x.zw, y.zw);
+
+    vec4 s0 = floor(b0) * 2.0 + 1.0;
+    vec4 s1 = floor(b1) * 2.0 + 1.0;
+    vec4 sh = -step(h, vec4(0.0));
+
+    vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+    vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+
+    vec3 p0 = vec3(a0.xy, h.x);
+    vec3 p1 = vec3(a0.zw, h.y);
+    vec3 p2 = vec3(a1.xy, h.z);
+    vec3 p3 = vec3(a1.zw, h.w);
+
+    // Normalise gradients
+    vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+    p0 *= norm.x;
+    p1 *= norm.y;
+    p2 *= norm.z;
+    p3 *= norm.w;
+
+    // Mix final noise value
+    vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+    m = m * m;
+    return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+}
+
+// 2D Simplex noise (kept for compatibility)
 float snoise(vec2 v) {
     const vec4 C = vec4(0.211324865405187, 0.366025403784439,
                        -0.577350269189626, 0.024390243902439);
@@ -180,82 +266,10 @@ void main() {
     float atmosphereThickness = 0.65;
     float atmosphereOuter = planetRadius + atmosphereThickness;
 
+    // Sun/light rendering is now handled by separate sun shader
+    // This shader only handles planets
     if (vIsLight > 0.5) {
-        // Original sizing with flowing liquid effect
-        float coreMask = 1.0 - smoothstep(0.0, 0.5, d);
-        float glowMask = 1.0 - smoothstep(0.0, 1.0, d);
-        float outerHalo = 0.03 / (d * d + 0.03);
-
-        // Spherical coordinates for flow
-        float zSq = 0.25 - d * d; // 0.5^2 = 0.25
-        float z = zSq > 0.0 ? sqrt(zSq) : 0.0;
-        vec3 sphereNormal = d < 0.5 ? normalize(vec3(uv, z)) : vec3(0.0, 0.0, 1.0);
-
-        // Simplex-like noise for organic flow
-        float flowT = t * 0.4;
-        vec2 flowUV = uv * 4.0;
-
-        // Organic noise layers (not regular sine patterns)
-        float n1 = sin(flowUV.x * 2.3 + flowUV.y * 1.7 + flowT) * cos(flowUV.y * 3.1 - flowT * 0.7);
-        float n2 = sin(flowUV.x * 1.1 - flowUV.y * 2.9 + flowT * 1.3 + 2.0) * cos(flowUV.x * 2.7 + flowT * 0.5);
-        float n3 = sin((flowUV.x + flowUV.y) * 1.9 + flowT * 0.9) * cos((flowUV.x - flowUV.y) * 2.3 - flowT * 0.6);
-
-        // Combine with varied weights for organic look
-        float flowNoise = n1 * 0.4 + n2 * 0.35 + n3 * 0.25;
-        flowNoise = flowNoise * 0.5 + 0.5; // Normalize to 0-1
-
-        // Create veins/channels of flowing liquid
-        float veins = pow(abs(sin(flowNoise * 6.28 + flowT)), 2.0);
-
-        // Hot spots where flow concentrates
-        float hotSpots = pow(flowNoise, 3.0);
-
-        // Slow vertical drift for gravity effect
-        float drift = sin(uv.x * 5.0 + flowT * 0.3) * 0.5 + 0.5;
-        drift *= smoothstep(-0.5, 0.3, -uv.y); // Stronger at bottom
-
-        // Combined liquid pattern
-        float liquid = flowNoise * 0.5 + veins * 0.3 + hotSpots * 0.2;
-        liquid = liquid + drift * 0.15;
-        liquid = clamp(liquid, 0.0, 1.0);
-
-        // Pulsing
-        float pulse = sin(t * 2.0) * 0.5 + 0.5;
-        float breathe = 0.85 + pulse * 0.15;
-
-        // Color: dark cracks -> glowing -> white hot
-        vec3 darkCol = vColor * 0.2;
-        vec3 glowCol = vColor * 1.4;
-        vec3 hotCol = vColor + vec3(0.4, 0.25, 0.1);
-        hotCol = min(hotCol, vec3(1.4));
-
-        vec3 emissive = mix(darkCol, glowCol, liquid);
-        emissive = mix(emissive, hotCol, hotSpots * 0.7);
-        emissive *= breathe;
-
-        // Fresnel rim
-        float NdV = max(dot(sphereNormal, vec3(0.0, 0.0, 1.0)), 0.0);
-        float rim = pow(1.0 - NdV, 2.5) * coreMask;
-        emissive += vColor * rim * 0.4;
-
-        // Final composition
-        vec3 col = vec3(0.0);
-        col += emissive * coreMask * 1.8;
-        col += vColor * glowMask * 0.6 * (1.0 - coreMask * 0.8);
-        col += vColor * outerHalo * 0.5;
-        col += vColor * vGlow * 0.4;
-
-        // Tone mapping
-        col = col / (col + vec3(0.5));
-
-        // Full alpha including glow for proper blending
-        float alpha = coreMask * 0.95 + glowMask * 0.5 + outerHalo * 0.4;
-        alpha = clamp(alpha, 0.0, 1.0) * outerFade;
-        alpha *= smoothstep(0.0, 0.5, ap) * vAlpha;
-
-        // Standard alpha blending output (not premultiplied)
-        gl_FragColor = vec4(col, alpha);
-        return;
+        discard;
     }
 
     float varSeed = vIndex * 1.618;
@@ -304,24 +318,71 @@ void main() {
     float pLandRoughness = mix(uLandRoughnessA, uLandRoughnessB, isDesert);
     float pNormalStrength = mix(uNormalStrengthA, uNormalStrengthB, isDesert);
 
-    // Multi-octave height for terrain - large continental shapes + detail (4 octaves)
-    // Now using per-planet noise scale
-    vec2 heightCoord = uv * pNoiseScale + vIndex * 10.0;
-    float heightC = snoise(heightCoord) * 0.5
-                  + snoise(heightCoord * 2.0 + 1.5) * 0.25
-                  + snoise(heightCoord * 4.0 + 3.0) * 0.15
-                  + snoise(heightCoord * 8.0 + 5.5) * 0.1
-                  + snoise(heightCoord * 16.0 + 8.0) * 0.05;
-    float heightX = snoise(heightCoord + vec2(eps, 0.0)) * 0.5
-                  + snoise((heightCoord + vec2(eps, 0.0)) * 2.0 + 1.5) * 0.25
-                  + snoise((heightCoord + vec2(eps, 0.0)) * 4.0 + 3.0) * 0.15
-                  + snoise((heightCoord + vec2(eps, 0.0)) * 8.0 + 5.5) * 0.1
-                  + snoise((heightCoord + vec2(eps, 0.0)) * 16.0 + 8.0) * 0.05;
-    float heightY = snoise(heightCoord + vec2(0.0, eps)) * 0.5
-                  + snoise((heightCoord + vec2(0.0, eps)) * 2.0 + 1.5) * 0.25
-                  + snoise((heightCoord + vec2(0.0, eps)) * 4.0 + 3.0) * 0.15
-                  + snoise((heightCoord + vec2(0.0, eps)) * 8.0 + 5.5) * 0.1
-                  + snoise((heightCoord + vec2(0.0, eps)) * 16.0 + 8.0) * 0.05;
+    // ========================================
+    // PLANET ROTATION ON RANDOM AXIS
+    // ========================================
+    // Convert 2D UV to 3D sphere position for rotation
+    float rotZSq = planetRadius * planetRadius - d * d;
+    float rotZ = rotZSq > 0.0 ? sqrt(rotZSq) : 0.0;
+    vec3 spherePos = vec3(uv, rotZ);
+
+    // Generate random rotation axis per planet (seeded by vIndex)
+    // Using golden ratio based offsets for good distribution
+    float axisSeed = vIndex * 1.618033988749;
+    vec3 rotAxis = normalize(vec3(
+        sin(axisSeed * 2.3 + 0.5),
+        cos(axisSeed * 3.7 + 1.2),
+        sin(axisSeed * 1.9 + 2.8)
+    ));
+
+    // Rotation speed varies per planet (0.02 to 0.08 radians per time unit)
+    float rotSpeed = 0.03 + 0.05 * fract(axisSeed * 7.3);
+    float rotAngle = t * rotSpeed;
+
+    // Rodrigues' rotation formula: rotate spherePos around rotAxis by rotAngle
+    float cosA = cos(rotAngle);
+    float sinA = sin(rotAngle);
+    vec3 rotatedPos = spherePos * cosA
+                    + cross(rotAxis, spherePos) * sinA
+                    + rotAxis * dot(rotAxis, spherePos) * (1.0 - cosA);
+
+    // Normalize rotated position to unit sphere for consistent noise sampling
+    vec3 rotatedPosNorm = normalize(rotatedPos);
+
+    // Offset for per-planet variation
+    vec3 planetOffset = vec3(vIndex * 10.0, vIndex * 7.3, vIndex * 5.1);
+
+    // Multi-octave height for terrain using 3D noise on sphere surface
+    // This eliminates UV distortion at poles and creates seamless terrain
+    // Scale down noise frequency for larger continental features
+    float terrainScale = pNoiseScale * 0.15;
+    vec3 heightCoord3D = rotatedPosNorm * terrainScale + planetOffset;
+    float heightC = snoise3D(heightCoord3D) * 0.5
+                  + snoise3D(heightCoord3D * 2.0 + 1.5) * 0.25
+                  + snoise3D(heightCoord3D * 4.0 + 3.0) * 0.15
+                  + snoise3D(heightCoord3D * 8.0 + 5.5) * 0.1
+                  + snoise3D(heightCoord3D * 16.0 + 8.0) * 0.05;
+
+    // For normals, sample at offset positions in tangent space
+    // Build tangent frame on sphere
+    vec3 sphereUp = abs(rotatedPosNorm.y) < 0.999 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+    vec3 sphereTangent = normalize(cross(sphereUp, rotatedPosNorm));
+    vec3 sphereBitangent = cross(rotatedPosNorm, sphereTangent);
+
+    // Sample height at offset positions along tangent and bitangent
+    vec3 heightCoordX = (rotatedPosNorm + sphereTangent * eps) * terrainScale + planetOffset;
+    vec3 heightCoordY = (rotatedPosNorm + sphereBitangent * eps) * terrainScale + planetOffset;
+
+    float heightX = snoise3D(heightCoordX) * 0.5
+                  + snoise3D(heightCoordX * 2.0 + 1.5) * 0.25
+                  + snoise3D(heightCoordX * 4.0 + 3.0) * 0.15
+                  + snoise3D(heightCoordX * 8.0 + 5.5) * 0.1
+                  + snoise3D(heightCoordX * 16.0 + 8.0) * 0.05;
+    float heightY = snoise3D(heightCoordY) * 0.5
+                  + snoise3D(heightCoordY * 2.0 + 1.5) * 0.25
+                  + snoise3D(heightCoordY * 4.0 + 3.0) * 0.15
+                  + snoise3D(heightCoordY * 8.0 + 5.5) * 0.1
+                  + snoise3D(heightCoordY * 16.0 + 8.0) * 0.05;
 
     // Sea level varies per biome
     // Oceanic: low sea level = more water
@@ -348,6 +409,9 @@ void main() {
     float zSq = planetRadius * planetRadius - d * d;
     float z = zSq > 0.0 ? sqrt(zSq) : 0.0;
     vec3 baseN = d < deformedRadius ? normalize(vec3(uv, z)) : vec3(0.0, 0.0, 1.0);
+
+    // View direction: screen-space orthographic (always looking straight at screen)
+    // This keeps lighting consistent regardless of camera rotation
     vec3 V = vec3(0.0, 0.0, 1.0);
 
     // Compute terrain gradients from heightmap
@@ -358,16 +422,26 @@ void main() {
     float terrainGradY = -(heightY - heightC) / eps * normalStrength;
 
     // Ocean wave normal deformation - subtle animated ripples
-    vec2 waveCoord = uv * 12.0 + vIndex * 5.0;
+    // Using 3D noise on sphere surface for seamless waves
+    // Reduced scale (4.0 instead of 12.0) for larger, more visible wave patterns
+    float waveScale = 4.0;
     float waveSpeed = t * 0.2;
-    float wave1 = snoise(waveCoord + vec2(waveSpeed, waveSpeed * 0.7));
-    float wave2 = snoise(waveCoord * 1.3 - vec2(waveSpeed * 0.6, waveSpeed * 0.9) + 2.5);
+    vec3 waveOffset = vec3(waveSpeed, waveSpeed * 0.7, waveSpeed * 0.5);
+    vec3 waveCoord3D = rotatedPosNorm * waveScale + planetOffset * 0.5;
+
+    float wave1 = snoise3D(waveCoord3D + waveOffset);
+    float wave2 = snoise3D(waveCoord3D * 1.3 - waveOffset * 0.8 + 2.5);
     float waveEps = 0.03;
     float waveC = (wave1 + wave2 * 0.6);
-    float waveX = snoise(waveCoord + vec2(waveEps, 0.0) + vec2(waveSpeed, waveSpeed * 0.7))
-                + snoise((waveCoord + vec2(waveEps, 0.0)) * 1.3 - vec2(waveSpeed * 0.6, waveSpeed * 0.9) + 2.5) * 0.6;
-    float waveY = snoise(waveCoord + vec2(0.0, waveEps) + vec2(waveSpeed, waveSpeed * 0.7))
-                + snoise((waveCoord + vec2(0.0, waveEps)) * 1.3 - vec2(waveSpeed * 0.6, waveSpeed * 0.9) + 2.5) * 0.6;
+
+    // Sample wave at offset positions using sphere tangent frame
+    vec3 waveCoordX = (rotatedPosNorm + sphereTangent * waveEps) * waveScale + planetOffset * 0.5;
+    vec3 waveCoordY = (rotatedPosNorm + sphereBitangent * waveEps) * waveScale + planetOffset * 0.5;
+
+    float waveX = snoise3D(waveCoordX + waveOffset)
+                + snoise3D(waveCoordX * 1.3 - waveOffset * 0.8 + 2.5) * 0.6;
+    float waveY = snoise3D(waveCoordY + waveOffset)
+                + snoise3D(waveCoordY * 1.3 - waveOffset * 0.8 + 2.5) * 0.6;
     float waveGradX = (waveX - waveC) / waveEps * 0.012;
     float waveGradY = (waveY - waveC) / waveEps * 0.012;
 
@@ -385,6 +459,9 @@ void main() {
     // This ensures deformations follow the sphere's curvature
     vec3 N = normalize(baseN + tangent * gradX + bitangent * gradY);
     N = N * planetMask + baseN * (1.0 - planetMask);
+
+    // Lighting stays in screen space (orthographic) - no rotation applied to normals
+    // The camera rotation only affects the 3D projection, not the lighting model
 
     // ========================================
     // PBR LIGHTING SETUP
@@ -405,12 +482,71 @@ void main() {
     float landRoughness = pLandRoughness;  // Land roughness from UI
     float oceanRoughness = max(0.01, pOceanRoughness);  // Ocean roughness from UI, lower minimum for sharper reflections
 
+    // ========================================
+    // CAMERA-RELATIVE LIGHT DIRECTION CALCULATION
+    // ========================================
+    // Both lights and planets are on the XY plane at Z=0 in world space.
+    // The normals N are in screen space (orthographic, not rotated).
+    // We need to compute where each light PROJECTS TO on screen after camera rotation,
+    // then use that projected 2D offset for lighting (converted to 3D with Z depth).
+    //
+    // This matches how the vertex shader projects 3D world positions to 2D screen.
+
+    // Camera rotation values (same as vertex shader)
+    float cosRotX = cos(uCameraRotX);
+    float sinRotX = sin(uCameraRotX);
+    float cosRotY = cos(uCameraRotY);
+    float sinRotY = sin(uCameraRotY);
+
+    // Camera position (same calculation as vertex shader)
+    float orbitDist = 1.0;
+    vec3 cameraPos = vec3(
+        orbitDist * sinRotY * cosRotX,
+        orbitDist * sinRotX,
+        orbitDist * cosRotY * cosRotX
+    );
+
+    // Camera basis vectors (same as vertex shader)
+    vec3 cameraForward = normalize(-cameraPos);
+    vec3 worldUp = vec3(0.0, 1.0, 0.0);
+    vec3 cameraRight = normalize(cross(worldUp, cameraForward));
+    vec3 cameraUp = cross(cameraForward, cameraRight);
+
+    // Scale factor to convert screen pixels to world units (same as vertex shader)
+    float worldScale = 1.0 / uRes.x;
+    vec2 screenCenter = uRes * 0.5;
+
+    // Helper function: project a world position to screen coordinates
+    // (Same math as vertex shader but inline)
+    // Returns the projected 2D screen position
+
+    // Planet world position (from original screen position + world Z)
+    vec2 planetScreenOffset = vOriginalCenter - screenCenter;
+    vec3 planetWorldPos = vec3(planetScreenOffset.x * worldScale, -planetScreenOffset.y * worldScale, vWorldZ);
+
     // ---- MOUSE LIGHT (toggle with spacebar) ----
-    vec2 mouseOffset = (uMouse - vCenter);
-    vec3 mouseLightPos = vec3(mouseOffset / uRes.x * 4.0, 0.3);
+    // Convert mouse screen position to world position
+    vec2 mouseScreenOffset = uMouse - screenCenter;
+    vec3 mouseWorldPos = vec3(mouseScreenOffset.x * worldScale, -mouseScreenOffset.y * worldScale, 0.0);
+
+    // Project both positions to screen using camera transform
+    vec3 toPlanet = planetWorldPos - cameraPos;
+    float planetZDist = dot(toPlanet, cameraForward);
+    float planetPerspScale = orbitDist / max(planetZDist, 0.01);
+    vec2 planetProj = vec2(dot(toPlanet, cameraRight), -dot(toPlanet, cameraUp)) * planetPerspScale;
+
+    vec3 toMouse = mouseWorldPos - cameraPos;
+    float mouseZDist = dot(toMouse, cameraForward);
+    float mousePerspScale = orbitDist / max(mouseZDist, 0.01);
+    vec2 mouseProj = vec2(dot(toMouse, cameraRight), -dot(toMouse, cameraUp)) * mousePerspScale;
+
+    // The lighting offset is the difference in projected screen positions
+    vec2 mouseLightOffset = (mouseProj - planetProj) * uRes.x;
+    // Convert to 3D light direction (screen-space, Z toward viewer)
+    vec3 mouseLightPos = vec3(mouseLightOffset * 0.003, -1.0);
     vec3 mouseL = normalize(mouseLightPos);
     float mouseDist = length(mouseLightPos);
-    float mouseAtten = 0.12 / (mouseDist * mouseDist + 0.01);
+    float mouseAtten = 0.15 / (mouseDist * mouseDist + 0.01);
     mouseAtten = min(mouseAtten, 2.5) * uMouseLightEnabled;
     float mouseNdL = max(dot(N, mouseL), 0.0);
 
@@ -428,14 +564,25 @@ void main() {
     totalAttenuation += mouseAtten;
 
     // ---- LIGHT 0 ----
-    vec2 light0Offset = (uLight0 - vCenter);
-    vec3 light0Pos = vec3(light0Offset / uRes.x * 3.0, 0.1);
-    vec3 L0 = normalize(light0Pos);
-    float dist0 = length(light0Pos);
-    // Attenuation using uniform value
-    float atten0 = uLight0Atten / (dist0 * dist0 + 0.02);
-    atten0 = min(atten0, 2.0);
-    float NdL0 = max(dot(N, L0), 0.0);
+    // Transform normal to world space
+    // N is in screen/view space: X = right on screen, Y = up on screen, Z = toward viewer
+    // Match the convention used for planetWorldPos (positive X = right, negative Y = up in screen)
+    vec3 N_world = normalize(cameraRight * N.x - cameraUp * N.y - cameraForward * N.z);
+
+    // Compute surface point in world space (planet center + world normal * radius)
+    // vOriginalRadius is in screen pixels, convert to world units
+    float radiusWorld = vOriginalRadius * worldScale;
+    vec3 surfaceWorldPos = planetWorldPos + N_world * radiusWorld;
+
+    // Light world position (passed directly from JavaScript)
+    vec3 light0WorldPos = uLight0WorldPos;
+
+    // Light direction in world space (from surface toward light)
+    vec3 L0 = normalize(light0WorldPos - surfaceWorldPos);
+
+    // No distance attenuation - intensity only (like a sun/directional light)
+    float atten0 = 1.0;
+    float NdL0 = max(dot(N_world, L0), 0.0);
 
     vec4 pbr0 = cookTorranceBRDF(N, V, L0, landRoughness, landF0);
     totalSpecular += uLightColor0 * pbr0.xyz * atten0 * uLight0Intensity;
@@ -448,14 +595,10 @@ void main() {
     totalAttenuation += atten0 * uLight0Intensity;
 
     // ---- LIGHT 1 ----
-    vec2 light1Offset = (uLight1 - vCenter);
-    vec3 light1Pos = vec3(light1Offset / uRes.x * 3.0, 0.1);
-    vec3 L1 = normalize(light1Pos);
-    float dist1 = length(light1Pos);
-    // Attenuation using uniform value
-    float atten1 = uLight1Atten / (dist1 * dist1 + 0.02);
-    atten1 = min(atten1, 2.0);
-    float NdL1 = max(dot(N, L1), 0.0);
+    vec3 light1WorldPos = uLight1WorldPos;
+    vec3 L1 = normalize(light1WorldPos - surfaceWorldPos);
+    float atten1 = 1.0;
+    float NdL1 = max(dot(N_world, L1), 0.0);
 
     vec4 pbr1 = cookTorranceBRDF(N, V, L1, landRoughness, landF0);
     totalSpecular += uLightColor1 * pbr1.xyz * atten1 * uLight1Intensity;
@@ -468,14 +611,10 @@ void main() {
     totalAttenuation += atten1 * uLight1Intensity;
 
     // ---- LIGHT 2 ----
-    vec2 light2Offset = (uLight2 - vCenter);
-    vec3 light2Pos = vec3(light2Offset / uRes.x * 3.0, 0.1);
-    vec3 L2 = normalize(light2Pos);
-    float dist2 = length(light2Pos);
-    // Attenuation using uniform value
-    float atten2 = uLight2Atten / (dist2 * dist2 + 0.02);
-    atten2 = min(atten2, 2.0);
-    float NdL2 = max(dot(N, L2), 0.0);
+    vec3 light2WorldPos = uLight2WorldPos;
+    vec3 L2 = normalize(light2WorldPos - surfaceWorldPos);
+    float atten2 = 1.0;
+    float NdL2 = max(dot(N_world, L2), 0.0);
 
     vec4 pbr2 = cookTorranceBRDF(N, V, L2, landRoughness, landF0);
     totalSpecular += uLightColor2 * pbr2.xyz * atten2 * uLight2Intensity;
@@ -509,21 +648,43 @@ void main() {
         sphereNormal = normalize(vec3(uv, sphereZ));
     }
 
-    // View direction (looking straight at screen)
+    // View direction: screen-space orthographic (same as V)
     vec3 viewDir = vec3(0.0, 0.0, 1.0);
 
     // Calculate primary light direction in 3D (from planet center toward light)
-    // Reuse existing light offsets from surface lighting
-    vec3 lightDir0 = normalize(vec3(light0Offset * 0.003, 0.5));
-    vec3 lightDir1 = normalize(vec3(light1Offset * 0.003, 0.5));
-    vec3 lightDir2 = normalize(vec3(light2Offset * 0.003, 0.5));
-    vec3 mouseLightDir = normalize(vec3(mouseOffset * 0.003, 0.4));
+    // Reuse the already-computed light directions from surface lighting
+    vec3 lightDir0 = L0;
+    vec3 lightDir1 = L1;
+    vec3 lightDir2 = L2;
+    vec3 mouseLightDir = mouseL;
+
+    // Screen-space light DIRECTIONS for atmosphere shadow ray-circle intersection
+    //
+    // Both vCenter and uLight*ScreenPos are in screen pixels (after camera transform)
+    // computed with identical math in JavaScript, so we can directly compute direction.
+    //
+    // Direction from planet center to light in UV space
+    // Both screen and UV have same Y convention here (tested)
+    vec2 light0Dir2D = normalize(vec2(
+        uLight0ScreenPos.x - vCenter.x,
+        uLight0ScreenPos.y - vCenter.y
+    ) + vec2(0.0001));
+
+    vec2 light1Dir2D = normalize(vec2(
+        uLight1ScreenPos.x - vCenter.x,
+        uLight1ScreenPos.y - vCenter.y
+    ) + vec2(0.0001));
+
+    vec2 light2Dir2D = normalize(vec2(
+        uLight2ScreenPos.x - vCenter.x,
+        uLight2ScreenPos.y - vCenter.y
+    ) + vec2(0.0001));
 
     // Combined light direction (weighted average of all lights)
     vec3 combinedLightDir = normalize(
-        lightDir0 * atten0 +
-        lightDir1 * atten1 +
-        lightDir2 * atten2 +
+        lightDir0 * atten0 * uLight0Intensity +
+        lightDir1 * atten1 * uLight1Intensity +
+        lightDir2 * atten2 * uLight2Intensity +
         mouseLightDir * mouseAtten * 0.5
     );
 
@@ -555,44 +716,44 @@ void main() {
         atmosShadow2 = max(atmosShadow2, 0.1);
         atmosShadowMouse = max(atmosShadowMouse, 0.1);
     } else if (d < atmosRadius) {
-        // Outside planet - ray-circle intersection from this point toward each light
-        // Use perpendicular distance to light ray for soft penumbra
+        // Outside planet - use perpendicular distance method with light DIRECTION
+        // For a directional light (or distant point light), we treat light as a direction
+        // Shadow occurs when the ray from uv in direction of light passes through planet
         float r = planetRadius;
+        float penumbraWidth = r * 0.4;
 
-        // Light 0
-        vec2 D0 = normalize(L0.xy);
-        float perpDist0 = abs(uv.x * D0.y - uv.y * D0.x);  // Perpendicular distance to ray
-        float alongRay0 = dot(uv, D0);  // Position along ray (negative = light is ahead)
+        // Light 0: perpendicular distance from origin to ray (uv + t*dir)
+        // Cross product in 2D: |uv x dir| = |uv.x*dir.y - uv.y*dir.x|
+        vec2 D0 = light0Dir2D;
+        float perpDist0 = abs(uv.x * D0.y - uv.y * D0.x);
+        // Only shadow if light is "ahead" (we're on the shadow side of planet)
+        // dot(uv, D0) < 0 means light direction points toward origin from our position
+        float alongRay0 = dot(uv, D0);
         if (alongRay0 < 0.0) {
-            // Light is ahead - check if ray passes through planet
-            float penumbraWidth = r * 0.4;  // Soft penumbra
             atmosShadow0 = smoothstep(r - penumbraWidth, r + penumbraWidth, perpDist0);
         }
 
         // Light 1
-        vec2 D1 = normalize(L1.xy);
+        vec2 D1 = light1Dir2D;
         float perpDist1 = abs(uv.x * D1.y - uv.y * D1.x);
         float alongRay1 = dot(uv, D1);
         if (alongRay1 < 0.0) {
-            float penumbraWidth = r * 0.4;
             atmosShadow1 = smoothstep(r - penumbraWidth, r + penumbraWidth, perpDist1);
         }
 
         // Light 2
-        vec2 D2 = normalize(L2.xy);
+        vec2 D2 = light2Dir2D;
         float perpDist2 = abs(uv.x * D2.y - uv.y * D2.x);
         float alongRay2 = dot(uv, D2);
         if (alongRay2 < 0.0) {
-            float penumbraWidth = r * 0.4;
             atmosShadow2 = smoothstep(r - penumbraWidth, r + penumbraWidth, perpDist2);
         }
 
         // Mouse light
-        vec2 DM = normalize(mouseL.xy);
+        vec2 DM = normalize(mouseL.xy + vec2(0.0001));
         float perpDistM = abs(uv.x * DM.y - uv.y * DM.x);
         float alongRayM = dot(uv, DM);
         if (alongRayM < 0.0) {
-            float penumbraWidth = r * 0.4;
             atmosShadowMouse = smoothstep(r - penumbraWidth, r + penumbraWidth, perpDistM);
         }
 
@@ -715,16 +876,17 @@ void main() {
 
     // Gather incoming light from all sources (with shadows)
     vec3 incomingLight = vec3(0.0);
-    incomingLight += uLightColor0 * atten0 * atmosShadow0;
-    incomingLight += uLightColor1 * atten1 * atmosShadow1;
-    incomingLight += uLightColor2 * atten2 * atmosShadow2;
+    incomingLight += uLightColor0 * atten0 * uLight0Intensity * atmosShadow0;
+    incomingLight += uLightColor1 * atten1 * uLight1Intensity * atmosShadow1;
+    incomingLight += uLightColor2 * atten2 * uLight2Intensity * atmosShadow2;
     incomingLight += vec3(1.0) * mouseAtten * 0.3 * atmosShadowMouse;
     // No ambient light in space - only direct light sources
 
     // TRANSMITTANCE-BASED SCATTERING for sunset colors
     // Transmittance = what passes through: exp(-beta * depth)
     // Blue has highest beta, so it gets removed first = red/orange remains at high depth
-    vec3 transmittance = exp(-beta * opticalDepth);
+    // pSunsetStrength controls how strongly depth affects transmittance
+    vec3 transmittance = exp(-beta * opticalDepth * pSunsetStrength);
 
     // Normalize transmittance to get the hue (what color remains after scattering)
     vec3 transmitColor = transmittance;
@@ -735,20 +897,22 @@ void main() {
         transmitColor = vec3(1.0, 0.3, 0.1);  // Deep red for very thick atmosphere
     }
 
-    // Blend from blue (low depth) to transmitted color (high depth = orange/red)
+    // Derive scatter color from beta coefficients (Rayleigh scattering)
+    // Higher beta = scatters more of that wavelength = brighter in scattered light
+    // For Earth: beta_blue > beta_green > beta_red, so sky is blue
+    // We use 1 - exp(-beta * scale) to convert scattering coefficient to color intensity
+    vec3 blueScatter = vec3(1.0) - exp(-beta * 8.0);  // Scale factor for visible color
+
+    // Blend from scattered color (low depth) to transmitted color (high depth = sunset)
     float depthFactor = 1.0 - exp(-opticalDepth * 2.0 * pSunsetStrength);
-    vec3 blueScatter = vec3(0.4, 0.7, 1.0);
     vec3 scatterColor = mix(blueScatter, transmitColor, depthFactor);
 
     // Apply the incoming light color to the scatter color
     vec3 scatteredLight = incomingLight * scatterColor;
 
-    // For lava planets, tint toward orange
-    vec3 lavaAtmosTint = vec3(1.0, 0.4, 0.1);
-    scatteredLight = mix(scatteredLight, incomingLight * lavaAtmosTint, isDesert * 0.7);
-
     // Final atmosphere color
     vec3 atmosColor = scatteredLight * atmosDensity * pAtmosIntensity * 1.5;
+
 
     // Alpha follows density
     float atmosAlpha = clamp(atmosDensity * 0.8, 0.0, 1.0);
@@ -769,7 +933,7 @@ void main() {
 
     // View-dependent color enhancement - water looks more vibrant at grazing angles
     float oceanViewFactor = pow(1.0 - NdV, 2.0);
-    vec3 oceanGrazing = vec3(0.15, 0.55, 0.7);    // Bright teal at edges
+    vec3 oceanGrazing = vec3(0.149, 0.702, 0.4431);    // Bright teal at edges
     oceanColor = mix(oceanColor, oceanGrazing, oceanViewFactor * 0.4 * oceanMask);
 
     // ========================================
@@ -777,16 +941,16 @@ void main() {
     // ========================================
 
     // --- OCEANIC BIOME: Green land with white sand beaches ---
-    vec3 oceanicLand = vec3(0.15, 0.45, 0.2);
+    vec3 oceanicLand = vec3(0.2392, 0.7137, 0.3176);
     oceanicLand = mix(oceanicLand, vec3(0.1, 0.35, 0.15), smoothstep(0.1, 0.4, heightC));
     vec3 oceanicSand = vec3(0.95, 0.9, 0.75);
     float oceanicSandMask = smoothstep(seaLevel, seaLevel + 0.03, heightC) * smoothstep(seaLevel + 0.08, seaLevel + 0.03, heightC);
     vec3 oceanicSurface = mix(oceanicLand, oceanicSand, oceanicSandMask);
 
     // --- LAVA/VOLCANIC BIOME: Dark rock with glowing lava rivers ---
-    vec3 lavaRockDark = vec3(0.12, 0.08, 0.06);  // Very dark volcanic rock
+    vec3 lavaRockDark = vec3(0.5961, 0.5216, 0.4863);  // Very dark volcanic rock
     vec3 lavaRockMid = vec3(0.25, 0.15, 0.1);    // Medium volcanic rock
-    vec3 lavaRockLight = vec3(0.35, 0.2, 0.12); // Lighter rock on peaks
+    vec3 lavaRockLight = vec3(0.5608, 0.4431, 0.3804); // Lighter rock on peaks
     // Height-based rock coloring
     vec3 lavaSurface = mix(lavaRockDark, lavaRockMid, smoothstep(-0.3, 0.1, heightC));
     lavaSurface = mix(lavaSurface, lavaRockLight, smoothstep(0.2, 0.5, heightC));
@@ -845,7 +1009,7 @@ void main() {
     landSpecColor = mix(landSpecColor, vec3(0.95, 0.97, 1.0), snowMask * isMountain * 0.3);
 
     // Ocean specular picks up environment color for vibrant reflections
-    vec3 lightEnvColor = (uLightColor0 * atten0 + uLightColor1 * atten1 + uLightColor2 * atten2) / max(totalAttenuation, 0.001);
+    vec3 lightEnvColor = (uLightColor0 * atten0 * uLight0Intensity + uLightColor1 * atten1 * uLight1Intensity + uLightColor2 * atten2 * uLight2Intensity) / max(totalAttenuation, 0.001);
     // Blend between white specular and environment-tinted specular
     // This creates colorful sun reflections on water
     vec3 oceanSpecColor = mix(vec3(1.0), lightEnvColor, 0.4);
@@ -892,9 +1056,9 @@ void main() {
 
     // Combine wrap and backlight for translucent look - boosted intensity
     vec3 sss = sssColor * (
-        uLightColor0 * (sssNdL0 * 0.8 + backLight0 * 1.5) * atten0 +
-        uLightColor1 * (sssNdL1 * 0.8 + backLight1 * 1.5) * atten1 +
-        uLightColor2 * (sssNdL2 * 0.8 + backLight2 * 1.5) * atten2 +
+        uLightColor0 * (sssNdL0 * 0.8 + backLight0 * 1.5) * atten0 * uLight0Intensity +
+        uLightColor1 * (sssNdL1 * 0.8 + backLight1 * 1.5) * atten1 * uLight1Intensity +
+        uLightColor2 * (sssNdL2 * 0.8 + backLight2 * 1.5) * atten2 * uLight2Intensity +
         vec3(1.0) * (sssMouseNdL * 0.8 + backLightMouse * 1.5) * mouseAtten
     ) * 2.5 * pSSSIntensity;
 
@@ -910,7 +1074,8 @@ void main() {
     // Add extra bloom-like glow for hottest areas
     col += lavaHot * lavaEmission * lavaPulse * 0.8 * pLavaIntensity * planetMask;
 
-    // No ambient light in space
+    // Ambient light (controllable via UI) - uses light environment color
+    col += surfaceColor * lightEnvColor * uAmbientIntensity * planetMask;
 
     // Fresnel rim on surface - using roughness-adjusted Schlick for physically correct PBR
     // Smooth surfaces (ocean) get strong rim reflections, rough surfaces (land) get weak rims
@@ -924,13 +1089,13 @@ void main() {
     // Smooth ocean gets bright, sharp rim; rough land gets subtle, diffuse rim
     float rimIntensityByRoughness = mix(0.4, 1.5, 1.0 - rimRoughness);  // Smooth = 1.5x, rough = 0.4x
 
-    // Environment color for fresnel reflections - derived from actual light sources
-    // This makes fresnel reflect the scene's lighting rather than arbitrary colors
-    vec3 envColor = (uLightColor0 * atten0 + uLightColor1 * atten1 + uLightColor2 * atten2) / max(totalAttenuation, 0.001);
-    envColor = mix(envColor, scatterColor, 0.3); // Blend with atmosphere scatter color
-    vec3 rimColor = mix(envColor * 0.6, envColor * 1.0, oceanMask); // Ocean reflects more
+    // Rim color for fresnel reflections - uses lightEnvColor blended with atmosphere scatter
+    vec3 rimEnvColor = mix(lightEnvColor, scatterColor, 0.3); // Blend with atmosphere scatter color
+    vec3 rimColor = mix(rimEnvColor * 0.6, rimEnvColor * 1.0, oceanMask); // Ocean reflects more
     col += rimColor * fresnelRim * totalAttenuation * rimIntensityByRoughness;
-    col += planetColor * vGlow * (0.15 + fresnelRim.r * 0.4);
+    // Glow contribution - scales with ambient and actual lighting
+    col += planetColor * vGlow * uAmbientIntensity;
+    col += planetColor * vGlow * fresnelRim.r * 0.4 * min(totalAttenuation, 1.0);
 
     // Blend atmosphere with surface
     // The atmosphere affects both:
@@ -967,11 +1132,19 @@ void main() {
                 dir.x * sin(sampleAngle) + dir.y * cos(sampleAngle)
             );
 
-            // Sample height at edge of planet in this direction
+            // Sample height at edge of planet in this direction using 3D noise
             vec2 edgeSampleUV = rotDir * planetRadius * 0.95;
-            vec2 edgeHeightCoord = edgeSampleUV * 2.5 + vIndex * 10.0;
-            float edgeHeight = snoise(edgeHeightCoord) * 0.6
-                             + snoise(edgeHeightCoord * 2.0 + 1.5) * 0.25;
+            // Convert 2D edge sample to 3D sphere position
+            float edgeZSq = planetRadius * planetRadius - dot(edgeSampleUV, edgeSampleUV);
+            float edgeZ = edgeZSq > 0.0 ? sqrt(edgeZSq) : 0.0;
+            vec3 edgeSpherePos = normalize(vec3(edgeSampleUV, edgeZ));
+            // Apply same rotation as main terrain
+            vec3 edgeRotatedPos = edgeSpherePos * cosA
+                                + cross(rotAxis, edgeSpherePos) * sinA
+                                + rotAxis * dot(rotAxis, edgeSpherePos) * (1.0 - cosA);
+            vec3 edgeHeightCoord3D = normalize(edgeRotatedPos) * terrainScale + planetOffset;
+            float edgeHeight = snoise3D(edgeHeightCoord3D) * 0.6
+                             + snoise3D(edgeHeightCoord3D * 2.0 + 1.5) * 0.25;
 
             // Check if this edge point has lava (below sea level)
             float edgeLavaMask = smoothstep(seaLevel + 0.08, seaLevel - 0.02, edgeHeight);
@@ -1002,9 +1175,15 @@ void main() {
         lavaGlowAlpha = lavaGlowAccum * glowPulse * 0.8 * pLavaIntensity * (1.0 - planetMask);
     }
 
-    // Tone mapping
-    col = col / (col + vec3(0.7));
-    col = pow(col, vec3(0.95));
+    // ACES Filmic Tone Mapping
+    // Based on the ACES (Academy Color Encoding System) curve
+    // Attempt fitted by Krzysztof Narkowicz
+    float a = 2.51;
+    float b = 0.03;
+    float c = 2.43;
+    float e = 0.14;
+    float f = 0.59;
+    col = clamp((col * (a * col + b)) / (col * (c * col + e) + f), 0.0, 1.0);
 
     // Alpha calculation
     float alpha = 0.0;
@@ -1068,6 +1247,8 @@ void main() {
         }
     }
 
-    gl_FragColor = vec4(col, alpha);
+    // Output with premultiplied alpha for proper blending with depth sorting
+    // Blend mode: gl.ONE, gl.ONE_MINUS_SRC_ALPHA
+    gl_FragColor = vec4(col * alpha, alpha);
 }
 `;

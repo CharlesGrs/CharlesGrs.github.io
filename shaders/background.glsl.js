@@ -52,16 +52,16 @@ export const backgroundFragmentShader = `
         vec2 uv = vUv;
 
         // Slow flowing noise
-        float noise1 = snoise(uv * 1.5 + uTime * 0.05);
+        float noise1 = snoise(uv * 3.5 + uTime * 0.05);
         float noise2 = snoise(uv * 2.5 - uTime * 0.03 + 100.0);
-        float noise3 = snoise(uv * 0.8 + uTime * 0.02 + vec2(noise1 * 0.2));
+        float noise3 = snoise(uv * 5.8 + uTime * 0.02 + vec2(noise1 * 0.2));
 
         float combinedNoise = noise1 * 0.5 + noise2 * 0.3 + noise3 * 0.2;
 
         // Colors
         vec3 gold = vec3(0.91, 0.73, 0.14);
         vec3 teal = vec3(0.18, 0.83, 0.75);
-        vec3 dark = vec3(0.04, 0.06, 0.08);
+        vec3 dark = vec3(1.0, 1.0, 1.0);
 
         // Subtle color bands
         float band1 = smoothstep(-0.3, 0.3, combinedNoise);
@@ -80,7 +80,7 @@ export const backgroundFragmentShader = `
         color *= vignette;
 
         // Keep it very subtle
-        float alpha = 0.6;
+        float alpha = 1;
 
         gl_FragColor = vec4(color, alpha);
     }
