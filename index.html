@@ -106,7 +106,7 @@
     </div>
 
     <!-- Version Badge -->
-    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.14</span></div>
+    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.15</span></div>
 
     <a href="mailto:contact.charles.grassi@gmail.com" class="contact-btn" aria-label="Send email to Charles Grassi">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -159,24 +159,23 @@
         <!-- Tabbed Carousel -->
         <section class="tabbed-carousel" aria-label="Portfolio sections">
             <div class="carousel-tabs" role="tablist" aria-label="Content sections">
-                <button class="carousel-tab active" data-panel="skills" role="tab" aria-selected="true" aria-controls="panel-skills">Skills</button>
+                <button class="carousel-tab active" data-panel="career" role="tab" aria-selected="true" aria-controls="panel-career">Career</button>
+                <button class="carousel-tab" data-panel="skills" role="tab" aria-selected="false" aria-controls="panel-skills">Skills</button>
                 <button class="carousel-tab" data-panel="portfolio" role="tab" aria-selected="false" aria-controls="panel-portfolio">Portfolio</button>
-                <button class="carousel-tab" data-panel="career" role="tab" aria-selected="false" aria-controls="panel-career">Career</button>
                 <button class="carousel-tab" data-panel="clients" role="tab" aria-selected="false" aria-controls="panel-clients">Clients</button>
                 <button class="carousel-tab" data-panel="testimonials" role="tab" aria-selected="false" aria-controls="panel-testimonials">Testimonials</button>
-                <button class="carousel-tab" data-panel="playground" role="tab" aria-selected="false" aria-controls="panel-playground">Playground</button>
             </div>
 
             <div class="carousel-panels">
                 <!-- Skills Panel - Network Graph -->
-                <div class="carousel-panel skills-panel active" id="panel-skills" role="tabpanel" aria-labelledby="tab-skills">
+                <div class="carousel-panel skills-panel" id="panel-skills" role="tabpanel" aria-labelledby="tab-skills">
                     <!-- View Toggle -->
                     <div class="skills-view-toggle">
-                        <button class="view-toggle-btn active" data-view="graph" aria-label="Graph view">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="12" cy="19" r="2"/><line x1="7" y1="12" x2="10" y2="7"/><line x1="14" y1="7" x2="17" y2="12"/><line x1="17" y1="12" x2="14" y2="17"/><line x1="10" y1="17" x2="7" y2="12"/></svg>
-                        </button>
-                        <button class="view-toggle-btn" data-view="list" aria-label="List view">
+                        <button class="view-toggle-btn active" data-view="list" aria-label="List view">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                        </button>
+                        <button class="view-toggle-btn" data-view="graph" aria-label="3D Graph view (GPU intensive)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="12" cy="19" r="2"/><line x1="7" y1="12" x2="10" y2="7"/><line x1="14" y1="7" x2="17" y2="12"/><line x1="17" y1="12" x2="14" y2="17"/><line x1="10" y1="17" x2="7" y2="12"/></svg>
                         </button>
                     </div>
                     <!-- Shader Controls Container (Bottom Right) -->
@@ -1203,7 +1202,7 @@
                     </div>
                     </div><!-- End shader-controls-container -->
                     <!-- Graph View -->
-                    <div class="skill-graph-container skill-view active" id="skills-graph-view">
+                    <div class="skill-graph-container skill-view" id="skills-graph-view">
                         <canvas id="skill-graph-canvas"></canvas>
                         <div class="skill-tooltip" id="skill-tooltip">
                             <div class="skill-tooltip-title"></div>
@@ -1227,7 +1226,7 @@
                         <div class="graph-hint">Drag nodes to explore</div>
                     </div>
                     <!-- List View -->
-                    <div class="skills-list-container skill-view" id="skills-list-view">
+                    <div class="skills-list-container skill-view active" id="skills-list-view">
                         <div class="skills-category">
                             <h3 class="category-title primary">Core Skills</h3>
                             <div class="category-skills">
@@ -1350,7 +1349,7 @@
                 </div>
 
                 <!-- Career Panel - Timeline -->
-                <div class="carousel-panel career-panel" id="panel-career" role="tabpanel" aria-labelledby="tab-career">
+                <div class="carousel-panel career-panel active" id="panel-career" role="tabpanel" aria-labelledby="tab-career">
                     <div class="project-list-wrapper" id="project-list-wrapper">
                         <div class="project-list" id="project-list">
                             <article class="project-card">
@@ -1618,78 +1617,6 @@
                     </div>
                 </div>
 
-                <!-- Playground Panel - Interactive Shader -->
-                <div class="carousel-panel playground-panel" id="panel-playground" role="tabpanel" aria-labelledby="tab-playground">
-                    <div class="playground-container">
-                        <div class="playground-canvas-wrapper">
-                            <canvas id="playground-canvas"></canvas>
-                            <div class="playground-stats">
-                                <div class="playground-fps" id="playground-fps">60 FPS</div>
-                                <div class="playground-particles" id="playground-particles">500K Particles</div>
-                            </div>
-                        </div>
-                        <div class="playground-controls">
-                            <div class="playground-header">
-                                <h3 class="playground-title">GPU Particle System</h3>
-                                <p class="playground-subtitle">Transform Feedback · WebGL 2</p>
-                            </div>
-                            <div class="shader-selector">
-                                <label class="control-label">Effect</label>
-                                <div class="shader-buttons">
-                                    <button class="shader-btn active" data-shader="particles">Particles</button>
-                                    <button class="shader-btn" data-shader="voronoi">Voronoi</button>
-                                    <button class="shader-btn" data-shader="raymarching">Raymarching</button>
-                                    <button class="shader-btn" data-shader="fractal">Fractal</button>
-                                </div>
-                            </div>
-                            <div class="control-group" id="particle-controls">
-                                <div class="control-row">
-                                    <label class="control-label">Attraction</label>
-                                    <input type="range" class="control-slider" id="ctrl-attraction" min="0" max="200" value="100">
-                                    <span class="control-value" id="val-attraction">1.0x</span>
-                                </div>
-                                <div class="control-row">
-                                    <label class="control-label">Turbulence</label>
-                                    <input type="range" class="control-slider" id="ctrl-turbulence" min="0" max="200" value="80">
-                                    <span class="control-value" id="val-turbulence">0.8x</span>
-                                </div>
-                                <div class="control-row">
-                                    <label class="control-label">Speed</label>
-                                    <input type="range" class="control-slider" id="ctrl-speed" min="0" max="200" value="100">
-                                    <span class="control-value" id="val-speed">1.0x</span>
-                                </div>
-                                <div class="control-row">
-                                    <label class="control-label">Color Shift</label>
-                                    <input type="range" class="control-slider" id="ctrl-hue" min="0" max="360" value="0">
-                                    <span class="control-value" id="val-hue">0°</span>
-                                </div>
-                            </div>
-                            <div class="control-group shader-only-controls" style="display: none;">
-                                <div class="control-row">
-                                    <label class="control-label">Speed</label>
-                                    <input type="range" class="control-slider" id="ctrl-shader-speed" min="0" max="200" value="100">
-                                    <span class="control-value" id="val-shader-speed">1.0x</span>
-                                </div>
-                                <div class="control-row">
-                                    <label class="control-label">Scale</label>
-                                    <input type="range" class="control-slider" id="ctrl-scale" min="10" max="200" value="100">
-                                    <span class="control-value" id="val-scale">1.0x</span>
-                                </div>
-                                <div class="control-row">
-                                    <label class="control-label">Intensity</label>
-                                    <input type="range" class="control-slider" id="ctrl-intensity" min="0" max="200" value="100">
-                                    <span class="control-value" id="val-intensity">1.0x</span>
-                                </div>
-                                <div class="control-row">
-                                    <label class="control-label">Color Shift</label>
-                                    <input type="range" class="control-slider" id="ctrl-shader-hue" min="0" max="360" value="0">
-                                    <span class="control-value" id="val-shader-hue">0°</span>
-                                </div>
-                            </div>
-                            <div class="playground-hint">Circle · Star · Heart · Box morphing · Move mouse to scatter · Click to burst</div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </section>
 

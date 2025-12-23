@@ -2768,8 +2768,12 @@ const spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
     });
 
     window.addEventListener('resize', resize);
-    initSphereGL();
+    // Don't init WebGL by default - wait for graph view toggle
     resize();
+
+    // Expose init function for view toggle
+    window.initSkillGraphWebGL = initSphereGL;
+    window.skillGraphResize = resize;
 
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
@@ -4361,29 +4365,51 @@ const spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
 // SKILLS VIEW TOGGLE
 // ============================================
 (function initSkillsToggle() {
-    const toggleBtns = document.querySelectorAll('.view-toggle-btn');
+    const viewToggleBtns = document.querySelectorAll('.view-toggle-btn[data-view]');
     const graphView = document.getElementById('skills-graph-view');
     const listView = document.getElementById('skills-list-view');
+    const shaderControls = document.getElementById('shader-controls-container');
 
-    if (!toggleBtns.length || !graphView || !listView) return;
+    if (!viewToggleBtns.length || !graphView || !listView) return;
 
-    toggleBtns.forEach(btn => {
+    // Hide shader controls by default (list view is default)
+    if (shaderControls) {
+        shaderControls.style.display = 'none';
+    }
+
+    // View toggle (graph/list)
+    viewToggleBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const view = btn.dataset.view;
 
-            // Update button states
-            toggleBtns.forEach(b => b.classList.remove('active'));
+            // Update button states (only view toggle buttons)
+            viewToggleBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
             // Toggle views
             if (view === 'graph') {
                 graphView.classList.add('active');
                 listView.classList.remove('active');
-                // Trigger resize to fix canvas
-                window.dispatchEvent(new Event('resize'));
+                // Show shader controls in graph view
+                if (shaderControls) {
+                    shaderControls.style.display = '';
+                }
+                // Initialize WebGL if not already done
+                if (window.initSkillGraphWebGL && !window.skillGraphWebGLInitialized) {
+                    window.initSkillGraphWebGL();
+                    window.skillGraphWebGLInitialized = true;
+                }
+                // Trigger resize after DOM updates (slight delay for layout)
+                requestAnimationFrame(() => {
+                    window.dispatchEvent(new Event('resize'));
+                });
             } else {
                 graphView.classList.remove('active');
                 listView.classList.add('active');
+                // Hide shader controls in list view
+                if (shaderControls) {
+                    shaderControls.style.display = 'none';
+                }
             }
         });
     });

@@ -850,41 +850,21 @@ header {
     transform: translateY(0);
 }
 
-/* Skills Panel - Network Graph (Fullscreen viewport, breaks out of container) */
+/* Skills Panel - Container for both views */
 .skills-panel {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    z-index: 1;
+    position: relative;
 }
 
+/* Graph container - fits within panel */
 .skills-panel .skill-graph-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    margin: 0;
-    padding: 0;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    position: relative;
+    width: 100%;
+    height: 100%;
 }
 
 .skills-panel #skill-graph-canvas {
-    width: 100vw !important;
-    height: 100vh !important;
-}
-
-.skills-panel .graph-legend,
-.skills-panel .graph-hint {
-    display: none;
+    width: 100% !important;
+    height: 100% !important;
 }
 
 /* Skills View Toggle */
@@ -894,7 +874,7 @@ header {
     right: 0.75rem;
     display: flex;
     gap: 0.5rem;
-    z-index: 10;
+    z-index: 1001;
     background: rgba(21, 29, 38, 0.8);
     padding: 0.5rem;
     border-radius: 12px;
@@ -2197,16 +2177,13 @@ header {
 
 /* Skills List View */
 .skills-list-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
     padding: 1rem 1.5rem;
     overflow-y: auto;
+    width: 100%;
+    height: 100%;
 }
 
 .skills-category {
