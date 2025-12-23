@@ -954,9 +954,7 @@ header {
 
 /* Light Controls */
 .light-controls {
-    position: absolute;
-    top: 0.75rem;
-    left: 0.75rem;
+    position: relative;
     z-index: 20;
 }
 
@@ -964,11 +962,11 @@ header {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 64px;
-    height: 64px;
+    width: 44px;
+    height: 44px;
     background: rgba(21, 29, 38, 0.85);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 10px;
     cursor: pointer;
     transition: all 0.3s ease;
     backdrop-filter: blur(8px);
@@ -976,8 +974,8 @@ header {
 }
 
 .light-controls-toggle svg {
-    width: 36px;
-    height: 36px;
+    width: 24px;
+    height: 24px;
     stroke: var(--text-muted);
     transition: all 0.3s ease;
 }
@@ -1002,9 +1000,6 @@ header {
 
 /* Label Toggle Button */
 .label-toggle-btn {
-    position: absolute;
-    top: calc(100% + 0.5rem);
-    left: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1044,27 +1039,24 @@ header {
     stroke: var(--accent-teal);
 }
 
-/* Debug Quad Toggle - position next to label toggle */
-#debug-quad-toggle {
-    left: 56px;
-}
-
 .light-controls-panel {
     position: absolute;
-    top: calc(100% + 0.5rem);
-    left: 0;
+    bottom: calc(100% + 0.5rem);
+    right: 0;
     min-width: 180px;
+    max-height: 70vh;
+    overflow-y: auto;
     background: rgba(21, 29, 38, 0.95);
     border: 1px solid var(--border-color);
     border-radius: 10px;
     padding: 0.75rem;
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-10px) scale(0.95);
+    transform: translateY(10px) scale(0.95);
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
 }
 
 .light-controls.active .light-controls-panel {
@@ -1340,9 +1332,7 @@ header {
 
 /* Physics Controls */
 .physics-controls {
-    position: absolute;
-    top: 0.75rem;
-    left: 5.5rem; /* Next to light controls */
+    position: relative;
     z-index: 20;
 }
 
@@ -1350,11 +1340,11 @@ header {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 64px;
-    height: 64px;
+    width: 44px;
+    height: 44px;
     background: rgba(21, 29, 38, 0.85);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 10px;
     cursor: pointer;
     transition: all 0.3s ease;
     backdrop-filter: blur(8px);
@@ -1362,8 +1352,8 @@ header {
 }
 
 .physics-controls-toggle svg {
-    width: 36px;
-    height: 36px;
+    width: 24px;
+    height: 24px;
     stroke: var(--text-muted);
     transition: all 0.3s ease;
 }
@@ -1388,20 +1378,22 @@ header {
 
 .physics-controls-panel {
     position: absolute;
-    top: calc(100% + 0.5rem);
-    left: 0;
+    bottom: calc(100% + 0.5rem);
+    right: 0;
     min-width: 200px;
+    max-height: 70vh;
+    overflow-y: auto;
     background: rgba(21, 29, 38, 0.95);
     border: 1px solid var(--border-color);
     border-radius: 10px;
     padding: 0.75rem;
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-10px) scale(0.95);
+    transform: translateY(10px) scale(0.95);
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
 }
 
 .physics-controls.active .physics-controls-panel {
@@ -1665,6 +1657,92 @@ header {
     box-shadow: 0 0 12px var(--accent-teal);
 }
 
+/* Color picker styling */
+.render-control-item.color-picker-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.render-control-item.color-picker-row .render-label {
+    flex: 1;
+}
+
+.render-color-picker {
+    width: 40px;
+    height: 24px;
+    -webkit-appearance: none;
+    appearance: none;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+    padding: 0;
+}
+
+.render-color-picker::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.render-color-picker::-webkit-color-swatch {
+    border: none;
+    border-radius: 2px;
+}
+
+.render-color-picker::-moz-color-swatch {
+    border: none;
+    border-radius: 2px;
+}
+
+.render-color-picker:hover {
+    border-color: var(--accent-teal);
+    box-shadow: 0 0 8px rgba(45, 212, 191, 0.3);
+}
+
+.render-checkbox {
+    width: 20px;
+    height: 20px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.render-checkbox:checked {
+    background: var(--accent-teal);
+    border-color: var(--accent-teal);
+}
+
+.render-checkbox:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--bg-primary);
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.render-checkbox:hover {
+    border-color: var(--accent-teal);
+    box-shadow: 0 0 8px var(--accent-teal);
+}
+
+.debug-controls .render-checkbox:checked {
+    background: rgba(0, 255, 200, 0.9);
+    border-color: rgba(0, 255, 200, 0.9);
+}
+
+.debug-controls .render-checkbox:hover {
+    border-color: rgba(0, 255, 200, 0.9);
+    box-shadow: 0 0 8px rgba(0, 255, 200, 0.5);
+}
+
 .render-color-picker {
     width: 100%;
     height: 28px;
@@ -1712,31 +1790,41 @@ header {
     border-color: var(--accent-teal-dim);
 }
 
-/* Planet Controls (A and B) */
+/* Planet Controls (A and B) - Bottom Right Container */
+.shader-controls-container {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+    z-index: 1000;
+}
+
 .planet-controls {
-    position: absolute;
-    top: 0.75rem;
+    position: relative;
     z-index: 20;
 }
 
 .planet-controls.planet-a {
-    left: 10.25rem;
 }
 
 .planet-controls.planet-b {
-    left: 15rem;
 }
 
 .planet-controls.sun-controls {
-    left: 19.75rem;
 }
 
 .planet-controls.godrays-controls {
-    left: 24.5rem;
 }
 
 .planet-controls.particles-controls {
-    left: 29.25rem;
+}
+
+.planet-controls.nebula-controls {
+}
+
+.planet-controls.debug-controls {
 }
 
 .sun-controls .planet-controls-toggle:hover,
@@ -1787,6 +1875,38 @@ header {
     background: rgba(200, 200, 255, 0.9);
 }
 
+.nebula-controls .planet-controls-toggle:hover,
+.nebula-controls.active .planet-controls-toggle {
+    border-color: rgba(180, 100, 255, 0.4);
+    background: rgba(180, 100, 255, 0.1);
+}
+
+.nebula-controls .planet-controls-toggle:hover svg,
+.nebula-controls.active .planet-controls-toggle svg {
+    stroke: rgba(180, 100, 255, 0.9);
+}
+
+.nebula-controls .planet-controls-toggle:hover .planet-label,
+.nebula-controls.active .planet-label {
+    background: rgba(180, 100, 255, 0.9);
+}
+
+.debug-controls .planet-controls-toggle:hover,
+.debug-controls.active .planet-controls-toggle {
+    border-color: rgba(0, 255, 200, 0.4);
+    background: rgba(0, 255, 200, 0.1);
+}
+
+.debug-controls .planet-controls-toggle:hover svg,
+.debug-controls.active .planet-controls-toggle svg {
+    stroke: rgba(0, 255, 200, 0.9);
+}
+
+.debug-controls .planet-controls-toggle:hover .planet-label,
+.debug-controls.active .planet-label {
+    background: rgba(0, 255, 200, 0.9);
+}
+
 .planet-control-header.sun {
     color: var(--accent-gold);
 }
@@ -1799,15 +1919,23 @@ header {
     color: rgba(200, 200, 255, 0.9);
 }
 
+.planet-control-header.nebula {
+    color: rgba(180, 100, 255, 0.9);
+}
+
+.planet-control-header.debug {
+    color: rgba(0, 255, 200, 0.9);
+}
+
 .planet-controls-toggle {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 64px;
-    height: 64px;
+    width: 44px;
+    height: 44px;
     background: rgba(21, 29, 38, 0.85);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 10px;
     cursor: pointer;
     transition: all 0.3s ease;
     backdrop-filter: blur(8px);
@@ -1816,23 +1944,23 @@ header {
 }
 
 .planet-controls-toggle svg {
-    width: 36px;
-    height: 36px;
+    width: 24px;
+    height: 24px;
     stroke: var(--text-muted);
     transition: all 0.3s ease;
 }
 
 .planet-label {
     position: absolute;
-    bottom: -4px;
-    right: -4px;
+    bottom: -3px;
+    right: -3px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     font-weight: 700;
     color: var(--bg-primary);
     background: var(--text-muted);
-    width: 20px;
-    height: 20px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -1874,8 +2002,8 @@ header {
 
 .planet-controls-panel {
     position: absolute;
-    top: calc(100% + 0.5rem);
-    left: 0;
+    bottom: calc(100% + 0.5rem);
+    right: 0;
     min-width: 200px;
     max-height: 70vh;
     overflow-y: auto;
@@ -1885,11 +2013,11 @@ header {
     padding: 0.75rem;
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-10px) scale(0.95);
+    transform: translateY(10px) scale(0.95);
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
 }
 
 .planet-controls-panel::-webkit-scrollbar {
@@ -1968,34 +2096,70 @@ header {
     border-color: rgba(255, 140, 50, 0.5);
 }
 
-@media (max-width: 900px) {
-    .planet-controls.planet-a {
-        left: 4.5rem;
-    }
+.nebula-controls .render-slider::-webkit-slider-thumb {
+    background: rgba(180, 100, 255, 0.9);
+    box-shadow: 0 0 8px rgba(180, 100, 255, 0.9);
+}
 
-    .planet-controls.planet-b {
-        left: 6.75rem;
-    }
+.nebula-controls .render-slider::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 12px rgba(180, 100, 255, 0.9);
+}
 
-    .planet-controls-panel {
-        max-height: 60vh;
-    }
+.nebula-controls .render-slider::-moz-range-thumb {
+    background: rgba(180, 100, 255, 0.9);
+    box-shadow: 0 0 8px rgba(180, 100, 255, 0.9);
+}
+
+.nebula-controls .render-slider::-moz-range-thumb:hover {
+    box-shadow: 0 0 12px rgba(180, 100, 255, 0.9);
+}
+
+.nebula-controls .render-value {
+    color: rgba(180, 100, 255, 0.9);
+}
+
+.nebula-controls .render-reset-btn:hover {
+    color: rgba(180, 100, 255, 0.9);
+    background: rgba(180, 100, 255, 0.1);
+    border-color: rgba(180, 100, 255, 0.5);
+}
+
+.debug-controls .render-slider::-webkit-slider-thumb {
+    background: rgba(0, 255, 200, 0.9);
+    box-shadow: 0 0 8px rgba(0, 255, 200, 0.9);
+}
+
+.debug-controls .render-slider::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 12px rgba(0, 255, 200, 0.9);
+}
+
+.debug-controls .render-slider::-moz-range-thumb {
+    background: rgba(0, 255, 200, 0.9);
+    box-shadow: 0 0 8px rgba(0, 255, 200, 0.9);
+}
+
+.debug-controls .render-slider::-moz-range-thumb:hover {
+    box-shadow: 0 0 12px rgba(0, 255, 200, 0.9);
+}
+
+.debug-controls .render-value {
+    color: rgba(0, 255, 200, 0.9);
+}
+
+.debug-controls .render-reset-btn:hover {
+    color: rgba(0, 255, 200, 0.9);
+    background: rgba(0, 255, 200, 0.1);
+    border-color: rgba(0, 255, 200, 0.5);
 }
 
 @media (max-width: 900px) {
-    .physics-controls {
-        top: 0.5rem;
-        left: 2.5rem;
+    .planet-controls-panel {
+        max-height: 60vh;
     }
 
-    .physics-controls {
-        top: 0.5rem;
-        left: 2.5rem;
-    }
-
-    .light-controls {
-        top: 0.5rem;
-        left: 0.5rem;
+    /* Hide shader controls container on mobile for fullscreen simulation */
+    .shader-controls-container {
+        display: none !important;
     }
 
     .light-controls-toggle,
@@ -2928,6 +3092,24 @@ footer {
 
 /* Responsive */
 @media (max-width: 900px) {
+    /* MOBILE FULLSCREEN SIMULATION MODE - Hide everything except the simulation canvas */
+    body.mobile-simulation-mode .container,
+    body.mobile-simulation-mode .noise-overlay,
+    body.mobile-simulation-mode .fps-badge,
+    body.mobile-simulation-mode .version-badge,
+    body.mobile-simulation-mode .contact-btn {
+        display: none !important;
+    }
+
+    body.mobile-simulation-mode {
+        overflow: hidden;
+    }
+
+    body.mobile-simulation-mode #gpu-canvas {
+        z-index: 1;
+        pointer-events: auto;
+    }
+
     .container {
         padding: 1rem;
         height: auto;

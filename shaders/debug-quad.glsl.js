@@ -1,76 +1,29 @@
-// Debug Quad Shader - draws wireframe quad overlay on nodes
-// Used to visualize the billboard quad bounds
-
 window.DEBUG_QUAD_VERTEX_SHADER = `
 attribute vec2 aPosition;
-uniform vec2 uCenter;
-uniform float uSize;
-uniform vec2 uResolution;
-uniform float uZoom;
-uniform float uCameraRotX;
-uniform float uCameraRotY;
-
-varying vec2 vLocalPos;
-
-void main() {
-    vLocalPos = aPosition;
-
-    // Billboard quad corners in local space (-1 to 1)
-    vec2 corner = aPosition * uSize;
-
-    // Apply zoom
-    corner *= uZoom;
-
-    // Position in screen space
-    vec2 screenPos = uCenter + corner;
-
-    // Convert to clip space
-    vec2 clipPos = (screenPos / uResolution) * 2.0 - 1.0;
-    clipPos.y = -clipPos.y;
-
-    gl_Position = vec4(clipPos, 0.0, 1.0);
-}
-`;
+uniform vec2 uCenter,uResolution;
+uniform float uSize,uZoom,uCameraRotX,uCameraRotY,uWorldZ;
+varying vec2 vUV;
+void main(){
+vUV=aPosition;
+float c=cos(uCameraRotX),s=sin(uCameraRotX),cy=cos(uCameraRotY),sy=sin(uCameraRotY);
+vec3 cam=vec3(sy*c,s,cy*c),fwd=normalize(-cam),rt=normalize(cross(vec3(0,1,0),fwd)),up=cross(fwd,rt);
+vec3 p=vec3((uCenter-uResolution*.5)/uResolution.x*vec2(1,-1),uWorldZ)-cam;
+float z=dot(p,fwd);
+if(z<.01){gl_Position=vec4(2,2,0,1);return;}
+float sc=uSize/z*uZoom;
+vec2 pr=uResolution*.5+vec2(dot(p,rt),-dot(p,up))/z*uResolution.x*uZoom+aPosition*sc*3.;
+gl_Position=vec4(pr/uResolution*2.-1.,0,1);gl_Position.y*=-1.;
+}`;
 
 window.DEBUG_QUAD_FRAGMENT_SHADER = `
 precision highp float;
-
-varying vec2 vLocalPos;
-uniform vec3 uColor;
-uniform float uTime;
-
-void main() {
-    vec2 uv = vLocalPos;
-
-    // Draw border/wireframe
-    float borderWidth = 0.05;
-    float edge = max(abs(uv.x), abs(uv.y));
-    float border = smoothstep(1.0 - borderWidth, 1.0, edge);
-
-    // Animated dash pattern along the border
-    float dashFreq = 8.0;
-    float angle = atan(uv.y, uv.x);
-    float dash = sin(angle * dashFreq + uTime * 2.0) * 0.5 + 0.5;
-    dash = smoothstep(0.3, 0.7, dash);
-
-    // Corner markers
-    float cornerSize = 0.2;
-    float cornerDist = min(
-        length(abs(uv) - vec2(1.0, 1.0)),
-        min(
-            length(abs(uv) - vec2(1.0, 0.0)),
-            length(abs(uv) - vec2(0.0, 1.0))
-        )
-    );
-    float corners = 1.0 - smoothstep(0.0, cornerSize, cornerDist);
-
-    // Combine border and corners
-    float alpha = max(border * dash * 0.8, corners * 0.6);
-
-    // Subtle fill
-    float fill = 0.05;
-    alpha = max(alpha, fill);
-
-    gl_FragColor = vec4(uColor, alpha);
-}
-`;
+varying vec2 vUV;
+void main(){
+float w=.05;
+float e=max(abs(vUV.x),abs(vUV.y));
+float border=smoothstep(1.-w,1.,e);
+float diag=1.-smoothstep(0.,w,abs(vUV.x-vUV.y));
+float a=max(border,diag)*.9;
+if(a<.01)discard;
+gl_FragColor=vec4(1.,.5,0.,a);
+}`;

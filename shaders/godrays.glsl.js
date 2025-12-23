@@ -264,22 +264,19 @@ void main() {
     // Screen-space UV (0-1)
     vec2 screenUV = vUV;
 
-    // Transform light positions from world space to screen space with perspective
-    vec2 light0Screen = worldToScreen(uLight0);
-    vec2 light1Screen = worldToScreen(uLight1);
-    vec2 light2Screen = worldToScreen(uLight2);
-
+    // Light positions are already in screen space (transformed by JS with camera rotation)
+    // Use them directly without worldToScreen transform
     vec3 fog = vec3(0.0);
 
     // Light rays from each source (using screen-space positions)
-    fog += lightRays(screenUV, light0Screen, uLightColor0, 0.5);
-    fog += lightRays(screenUV, light1Screen, uLightColor1, 0.5);
-    fog += lightRays(screenUV, light2Screen, uLightColor2, 0.5);
+    fog += lightRays(screenUV, uLight0, uLightColor0, 0.5);
+    fog += lightRays(screenUV, uLight1, uLightColor1, 0.5);
+    fog += lightRays(screenUV, uLight2, uLightColor2, 0.5);
 
     // Soft glow halos (using screen-space positions)
-    fog += glow(screenUV, light0Screen, uLightColor0, 0.5);
-    fog += glow(screenUV, light1Screen, uLightColor1, 0.5);
-    fog += glow(screenUV, light2Screen, uLightColor2, 0.5);
+    fog += glow(screenUV, uLight0, uLightColor0, 0.5);
+    fog += glow(screenUV, uLight1, uLightColor1, 0.5);
+    fog += glow(screenUV, uLight2, uLightColor2, 0.5);
 
     // Subtle ambient fog - sample noise on distant sphere
     // Apply uNoiseScale to control noise frequency

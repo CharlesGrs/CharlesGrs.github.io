@@ -2,6 +2,24 @@
 // All interactive functionality for the portfolio site
 
 // ============================================
+// MOBILE FULLSCREEN SIMULATION MODE
+// ============================================
+(function initMobileSimulationMode() {
+    const isMobile = window.innerWidth <= 900;
+    if (isMobile) {
+        document.body.classList.add('mobile-simulation-mode');
+    }
+    // Also handle orientation changes
+    window.addEventListener('resize', function() {
+        if (window.innerWidth <= 900) {
+            document.body.classList.add('mobile-simulation-mode');
+        } else {
+            document.body.classList.remove('mobile-simulation-mode');
+        }
+    });
+})();
+
+// ============================================
 // CACHED WINDOW DIMENSIONS (avoid forced reflow)
 // ============================================
 let cachedWindowWidth = window.innerWidth;
@@ -59,7 +77,8 @@ const lightParams = {
     light2Intensity: 1.0,
     light2Attenuation: 0.06,
     light2Kelvin: 5000,
-    ambientIntensity: 0.0  // Ambient light in space (default 0)
+    ambientIntensity: 0.0,  // Ambient light in space (default 0)
+    fogIntensity: 0.15       // Fog intensity (colored by env light)
 };
 
 // Sun/Star halo parameters (UI-controllable)
@@ -83,27 +102,79 @@ const sunParams = {
     chromaticShift: 1.0
 };
 
-// Physics parameters (UI-controllable) - tuned for 3D sphere distribution
-const physicsParams = {
-    springStrength: 0.008,     // Connection spring strength (stronger for tighter clusters)
-    rotationForce: 0.00005,    // Rotation around connection centroid (subtle in 3D)
-    separationZone: 1.5,       // Separation distance multiplier (tighter packing)
-    separationForce: 0.8,      // Collision separation force (stronger to prevent overlap)
-    damping: 0.94,             // Velocity damping (slightly less for smoother 3D motion)
-    maxSpeed: 0.8,             // Maximum velocity (slower for controlled 3D movement)
-    centerPull: 0.001,         // How strongly nodes are pulled to origin (stronger for cohesion)
-    repelStrength: 15.0,       // Unconnected planet repulsion (balanced for 3D)
-    sunRepel: 2.0,             // Sun-to-sun repulsion (keep suns spread out)
-    mouseAttraction: 0.005     // How strongly nodes are attracted to mouse (gentler in 3D)
+// Orbital system parameters (UI-controllable)
+const orbitParams = {
+    // Global orbital speed multiplier
+    orbitSpeed: 1.0,           // Global orbit speed multiplier (0 - 3.0)
+    // Sun positioning
+    sunSpread: 1.0,            // How far apart suns are positioned (0.5 - 2.0)
+    sunSpawnMin: 0.2,          // Minimum distance from center for suns (0.1 - 0.5)
+    sunSpawnMax: 0.45,         // Maximum distance from center for suns (0.3 - 0.6)
+    // Moon orbit settings
+    moonOrbitRadius: 1.0,      // Moon orbit radius multiplier (0.5 - 2.0)
+    moonOrbitSpacing: 1.0,     // Gap between successive moon orbits (0.5 - 2.0)
+    moonOrbitTilt: 1.0,        // How tilted moon orbits are (0 - 2.0)
+    baseOrbitMin: 0.04,        // Minimum base orbit radius (0.02 - 0.1)
+    baseOrbitMax: 0.08,        // Maximum base orbit radius (0.05 - 0.15)
+    spawnOffset: 0.0,          // Offset angle for all spawning positions in radians (-PI to PI)
+    // Sub-moon settings
+    subMoonOrbitRadius: 1.0,   // Sub-moon orbit radius multiplier (0.5 - 2.0)
+    subMoonSpeed: 1.0,         // Sub-moon speed multiplier (0.5 - 3.0)
+    subMoonSize: 0.5,          // Sub-moon size multiplier (0.2 - 1.0)
+    // Visual settings
+    orbitLineOpacity: 0.25,    // Orbit circle line opacity (0 - 1)
+    orbitLineWidth: 1.0,       // Orbit circle line width (0.5 - 3)
+    // Camera settings
+    cameraRotSpeed: 1.0,       // Camera rotation sensitivity (0.2 - 3.0)
+    // Display toggles
+    showOrbits: 1.0            // Show orbit circles (0 or 1)
 };
+
+// Legacy alias for compatibility
+const physicsParams = orbitParams;
 
 // Display settings
 let showPlanetLabels = true;  // Toggle for planet labels visibility
+let showConnectionLinks = false;  // Toggle for connection links visibility (hidden by default)
 
 // Global camera rotation (shared between skill network and background)
 // Updated by skill network, read by background shader
 window.globalCameraRotX = 0;
 window.globalCameraRotY = 0;
+window.globalZoom = 1.0;
+
+// Nebula background parameters (UI-controllable)
+// Used by the Three.js background shader
+const nebulaParams = {
+    intensity: 0.25,        // Overall nebula brightness (0-1)
+    scale: 2.0,             // Noise scale - higher = smaller features (0.5-10)
+    detail: 2.0,            // Detail/octaves (0-4)
+    speed: 0.08,            // Animation speed (0-0.5)
+    colorVariation: 0.8,    // Color variation amount (0-2)
+    dustDensity: 0.4,       // Dust lane density (0-1)
+    starDensity: 0.25,      // Background star density (0-1)
+    lightInfluence: 0.4,    // How much lights affect nebula (0-2)
+    fractalIntensity: 0.15, // Fractal pattern intensity in lit areas (0-1)
+    fractalScale: 8.0,      // Fractal pattern scale (1-20)
+    fractalSpeed: 0.03,     // Fractal animation speed (0-0.1)
+    fractalSaturation: 3.0, // Fractal color saturation (1-5)
+    fractalFalloff: 3.0,    // Fractal light falloff (1-10)
+    vignetteStrength: 0.3,  // Vignette darkness (0-1)
+    // Nebula colors (RGB 0-1)
+    colorPurple: [0.12, 0.04, 0.18],
+    colorCyan: [0.04, 0.12, 0.20],
+    colorBlue: [0.03, 0.06, 0.15],
+    colorGold: [0.15, 0.10, 0.03]
+};
+
+// Global light data (shared between skill network and background nebula shader)
+// Updated by skill network renderSpheresGL, read by background shader
+window.globalLights = {
+    light0: { x: 0, y: 0, color: [1.0, 0.67, 0.2], intensity: 1.0 },
+    light1: { x: 0, y: 0, color: [0.6, 0.3, 0.8], intensity: 1.0 },
+    light2: { x: 0, y: 0, color: [0.2, 0.87, 1.0], intensity: 1.0 },
+    resolution: { width: 1920, height: 1080 }
+};
 
 // Update cache on resize (debounced elsewhere)
 window.addEventListener('resize', () => {
@@ -115,7 +186,8 @@ window.addEventListener('resize', () => {
 // SHADER DEFINITIONS
 // ============================================
 
-// Background Aurora Shaders (Three.js)
+// Background Nebula Shaders - loaded from external file shaders/nebula-background.glsl.js
+// Uses distant sphere sampling technique matching god rays for consistent camera rotation
 const backgroundVertexShader = `
     varying vec2 vUv;
     void main() {
@@ -124,140 +196,11 @@ const backgroundVertexShader = `
     }
 `;
 
-const backgroundFragmentShader = `
-    uniform float uTime;
-    uniform vec2 uMouse;
-    uniform vec2 uResolution;
-    uniform float uCameraRotX;  // Camera pitch
-    uniform float uCameraRotY;  // Camera yaw
-
-    varying vec2 vUv;
-
-    // 3D noise helper functions
-    vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-    vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-    vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
-    vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-
-    // 3D Simplex noise
-    float snoise3D(vec3 v) {
-        const vec2 C = vec2(1.0/6.0, 1.0/3.0);
-        const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
-
-        vec3 i  = floor(v + dot(v, C.yyy));
-        vec3 x0 = v - i + dot(i, C.xxx);
-
-        vec3 g = step(x0.yzx, x0.xyz);
-        vec3 l = 1.0 - g;
-        vec3 i1 = min(g.xyz, l.zxy);
-        vec3 i2 = max(g.xyz, l.zxy);
-
-        vec3 x1 = x0 - i1 + C.xxx;
-        vec3 x2 = x0 - i2 + C.yyy;
-        vec3 x3 = x0 - D.yyy;
-
-        i = mod289(i);
-        vec4 p = permute(permute(permute(
-                 i.z + vec4(0.0, i1.z, i2.z, 1.0))
-               + i.y + vec4(0.0, i1.y, i2.y, 1.0))
-               + i.x + vec4(0.0, i1.x, i2.x, 1.0));
-
-        float n_ = 0.142857142857;
-        vec3 ns = n_ * D.wyz - D.xzx;
-
-        vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
-
-        vec4 x_ = floor(j * ns.z);
-        vec4 y_ = floor(j - 7.0 * x_);
-
-        vec4 x = x_ * ns.x + ns.yyyy;
-        vec4 y = y_ * ns.x + ns.yyyy;
-        vec4 h = 1.0 - abs(x) - abs(y);
-
-        vec4 b0 = vec4(x.xy, y.xy);
-        vec4 b1 = vec4(x.zw, y.zw);
-
-        vec4 s0 = floor(b0) * 2.0 + 1.0;
-        vec4 s1 = floor(b1) * 2.0 + 1.0;
-        vec4 sh = -step(h, vec4(0.0));
-
-        vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
-        vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
-
-        vec3 p0 = vec3(a0.xy, h.x);
-        vec3 p1 = vec3(a0.zw, h.y);
-        vec3 p2 = vec3(a1.xy, h.z);
-        vec3 p3 = vec3(a1.zw, h.w);
-
-        vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
-        p0 *= norm.x;
-        p1 *= norm.y;
-        p2 *= norm.z;
-        p3 *= norm.w;
-
-        vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-        m = m * m;
-        return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
-    }
-
-    void main() {
-        vec2 uv = vUv;
-
-        // Screen position centered at origin
-        vec2 screenPos = (uv - 0.5) * 2.0;
-
-        // Camera rotation - create a tilted slice through 3D noise
-        // Instead of raytracing, we rotate the 2D sample point into 3D space
-        float cosRotX = cos(uCameraRotX);
-        float sinRotX = sin(uCameraRotX);
-        float cosRotY = cos(uCameraRotY);
-        float sinRotY = sin(uCameraRotY);
-
-        // Start with 2D screen position as X,Y and use camera rotation to tilt into Z
-        // This creates a tilted plane slice through the 3D noise volume
-        vec3 noisePos;
-
-        // Apply Y rotation (yaw) - rotates around vertical axis
-        float rx = screenPos.x * cosRotY - 0.0 * sinRotY;
-        float rz = screenPos.x * sinRotY + 0.0 * cosRotY;
-
-        // Apply X rotation (pitch) - rotates around horizontal axis
-        float ry = screenPos.y * cosRotX - rz * sinRotX;
-        rz = screenPos.y * sinRotX + rz * cosRotX;
-
-        noisePos = vec3(rx, ry, rz);
-
-        // Sample 3D noise - the rotation creates parallax as camera moves
-        vec3 noiseCoord = noisePos * 0.8 + vec3(0.0, 0.0, uTime * 0.02);
-
-        float noise1 = snoise3D(noiseCoord * 1.5);
-        float noise2 = snoise3D(noiseCoord * 2.5 + vec3(100.0, 0.0, -uTime * 0.01));
-        float noise3 = snoise3D(noiseCoord * 0.8 + vec3(noise1 * 0.2, 0.0, uTime * 0.015));
-        float combinedNoise = noise1 * 0.5 + noise2 * 0.3 + noise3 * 0.2;
-
-        vec3 gold = vec3(0.91, 0.73, 0.14);
-        vec3 teal = vec3(0.18, 0.83, 0.75);
-        vec3 dark = vec3(0.04, 0.06, 0.08);
-
-        float band1 = smoothstep(-0.3, 0.3, combinedNoise);
-        float band2 = smoothstep(0.0, 0.6, combinedNoise);
-
-        vec3 color = mix(dark, gold * 0.15, band1 * 0.4);
-        color = mix(color, teal * 0.12, band2 * 0.3);
-
-        // Mouse glow (in screen space)
-        float mouseDist = length(uv - uMouse);
-        float mouseGlow = exp(-mouseDist * 3.0) * 0.08;
-        color += teal * mouseGlow;
-
-        // Vignette
-        float vignette = 1.0 - length(uv - 0.5) * 0.5;
-        color *= vignette;
-
-        float alpha = 0.6;
-        gl_FragColor = vec4(color, alpha);
-    }
-`;
+// The fragment shader is loaded from window.NEBULA_BACKGROUND_FRAGMENT_SHADER
+// but we need to convert it for Three.js (uses vUv instead of vUV)
+const nebulaFragmentShaderRaw = window.NEBULA_BACKGROUND_FRAGMENT_SHADER || '';
+// Replace all vUV with vUv for Three.js compatibility
+const backgroundFragmentShader = nebulaFragmentShaderRaw.replace(/vUV/g, 'vUv');
 
 const particleVertexShader = `
     uniform float uTime;
@@ -308,12 +251,28 @@ if (!sphereVertexShader || !sphereFragmentShader || !sunFragmentShader) {
     console.log('Planet and Sun shaders loaded from external .glsl.js files');
 }
 
+// Nebula background shader - loaded from shaders/nebula-background.glsl.js
+const nebulaBackgroundVertexShader = window.NEBULA_BACKGROUND_VERTEX_SHADER;
+const nebulaBackgroundFragmentShader = window.NEBULA_BACKGROUND_FRAGMENT_SHADER;
+if (!nebulaBackgroundFragmentShader) {
+    console.error('Nebula background shader not loaded! Make sure nebula-background.glsl.js is before main.js');
+} else {
+    console.log('Nebula background shader loaded from external .glsl.js file');
+}
+
 // ============================================
-// BACKGROUND AURORA EFFECT (Three.js)
+// BACKGROUND NEBULA EFFECT (Three.js)
+// Uses distant sphere sampling with light integration from skill graph
 // ============================================
 (function initBackground() {
     const canvas = document.getElementById('gpu-canvas');
     if (!canvas || typeof THREE === 'undefined') return;
+
+    // Check if nebula shader loaded
+    if (!window.NEBULA_BACKGROUND_FRAGMENT_SHADER) {
+        console.error('Nebula background shader not loaded!');
+        return;
+    }
 
     const renderer = new THREE.WebGLRenderer({
         canvas,
@@ -339,11 +298,44 @@ if (!sphereVertexShader || !sphereFragmentShader || !sunFragmentShader) {
         vertexShader: backgroundVertexShader,
         fragmentShader: backgroundFragmentShader,
         uniforms: {
+            // Basic uniforms
             uTime: { value: 0 },
             uMouse: { value: new THREE.Vector2(0.5, 0.5) },
             uResolution: { value: new THREE.Vector2(cachedWindowWidth, cachedWindowHeight) },
             uCameraRotX: { value: 0 },
-            uCameraRotY: { value: 0 }
+            uCameraRotY: { value: 0 },
+            // Light sources from skill graph
+            uLight0: { value: new THREE.Vector2(0, 0) },
+            uLight1: { value: new THREE.Vector2(0, 0) },
+            uLight2: { value: new THREE.Vector2(0, 0) },
+            uLightColor0: { value: new THREE.Vector3(1.0, 0.67, 0.2) },
+            uLightColor1: { value: new THREE.Vector3(0.6, 0.3, 0.8) },
+            uLightColor2: { value: new THREE.Vector3(0.2, 0.87, 1.0) },
+            uLight0Intensity: { value: 1.0 },
+            uLight1Intensity: { value: 1.0 },
+            uLight2Intensity: { value: 1.0 },
+            // Nebula parameters (subtle defaults)
+            uNebulaIntensity: { value: 0.25 },
+            uNebulaScale: { value: 2.0 },
+            uNebulaDetail: { value: 2.0 },
+            uNebulaSpeed: { value: 0.08 },
+            uLightInfluence: { value: 0.4 },
+            uColorVariation: { value: 0.8 },
+            uDustDensity: { value: 0.4 },
+            uStarDensity: { value: 0.25 },
+            uFractalIntensity: { value: 0.15 },
+            uFractalScale: { value: 8.0 },
+            uFractalSpeed: { value: 0.03 },
+            uFractalSaturation: { value: 3.0 },
+            uFractalFalloff: { value: 3.0 },
+            uVignetteStrength: { value: 0.3 },
+            // Nebula colors
+            uNebulaColorPurple: { value: new THREE.Vector3(0.12, 0.04, 0.18) },
+            uNebulaColorCyan: { value: new THREE.Vector3(0.04, 0.12, 0.20) },
+            uNebulaColorBlue: { value: new THREE.Vector3(0.03, 0.06, 0.15) },
+            uNebulaColorGold: { value: new THREE.Vector3(0.15, 0.10, 0.03) },
+            uZoom: { value: 1.0 },
+            uZoomCenter: { value: new THREE.Vector2(0.5, 0.5) }
         },
         transparent: true,
         depthWrite: false
@@ -360,9 +352,69 @@ if (!sphereVertexShader || !sphereFragmentShader || !sunFragmentShader) {
         mouse.y += (mouse.targetY - mouse.y) * 0.02;
         material.uniforms.uTime.value = time;
         material.uniforms.uMouse.value.set(mouse.x, mouse.y);
+
         // Read camera rotation from global (set by skill network)
         material.uniforms.uCameraRotX.value = window.globalCameraRotX || 0;
         material.uniforms.uCameraRotY.value = window.globalCameraRotY || 0;
+
+        // Read light data from global (set by skill network renderSpheresGL)
+        const lights = window.globalLights;
+        if (lights) {
+            const res = lights.resolution || { width: cachedWindowWidth, height: cachedWindowHeight };
+            material.uniforms.uResolution.value.set(res.width, res.height);
+
+            // Update light positions (convert to normalized coordinates for shader)
+            if (lights.light0) {
+                material.uniforms.uLight0.value.set(lights.light0.x, lights.light0.y);
+                if (lights.light0.color) {
+                    material.uniforms.uLightColor0.value.set(
+                        lights.light0.color[0], lights.light0.color[1], lights.light0.color[2]
+                    );
+                }
+                material.uniforms.uLight0Intensity.value = lights.light0.intensity || 1.0;
+            }
+            if (lights.light1) {
+                material.uniforms.uLight1.value.set(lights.light1.x, lights.light1.y);
+                if (lights.light1.color) {
+                    material.uniforms.uLightColor1.value.set(
+                        lights.light1.color[0], lights.light1.color[1], lights.light1.color[2]
+                    );
+                }
+                material.uniforms.uLight1Intensity.value = lights.light1.intensity || 1.0;
+            }
+            if (lights.light2) {
+                material.uniforms.uLight2.value.set(lights.light2.x, lights.light2.y);
+                if (lights.light2.color) {
+                    material.uniforms.uLightColor2.value.set(
+                        lights.light2.color[0], lights.light2.color[1], lights.light2.color[2]
+                    );
+                }
+                material.uniforms.uLight2Intensity.value = lights.light2.intensity || 1.0;
+            }
+        }
+
+        // Read nebula parameters from global nebulaParams object (set by UI)
+        material.uniforms.uNebulaIntensity.value = nebulaParams.intensity;
+        material.uniforms.uNebulaScale.value = nebulaParams.scale;
+        material.uniforms.uNebulaDetail.value = nebulaParams.detail;
+        material.uniforms.uNebulaSpeed.value = nebulaParams.speed;
+        material.uniforms.uColorVariation.value = nebulaParams.colorVariation;
+        material.uniforms.uDustDensity.value = nebulaParams.dustDensity;
+        material.uniforms.uStarDensity.value = nebulaParams.starDensity;
+        material.uniforms.uLightInfluence.value = nebulaParams.lightInfluence;
+        material.uniforms.uFractalIntensity.value = nebulaParams.fractalIntensity;
+        material.uniforms.uFractalScale.value = nebulaParams.fractalScale;
+        material.uniforms.uFractalSpeed.value = nebulaParams.fractalSpeed;
+        material.uniforms.uFractalSaturation.value = nebulaParams.fractalSaturation;
+        material.uniforms.uFractalFalloff.value = nebulaParams.fractalFalloff;
+        material.uniforms.uVignetteStrength.value = nebulaParams.vignetteStrength;
+        // Nebula colors
+        material.uniforms.uNebulaColorPurple.value.set(nebulaParams.colorPurple[0], nebulaParams.colorPurple[1], nebulaParams.colorPurple[2]);
+        material.uniforms.uNebulaColorCyan.value.set(nebulaParams.colorCyan[0], nebulaParams.colorCyan[1], nebulaParams.colorCyan[2]);
+        material.uniforms.uNebulaColorBlue.value.set(nebulaParams.colorBlue[0], nebulaParams.colorBlue[1], nebulaParams.colorBlue[2]);
+        material.uniforms.uNebulaColorGold.value.set(nebulaParams.colorGold[0], nebulaParams.colorGold[1], nebulaParams.colorGold[2]);
+        material.uniforms.uZoom.value = window.globalZoom || 1.0;
+
         renderer.render(scene, camera);
     }
 
@@ -372,6 +424,8 @@ if (!sphereVertexShader || !sphereFragmentShader || !sunFragmentShader) {
         renderer.setSize(window.innerWidth, window.innerHeight);
         material.uniforms.uResolution.value.set(window.innerWidth, window.innerHeight);
     });
+
+    console.log('Nebula background initialized with light integration');
 })();
 
 // God Rays Fullscreen Shader - loaded from shaders/godrays.glsl.js
@@ -382,244 +436,9 @@ const godRaysFragmentShader = window.GODRAYS_FRAGMENT_SHADER;
 const debugQuadVertexShader = window.DEBUG_QUAD_VERTEX_SHADER;
 const debugQuadFragmentShader = window.DEBUG_QUAD_FRAGMENT_SHADER;
 
-// ============================================
-// SPACE PARTICLES SHADERS (WebGL 1 - integrated with skill graph)
-// ============================================
-const spaceParticleVertexShader = `
-    attribute vec3 aPosition;  // xyz = world position (in sphere around origin)
-    attribute float aLife;     // 0-1 lifecycle for twinkling
-
-    uniform vec2 uResolution;
-    uniform float uZoom;
-    uniform vec2 uZoomCenter;
-    uniform float uTime;
-    uniform float uFocalPlane;    // Z depth of focal plane
-    uniform float uDofStrength;   // DoF blur strength
-    uniform float uParticleSize;  // Base particle size
-    uniform float uBrightness;    // Overall brightness
-    uniform float uNearRange;     // Distance at which particles start growing (0-1)
-    uniform float uNearSize;      // Size multiplier for close particles
-    uniform float uPlanetZ;       // Z depth where planets live (for depth sorting)
-    uniform float uRenderPass;    // 0 = all, 1 = far only (z < planetZ), 2 = near only (z >= planetZ)
-    uniform float uCameraRotX;    // Camera rotation around X axis (pitch)
-    uniform float uCameraRotY;    // Camera rotation around Y axis (yaw)
-
-    varying float vDepth;
-    varying float vLife;
-    varying float vAlpha;
-    varying vec3 vWorldPos;  // Pass world position to fragment shader
-
-    void main() {
-        // Particle position is now directly in world space (sphere around origin)
-        vec3 particlePos = aPosition;
-        vWorldPos = particlePos;  // Store for lighting calculation
-
-        // 3D perspective camera (matching planet shader)
-        // Fixed orbit distance, zoom applied as scale
-        float orbitDist = 1.0;
-        float zoomScale = uZoom;
-
-        // Camera rotation
-        float cosRotX = cos(uCameraRotX);
-        float sinRotX = sin(uCameraRotX);
-        float cosRotY = cos(uCameraRotY);
-        float sinRotY = sin(uCameraRotY);
-
-        // Camera position (orbiting at fixed distance)
-        vec3 cameraPos = vec3(
-            orbitDist * sinRotY * cosRotX,
-            orbitDist * sinRotX,
-            orbitDist * cosRotY * cosRotX
-        );
-
-        // Camera basis vectors
-        vec3 cameraForward = normalize(-cameraPos);
-        vec3 worldUp = vec3(0.0, 1.0, 0.0);
-        vec3 cameraRight = normalize(cross(worldUp, cameraForward));
-        vec3 cameraUp = cross(cameraForward, cameraRight);
-
-        // Vector from camera to particle
-        vec3 toParticle = particlePos - cameraPos;
-
-        // Project onto camera's view plane (distance along forward)
-        float zDist = dot(toParticle, cameraForward);
-
-        // Render pass culling for depth sorting with planets
-        // Pass 1: far particles only (behind planets)
-        // Pass 2: near particles only (in front of planets)
-        if (uRenderPass > 0.5) {
-            bool isFar = zDist > 0.95;  // Far = closer to camera orbit distance
-            bool wantFar = uRenderPass < 1.5;  // Pass 1 = far
-            if (isFar != wantFar) {
-                gl_Position = vec4(2.0, 2.0, 0.0, 1.0);  // Off screen
-                gl_PointSize = 0.0;
-                vAlpha = 0.0;
-                vDepth = 0.0;
-                vLife = 0.0;
-                return;
-            }
-        }
-
-        // Cull if behind camera
-        if (zDist < 0.01) {
-            gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
-            gl_PointSize = 0.0;
-            vAlpha = 0.0;
-            vDepth = 0.0;
-            vLife = 0.0;
-            return;
-        }
-
-        // Perspective scale (fixed orbit distance)
-        float perspectiveScale = orbitDist / zDist;
-
-        // Project particle onto screen
-        vec2 screenCenter = uResolution * 0.5;
-        float projX = dot(toParticle, cameraRight) * perspectiveScale;
-        float projY = dot(toParticle, cameraUp) * perspectiveScale;
-
-        // Convert to screen coordinates with zoom
-        vec2 projectedPos = screenCenter + vec2(projX, -projY) * uResolution.x * zoomScale;
-
-        // Convert to clip space
-        vec2 clipPos = (projectedPos / uResolution) * 2.0 - 1.0;
-        clipPos.y = -clipPos.y;
-
-        gl_Position = vec4(clipPos, 0.0, 1.0);
-
-        // Distance from origin (focal point) for DoF effect
-        float distFromOrigin = length(particlePos);
-        float sphereRadius = 0.18;  // Match JS particle sphere radius
-
-        // DoF: particles at origin are sharp, those further out are blurry
-        // focusNorm: 0 = at origin (sharp), 1 = at edge (blurry)
-        float focusNorm = clamp(distFromOrigin / sphereRadius, 0.0, 1.0);
-
-        // Circle of confusion - larger for out-of-focus particles
-        float cocSize = focusNorm * uDofStrength * 8.0;
-
-        // Base particle size with perspective
-        float baseSize = uParticleSize;
-
-        // Particles closer to camera are bigger (perspective)
-        baseSize *= perspectiveScale * zoomScale;
-
-        // Add circle of confusion for DoF blur
-        // Out-of-focus particles get larger (simulating bokeh blur)
-        baseSize += cocSize * perspectiveScale * zoomScale;
-
-        // Twinkling
-        float twinkle = sin(aLife * 6.28318 + uTime * 2.0) * 0.15 + 1.0;
-
-        gl_PointSize = max(baseSize * twinkle, 0.5);
-
-        // Alpha: out-of-focus particles are dimmer and more transparent
-        // Sharp particles (at origin) are brighter
-        float focusAlpha = 1.0 - focusNorm * 0.6;  // Dimmer when blurry
-
-        // Also consider camera distance
-        float cameraAlpha = 1.0;
-        if (zDist < 0.2) {
-            cameraAlpha = zDist / 0.2;
-        }
-
-        vDepth = focusNorm;  // Now represents focus distance (0=sharp, 1=blurry)
-        vLife = aLife;
-        vAlpha = clamp(focusAlpha * cameraAlpha, 0.0, 1.0) * uBrightness;
-    }
-`;
-
-const spaceParticleFragmentShader = `
-    precision highp float;
-
-    varying float vDepth;  // 0 = at origin (sharp), 1 = at edge (blurry)
-    varying float vLife;
-    varying float vAlpha;
-    varying vec3 vWorldPos;
-
-    uniform float uTime;
-    uniform vec2 uResolution;
-
-    // Sun light uniforms
-    uniform vec2 uLight0;
-    uniform vec2 uLight1;
-    uniform vec2 uLight2;
-    uniform vec3 uLightColor0;
-    uniform vec3 uLightColor1;
-    uniform vec3 uLightColor2;
-    uniform float uLight0Intensity;
-    uniform float uLight1Intensity;
-    uniform float uLight2Intensity;
-
-    void main() {
-        vec2 coord = gl_PointCoord * 2.0 - 1.0;
-        float r = length(coord);
-        if (r > 1.0) discard;
-
-        // DoF blur effect: vDepth = focus distance (0=sharp at origin, 1=blurry at edge)
-        // Sharp particles have hard edges, blurry particles have soft gaussian-like falloff
-        float sharpness = 1.0 - vDepth;  // 1 = sharp, 0 = blurry
-
-        // Create bokeh-style blur profile
-        // Sharp particles: hard circle with slight soft edge
-        // Blurry particles: smooth gaussian-like falloff
-        float hardEdge = 1.0 - smoothstep(0.7, 1.0, r);
-        float softEdge = exp(-r * r * 2.0);  // Gaussian falloff
-
-        // Blend between hard and soft based on focus
-        float edge = mix(softEdge, hardEdge, sharpness * sharpness);
-
-        // Base color - slightly warmer for in-focus particles
-        vec3 baseColor = vec3(1.0, 0.98, 0.95);
-
-        // Calculate lighting from 3 suns
-        vec2 particleScreen = vWorldPos.xy * uResolution * 0.5 + uResolution * 0.5;
-
-        vec3 totalLight = vec3(0.0);
-        float totalWeight = 0.0;
-
-        // Sun 0
-        float dist0 = length(particleScreen - uLight0);
-        float influence0 = 1.0 / (1.0 + dist0 * 0.003);
-        totalLight += uLightColor0 * influence0 * uLight0Intensity;
-        totalWeight += influence0 * uLight0Intensity;
-
-        // Sun 1
-        float dist1 = length(particleScreen - uLight1);
-        float influence1 = 1.0 / (1.0 + dist1 * 0.003);
-        totalLight += uLightColor1 * influence1 * uLight1Intensity;
-        totalWeight += influence1 * uLight1Intensity;
-
-        // Sun 2
-        float dist2 = length(particleScreen - uLight2);
-        float influence2 = 1.0 / (1.0 + dist2 * 0.003);
-        totalLight += uLightColor2 * influence2 * uLight2Intensity;
-        totalWeight += influence2 * uLight2Intensity;
-
-        // Normalize light contribution
-        if (totalWeight > 0.001) {
-            totalLight /= totalWeight;
-        } else {
-            totalLight = vec3(1.0);
-        }
-
-        // In-focus particles pick up sun color more strongly
-        // Out-of-focus particles stay more neutral/white (like real bokeh)
-        float colorStrength = sharpness * 0.6;
-        vec3 color = mix(baseColor, totalLight, colorStrength);
-
-        // Twinkling - more pronounced for in-focus particles
-        float twinkle = sin(vLife * 6.28318 * 3.0 + uTime) * (0.1 + sharpness * 0.15) + 0.9;
-        color *= twinkle;
-
-        // Final alpha: sharp particles are brighter, blurry ones are dimmer
-        // This creates the natural DoF look where bokeh circles are fainter
-        float focusBrightness = 0.4 + sharpness * 0.6;
-        float alpha = edge * vAlpha * focusBrightness;
-
-        gl_FragColor = vec4(color, alpha);
-    }
-`;
+// Space particles shaders (loaded from shaders/space-particles.glsl.js)
+const spaceParticleVertexShader = window.SPACE_PARTICLE_VERTEX_SHADER;
+const spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
 
 // ============================================
 // SKILL NETWORK GRAPH
@@ -650,51 +469,51 @@ const spaceParticleFragmentShader = `
     // - Tools: Purple with good contrast
     const skills = [
         // === SUNS (3 main hubs) - Kelvin temperature colors ===
-        { id: 'unity', label: 'Unity', category: 'primary', baseSize: 90, isLight: true, lightColor: '#aaccff',
+        { id: 'unity', label: 'Unity', category: 'primary', baseSize: 45, isLight: true, lightColor: '#aaccff',
           desc: 'Primary game engine', usage: 'Daily since 2017 - shipped 12+ titles across mobile, PC, and VR platforms' },
-        { id: 'unreal', label: 'Unreal', category: 'primary', baseSize: 70, isLight: true, lightColor: '#ff6030',
+        { id: 'unreal', label: 'Unreal', category: 'primary', baseSize: 35, isLight: true, lightColor: '#ff6030',
           desc: 'Secondary engine', usage: 'Blueprint systems and material editor for specific projects' },
-        { id: 'graphics', label: 'Graphics APIs', category: 'primary', baseSize: 80, isLight: true, lightColor: '#ffcc66',
+        { id: 'graphics', label: 'Graphics APIs', category: 'primary', baseSize: 40, isLight: true, lightColor: '#ffcc66',
           desc: 'Low-level rendering', usage: 'DirectX, OpenGL, Vulkan for engine and tools development' },
 
         // === Unity ecosystem ===
-        { id: 'csharp', label: 'C#', category: 'secondary', baseSize: 32, color: '#2dd4bf',
+        { id: 'csharp', label: 'C#', category: 'secondary', baseSize: 16, color: '#2dd4bf',
           desc: 'Main programming language', usage: '7+ years - gameplay systems, editor tools, and performance-critical code' },
-        { id: 'hdrp', label: 'HDRP', category: 'secondary', baseSize: 24, color: '#f472b6',
+        { id: 'hdrp', label: 'HDRP', category: 'secondary', baseSize: 12, color: '#f472b6',
           desc: 'High Definition Render Pipeline', usage: 'AAA-quality visuals for high-end platforms' },
-        { id: 'urp', label: 'URP', category: 'secondary', baseSize: 22, color: '#fb923c',
+        { id: 'urp', label: 'URP', category: 'secondary', baseSize: 11, color: '#fb923c',
           desc: 'Universal Render Pipeline', usage: 'Optimized rendering for mobile and cross-platform' },
-        { id: 'vfx', label: 'VFX Graph', category: 'secondary', baseSize: 20, color: '#3bc9a5',
+        { id: 'vfx', label: 'VFX Graph', category: 'secondary', baseSize: 10, color: '#3bc9a5',
           desc: 'Unity visual effects', usage: 'GPU-driven particle systems and real-time simulations' },
-        { id: 'arvr', label: 'AR/VR', category: 'secondary', baseSize: 20, color: '#00d9b5',
+        { id: 'arvr', label: 'AR/VR', category: 'secondary', baseSize: 10, color: '#00d9b5',
           desc: 'Immersive experiences', usage: 'Meta Quest, HoloLens, and mobile AR projects' },
 
         // === Unreal ecosystem ===
-        { id: 'cpp', label: 'C++', category: 'secondary', baseSize: 20, color: '#6c8ebf',
+        { id: 'cpp', label: 'C++', category: 'secondary', baseSize: 10, color: '#6c8ebf',
           desc: 'Systems programming', usage: 'Native plugins, engine modifications, and Unreal development' },
-        { id: 'niagara', label: 'Niagara', category: 'secondary', baseSize: 19, color: '#ffa066',
+        { id: 'niagara', label: 'Niagara', category: 'secondary', baseSize: 10, color: '#ffa066',
           desc: 'Unreal VFX system', usage: 'Complex particle effects for Unreal projects' },
 
         // === Graphics ecosystem ===
-        { id: 'hlsl', label: 'HLSL', category: 'secondary', baseSize: 26, color: '#c850c0',
+        { id: 'hlsl', label: 'HLSL', category: 'secondary', baseSize: 13, color: '#c850c0',
           desc: 'DirectX shader language', usage: 'Custom rendering pipelines, VFX, and compute shaders' },
-        { id: 'glsl', label: 'GLSL', category: 'secondary', baseSize: 24, color: '#a855f7',
+        { id: 'glsl', label: 'GLSL', category: 'secondary', baseSize: 12, color: '#a855f7',
           desc: 'OpenGL shader language', usage: 'Cross-platform shaders and WebGL effects' },
-        { id: 'directx', label: 'DirectX', category: 'secondary', baseSize: 25, color: '#5090e0',
+        { id: 'directx', label: 'DirectX', category: 'secondary', baseSize: 13, color: '#5090e0',
           desc: 'Graphics API', usage: 'DX11/DX12 for Windows and Xbox development' },
-        { id: 'opengl', label: 'OpenGL', category: 'secondary', baseSize: 20, color: '#5c7cfa',
+        { id: 'opengl', label: 'OpenGL', category: 'secondary', baseSize: 10, color: '#5c7cfa',
           desc: 'Cross-platform graphics', usage: 'Mobile and desktop rendering' },
-        { id: 'compute', label: 'Compute', category: 'secondary', baseSize: 20, color: '#38d9a9',
+        { id: 'compute', label: 'Compute', category: 'secondary', baseSize: 10, color: '#38d9a9',
           desc: 'GPU compute shaders', usage: 'Particle simulations, procedural generation, and physics' },
 
         // === Tools & other ===
-        { id: 'threejs', label: 'Three.js', category: 'secondary', baseSize: 16, color: '#66d9ef',
+        { id: 'threejs', label: 'Three.js', category: 'secondary', baseSize: 8, color: '#66d9ef',
           desc: 'WebGL framework', usage: 'Interactive 3D web experiences and visualizations' },
-        { id: 'python', label: 'Python', category: 'secondary', baseSize: 20, color: '#ffd43b',
+        { id: 'python', label: 'Python', category: 'secondary', baseSize: 10, color: '#ffd43b',
           desc: 'Scripting & tools', usage: 'Build automation, asset pipelines, and data processing' },
-        { id: 'renderdoc', label: 'RenderDoc', category: 'tool', baseSize: 19, color: '#b87fd8',
+        { id: 'renderdoc', label: 'RenderDoc', category: 'tool', baseSize: 10, color: '#b87fd8',
           desc: 'Graphics debugger', usage: 'Frame analysis and shader debugging' },
-        { id: 'nsight', label: 'NSight', category: 'tool', baseSize: 18, color: '#76b900',
+        { id: 'nsight', label: 'NSight', category: 'tool', baseSize: 9, color: '#76b900',
           desc: 'NVIDIA profiler', usage: 'GPU performance analysis and optimization' }
     ];
 
@@ -746,54 +565,106 @@ const spaceParticleFragmentShader = `
         ['python', 'unreal']
     ];
 
-    // Solar system definitions: suns orbit canvas center, moons orbit their sun
-    const solarSystems = {
-        // Unity system (gold sun) - positioned left
-        unity: {
-            orbitRadius: 0.28,      // % of canvas size from center
-            orbitSpeed: 0.0006,     // VERY slow - radians per frame
-            orbitPhase: Math.PI,    // start on left
-            moons: ['csharp', 'vfx', 'arvr']
-        },
-        // Unreal system (orange sun) - positioned right
-        unreal: {
-            orbitRadius: 0.30,
-            orbitSpeed: -0.0005,    // opposite direction
-            orbitPhase: 0,          // start on right
-            moons: ['cpp', 'niagara']
-        },
-        // Shader/Graphics system (pink sun) - positioned bottom
-        hlsl: {
-            orbitRadius: 0.26,
-            orbitSpeed: 0.0007,
-            orbitPhase: Math.PI * 1.5, // start at bottom
-            moons: ['glsl', 'directx', 'opengl', 'compute']
-        }
+    // Simple solar system: 3 suns at fixed positions, moons orbit around them
+    // Positions in world units (will be multiplied by minDim to get screen pixels)
+    // Spread them out more for better visibility
+    const sunBasePositions = {
+        unity:    { dirX: -0.92, dirY:  0.40, dist: 0.38 },   // Left-top direction
+        unreal:   { dirX:  0.87, dirY: -0.50, dist: 0.40 },   // Right-bottom direction
+        graphics: { dirX:  0.0,  dirY:  1.0,  dist: 0.38 }    // Top-center direction
     };
 
-    // Moon orbit configurations - MUCH slower, tighter orbits
+    // Dynamic sun position calculation
+    function getSunPosition(sunId) {
+        const base = sunBasePositions[sunId];
+        const minDist = orbitParams.sunSpawnMin;
+        const maxDist = orbitParams.sunSpawnMax;
+        const spread = orbitParams.sunSpread;
+        const offset = orbitParams.spawnOffset;
+        // Map base distance (0-1) to min-max range, then apply spread
+        const actualDist = (minDist + base.dist * (maxDist - minDist)) * spread;
+        // Apply rotation offset to the direction
+        const cosOff = Math.cos(offset);
+        const sinOff = Math.sin(offset);
+        const rotX = base.dirX * cosOff - base.dirY * sinOff;
+        const rotY = base.dirX * sinOff + base.dirY * cosOff;
+        return {
+            x: rotX * actualDist,
+            y: rotY * actualDist,
+            z: 0
+        };
+    }
+
+    // Per-solar-system orbital plane tilt (random axis for each sun's entire system)
+    // All moons of the same sun share the same orbital plane
+    const solarSystemTilts = {
+        unity:    { tiltX: 0.4, tiltY: 0.3 },    // Unity system tilted one way
+        unreal:   { tiltX: -0.5, tiltY: 0.2 },   // Unreal system tilted differently
+        graphics: { tiltX: 0.2, tiltY: -0.4 }    // Graphics system with its own tilt
+    };
+
+    // Moon orbit configurations - baseRadius is normalized 0-1 (mapped to baseOrbitMin-Max)
+    // All moons of the same sun share the solar system's orbital plane tilt
+    // Final radius = (baseOrbitMin + baseRadius * (baseOrbitMax - baseOrbitMin)) + (orbitIndex * spacing)
     const moonOrbits = {
-        // Unity moons - spread evenly around
-        csharp:   { radius: 2.8, speed: 0.003, phase: 0 },
-        vfx:      { radius: 4.0, speed: -0.0025, phase: Math.PI * 0.66 },
-        arvr:     { radius: 5.2, speed: 0.002, phase: Math.PI * 1.33 },
-        // Unreal moons
-        cpp:      { radius: 3.0, speed: 0.0035, phase: 0 },
-        niagara:  { radius: 4.5, speed: -0.0028, phase: Math.PI },
-        // HLSL moons - spread evenly
-        glsl:     { radius: 2.5, speed: 0.004, phase: 0 },
-        directx:  { radius: 3.5, speed: -0.0032, phase: Math.PI * 0.5 },
-        opengl:   { radius: 4.5, speed: 0.0025, phase: Math.PI },
-        compute:  { radius: 5.5, speed: -0.002, phase: Math.PI * 1.5 }
+        // Unity moons (all share unity's orbital plane)
+        csharp:   { baseRadius: 0.5, orbitIndex: 0, speed: 0.008, phase: 0, sun: 'unity' },
+        vfx:      { baseRadius: 0.5, orbitIndex: 1, speed: -0.006, phase: Math.PI * 0.66, sun: 'unity' },
+        arvr:     { baseRadius: 0.5, orbitIndex: 2, speed: 0.005, phase: Math.PI * 1.33, sun: 'unity' },
+        // Unreal moons (all share unreal's orbital plane)
+        cpp:      { baseRadius: 0.5, orbitIndex: 0, speed: 0.007, phase: 0, sun: 'unreal' },
+        niagara:  { baseRadius: 0.5, orbitIndex: 1, speed: -0.005, phase: Math.PI, sun: 'unreal' },
+        // Graphics moons (all share graphics' orbital plane)
+        hlsl:     { baseRadius: 0.25, orbitIndex: 0, speed: 0.009, phase: 0, sun: 'graphics' },
+        glsl:     { baseRadius: 0.25, orbitIndex: 1, speed: -0.007, phase: Math.PI * 0.4, sun: 'graphics' },
+        directx:  { baseRadius: 0.25, orbitIndex: 2, speed: 0.006, phase: Math.PI * 0.8, sun: 'graphics' },
+        opengl:   { baseRadius: 0.25, orbitIndex: 3, speed: -0.005, phase: Math.PI * 1.2, sun: 'graphics' },
+        compute:  { baseRadius: 0.25, orbitIndex: 4, speed: 0.004, phase: Math.PI * 1.6, sun: 'graphics' }
     };
 
-    // Free floaters - these drift on their own, not part of any solar system
-    const freeFloaters = ['renderdoc', 'nsight', 'python', 'threejs'];
+    // Sub-moons: former free floaters now orbit around planets (not suns)
+    // They orbit at 1/3 the size/radius of their parent moon
+    const subMoonOrbits = {
+        renderdoc: { radius: 0.035, speed: 0.015, phase: 0, parent: 'directx', tiltX: 0.3, tiltY: -0.2 },
+        nsight:    { radius: 0.03, speed: -0.012, phase: Math.PI * 0.5, parent: 'hlsl', tiltX: -0.4, tiltY: 0.35 },
+        python:    { radius: 0.04, speed: 0.01, phase: Math.PI, parent: 'niagara', tiltX: 0.2, tiltY: 0.5 },
+        threejs:   { radius: 0.038, speed: -0.014, phase: Math.PI * 1.5, parent: 'glsl', tiltX: -0.25, tiltY: -0.4 }
+    };
 
-    let nodes = skills.map((skill, i) => {
+    // Find parent sun for each planet based on connections
+    function findParentSun(skillId) {
+        const suns = ['unity', 'unreal', 'graphics'];
+        if (suns.includes(skillId)) return null; // Suns have no parent
+
+        // Check direct connections first
+        for (const [a, b] of connections) {
+            if (a === skillId && suns.includes(b)) return b;
+            if (b === skillId && suns.includes(a)) return a;
+        }
+
+        // Check indirect connections (connected to something connected to a sun)
+        for (const [a, b] of connections) {
+            const connectedId = a === skillId ? b : (b === skillId ? a : null);
+            if (!connectedId) continue;
+            for (const [c, d] of connections) {
+                if (c === connectedId && suns.includes(d)) return d;
+                if (d === connectedId && suns.includes(c)) return c;
+            }
+        }
+        return null;
+    }
+
+    let nodes = skills.map((skill) => {
         // Compute depth based on size: larger = closer (depth 1), smaller = farther (depth 0)
         // This is used for visual layering, NOT for perspective Z position
         const depth = Math.min(1.0, Math.max(0.0, (skill.baseSize - 6) / 28));
+
+        // Orbital parameters for planets
+        const parentSun = findParentSun(skill.id);
+
+        // Random but not perpendicular orbital plane tilt (max ~45 degrees from XY plane)
+        const orbitTiltX = (Math.random() - 0.5) * 0.8; // Tilt around X axis
+        const orbitTiltZ = (Math.random() - 0.5) * 0.8; // Tilt around Z axis
 
         return {
             ...skill,
@@ -801,6 +672,13 @@ const spaceParticleFragmentShader = `
             x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, // Added z and vz for 3D positioning
             renderX: 0, renderY: 0, // Parallax-adjusted render positions
             depth: depth, // Depth for parallax (0=far, 1=near)
+            // Orbital parameters
+            parentSun: parentSun,
+            orbitAngle: Math.random() * Math.PI * 2, // Starting angle in orbit
+            orbitRadius: 0, // Will be assigned based on distance from sun
+            orbitSpeed: 0.0005 + Math.random() * 0.001, // Orbital speed (radians per frame)
+            orbitTiltX: orbitTiltX,
+            orbitTiltZ: orbitTiltZ,
             // Visual effects
             pulseSpeed: 0.05 + Math.random() * 0.1,
             pulsePhase: Math.random() * Math.PI * 2,
@@ -952,15 +830,46 @@ const spaceParticleFragmentShader = `
     let spaceParticleData = null;  // Float32Array for particle positions
     let spaceParticleLastTime = 0;
 
+    // Shooting star data (separate from main particle buffer)
+    // Each entry: { active: bool, type: 1=gold/2=teal, progress: 0-1, vx, vy, vz, originalIdx }
+    let shootingStars = [];
+
+    // Shooting star parameters (UI-controllable)
+    const shootingStarParams = {
+        chance: 0.1,              // DEBUG: Very frequent (normal: 0.0003)
+        duration: 0.8,            // Duration in seconds
+        speed: 0.4,               // Speed multiplier
+        maxActive: 5,             // Maximum concurrent shooting stars
+        goldColor: '#e8b923',     // Gold color (accent-gold)
+        tealColor: '#2dd4bf'      // Teal color (accent-teal)
+    };
+
     // Space particle DoF parameters (UI-controllable)
     const spaceParticleParams = {
-        focalPlane: 0.0,      // Z depth of focal plane (-1 to +1)
-        dofStrength: 1.0,     // Strength of depth of field blur
-        particleSize: 1.5,    // Base particle size
-        brightness: 0.7,      // Overall particle brightness
-        nearRange: 0.8,       // Distance at which particles start growing big (0.1-2.0)
-        nearSize: 15.0,       // Size multiplier for particles close to camera (1-50)
-        planetZ: 0.0          // Z depth where planets live (for depth sorting)
+        // Focus distance settings
+        focusDistance: 0.7,     // Distance from camera where particles are in focus
+        focusRange: 0.15,       // Range around focus distance that's sharp
+        nearBlurDist: 0.3,      // Distance where near blur starts
+        farBlurDist: 1.2,       // Distance where far blur starts
+
+        // Bokeh effect
+        maxBlurSize: 25.0,      // Maximum blur circle size in pixels
+        apertureSize: 1.0,      // Affects bokeh intensity (f-stop simulation)
+        bokehRingWidth: 0.5,    // Width of bokeh ring (0 = filled, 1 = thin ring)
+        bokehRingIntensity: 0.8, // Brightness of ring edge
+
+        // Circle quality
+        circleSoftness: 0.3,    // Edge softness (0 = hard, 1 = very soft)
+
+        // Appearance
+        particleSize: 2.0,      // Base particle size
+        brightness: 1.0,        // Overall particle brightness
+        lightFalloff: 3.0,      // How quickly light falls off with distance
+        baseColor: '#fffaf2',   // Default warm white particle color
+
+        // Internal
+        sphereRadius: 0.35,     // Particle distribution sphere radius
+        planetZ: 0.0            // Z depth where planets live (for depth sorting)
     };
 
     // God rays parameters (UI-controllable)
@@ -1047,6 +956,7 @@ const spaceParticleFragmentShader = `
         sphereProgram.uLight2ScreenPos = gl.getUniformLocation(sphereProgram, 'uLight2ScreenPos');
         sphereProgram.uMouseLightEnabled = gl.getUniformLocation(sphereProgram, 'uMouseLightEnabled');
         sphereProgram.uAmbientIntensity = gl.getUniformLocation(sphereProgram, 'uAmbientIntensity');
+        sphereProgram.uFogIntensity = gl.getUniformLocation(sphereProgram, 'uFogIntensity');
         sphereProgram.uZoom = gl.getUniformLocation(sphereProgram, 'uZoom');
         sphereProgram.uZoomCenter = gl.getUniformLocation(sphereProgram, 'uZoomCenter');
         sphereProgram.uCameraRotX = gl.getUniformLocation(sphereProgram, 'uCameraRotX');
@@ -1213,8 +1123,7 @@ const spaceParticleFragmentShader = `
                     debugQuadProgram.uZoom = gl.getUniformLocation(debugQuadProgram, 'uZoom');
                     debugQuadProgram.uCameraRotX = gl.getUniformLocation(debugQuadProgram, 'uCameraRotX');
                     debugQuadProgram.uCameraRotY = gl.getUniformLocation(debugQuadProgram, 'uCameraRotY');
-                    debugQuadProgram.uColor = gl.getUniformLocation(debugQuadProgram, 'uColor');
-                    debugQuadProgram.uTime = gl.getUniformLocation(debugQuadProgram, 'uTime');
+                    debugQuadProgram.uWorldZ = gl.getUniformLocation(debugQuadProgram, 'uWorldZ');
 
                     // Quad buffer (2 triangles)
                     debugQuadBuffer = gl.createBuffer();
@@ -1247,14 +1156,32 @@ const spaceParticleFragmentShader = `
                 spaceParticleProgram.uZoom = gl.getUniformLocation(spaceParticleProgram, 'uZoom');
                 spaceParticleProgram.uZoomCenter = gl.getUniformLocation(spaceParticleProgram, 'uZoomCenter');
                 spaceParticleProgram.uTime = gl.getUniformLocation(spaceParticleProgram, 'uTime');
-                spaceParticleProgram.uFocalPlane = gl.getUniformLocation(spaceParticleProgram, 'uFocalPlane');
-                spaceParticleProgram.uDofStrength = gl.getUniformLocation(spaceParticleProgram, 'uDofStrength');
+
+                // DoF uniforms
+                spaceParticleProgram.uFocusDistance = gl.getUniformLocation(spaceParticleProgram, 'uFocusDistance');
+                spaceParticleProgram.uFocusRange = gl.getUniformLocation(spaceParticleProgram, 'uFocusRange');
+                spaceParticleProgram.uNearBlurDist = gl.getUniformLocation(spaceParticleProgram, 'uNearBlurDist');
+                spaceParticleProgram.uFarBlurDist = gl.getUniformLocation(spaceParticleProgram, 'uFarBlurDist');
+                spaceParticleProgram.uMaxBlurSize = gl.getUniformLocation(spaceParticleProgram, 'uMaxBlurSize');
+                spaceParticleProgram.uApertureSize = gl.getUniformLocation(spaceParticleProgram, 'uApertureSize');
+
+                // Particle appearance uniforms
                 spaceParticleProgram.uParticleSize = gl.getUniformLocation(spaceParticleProgram, 'uParticleSize');
                 spaceParticleProgram.uBrightness = gl.getUniformLocation(spaceParticleProgram, 'uBrightness');
-                spaceParticleProgram.uNearRange = gl.getUniformLocation(spaceParticleProgram, 'uNearRange');
-                spaceParticleProgram.uNearSize = gl.getUniformLocation(spaceParticleProgram, 'uNearSize');
+                spaceParticleProgram.uSphereRadius = gl.getUniformLocation(spaceParticleProgram, 'uSphereRadius');
+
+                // Render control uniforms
                 spaceParticleProgram.uPlanetZ = gl.getUniformLocation(spaceParticleProgram, 'uPlanetZ');
                 spaceParticleProgram.uRenderPass = gl.getUniformLocation(spaceParticleProgram, 'uRenderPass');
+                spaceParticleProgram.uCameraRotX = gl.getUniformLocation(spaceParticleProgram, 'uCameraRotX');
+                spaceParticleProgram.uCameraRotY = gl.getUniformLocation(spaceParticleProgram, 'uCameraRotY');
+
+                // Fragment shader uniforms
+                spaceParticleProgram.uCircleSoftness = gl.getUniformLocation(spaceParticleProgram, 'uCircleSoftness');
+                spaceParticleProgram.uBokehRingWidth = gl.getUniformLocation(spaceParticleProgram, 'uBokehRingWidth');
+                spaceParticleProgram.uBokehRingIntensity = gl.getUniformLocation(spaceParticleProgram, 'uBokehRingIntensity');
+                spaceParticleProgram.uLightFalloff = gl.getUniformLocation(spaceParticleProgram, 'uLightFalloff');
+
                 // Sun light uniforms for particle coloring
                 spaceParticleProgram.uLight0 = gl.getUniformLocation(spaceParticleProgram, 'uLight0');
                 spaceParticleProgram.uLight1 = gl.getUniformLocation(spaceParticleProgram, 'uLight1');
@@ -1265,12 +1192,17 @@ const spaceParticleFragmentShader = `
                 spaceParticleProgram.uLight0Intensity = gl.getUniformLocation(spaceParticleProgram, 'uLight0Intensity');
                 spaceParticleProgram.uLight1Intensity = gl.getUniformLocation(spaceParticleProgram, 'uLight1Intensity');
                 spaceParticleProgram.uLight2Intensity = gl.getUniformLocation(spaceParticleProgram, 'uLight2Intensity');
-                spaceParticleProgram.uCameraRotX = gl.getUniformLocation(spaceParticleProgram, 'uCameraRotX');
-                spaceParticleProgram.uCameraRotY = gl.getUniformLocation(spaceParticleProgram, 'uCameraRotY');
+
+                // Shooting star color uniforms
+                spaceParticleProgram.uShootingGoldColor = gl.getUniformLocation(spaceParticleProgram, 'uShootingGoldColor');
+                spaceParticleProgram.uShootingTealColor = gl.getUniformLocation(spaceParticleProgram, 'uShootingTealColor');
+
+                // Base particle color uniform
+                spaceParticleProgram.uBaseParticleColor = gl.getUniformLocation(spaceParticleProgram, 'uBaseParticleColor');
 
                 // Initialize particle data: x, y, z (world space), life
-                // Particles exist in the same 3D sphere as nodes (radius ~0.15 in world units)
-                const particleSphereRadius = 0.18; // Slightly larger than node sphere (0.15)
+                // Particles fill a larger sphere encompassing all planet positions
+                const particleSphereRadius = 0.35; // Much larger to surround all planets
                 spaceParticleData = new Float32Array(SPACE_PARTICLE_COUNT * 4);
                 for (let i = 0; i < SPACE_PARTICLE_COUNT; i++) {
                     const idx = i * 4;
@@ -1332,19 +1264,91 @@ const spaceParticleFragmentShader = `
         const lc1 = hex2vec(light1.lightColor || '#9b4dca');
         const lc2 = hex2vec(light2.lightColor || '#33ddff');
 
+        // Export light data globally for background nebula shader
+        window.globalLights.light0 = { x: light0.x, y: light0.y, color: lc0, intensity: lightParams.light0Intensity };
+        window.globalLights.light1 = { x: light1.x, y: light1.y, color: lc1, intensity: lightParams.light1Intensity };
+        window.globalLights.light2 = { x: light2.x, y: light2.y, color: lc2, intensity: lightParams.light2Intensity };
+        window.globalLights.resolution = { width: width, height: height };
+
         // Particle simulation (run once per frame, not per render pass)
-        // Particles now exist in 3D sphere (world units) matching node distribution
-        const particleSphereRadius = 0.18;
+        // Particles fill larger sphere surrounding all planets
+        const particleSphereRadius = 0.35;
         if (spaceParticleProgram && spaceParticleData) {
             const deltaTime = Math.min(time - spaceParticleLastTime, 0.033);
             spaceParticleLastTime = time;
 
+            // Update existing shooting stars
+            for (let s = shootingStars.length - 1; s >= 0; s--) {
+                const star = shootingStars[s];
+                star.progress += deltaTime / shootingStarParams.duration;
+
+                if (star.progress >= 1.0) {
+                    // Shooting star finished - reset particle to random position
+                    const idx = star.originalIdx * 4;
+                    let rx, ry, rz;
+                    do {
+                        rx = (Math.random() * 2 - 1);
+                        ry = (Math.random() * 2 - 1);
+                        rz = (Math.random() * 2 - 1);
+                    } while (rx * rx + ry * ry + rz * rz > 1);
+                    spaceParticleData[idx] = rx * particleSphereRadius;
+                    spaceParticleData[idx + 1] = ry * particleSphereRadius;
+                    spaceParticleData[idx + 2] = rz * particleSphereRadius;
+                    spaceParticleData[idx + 3] = Math.random(); // Reset to normal particle
+                    shootingStars.splice(s, 1);
+                    continue;
+                }
+
+                // Move shooting star fast in its direction
+                const idx = star.originalIdx * 4;
+                const speed = shootingStarParams.speed * deltaTime * (1.0 - star.progress * 0.5); // Slow down as it fades
+                spaceParticleData[idx] += star.vx * speed;
+                spaceParticleData[idx + 1] += star.vy * speed;
+                spaceParticleData[idx + 2] += star.vz * speed;
+
+                // Encode type (1 or 2) + progress as the life value
+                // type.progress format (e.g., 1.35 = gold at 35% progress)
+                spaceParticleData[idx + 3] = star.type + star.progress;
+            }
+
+            // Randomly spawn new shooting stars (very rare)
+            if (Math.random() < shootingStarParams.chance && shootingStars.length < shootingStarParams.maxActive) {
+                // Pick a random particle that's not already a shooting star
+                const candidateIdx = Math.floor(Math.random() * SPACE_PARTICLE_COUNT);
+                const isAlreadyShooting = shootingStars.some(s => s.originalIdx === candidateIdx);
+
+                if (!isAlreadyShooting) {
+                    // Random chaotic direction
+                    const angle1 = Math.random() * Math.PI * 2;
+                    const angle2 = (Math.random() - 0.5) * Math.PI;
+                    const vx = Math.cos(angle1) * Math.cos(angle2);
+                    const vy = Math.sin(angle2);
+                    const vz = Math.sin(angle1) * Math.cos(angle2);
+
+                    shootingStars.push({
+                        originalIdx: candidateIdx,
+                        type: Math.random() < 0.5 ? 1 : 2, // 1 = gold, 2 = teal
+                        progress: 0,
+                        vx: vx,
+                        vy: vy,
+                        vz: vz
+                    });
+                }
+            }
+
             for (let i = 0; i < SPACE_PARTICLE_COUNT; i++) {
+                // Skip particles that are shooting stars (they're handled above)
+                const isShooting = shootingStars.some(s => s.originalIdx === i);
+                if (isShooting) continue;
+
                 const idx = i * 4;
                 let x = spaceParticleData[idx];
                 let y = spaceParticleData[idx + 1];
                 let z = spaceParticleData[idx + 2];
                 let life = spaceParticleData[idx + 3];
+
+                // Ensure normal particles have life < 1 (fractional only)
+                if (life >= 1.0) life = life % 1.0;
 
                 // Distance from origin for depth-based effects
                 const dist = Math.sqrt(x * x + y * y + z * z);
@@ -1382,7 +1386,7 @@ const spaceParticleFragmentShader = `
                 spaceParticleData[idx + 1] = y;
                 spaceParticleData[idx + 2] = z;
 
-                // Cycle life for twinkling
+                // Cycle life for twinkling (keep in 0-1 range for normal particles)
                 life = (life + deltaTime * 0.1) % 1.0;
                 spaceParticleData[idx + 3] = life;
             }
@@ -1402,14 +1406,32 @@ const spaceParticleFragmentShader = `
             gl.uniform1f(spaceParticleProgram.uZoom, zoomLevel);
             gl.uniform2f(spaceParticleProgram.uZoomCenter, zoomCenterX, zoomCenterY);
             gl.uniform1f(spaceParticleProgram.uTime, time);
-            gl.uniform1f(spaceParticleProgram.uFocalPlane, spaceParticleParams.focalPlane);
-            gl.uniform1f(spaceParticleProgram.uDofStrength, spaceParticleParams.dofStrength);
+
+            // DoF uniforms
+            gl.uniform1f(spaceParticleProgram.uFocusDistance, spaceParticleParams.focusDistance);
+            gl.uniform1f(spaceParticleProgram.uFocusRange, spaceParticleParams.focusRange);
+            gl.uniform1f(spaceParticleProgram.uNearBlurDist, spaceParticleParams.nearBlurDist);
+            gl.uniform1f(spaceParticleProgram.uFarBlurDist, spaceParticleParams.farBlurDist);
+            gl.uniform1f(spaceParticleProgram.uMaxBlurSize, spaceParticleParams.maxBlurSize);
+            gl.uniform1f(spaceParticleProgram.uApertureSize, spaceParticleParams.apertureSize);
+
+            // Particle appearance uniforms
             gl.uniform1f(spaceParticleProgram.uParticleSize, spaceParticleParams.particleSize);
             gl.uniform1f(spaceParticleProgram.uBrightness, spaceParticleParams.brightness);
-            gl.uniform1f(spaceParticleProgram.uNearRange, spaceParticleParams.nearRange);
-            gl.uniform1f(spaceParticleProgram.uNearSize, spaceParticleParams.nearSize);
+            gl.uniform1f(spaceParticleProgram.uSphereRadius, spaceParticleParams.sphereRadius);
+
+            // Render control uniforms
             gl.uniform1f(spaceParticleProgram.uPlanetZ, spaceParticleParams.planetZ);
             gl.uniform1f(spaceParticleProgram.uRenderPass, pass);
+            gl.uniform1f(spaceParticleProgram.uCameraRotX, cameraRotX);
+            gl.uniform1f(spaceParticleProgram.uCameraRotY, cameraRotY);
+
+            // Fragment shader uniforms
+            gl.uniform1f(spaceParticleProgram.uCircleSoftness, spaceParticleParams.circleSoftness);
+            gl.uniform1f(spaceParticleProgram.uBokehRingWidth, spaceParticleParams.bokehRingWidth);
+            gl.uniform1f(spaceParticleProgram.uBokehRingIntensity, spaceParticleParams.bokehRingIntensity);
+            gl.uniform1f(spaceParticleProgram.uLightFalloff, spaceParticleParams.lightFalloff);
+
             // Sun light uniforms for particle coloring
             gl.uniform2f(spaceParticleProgram.uLight0, light0.x, light0.y);
             gl.uniform2f(spaceParticleProgram.uLight1, light1.x, light1.y);
@@ -1420,8 +1442,16 @@ const spaceParticleFragmentShader = `
             gl.uniform1f(spaceParticleProgram.uLight0Intensity, lightParams.light0Intensity);
             gl.uniform1f(spaceParticleProgram.uLight1Intensity, lightParams.light1Intensity);
             gl.uniform1f(spaceParticleProgram.uLight2Intensity, lightParams.light2Intensity);
-            gl.uniform1f(spaceParticleProgram.uCameraRotX, cameraRotX);
-            gl.uniform1f(spaceParticleProgram.uCameraRotY, cameraRotY);
+
+            // Shooting star colors
+            const goldRGB = hex2vec(shootingStarParams.goldColor);
+            const tealRGB = hex2vec(shootingStarParams.tealColor);
+            gl.uniform3f(spaceParticleProgram.uShootingGoldColor, goldRGB[0], goldRGB[1], goldRGB[2]);
+            gl.uniform3f(spaceParticleProgram.uShootingTealColor, tealRGB[0], tealRGB[1], tealRGB[2]);
+
+            // Base particle color
+            const baseRGB = hex2vec(spaceParticleParams.baseColor);
+            gl.uniform3f(spaceParticleProgram.uBaseParticleColor, baseRGB[0], baseRGB[1], baseRGB[2]);
 
             // Use additive blending for glowing particles
             gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
@@ -1444,15 +1474,43 @@ const spaceParticleFragmentShader = `
         // PASS 1: Render FAR particles (behind planets, z < planetZ)
         renderParticles(1);
 
+        // Compute light screen positions (after camera transform) for god rays
+        // Same math as vertex shader for sphere program
+        const computeLightScreenPos = (lx, ly, lz) => {
+            const od = 1.0;
+            const crx = Math.cos(cameraRotX), srx = Math.sin(cameraRotX);
+            const cry = Math.cos(cameraRotY), sry = Math.sin(cameraRotY);
+            const cpx = od * sry * crx, cpy = od * srx, cpz = od * cry * crx;
+            const cfLen = Math.sqrt(cpx*cpx + cpy*cpy + cpz*cpz);
+            const fx = -cpx/cfLen, fy = -cpy/cfLen, fz = -cpz/cfLen;
+            const rxLen = Math.sqrt(fz*fz + fx*fx) || 1;
+            const rx = fz/rxLen, rz = -fx/rxLen;
+            const ux = fy * rz, uy = fz * rx - fx * rz, uz = -fy * rx;
+            const ws = 1.0 / width;
+            const scx = width * 0.5;
+            const scy = height * 0.5;
+            const wx = (lx - scx) * ws, wy = -(ly - scy) * ws, wz = lz || 0;
+            const tx = wx - cpx, ty = wy - cpy, tz = wz - cpz;
+            const zd = tx * fx + ty * fy + tz * fz;
+            if (zd < 0.01) return { x: scx, y: scy };
+            const ps = od / zd;
+            const px = (tx * rx + tz * rz) * ps;
+            const py = (tx * ux + ty * uy + tz * uz) * ps;
+            return { x: scx + px * width * zoomLevel, y: scy - py * width * zoomLevel };
+        };
+        const godRayLight0 = computeLightScreenPos(light0.x, light0.y, light0.z);
+        const godRayLight1 = computeLightScreenPos(light1.x, light1.y, light1.z);
+        const godRayLight2 = computeLightScreenPos(light2.x, light2.y, light2.z);
+
         // Render god rays (background layer, after particles)
         if (godRaysProgram) {
             gl.useProgram(godRaysProgram);
             gl.uniform2f(godRaysProgram.uResolution, width, height);
             gl.uniform1f(godRaysProgram.uTime, time);
             gl.uniform2f(godRaysProgram.uMouse, mouseScreenX, mouseScreenY);
-            gl.uniform2f(godRaysProgram.uLight0, light0.x, light0.y);
-            gl.uniform2f(godRaysProgram.uLight1, light1.x, light1.y);
-            gl.uniform2f(godRaysProgram.uLight2, light2.x, light2.y);
+            gl.uniform2f(godRaysProgram.uLight0, godRayLight0.x, godRayLight0.y);
+            gl.uniform2f(godRaysProgram.uLight1, godRayLight1.x, godRayLight1.y);
+            gl.uniform2f(godRaysProgram.uLight2, godRayLight2.x, godRayLight2.y);
             gl.uniform3f(godRaysProgram.uLightColor0, lc0[0], lc0[1], lc0[2]);
             gl.uniform3f(godRaysProgram.uLightColor1, lc1[0], lc1[1], lc1[2]);
             gl.uniform3f(godRaysProgram.uLightColor2, lc2[0], lc2[1], lc2[2]);
@@ -1538,6 +1596,7 @@ const spaceParticleFragmentShader = `
         }
         gl.uniform1f(sphereProgram.uMouseLightEnabled, mouseLightEnabled ? 1.0 : 0.0);
         gl.uniform1f(sphereProgram.uAmbientIntensity, lightParams.ambientIntensity);
+        gl.uniform1f(sphereProgram.uFogIntensity, lightParams.fogIntensity);
         gl.uniform1f(sphereProgram.uZoom, zoomLevel);
         gl.uniform2f(sphereProgram.uZoomCenter, zoomCenterX, zoomCenterY);
         gl.uniform1f(sphereProgram.uCameraRotX, cameraRotX);
@@ -1779,25 +1838,15 @@ const spaceParticleFragmentShader = `
             gl.uniform1f(debugQuadProgram.uZoom, zoomLevel);
             gl.uniform1f(debugQuadProgram.uCameraRotX, cameraRotX);
             gl.uniform1f(debugQuadProgram.uCameraRotY, cameraRotY);
-            gl.uniform1f(debugQuadProgram.uTime, time);
 
             gl.bindBuffer(gl.ARRAY_BUFFER, debugQuadBuffer);
             gl.enableVertexAttribArray(debugQuadProgram.aPosition);
             gl.vertexAttribPointer(debugQuadProgram.aPosition, 2, gl.FLOAT, false, 0, 0);
 
-            // Draw debug quad for each node
             for (const n of nodes) {
-                const displaySize = n.size + (n.glowIntensity || 0) * 3;
                 gl.uniform2f(debugQuadProgram.uCenter, n.x, n.y);
-                gl.uniform1f(debugQuadProgram.uSize, displaySize);
-
-                // Color: gold for suns, teal for planets
-                if (n.isLight) {
-                    gl.uniform3f(debugQuadProgram.uColor, 1.0, 0.8, 0.2);
-                } else {
-                    gl.uniform3f(debugQuadProgram.uColor, 0.2, 0.9, 0.8);
-                }
-
+                gl.uniform1f(debugQuadProgram.uSize, n.size);
+                gl.uniform1f(debugQuadProgram.uWorldZ, n.z || 0.0);
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
             }
 
@@ -2043,210 +2092,171 @@ const spaceParticleFragmentShader = `
 
         const minDim = Math.min(width, height);
 
-        // World scale for converting screen to world coordinates
-        const worldScale = 1.0 / width;
-        // Sphere radius constraint (keep nodes in sphere)
-        const sphereRadius = 0.15;
+        // ====== SIMPLE SOLAR SYSTEM ======
+        // Get orbital parameters from UI controls
+        const speedMult = orbitParams.orbitSpeed;
+        // sunSpread, sunSpawnMin/Max are used inside getSunPosition()
+        const moonRadiusMult = orbitParams.moonOrbitRadius;
+        const moonSpacingMult = orbitParams.moonOrbitSpacing;
+        const moonTiltMult = orbitParams.moonOrbitTilt;
+        const subMoonRadiusMult = orbitParams.subMoonOrbitRadius;
+        const subMoonSpeedMult = orbitParams.subMoonSpeed;
+        const baseSpacing = 0.045;  // Base gap between orbits
 
-        nodes.forEach(node => {
-            if (node === dragNode) return;
+        // STEP 1: Place suns at fixed positions (affected by sunSpread, sunSpawnMin/Max)
+        for (const sunId in sunBasePositions) {
+            const node = nodes.find(n => n.id === sunId);
+            if (!node || node === dragNode) continue;
 
-            let fx = 0, fy = 0, fz = 0;
-            const mass = node.size * 0.5;
+            // Get dynamic position based on spawn parameters
+            const pos = getSunPosition(sunId);
 
-            // Convert node position to world coordinates for 3D physics
-            const nodeWorldX = (node.x - centerX) * worldScale;
-            const nodeWorldY = -(node.y - centerY) * worldScale;
-            const nodeWorldZ = node.z || 0;
+            // Store world position (sunSpread already applied in getSunPosition)
+            node.worldX = pos.x;
+            node.worldY = pos.y;
+            node.worldZ = pos.z;
 
-            // === RULE 1: Connection springs + Rotation around centroid ===
-            const nodeConnections = connectionMap.get(node.id);
-            let centroidX = 0, centroidY = 0, centroidZ = 0, connectionCount = 0;
+            // Convert to screen
+            node.x = centerX + node.worldX * minDim;
+            node.y = centerY - node.worldY * minDim;
+            node.z = pos.z;
 
-            if (nodeConnections) {
-                // First pass: calculate centroid of connected nodes (in world coords)
-                nodes.forEach(other => {
-                    if (!nodeConnections.has(other.id)) return;
-                    centroidX += (other.x - centerX) * worldScale;
-                    centroidY += -(other.y - centerY) * worldScale;
-                    centroidZ += other.z || 0;
-                    connectionCount++;
-                });
+            // Mark as sun (no orbit circle for suns since they're fixed)
+            node.isSun = true;
+        }
 
-                if (connectionCount > 0) {
-                    centroidX /= connectionCount;
-                    centroidY /= connectionCount;
-                    centroidZ /= connectionCount;
+        // STEP 2: Moons orbit their parent sun with 3D tilted orbits
+        for (const moonId in moonOrbits) {
+            const node = nodes.find(n => n.id === moonId);
+            if (!node || node === dragNode) continue;
 
-                    // Apply rotation force around centroid (not for suns) - in XY plane
-                    if (physicsParams.rotationForce > 0 && !node.isLight) {
-                        const toCentroidX = centroidX - nodeWorldX;
-                        const toCentroidY = centroidY - nodeWorldY;
-                        const distToCentroid = Math.sqrt(toCentroidX * toCentroidX + toCentroidY * toCentroidY) || 1;
-                        // Tangent vector (perpendicular to radius in XY plane)
-                        const tangentX = -toCentroidY / distToCentroid;
-                        const tangentY = toCentroidX / distToCentroid;
-                        // Rotation force scales with distance
-                        const rotForce = distToCentroid * physicsParams.rotationForce * 0.1;
-                        fx += tangentX * rotForce;
-                        fy += tangentY * rotForce;
-                    }
-                }
+            const config = moonOrbits[moonId];
+            const parentSun = nodes.find(n => n.id === config.sun);
+            if (!parentSun) continue;
 
-                // Second pass: spring forces to connected nodes (3D)
-                nodes.forEach(other => {
-                    if (!nodeConnections.has(other.id)) return;
-                    const otherWorldX = (other.x - centerX) * worldScale;
-                    const otherWorldY = -(other.y - centerY) * worldScale;
-                    const otherWorldZ = other.z || 0;
+            // Update orbital angle (affected by orbitSpeed)
+            node.orbitAngle = (node.orbitAngle || config.phase) + config.speed * speedMult;
 
-                    const dx = otherWorldX - nodeWorldX;
-                    const dy = otherWorldY - nodeWorldY;
-                    const dz = otherWorldZ - nodeWorldZ;
-                    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 0.001;
-                    const idealDist = (node.size + other.size) * worldScale * 1.8;
-                    // Spring force: pull if too far, push if too close
-                    const springForce = (dist - idealDist) * physicsParams.springStrength * 0.5;
-                    fx += (dx / dist) * springForce;
-                    fy += (dy / dist) * springForce;
-                    fz += (dz / dist) * springForce;
-                });
-            }
+            // Calculate radius: baseOrbit + (orbitIndex * spacing)
+            // baseOrbit is mapped from config.baseRadius (0-1) to baseOrbitMin-baseOrbitMax range
+            const orbitIndex = config.orbitIndex || 0;
+            const baseOrbit = orbitParams.baseOrbitMin + config.baseRadius * (orbitParams.baseOrbitMax - orbitParams.baseOrbitMin);
+            const radius = (baseOrbit + orbitIndex * baseSpacing * moonSpacingMult) * moonRadiusMult;
+            const angle = node.orbitAngle;
+            // Get tilt from the solar system (shared by all moons of this sun)
+            const systemTilt = solarSystemTilts[config.sun] || { tiltX: 0, tiltY: 0 };
+            const tiltX = systemTilt.tiltX * moonTiltMult;
+            const tiltY = systemTilt.tiltY * moonTiltMult;
 
-            // === RULE 2: Repulsion from unconnected nodes (3D) ===
-            nodes.forEach(other => {
-                if (other === node) return;
-                const isConnected = nodeConnections && nodeConnections.has(other.id);
-                if (isConnected) return;
+            // Start with circular orbit in XY plane
+            let offsetX = Math.cos(angle) * radius;
+            let offsetY = Math.sin(angle) * radius;
+            let offsetZ = 0;
 
-                const otherWorldX = (other.x - centerX) * worldScale;
-                const otherWorldY = -(other.y - centerY) * worldScale;
-                const otherWorldZ = other.z || 0;
+            // Apply tilt around X axis (pitch)
+            const cosT = Math.cos(tiltX);
+            const sinT = Math.sin(tiltX);
+            const newY = offsetY * cosT - offsetZ * sinT;
+            const newZ = offsetY * sinT + offsetZ * cosT;
+            offsetY = newY;
+            offsetZ = newZ;
 
-                const dx = nodeWorldX - otherWorldX;
-                const dy = nodeWorldY - otherWorldY;
-                const dz = nodeWorldZ - otherWorldZ;
-                const distSq = dx * dx + dy * dy + dz * dz;
-                const dist = Math.sqrt(distSq) || 0.001;
+            // Apply tilt around Y axis (yaw)
+            const cosY = Math.cos(tiltY);
+            const sinY = Math.sin(tiltY);
+            const newX = offsetX * cosY + offsetZ * sinY;
+            offsetZ = -offsetX * sinY + offsetZ * cosY;
+            offsetX = newX;
 
-                // Repulsion falls off with distance squared
-                const repelForce = physicsParams.separationForce * physicsParams.repelStrength * 0.001 / (distSq + 0.001);
-                fx += (dx / dist) * repelForce;
-                fy += (dy / dist) * repelForce;
-                fz += (dz / dist) * repelForce;
-            });
+            // Moon position = sun position + tilted orbit offset
+            const sunX = parentSun.worldX || 0;
+            const sunY = parentSun.worldY || 0;
+            const sunZ = parentSun.worldZ || 0;
 
-            // === RULE 3: Origin pull (3D - pull toward world origin) ===
-            const originDist = Math.sqrt(nodeWorldX * nodeWorldX + nodeWorldY * nodeWorldY + nodeWorldZ * nodeWorldZ) || 0.001;
-            const centerPullForce = originDist * physicsParams.centerPull * 0.5;
-            fx -= (nodeWorldX / originDist) * centerPullForce;
-            fy -= (nodeWorldY / originDist) * centerPullForce;
-            fz -= (nodeWorldZ / originDist) * centerPullForce;
+            node.worldX = sunX + offsetX;
+            node.worldY = sunY + offsetY;
+            node.worldZ = sunZ + offsetZ;
 
-            // === RULE 3b: Suns repel each other (3D) ===
-            if (node.isLight) {
-                nodes.forEach(other => {
-                    if (other === node || !other.isLight) return;
-                    const otherWorldX = (other.x - centerX) * worldScale;
-                    const otherWorldY = -(other.y - centerY) * worldScale;
-                    const otherWorldZ = other.z || 0;
+            // Convert to screen
+            node.x = centerX + node.worldX * minDim;
+            node.y = centerY - node.worldY * minDim;
+            node.z = node.worldZ;
 
-                    const dx = nodeWorldX - otherWorldX;
-                    const dy = nodeWorldY - otherWorldY;
-                    const dz = nodeWorldZ - otherWorldZ;
-                    const distSq = dx * dx + dy * dy + dz * dz;
-                    const dist = Math.sqrt(distSq) || 0.001;
-                    const sunRepelForce = physicsParams.sunRepel * 0.002 / (distSq + 0.001);
-                    fx += (dx / dist) * sunRepelForce;
-                    fy += (dy / dist) * sunRepelForce;
-                    fz += (dz / dist) * sunRepelForce;
-                });
-            }
+            // Store orbit info for drawing circles (use current scaled values)
+            node.orbitCenterWorldX = sunX;
+            node.orbitCenterWorldY = sunY;
+            node.orbitCenterWorldZ = sunZ;
+            node.orbitRadiusWorld = radius;
+            node.orbitTiltX = tiltX;
+            node.orbitTiltY = tiltY;
+            node.parentSunId = config.sun;
+            node.isMoon = true;
+        }
 
-            // === RULE 4: Separation (hard collision - 3D) ===
-            nodes.forEach(other => {
-                if (other === node) return;
-                const otherWorldX = (other.x - centerX) * worldScale;
-                const otherWorldY = -(other.y - centerY) * worldScale;
-                const otherWorldZ = other.z || 0;
+        // STEP 3: Sub-moons orbit around planets (former free floaters)
+        for (const subMoonId in subMoonOrbits) {
+            const node = nodes.find(n => n.id === subMoonId);
+            if (!node || node === dragNode) continue;
 
-                const dx = nodeWorldX - otherWorldX;
-                const dy = nodeWorldY - otherWorldY;
-                const dz = nodeWorldZ - otherWorldZ;
-                const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 0.001;
-                const minSep = (node.size + other.size) * worldScale * physicsParams.separationZone;
-                if (dist < minSep) {
-                    const sepForce = (minSep - dist) * physicsParams.separationForce * 0.01;
-                    fx += (dx / dist) * sepForce;
-                    fy += (dy / dist) * sepForce;
-                    fz += (dz / dist) * sepForce;
-                }
-            });
+            const config = subMoonOrbits[subMoonId];
+            const parentPlanet = nodes.find(n => n.id === config.parent);
+            if (!parentPlanet) continue;
 
-            // === RULE 5: Mouse interaction (in projected screen space) ===
-            const renderX = node.renderX !== undefined ? node.renderX : node.x;
-            const renderY = node.renderY !== undefined ? node.renderY : node.y;
-            const mDx = mouseScreenX - renderX;
-            const mDy = mouseScreenY - renderY;
-            const mDist = Math.sqrt(mDx * mDx + mDy * mDy);
-            const attractRadius = 150 * sizeScale;
-            if (mDist < attractRadius && mDist > 20) {
-                const t = 1 - (mDist / attractRadius);
-                // Convert screen-space attraction to world-space (XY only)
-                fx += (mDx * worldScale / (mDist || 1)) * t * physicsParams.mouseAttraction * 0.0005;
-                fy -= (mDy * worldScale / (mDist || 1)) * t * physicsParams.mouseAttraction * 0.0005;
-            }
+            // Update orbital angle (affected by both global speed and sub-moon speed)
+            node.orbitAngle = (node.orbitAngle || config.phase) + config.speed * speedMult * subMoonSpeedMult;
 
-            // === RULE 6: Sphere boundary - keep nodes inside sphere ===
-            if (originDist > sphereRadius * 0.95) {
-                const pushBack = (originDist - sphereRadius * 0.9) * 0.1;
-                fx -= (nodeWorldX / originDist) * pushBack;
-                fy -= (nodeWorldY / originDist) * pushBack;
-                fz -= (nodeWorldZ / originDist) * pushBack;
-            }
+            // Apply radius multiplier from UI
+            const radius = config.radius * subMoonRadiusMult;
+            const angle = node.orbitAngle;
+            const tiltX = (config.tiltX || 0) * moonTiltMult;
+            const tiltY = (config.tiltY || 0) * moonTiltMult;
 
-            // === Apply forces (in world space) ===
-            node.vx = (node.vx || 0) + fx / mass;
-            node.vy = (node.vy || 0) + fy / mass;
-            node.vz = (node.vz || 0) + fz / mass;
+            // Start with circular orbit in XY plane
+            let offsetX = Math.cos(angle) * radius;
+            let offsetY = Math.sin(angle) * radius;
+            let offsetZ = 0;
 
-            // Damping
-            node.vx *= physicsParams.damping;
-            node.vy *= physicsParams.damping;
-            node.vz *= physicsParams.damping;
+            // Apply tilt around X axis
+            const cosT = Math.cos(tiltX);
+            const sinT = Math.sin(tiltX);
+            const newY = offsetY * cosT - offsetZ * sinT;
+            const newZ = offsetY * sinT + offsetZ * cosT;
+            offsetY = newY;
+            offsetZ = newZ;
 
-            // Speed limit (in world space)
-            const speed = Math.sqrt(node.vx * node.vx + node.vy * node.vy + node.vz * node.vz);
-            const maxWorldSpeed = physicsParams.maxSpeed * worldScale * 0.1;
-            if (speed > maxWorldSpeed) {
-                node.vx = (node.vx / speed) * maxWorldSpeed;
-                node.vy = (node.vy / speed) * maxWorldSpeed;
-                node.vz = (node.vz / speed) * maxWorldSpeed;
-            }
+            // Apply tilt around Y axis
+            const cosY = Math.cos(tiltY);
+            const sinY = Math.sin(tiltY);
+            const newX = offsetX * cosY + offsetZ * sinY;
+            offsetZ = -offsetX * sinY + offsetZ * cosY;
+            offsetX = newX;
 
-            // Update world position
-            const newWorldX = nodeWorldX + node.vx;
-            const newWorldY = nodeWorldY + node.vy;
-            const newWorldZ = nodeWorldZ + node.vz;
+            // Sub-moon position = parent planet position + tilted orbit offset
+            const parentX = parentPlanet.worldX || 0;
+            const parentY = parentPlanet.worldY || 0;
+            const parentZ = parentPlanet.worldZ || 0;
 
-            // Convert back to screen coordinates (with NaN protection)
-            node.x = isNaN(newWorldX) ? centerX : centerX + newWorldX / worldScale;
-            node.y = isNaN(newWorldY) ? centerY : centerY - newWorldY / worldScale;
-            node.z = isNaN(newWorldZ) ? 0 : newWorldZ;
+            node.worldX = parentX + offsetX;
+            node.worldY = parentY + offsetY;
+            node.worldZ = parentZ + offsetZ;
 
-            // Hard clamp to sphere
-            const newDist = Math.sqrt(newWorldX * newWorldX + newWorldY * newWorldY + newWorldZ * newWorldZ);
-            if (newDist > sphereRadius) {
-                const scale = sphereRadius / newDist;
-                node.x = centerX + (newWorldX * scale) / worldScale;
-                node.y = centerY - (newWorldY * scale) / worldScale;
-                node.z = newWorldZ * scale;
-                // Bounce velocity
-                node.vx *= -0.3;
-                node.vy *= -0.3;
-                node.vz *= -0.3;
-            }
-        });
+            // Convert to screen
+            node.x = centerX + node.worldX * minDim;
+            node.y = centerY - node.worldY * minDim;
+            node.z = node.worldZ;
+
+            // Store orbit info for drawing circles
+            node.orbitCenterWorldX = parentX;
+            node.orbitCenterWorldY = parentY;
+            node.orbitCenterWorldZ = parentZ;
+            node.orbitRadiusWorld = radius;
+            node.orbitTiltX = tiltX;
+            node.orbitTiltY = tiltY;
+            node.parentSunId = config.parent;  // Used for circle drawing
+            node.isSubMoon = true;
+            // Apply sub-moon size multiplier
+            node.size = node.baseSize * sizeScale * orbitParams.subMoonSize;
+        }
     }
 
     let lastHoveredNode = null, hoverStartTime = 0;
@@ -2264,9 +2274,10 @@ const spaceParticleFragmentShader = `
         cameraRotX += (targetCameraRotX - cameraRotX) * 0.08;
         cameraRotY += (targetCameraRotY - cameraRotY) * 0.08;
 
-        // Update global camera rotation for background shader
+        // Update global camera rotation and zoom for background shader
         window.globalCameraRotX = cameraRotX;
         window.globalCameraRotY = cameraRotY;
+        window.globalZoom = zoomLevel;
 
         // 3D perspective camera (matching planet/particle shaders)
         // Fixed orbit distance, zoom applied as scale factor
@@ -2383,33 +2394,97 @@ const spaceParticleFragmentShader = `
             node.renderAlpha = zDist < 0.2 ? zDist / 0.2 : 1.0;
         });
 
-        // Only draw connections when hovered (invisible otherwise)
-        // Draw all connections (teal 10% opacity)
-        connections.forEach(([a, b]) => {
-            const nodeA = nodes.find(n => n.id === a);
-            const nodeB = nodes.find(n => n.id === b);
-            if (!nodeA || !nodeB) return;
-            if (nodeA.renderX < -1000 || nodeB.renderX < -1000) return; // Skip if culled
+        // Helper to project 3D world point to screen
+        function projectToScreen(wx, wy, wz) {
+            const tx = wx - camPosX, ty = wy - camPosY, tz = wz - camPosZ;
+            const zd = tx * camFwdX + ty * camFwdY + tz * camFwdZ;
+            if (zd < 0.01) return null;
+            const ps = orbitDist / zd;
+            const px = (tx * camRightX + ty * camRightY + tz * camRightZ) * ps;
+            const py = (tx * camUpX + ty * camUpY + tz * camUpZ) * ps;
+            return { x: screenCenterX + px * width * zoomLevel, y: screenCenterY - py * width * zoomLevel };
+        }
 
-            const ax = nodeA.renderX, ay = nodeA.renderY;
-            const bx = nodeB.renderX, by = nodeB.renderY;
-            const avgScale = ((nodeA.renderScale || 1) + (nodeB.renderScale || 1)) * 0.5;
-            const avgAlpha = ((nodeA.renderAlpha || 1) + (nodeB.renderAlpha || 1)) * 0.5;
+        // Draw orbit circles for moons (3D tilted circles, projected with camera)
+        // Skip if orbits are disabled via UI
+        if (orbitParams.showOrbits >= 1) {
+        // Scale factor to convert node.worldX/Y to the coordinate system projectToScreen expects
+        const minDim = Math.min(width, height);
+        const worldToProjectScale = minDim / width;
 
-            ctx.strokeStyle = `rgba(45, 212, 191, ${0.03 * globalFadeIn * avgAlpha})`;
-            ctx.lineWidth = 1.5 * avgScale;
+        nodes.forEach(node => {
+            if (node.isSun) return;
+            if (!node.orbitRadiusWorld || !node.parentSunId) return;
+
+            // Find parent (sun or planet for sub-moons)
+            const parent = nodes.find(n => n.id === node.parentSunId);
+            if (!parent || parent.renderX < -1000) return;
+
+            // Use parent's light color if it's a sun, otherwise use a default
+            const hexColor = parent.lightColor || '#aabbcc';
+            const rCol = parseInt(hexColor.slice(1, 3), 16);
+            const gCol = parseInt(hexColor.slice(3, 5), 16);
+            const bCol = parseInt(hexColor.slice(5, 7), 16);
+
+            // Sub-moons get fainter circles, affected by UI opacity setting
+            const baseAlpha = node.isSubMoon ? 0.15 : 0.25;
+            const orbitAlpha = baseAlpha * orbitParams.orbitLineOpacity * 4 * globalFadeIn * (parent.renderAlpha || 1);
+            ctx.strokeStyle = `rgba(${rCol}, ${gCol}, ${bCol}, ${orbitAlpha})`;
+            // Line width affected by UI setting
+            const baseWidth = node.isSubMoon ? 0.5 : 1;
+            ctx.lineWidth = baseWidth * orbitParams.orbitLineWidth;
             ctx.beginPath();
-            ctx.moveTo(ax, ay);
-            ctx.lineTo(bx, by);
+
+            // Draw 3D tilted circle centered on parent's world position
+            const segments = 48;
+            const radius = node.orbitRadiusWorld * worldToProjectScale;
+            const centerWX = (parent.worldX || 0) * worldToProjectScale;
+            const centerWY = (parent.worldY || 0) * worldToProjectScale;
+            const centerWZ = parent.worldZ || 0;
+
+            // Get tilt angles for this orbit
+            const tiltX = node.orbitTiltX || 0;
+            const tiltY = node.orbitTiltY || 0;
+            const cosTX = Math.cos(tiltX), sinTX = Math.sin(tiltX);
+            const cosTY = Math.cos(tiltY), sinTY = Math.sin(tiltY);
+
+            let firstPoint = true;
+            for (let i = 0; i <= segments; i++) {
+                const angle = (i / segments) * Math.PI * 2;
+
+                // Start with circle in XY plane
+                let ox = Math.cos(angle) * radius;
+                let oy = Math.sin(angle) * radius;
+                let oz = 0;
+
+                // Apply tilt around X axis
+                const ny = oy * cosTX - oz * sinTX;
+                const nz = oy * sinTX + oz * cosTX;
+                oy = ny;
+                oz = nz;
+
+                // Apply tilt around Y axis
+                const nx = ox * cosTY + oz * sinTY;
+                oz = -ox * sinTY + oz * cosTY;
+                ox = nx;
+
+                const worldX = centerWX + ox;
+                const worldY = centerWY + oy;
+                const worldZ = centerWZ + oz;
+
+                const projected = projectToScreen(worldX, worldY, worldZ);
+                if (!projected) continue;
+                if (firstPoint) { ctx.moveTo(projected.x, projected.y); firstPoint = false; }
+                else { ctx.lineTo(projected.x, projected.y); }
+            }
             ctx.stroke();
         });
+        } // End showOrbits check
 
-        // Draw highlighted connections on top (yellow opaque)
-        if (hoveredNode) {
+        // Only draw connections when showConnectionLinks is enabled
+        if (showConnectionLinks) {
+            // Draw all connections (teal, more visible)
             connections.forEach(([a, b]) => {
-                const isHighlighted = hoveredNode.id === a || hoveredNode.id === b;
-                if (!isHighlighted) return;
-
                 const nodeA = nodes.find(n => n.id === a);
                 const nodeB = nodes.find(n => n.id === b);
                 if (!nodeA || !nodeB) return;
@@ -2420,13 +2495,38 @@ const spaceParticleFragmentShader = `
                 const avgScale = ((nodeA.renderScale || 1) + (nodeB.renderScale || 1)) * 0.5;
                 const avgAlpha = ((nodeA.renderAlpha || 1) + (nodeB.renderAlpha || 1)) * 0.5;
 
-                ctx.strokeStyle = `rgba(232, 185, 35, ${globalFadeIn * avgAlpha})`;
+                ctx.strokeStyle = `rgba(45, 212, 191, ${0.25 * globalFadeIn * avgAlpha})`;
                 ctx.lineWidth = 2 * avgScale;
                 ctx.beginPath();
                 ctx.moveTo(ax, ay);
                 ctx.lineTo(bx, by);
                 ctx.stroke();
             });
+
+            // Draw highlighted connections on top (yellow opaque)
+            if (hoveredNode) {
+                connections.forEach(([a, b]) => {
+                    const isHighlighted = hoveredNode.id === a || hoveredNode.id === b;
+                    if (!isHighlighted) return;
+
+                    const nodeA = nodes.find(n => n.id === a);
+                    const nodeB = nodes.find(n => n.id === b);
+                    if (!nodeA || !nodeB) return;
+                    if (nodeA.renderX < -1000 || nodeB.renderX < -1000) return; // Skip if culled
+
+                    const ax = nodeA.renderX, ay = nodeA.renderY;
+                    const bx = nodeB.renderX, by = nodeB.renderY;
+                    const avgScale = ((nodeA.renderScale || 1) + (nodeB.renderScale || 1)) * 0.5;
+                    const avgAlpha = ((nodeA.renderAlpha || 1) + (nodeB.renderAlpha || 1)) * 0.5;
+
+                    ctx.strokeStyle = `rgba(232, 185, 35, ${globalFadeIn * avgAlpha})`;
+                    ctx.lineWidth = 2 * avgScale;
+                    ctx.beginPath();
+                    ctx.moveTo(ax, ay);
+                    ctx.lineTo(bx, by);
+                    ctx.stroke();
+                });
+            }
         }
 
         if (!renderSpheresGL(nodes, hoveredNode, connectedToHovered)) {
@@ -2543,7 +2643,8 @@ const spaceParticleFragmentShader = `
         if (isOrbiting) {
             const deltaX = e.clientX - orbitStartX;
             const deltaY = e.clientY - orbitStartY;
-            const sensitivity = 0.005;
+            // Sensitivity affected by UI slider
+            const sensitivity = 0.005 * orbitParams.cameraRotSpeed;
             targetCameraRotY = orbitStartRotY + deltaX * sensitivity;
             targetCameraRotX = orbitStartRotX + deltaY * sensitivity;
             // Clamp pitch to avoid flipping
@@ -2823,13 +2924,13 @@ const spaceParticleFragmentShader = `
         });
     }
 
-    // Debug quad toggle
-    const debugQuadToggle = document.getElementById('debug-quad-toggle');
-    if (debugQuadToggle) {
-        debugQuadToggle.addEventListener('click', (e) => {
+    // Links toggle
+    const linksToggle = document.getElementById('links-toggle');
+    if (linksToggle) {
+        linksToggle.addEventListener('click', (e) => {
             e.stopPropagation();
-            showDebugQuads = !showDebugQuads;
-            debugQuadToggle.classList.toggle('active', showDebugQuads);
+            showConnectionLinks = !showConnectionLinks;
+            linksToggle.classList.toggle('active', showConnectionLinks);
         });
     }
 
@@ -2912,6 +3013,17 @@ const spaceParticleFragmentShader = `
         });
     }
 
+    // Fog intensity slider handler
+    const fogSlider = document.getElementById('fog-slider');
+    const fogValue = document.getElementById('fog-value');
+    if (fogSlider && fogValue) {
+        fogSlider.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            lightParams.fogIntensity = value;
+            fogValue.textContent = value.toFixed(2);
+        });
+    }
+
     // Reset button
     if (lightResetBtn) {
         lightResetBtn.addEventListener('click', () => {
@@ -2941,6 +3053,10 @@ const spaceParticleFragmentShader = `
             lightParams.ambientIntensity = 0.0;
             if (ambientSlider) ambientSlider.value = 0;
             if (ambientValue) ambientValue.textContent = '0.00';
+            // Reset fog intensity
+            lightParams.fogIntensity = 0.15;
+            if (fogSlider) fogSlider.value = 0.15;
+            if (fogValue) fogValue.textContent = '0.15';
         });
     }
 
@@ -3098,32 +3214,47 @@ const spaceParticleFragmentShader = `
     const physicsControlsToggle = document.getElementById('physics-controls-toggle');
     const physicsResetBtn = document.getElementById('physics-reset-btn');
 
-    // Slider elements and their corresponding physicsParams keys
+    // Slider elements and their corresponding orbitParams keys
     const physicsSliders = {
-        'physics-spring': { param: 'springStrength', valueEl: 'spring-value', default: 0.005, decimals: 4 },
-        'physics-rotation': { param: 'rotationForce', valueEl: 'rotation-value', default: 0.0001, decimals: 4 },
-        'physics-separation-zone': { param: 'separationZone', valueEl: 'separation-zone-value', default: 2.0, decimals: 2 },
-        'physics-separation-force': { param: 'separationForce', valueEl: 'separation-force-value', default: 0.5, decimals: 2 },
-        'physics-damping': { param: 'damping', valueEl: 'damping-value', default: 0.96, decimals: 3 },
-        'physics-max-speed': { param: 'maxSpeed', valueEl: 'max-speed-value', default: 1.5, decimals: 2 },
-        'physics-center-pull': { param: 'centerPull', valueEl: 'center-pull-value', default: 0.0003, decimals: 5 },
-        'physics-repel': { param: 'repelStrength', valueEl: 'repel-value', default: 20.0, decimals: 2 },
-        'physics-sun-repel': { param: 'sunRepel', valueEl: 'sun-repel-value', default: 1.0, decimals: 2 },
-        'physics-mouse': { param: 'mouseAttraction', valueEl: 'mouse-value', default: 0.008, decimals: 3 }
+        'orbit-speed': { param: 'orbitSpeed', valueEl: 'orbit-speed-value', default: 1.0, decimals: 2 },
+        'sun-spread': { param: 'sunSpread', valueEl: 'sun-spread-value', default: 1.0, decimals: 2 },
+        'sun-spawn-min': { param: 'sunSpawnMin', valueEl: 'sun-spawn-min-value', default: 0.2, decimals: 2 },
+        'sun-spawn-max': { param: 'sunSpawnMax', valueEl: 'sun-spawn-max-value', default: 0.45, decimals: 2 },
+        'moon-orbit-radius': { param: 'moonOrbitRadius', valueEl: 'moon-orbit-radius-value', default: 1.0, decimals: 2 },
+        'moon-orbit-spacing': { param: 'moonOrbitSpacing', valueEl: 'moon-orbit-spacing-value', default: 1.0, decimals: 2 },
+        'moon-orbit-tilt': { param: 'moonOrbitTilt', valueEl: 'moon-orbit-tilt-value', default: 1.0, decimals: 2 },
+        'base-orbit-min': { param: 'baseOrbitMin', valueEl: 'base-orbit-min-value', default: 0.04, decimals: 3 },
+        'base-orbit-max': { param: 'baseOrbitMax', valueEl: 'base-orbit-max-value', default: 0.08, decimals: 3 },
+        'spawn-offset': { param: 'spawnOffset', valueEl: 'spawn-offset-value', default: 0.0, decimals: 2 },
+        'submoon-orbit-radius': { param: 'subMoonOrbitRadius', valueEl: 'submoon-orbit-radius-value', default: 1.0, decimals: 2 },
+        'submoon-speed': { param: 'subMoonSpeed', valueEl: 'submoon-speed-value', default: 1.0, decimals: 2 },
+        'submoon-size': { param: 'subMoonSize', valueEl: 'submoon-size-value', default: 0.5, decimals: 2 },
+        'orbit-line-opacity': { param: 'orbitLineOpacity', valueEl: 'orbit-line-opacity-value', default: 0.25, decimals: 2 },
+        'orbit-line-width': { param: 'orbitLineWidth', valueEl: 'orbit-line-width-value', default: 1.0, decimals: 2 },
+        'camera-rot-speed': { param: 'cameraRotSpeed', valueEl: 'camera-rot-speed-value', default: 1.0, decimals: 2 },
+        'show-orbits': { param: 'showOrbits', valueEl: 'show-orbits-value', default: 1.0, decimals: 0, isToggle: true }
     };
 
-    // Initialize physics sliders
+    // Initialize orbital sliders
     Object.entries(physicsSliders).forEach(([sliderId, config]) => {
         const slider = document.getElementById(sliderId);
         const valueEl = document.getElementById(config.valueEl);
         if (slider && valueEl) {
-            slider.value = physicsParams[config.param];
-            valueEl.textContent = physicsParams[config.param].toFixed(config.decimals);
+            slider.value = orbitParams[config.param];
+            if (config.isToggle) {
+                valueEl.textContent = orbitParams[config.param] >= 1 ? 'ON' : 'OFF';
+            } else {
+                valueEl.textContent = orbitParams[config.param].toFixed(config.decimals);
+            }
 
             slider.addEventListener('input', () => {
                 const value = parseFloat(slider.value);
-                physicsParams[config.param] = value;
-                valueEl.textContent = value.toFixed(config.decimals);
+                orbitParams[config.param] = value;
+                if (config.isToggle) {
+                    valueEl.textContent = value >= 1 ? 'ON' : 'OFF';
+                } else {
+                    valueEl.textContent = value.toFixed(config.decimals);
+                }
             });
         }
     });
@@ -3143,15 +3274,19 @@ const spaceParticleFragmentShader = `
         }
     });
 
-    // Physics reset button
+    // Orbital reset button
     if (physicsResetBtn) {
         physicsResetBtn.addEventListener('click', () => {
             Object.entries(physicsSliders).forEach(([sliderId, config]) => {
                 const slider = document.getElementById(sliderId);
                 const valueEl = document.getElementById(config.valueEl);
-                physicsParams[config.param] = config.default;
+                orbitParams[config.param] = config.default;
                 if (slider) slider.value = config.default;
-                if (valueEl) valueEl.textContent = config.default.toFixed(config.decimals);
+                if (config.isToggle) {
+                    if (valueEl) valueEl.textContent = config.default >= 1 ? 'ON' : 'OFF';
+                } else {
+                    if (valueEl) valueEl.textContent = config.default.toFixed(config.decimals);
+                }
             });
         });
     }
@@ -3235,12 +3370,35 @@ const spaceParticleFragmentShader = `
     const particlesResetBtn = document.getElementById('particles-reset-btn');
 
     const particlesSlidersConfig = {
-        'particles-focal-plane': { param: 'focalPlane', valueEl: 'particles-focal-plane-value', default: 0.0, decimals: 2 },
-        'particles-dof-strength': { param: 'dofStrength', valueEl: 'particles-dof-strength-value', default: 1.0, decimals: 2 },
-        'particles-size': { param: 'particleSize', valueEl: 'particles-size-value', default: 1.5, decimals: 2 },
-        'particles-brightness': { param: 'brightness', valueEl: 'particles-brightness-value', default: 0.7, decimals: 2 },
-        'particles-near-range': { param: 'nearRange', valueEl: 'particles-near-range-value', default: 0.8, decimals: 2 },
-        'particles-near-size': { param: 'nearSize', valueEl: 'particles-near-size-value', default: 15.0, decimals: 1 }
+        // Focus distance settings
+        'particles-focus-distance': { param: 'focusDistance', valueEl: 'particles-focus-distance-value', default: 0.7, decimals: 2 },
+        'particles-focus-range': { param: 'focusRange', valueEl: 'particles-focus-range-value', default: 0.15, decimals: 2 },
+        'particles-near-blur': { param: 'nearBlurDist', valueEl: 'particles-near-blur-value', default: 0.3, decimals: 2 },
+        'particles-far-blur': { param: 'farBlurDist', valueEl: 'particles-far-blur-value', default: 1.2, decimals: 2 },
+        // Bokeh effect
+        'particles-max-blur': { param: 'maxBlurSize', valueEl: 'particles-max-blur-value', default: 25.0, decimals: 1 },
+        'particles-aperture': { param: 'apertureSize', valueEl: 'particles-aperture-value', default: 1.0, decimals: 2 },
+        'particles-ring-width': { param: 'bokehRingWidth', valueEl: 'particles-ring-width-value', default: 0.5, decimals: 2 },
+        'particles-ring-intensity': { param: 'bokehRingIntensity', valueEl: 'particles-ring-intensity-value', default: 0.8, decimals: 2 },
+        // Circle quality
+        'particles-softness': { param: 'circleSoftness', valueEl: 'particles-softness-value', default: 0.3, decimals: 2 },
+        // Appearance
+        'particles-size': { param: 'particleSize', valueEl: 'particles-size-value', default: 2.0, decimals: 2 },
+        'particles-brightness': { param: 'brightness', valueEl: 'particles-brightness-value', default: 1.0, decimals: 2 },
+        'particles-light-falloff': { param: 'lightFalloff', valueEl: 'particles-light-falloff-value', default: 3.0, decimals: 2 }
+    };
+
+    // Shooting star sliders config
+    const shootingStarSlidersConfig = {
+        'shooting-chance': { param: 'chance', valueEl: 'shooting-chance-value', default: 0.0003, decimals: 3 },
+        'shooting-speed': { param: 'speed', valueEl: 'shooting-speed-value', default: 0.4, decimals: 2 },
+        'shooting-duration': { param: 'duration', valueEl: 'shooting-duration-value', default: 0.8, decimals: 2 }
+    };
+
+    // Shooting star color pickers config
+    const shootingStarColorConfig = {
+        'shooting-gold-color': { param: 'goldColor', default: '#e8b923' },
+        'shooting-teal-color': { param: 'tealColor', default: '#2dd4bf' }
     };
 
     // Initialize particles sliders
@@ -3258,6 +3416,42 @@ const spaceParticleFragmentShader = `
             });
         }
     });
+
+    // Initialize shooting star sliders
+    Object.entries(shootingStarSlidersConfig).forEach(([sliderId, config]) => {
+        const slider = document.getElementById(sliderId);
+        const valueEl = document.getElementById(config.valueEl);
+        if (slider && valueEl) {
+            slider.value = shootingStarParams[config.param];
+            valueEl.textContent = shootingStarParams[config.param].toFixed(config.decimals);
+
+            slider.addEventListener('input', () => {
+                const value = parseFloat(slider.value);
+                shootingStarParams[config.param] = value;
+                valueEl.textContent = value.toFixed(config.decimals);
+            });
+        }
+    });
+
+    // Initialize shooting star color pickers
+    Object.entries(shootingStarColorConfig).forEach(([pickerId, config]) => {
+        const picker = document.getElementById(pickerId);
+        if (picker) {
+            picker.value = shootingStarParams[config.param];
+            picker.addEventListener('input', () => {
+                shootingStarParams[config.param] = picker.value;
+            });
+        }
+    });
+
+    // Initialize base particle color picker
+    const baseColorPicker = document.getElementById('particles-base-color');
+    if (baseColorPicker) {
+        baseColorPicker.value = spaceParticleParams.baseColor;
+        baseColorPicker.addEventListener('input', () => {
+            spaceParticleParams.baseColor = baseColorPicker.value;
+        });
+    }
 
     // Toggle panel
     if (particlesToggle) {
@@ -3277,6 +3471,7 @@ const spaceParticleFragmentShader = `
     // Reset button
     if (particlesResetBtn) {
         particlesResetBtn.addEventListener('click', () => {
+            // Reset particle params
             Object.entries(particlesSlidersConfig).forEach(([sliderId, config]) => {
                 const slider = document.getElementById(sliderId);
                 const valueEl = document.getElementById(config.valueEl);
@@ -3284,8 +3479,167 @@ const spaceParticleFragmentShader = `
                 if (slider) slider.value = config.default;
                 if (valueEl) valueEl.textContent = config.default.toFixed(config.decimals);
             });
+            // Reset shooting star sliders
+            Object.entries(shootingStarSlidersConfig).forEach(([sliderId, config]) => {
+                const slider = document.getElementById(sliderId);
+                const valueEl = document.getElementById(config.valueEl);
+                shootingStarParams[config.param] = config.default;
+                if (slider) slider.value = config.default;
+                if (valueEl) valueEl.textContent = config.default.toFixed(config.decimals);
+            });
+            // Reset shooting star colors
+            Object.entries(shootingStarColorConfig).forEach(([pickerId, config]) => {
+                const picker = document.getElementById(pickerId);
+                shootingStarParams[config.param] = config.default;
+                if (picker) picker.value = config.default;
+            });
+            // Reset base particle color
+            spaceParticleParams.baseColor = '#fffaf2';
+            if (baseColorPicker) baseColorPicker.value = '#fffaf2';
         });
     }
+
+    // ========================================
+    // NEBULA BACKGROUND CONTROLS UI
+    // ========================================
+    const nebulaControls = document.getElementById('nebula-controls');
+    const nebulaToggle = document.getElementById('nebula-toggle');
+    const nebulaResetBtn = document.getElementById('nebula-reset-btn');
+
+    const nebulaSlidersConfig = {
+        'nebula-intensity': { param: 'intensity', valueEl: 'nebula-intensity-value', default: 0.25, decimals: 2 },
+        'nebula-scale': { param: 'scale', valueEl: 'nebula-scale-value', default: 2.0, decimals: 2 },
+        'nebula-detail': { param: 'detail', valueEl: 'nebula-detail-value', default: 2.0, decimals: 2 },
+        'nebula-speed': { param: 'speed', valueEl: 'nebula-speed-value', default: 0.08, decimals: 2 },
+        'nebula-color-variation': { param: 'colorVariation', valueEl: 'nebula-color-variation-value', default: 0.8, decimals: 2 },
+        'nebula-dust-density': { param: 'dustDensity', valueEl: 'nebula-dust-density-value', default: 0.4, decimals: 2 },
+        'nebula-star-density': { param: 'starDensity', valueEl: 'nebula-star-density-value', default: 0.25, decimals: 2 },
+        'nebula-light-influence': { param: 'lightInfluence', valueEl: 'nebula-light-influence-value', default: 0.4, decimals: 2 },
+        'nebula-fractal-intensity': { param: 'fractalIntensity', valueEl: 'nebula-fractal-intensity-value', default: 0.15, decimals: 2 },
+        'nebula-fractal-scale': { param: 'fractalScale', valueEl: 'nebula-fractal-scale-value', default: 8.0, decimals: 1 },
+        'nebula-fractal-speed': { param: 'fractalSpeed', valueEl: 'nebula-fractal-speed-value', default: 0.03, decimals: 3 },
+        'nebula-fractal-saturation': { param: 'fractalSaturation', valueEl: 'nebula-fractal-saturation-value', default: 3.0, decimals: 1 },
+        'nebula-fractal-falloff': { param: 'fractalFalloff', valueEl: 'nebula-fractal-falloff-value', default: 3.0, decimals: 1 },
+        'nebula-vignette': { param: 'vignetteStrength', valueEl: 'nebula-vignette-value', default: 0.3, decimals: 2 }
+    };
+
+    // Nebula color picker config
+    const nebulaColorConfig = {
+        'nebula-color-purple': { param: 'colorPurple', default: [0.12, 0.04, 0.18] },
+        'nebula-color-cyan': { param: 'colorCyan', default: [0.04, 0.12, 0.20] },
+        'nebula-color-blue': { param: 'colorBlue', default: [0.03, 0.06, 0.15] },
+        'nebula-color-gold': { param: 'colorGold', default: [0.15, 0.10, 0.03] }
+    };
+
+    // Initialize nebula sliders
+    Object.entries(nebulaSlidersConfig).forEach(([sliderId, config]) => {
+        const slider = document.getElementById(sliderId);
+        const valueEl = document.getElementById(config.valueEl);
+        if (slider && valueEl) {
+            slider.value = nebulaParams[config.param];
+            valueEl.textContent = nebulaParams[config.param].toFixed(config.decimals);
+
+            slider.addEventListener('input', () => {
+                const value = parseFloat(slider.value);
+                nebulaParams[config.param] = value;
+                valueEl.textContent = value.toFixed(config.decimals);
+            });
+        }
+    });
+
+    // Helper to convert RGB array (0-1) to hex
+    function rgbToHex(rgb) {
+        const r = Math.round(rgb[0] * 255);
+        const g = Math.round(rgb[1] * 255);
+        const b = Math.round(rgb[2] * 255);
+        return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+    }
+
+    // Helper to convert hex to RGB array (0-1)
+    function hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? [
+            parseInt(result[1], 16) / 255,
+            parseInt(result[2], 16) / 255,
+            parseInt(result[3], 16) / 255
+        ] : [0, 0, 0];
+    }
+
+    // Initialize nebula color pickers
+    Object.entries(nebulaColorConfig).forEach(([pickerId, config]) => {
+        const picker = document.getElementById(pickerId);
+        if (picker) {
+            picker.value = rgbToHex(nebulaParams[config.param]);
+            picker.addEventListener('input', () => {
+                nebulaParams[config.param] = hexToRgb(picker.value);
+            });
+        }
+    });
+
+    // Toggle panel
+    if (nebulaToggle) {
+        nebulaToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            nebulaControls.classList.toggle('active');
+        });
+    }
+
+    // Close panel when clicking outside
+    document.addEventListener('click', (e) => {
+        if (nebulaControls && !nebulaControls.contains(e.target)) {
+            nebulaControls.classList.remove('active');
+        }
+    });
+
+    // Reset button
+    if (nebulaResetBtn) {
+        nebulaResetBtn.addEventListener('click', () => {
+            // Reset sliders
+            Object.entries(nebulaSlidersConfig).forEach(([sliderId, config]) => {
+                const slider = document.getElementById(sliderId);
+                const valueEl = document.getElementById(config.valueEl);
+                nebulaParams[config.param] = config.default;
+                if (slider) slider.value = config.default;
+                if (valueEl) valueEl.textContent = config.default.toFixed(config.decimals);
+            });
+            // Reset color pickers
+            Object.entries(nebulaColorConfig).forEach(([pickerId, config]) => {
+                const picker = document.getElementById(pickerId);
+                nebulaParams[config.param] = [...config.default];
+                if (picker) picker.value = rgbToHex(config.default);
+            });
+        });
+    }
+
+    // ========================================
+    // DEBUG QUAD CONTROLS UI
+    // ========================================
+    const debugControls = document.getElementById('debug-controls');
+    const debugToggle = document.getElementById('debug-toggle');
+    const debugEnableCheckbox = document.getElementById('debug-quad-enable');
+
+    // Enable checkbox
+    if (debugEnableCheckbox) {
+        debugEnableCheckbox.checked = showDebugQuads;
+        debugEnableCheckbox.addEventListener('change', () => {
+            showDebugQuads = debugEnableCheckbox.checked;
+        });
+    }
+
+    // Toggle panel
+    if (debugToggle) {
+        debugToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            debugControls.classList.toggle('active');
+        });
+    }
+
+    // Close panel when clicking outside
+    document.addEventListener('click', (e) => {
+        if (debugControls && !debugControls.contains(e.target)) {
+            debugControls.classList.remove('active');
+        }
+    });
 
     // ========================================
     // GOD RAYS CONTROLS UI
@@ -3367,7 +3721,9 @@ const spaceParticleFragmentShader = `
             lightParams: { ...lightParams },
             physicsParams: { ...physicsParams },
             spaceParticleParams: { ...spaceParticleParams },
-            godRaysParams: { ...godRaysParams }
+            shootingStarParams: { ...shootingStarParams },
+            godRaysParams: { ...godRaysParams },
+            nebulaParams: { ...nebulaParams }
         };
     }
 
@@ -3383,7 +3739,9 @@ const spaceParticleFragmentShader = `
             ['lightParams', lightParams],
             ['physicsParams', physicsParams],
             ['spaceParticleParams', spaceParticleParams],
-            ['godRaysParams', godRaysParams]
+            ['shootingStarParams', shootingStarParams],
+            ['godRaysParams', godRaysParams],
+            ['nebulaParams', nebulaParams]
         ];
 
         paramMappings.forEach(([key, paramObj]) => {
@@ -3468,12 +3826,31 @@ const spaceParticleFragmentShader = `
         updateSlider('sun-chromatic-shift', sunParams.chromaticShift, 2);
 
         // Particles sliders
-        updateSlider('particles-focal-plane', spaceParticleParams.focalPlane, 2);
-        updateSlider('particles-dof-strength', spaceParticleParams.dofStrength, 2);
+        updateSlider('particles-focus-distance', spaceParticleParams.focusDistance, 2);
+        updateSlider('particles-focus-range', spaceParticleParams.focusRange, 2);
+        updateSlider('particles-near-blur', spaceParticleParams.nearBlurDist, 2);
+        updateSlider('particles-far-blur', spaceParticleParams.farBlurDist, 2);
+        updateSlider('particles-max-blur', spaceParticleParams.maxBlurSize, 1);
+        updateSlider('particles-aperture', spaceParticleParams.apertureSize, 2);
+        updateSlider('particles-ring-width', spaceParticleParams.bokehRingWidth, 2);
+        updateSlider('particles-ring-intensity', spaceParticleParams.bokehRingIntensity, 2);
+        updateSlider('particles-softness', spaceParticleParams.circleSoftness, 2);
         updateSlider('particles-size', spaceParticleParams.particleSize, 2);
         updateSlider('particles-brightness', spaceParticleParams.brightness, 2);
-        updateSlider('particles-near-range', spaceParticleParams.nearRange, 2);
-        updateSlider('particles-near-size', spaceParticleParams.nearSize, 1);
+        updateSlider('particles-light-falloff', spaceParticleParams.lightFalloff, 2);
+        // Particles base color picker
+        const particlesBaseColorPicker = document.getElementById('particles-base-color');
+        if (particlesBaseColorPicker) particlesBaseColorPicker.value = spaceParticleParams.baseColor;
+
+        // Shooting star sliders
+        updateSlider('shooting-chance', shootingStarParams.chance, 3);
+        updateSlider('shooting-speed', shootingStarParams.speed, 2);
+        updateSlider('shooting-duration', shootingStarParams.duration, 2);
+        // Shooting star color pickers
+        const shootingGoldPicker = document.getElementById('shooting-gold-color');
+        const shootingTealPicker = document.getElementById('shooting-teal-color');
+        if (shootingGoldPicker) shootingGoldPicker.value = shootingStarParams.goldColor;
+        if (shootingTealPicker) shootingTealPicker.value = shootingStarParams.tealColor;
 
         // God rays sliders
         updateSlider('godrays-ray-intensity', godRaysParams.rayIntensity, 2);
@@ -3487,7 +3864,23 @@ const spaceParticleFragmentShader = `
         updateSlider('godrays-noise-contrast', godRaysParams.noiseContrast, 2);
         updateSlider('godrays-anim-speed', godRaysParams.animSpeed, 2);
 
-        // Light params sliders (intensity, attenuation, ambient)
+        // Nebula sliders
+        updateSlider('nebula-intensity', nebulaParams.intensity, 2);
+        updateSlider('nebula-scale', nebulaParams.scale, 2);
+        updateSlider('nebula-detail', nebulaParams.detail, 2);
+        updateSlider('nebula-speed', nebulaParams.speed, 2);
+        updateSlider('nebula-color-variation', nebulaParams.colorVariation, 2);
+        updateSlider('nebula-dust-density', nebulaParams.dustDensity, 2);
+        updateSlider('nebula-star-density', nebulaParams.starDensity, 2);
+        updateSlider('nebula-light-influence', nebulaParams.lightInfluence, 2);
+        updateSlider('nebula-fractal-intensity', nebulaParams.fractalIntensity, 2);
+        updateSlider('nebula-fractal-scale', nebulaParams.fractalScale, 1);
+        updateSlider('nebula-fractal-speed', nebulaParams.fractalSpeed, 3);
+        updateSlider('nebula-fractal-saturation', nebulaParams.fractalSaturation, 1);
+        updateSlider('nebula-fractal-falloff', nebulaParams.fractalFalloff, 1);
+        updateSlider('nebula-vignette', nebulaParams.vignetteStrength, 2);
+
+        // Light params sliders (intensity, attenuation, ambient, fog)
         updateSlider('intensity-slider-0', lightParams.light0Intensity, 1);
         updateSlider('intensity-slider-1', lightParams.light1Intensity, 1);
         updateSlider('intensity-slider-2', lightParams.light2Intensity, 1);
@@ -3495,18 +3888,29 @@ const spaceParticleFragmentShader = `
         updateSlider('attenuation-slider-1', lightParams.light1Attenuation, 2);
         updateSlider('attenuation-slider-2', lightParams.light2Attenuation, 2);
         updateSlider('ambient-slider', lightParams.ambientIntensity, 2);
+        updateSlider('fog-slider', lightParams.fogIntensity, 2);
 
-        // Physics sliders
-        updateSlider('physics-spring', physicsParams.springStrength, 4);
-        updateSlider('physics-rotation', physicsParams.rotationForce, 4);
-        updateSlider('physics-separation-zone', physicsParams.separationZone, 2);
-        updateSlider('physics-separation-force', physicsParams.separationForce, 2);
-        updateSlider('physics-damping', physicsParams.damping, 3);
-        updateSlider('physics-max-speed', physicsParams.maxSpeed, 2);
-        updateSlider('physics-center-pull', physicsParams.centerPull, 5);
-        updateSlider('physics-repel', physicsParams.repelStrength, 2);
-        updateSlider('physics-sun-repel', physicsParams.sunRepel, 2);
-        updateSlider('physics-mouse', physicsParams.mouseAttraction, 3);
+        // Orbital system sliders
+        updateSlider('orbit-speed', orbitParams.orbitSpeed, 2);
+        updateSlider('sun-spread', orbitParams.sunSpread, 2);
+        updateSlider('sun-spawn-min', orbitParams.sunSpawnMin, 2);
+        updateSlider('sun-spawn-max', orbitParams.sunSpawnMax, 2);
+        updateSlider('moon-orbit-radius', orbitParams.moonOrbitRadius, 2);
+        updateSlider('moon-orbit-spacing', orbitParams.moonOrbitSpacing, 2);
+        updateSlider('moon-orbit-tilt', orbitParams.moonOrbitTilt, 2);
+        updateSlider('base-orbit-min', orbitParams.baseOrbitMin, 3);
+        updateSlider('base-orbit-max', orbitParams.baseOrbitMax, 3);
+        updateSlider('spawn-offset', orbitParams.spawnOffset, 2);
+        updateSlider('submoon-orbit-radius', orbitParams.subMoonOrbitRadius, 2);
+        updateSlider('submoon-speed', orbitParams.subMoonSpeed, 2);
+        updateSlider('submoon-size', orbitParams.subMoonSize, 2);
+        updateSlider('orbit-line-opacity', orbitParams.orbitLineOpacity, 2);
+        updateSlider('orbit-line-width', orbitParams.orbitLineWidth, 2);
+        updateSlider('camera-rot-speed', orbitParams.cameraRotSpeed, 2);
+        updateSlider('show-orbits', orbitParams.showOrbits, 0);
+        // Show orbits toggle value display
+        const showOrbitsValueEl = document.getElementById('show-orbits-value');
+        if (showOrbitsValueEl) showOrbitsValueEl.textContent = orbitParams.showOrbits >= 1 ? 'ON' : 'OFF';
 
         // Kelvin sliders (also update node colors)
         updateLightFromKelvin(0, lightParams.light0Kelvin);
@@ -3586,8 +3990,8 @@ const spaceParticleFragmentShader = `
         saveTimeout = setTimeout(saveToLocalStorage, 500);
     }
 
-    // Attach auto-save to all sliders
-    document.querySelectorAll('.render-slider').forEach(slider => {
+    // Attach auto-save to all sliders (all slider classes)
+    document.querySelectorAll('.render-slider, .kelvin-slider, .light-property-slider, .physics-slider').forEach(slider => {
         slider.addEventListener('input', debouncedSave);
     });
 
@@ -3602,7 +4006,8 @@ const spaceParticleFragmentShader = `
         const panels = [
             { controls: 'sun-controls', resetBtn: 'sun-reset-btn' },
             { controls: 'godrays-controls', resetBtn: 'godrays-reset-btn' },
-            { controls: 'particles-controls', resetBtn: 'particles-reset-btn' }
+            { controls: 'particles-controls', resetBtn: 'particles-reset-btn' },
+            { controls: 'nebula-controls', resetBtn: 'nebula-reset-btn' }
         ];
 
         panels.forEach(panel => {

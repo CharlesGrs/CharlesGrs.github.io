@@ -40,6 +40,7 @@ uniform vec2 uLight1ScreenPos;
 uniform vec2 uLight2ScreenPos;
 uniform float uMouseLightEnabled;
 uniform float uAmbientIntensity;
+uniform float uFogIntensity;  // Fog intensity (colored by env light)
 uniform float uCameraRotX;  // Camera rotation around X axis (pitch)
 uniform float uCameraRotY;  // Camera rotation around Y axis (yaw)
 
@@ -262,7 +263,7 @@ void main() {
     float outerFade = 1.0 - smoothstep(1.2, 1.45, scaledD);
     if (outerFade < 0.001) discard;
 
-    float planetRadius = 0.40;
+    float planetRadius = 0.6;
     float atmosphereThickness = 0.65;
     float atmosphereOuter = planetRadius + atmosphereThickness;
 
@@ -1117,7 +1118,20 @@ void main() {
 
     // Outside planet: additive atmosphere glow (already has shadow baked into atmosColor via incomingLight)
     col += atmosColor * (1.0 - planetMask);
-    
+
+    // ========================================
+    // FOG EFFECT - env light colored atmospheric haze
+    // ========================================
+    // Fog based on actual 3D distance from camera to planet
+    // surfaceWorldPos is already computed above (planet center + normal * radius)
+    float distToCamera = length(surfaceWorldPos - cameraPos);
+    // Normalize distance - closer planets (dist ~0.8) have less fog, farther (dist ~1.2) have more
+    // Typical orbit distance is 1.0, so we center the fog curve around that
+    float fogDistNorm = clamp((distToCamera - 0.7) / 0.6, 0.0, 1.0);  // 0 at dist=0.7, 1 at dist=1.3
+    float fogAmount = fogDistNorm * uFogIntensity * planetMask;
+    vec3 fogColor = lightEnvColor * 0.5;  // Soft fog colored by environment
+    col = mix(col, col + fogColor, fogAmount);
+
 
     // ========================================
     // LAVA GLOW EMISSION - light projected outside the planet
