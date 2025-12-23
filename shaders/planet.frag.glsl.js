@@ -720,41 +720,53 @@ void main() {
         // For a directional light (or distant point light), we treat light as a direction
         // Shadow occurs when the ray from uv in direction of light passes through planet
         float r = planetRadius;
-        float penumbraWidth = r * 0.4;
+        float penumbraWidth = r * 0.2;  // Sharper shadow edges
 
         // Light 0: perpendicular distance from origin to ray (uv + t*dir)
         // Cross product in 2D: |uv x dir| = |uv.x*dir.y - uv.y*dir.x|
         vec2 D0 = light0Dir2D;
         float perpDist0 = abs(uv.x * D0.y - uv.y * D0.x);
         // Only shadow if light is "ahead" (we're on the shadow side of planet)
-        // dot(uv, D0) < 0 means light direction points toward origin from our position
         float alongRay0 = dot(uv, D0);
-        if (alongRay0 < 0.0) {
-            atmosShadow0 = smoothstep(r - penumbraWidth, r + penumbraWidth, perpDist0);
+        if (alongRay0 < 0.0 && perpDist0 < r + penumbraWidth) {
+            // Fade shadow in starting from planet edge
+            float behindPlanet = -alongRay0 / r;  // 0 at edge, 1 at one radius behind
+            float shadowStart = smoothstep(0.0, 1.0, behindPlanet);
+            float shadowCore = smoothstep(r + penumbraWidth, r - penumbraWidth, perpDist0);
+            atmosShadow0 = 1.0 - shadowCore * shadowStart;
         }
 
         // Light 1
         vec2 D1 = light1Dir2D;
         float perpDist1 = abs(uv.x * D1.y - uv.y * D1.x);
         float alongRay1 = dot(uv, D1);
-        if (alongRay1 < 0.0) {
-            atmosShadow1 = smoothstep(r - penumbraWidth, r + penumbraWidth, perpDist1);
+        if (alongRay1 < 0.0 && perpDist1 < r + penumbraWidth) {
+            float behindPlanet1 = -alongRay1 / r;
+            float shadowStart1 = smoothstep(0.0, 1.0, behindPlanet1);
+            float shadowCore1 = smoothstep(r + penumbraWidth, r - penumbraWidth, perpDist1);
+            atmosShadow1 = 1.0 - shadowCore1 * shadowStart1;
         }
 
         // Light 2
         vec2 D2 = light2Dir2D;
         float perpDist2 = abs(uv.x * D2.y - uv.y * D2.x);
         float alongRay2 = dot(uv, D2);
-        if (alongRay2 < 0.0) {
-            atmosShadow2 = smoothstep(r - penumbraWidth, r + penumbraWidth, perpDist2);
+        if (alongRay2 < 0.0 && perpDist2 < r + penumbraWidth) {
+            float behindPlanet2 = -alongRay2 / r;
+            float shadowStart2 = smoothstep(0.0, 1.0, behindPlanet2);
+            float shadowCore2 = smoothstep(r + penumbraWidth, r - penumbraWidth, perpDist2);
+            atmosShadow2 = 1.0 - shadowCore2 * shadowStart2;
         }
 
         // Mouse light
         vec2 DM = normalize(mouseL.xy + vec2(0.0001));
         float perpDistM = abs(uv.x * DM.y - uv.y * DM.x);
         float alongRayM = dot(uv, DM);
-        if (alongRayM < 0.0) {
-            atmosShadowMouse = smoothstep(r - penumbraWidth, r + penumbraWidth, perpDistM);
+        if (alongRayM < 0.0 && perpDistM < r + penumbraWidth) {
+            float behindPlanetM = -alongRayM / r;
+            float shadowStartM = smoothstep(0.0, 1.0, behindPlanetM);
+            float shadowCoreM = smoothstep(r + penumbraWidth, r - penumbraWidth, perpDistM);
+            atmosShadowMouse = 1.0 - shadowCoreM * shadowStartM;
         }
 
         atmosShadow0 = max(atmosShadow0, 0.05);
@@ -1027,43 +1039,37 @@ void main() {
 
     col += specColor * finalSpecular * planetMask;
 
-    // Ocean SSS - dramatic stylized subsurface scattering
-    // Vibrant turquoise/cyan that glows when backlit
-    vec3 sssColorDeep = vec3(0.1, 0.4, 0.55);     // Deep water SSS - rich blue
-    vec3 sssColorShallow = vec3(0.2, 0.7, 0.75);  // Shallow water SSS - vibrant cyan
+    // Ocean SSS - simple translucent water surface
+    // Uses smooth sphere normal for clean SSS, not terrain-deformed normal
+    vec3 sssColorDeep = vec3(0.051, 0.3412, 0.6118);     // Deep water SSS - rich blue
+    vec3 sssColorShallow = vec3(0.2, 0.749, 0.5373);  // Shallow water SSS - vibrant cyan
     vec3 sssColor = mix(sssColorDeep, sssColorShallow, shallowMask);
 
-    // Wider wrap for more dramatic translucency
-    float sssWrap = 0.25;
+    // Convert sphere normal to world space (smooth, no terrain bumps)
+    vec3 sphereN_world = normalize(cameraRight * sphereNormal.x - cameraUp * sphereNormal.y - cameraForward * sphereNormal.z);
 
-    // Back-lighting component - light shining through from behind (dramatic glow)
-    float backLight0 = pow(max(0.0, -dot(N, L0) * 0.5 + 0.5), 2.5);
-    float backLight1 = pow(max(0.0, -dot(N, L1) * 0.5 + 0.5), 2.5);
-    float backLight2 = pow(max(0.0, -dot(N, L2) * 0.5 + 0.5), 2.5);
-    float backLightMouse = pow(max(0.0, -dot(N, mouseL) * 0.5 + 0.5), 2.5);
+    // Simple wrap lighting for translucency
+    float sssWrap = 0.3;
 
-    // Wrap lighting for edge translucency
-    float sssNdL0 = pow(max(0.0, (dot(N, L0) + sssWrap) / (1.0 + sssWrap)), 1.2);
-    float sssNdL1 = pow(max(0.0, (dot(N, L1) + sssWrap) / (1.0 + sssWrap)), 1.2);
-    float sssNdL2 = pow(max(0.0, (dot(N, L2) + sssWrap) / (1.0 + sssWrap)), 1.2);
-    float sssMouseNdL = pow(max(0.0, (dot(N, mouseL) + sssWrap) / (1.0 + sssWrap)), 1.2);
+    // Wrap lighting - light wraps around the sphere edge
+    float sssNdL0 = max(0.0, (dot(sphereN_world, L0) + sssWrap) / (1.0 + sssWrap));
+    float sssNdL1 = max(0.0, (dot(sphereN_world, L1) + sssWrap) / (1.0 + sssWrap));
+    float sssNdL2 = max(0.0, (dot(sphereN_world, L2) + sssWrap) / (1.0 + sssWrap));
+    float sssNdL_mouse = max(0.0, (dot(sphereN_world, mouseL) + sssWrap) / (1.0 + sssWrap));
 
-    // Terminator glow - extra SSS intensity at the day/night boundary
-    float terminatorGlow = smoothstep(-0.1, 0.2, NdL0) * smoothstep(0.5, 0.2, NdL0);
-    terminatorGlow += smoothstep(-0.1, 0.2, NdL1) * smoothstep(0.5, 0.2, NdL1);
-    terminatorGlow += smoothstep(-0.1, 0.2, NdL2) * smoothstep(0.5, 0.2, NdL2);
-    terminatorGlow = clamp(terminatorGlow, 0.0, 1.0);
+    // Back-lighting - glow when light is behind the surface
+    float backLight0 = pow(max(0.0, -dot(sphereN_world, L0)), 2.0);
+    float backLight1 = pow(max(0.0, -dot(sphereN_world, L1)), 2.0);
+    float backLight2 = pow(max(0.0, -dot(sphereN_world, L2)), 2.0);
+    float backLightMouse = pow(max(0.0, -dot(sphereN_world, mouseL)), 2.0);
 
-    // Combine wrap and backlight for translucent look - boosted intensity
+    // Combine wrap lighting and backlight for translucent look
     vec3 sss = sssColor * (
-        uLightColor0 * (sssNdL0 * 0.8 + backLight0 * 1.5) * atten0 * uLight0Intensity +
-        uLightColor1 * (sssNdL1 * 0.8 + backLight1 * 1.5) * atten1 * uLight1Intensity +
-        uLightColor2 * (sssNdL2 * 0.8 + backLight2 * 1.5) * atten2 * uLight2Intensity +
-        vec3(1.0) * (sssMouseNdL * 0.8 + backLightMouse * 1.5) * mouseAtten
-    ) * 2.5 * pSSSIntensity;
-
-    // Extra glow at terminator for dramatic effect
-    sss += sssColor * terminatorGlow * totalAttenuation * 0.5 * pSSSIntensity;
+        uLightColor0 * (sssNdL0 + backLight0 * 0.5) * atten0 * uLight0Intensity +
+        uLightColor1 * (sssNdL1 + backLight1 * 0.5) * atten1 * uLight1Intensity +
+        uLightColor2 * (sssNdL2 + backLight2 * 0.5) * atten2 * uLight2Intensity +
+        vec3(1.0) * (sssNdL_mouse + backLightMouse * 0.5) * mouseAtten
+    ) * pSSSIntensity;
 
     // Apply SSS only to ocean areas (not lava)
     col += sss * oceanMask * planetMask * (1.0 - isDesert);
@@ -1075,7 +1081,8 @@ void main() {
     col += lavaHot * lavaEmission * lavaPulse * 0.8 * pLavaIntensity * planetMask;
 
     // Ambient light (controllable via UI) - uses light environment color
-    col += surfaceColor * lightEnvColor * uAmbientIntensity * planetMask;
+    // Reduced to 10% for realistic space lighting
+    col += surfaceColor * lightEnvColor * uAmbientIntensity * 0.1 * planetMask;
 
     // Fresnel rim on surface - using roughness-adjusted Schlick for physically correct PBR
     // Smooth surfaces (ocean) get strong rim reflections, rough surfaces (land) get weak rims
@@ -1085,17 +1092,16 @@ void main() {
     vec3 fresnelRim = fresnelSchlickRoughness(NdV, rimF0, rimRoughness) * planetMask;
 
     // Enhanced rim lighting from environment/atmosphere reflection
-    // The rim intensity scales inversely with roughness for physically correct behavior
-    // Smooth ocean gets bright, sharp rim; rough land gets subtle, diffuse rim
-    float rimIntensityByRoughness = mix(0.4, 1.5, 1.0 - rimRoughness);  // Smooth = 1.5x, rough = 0.4x
+    // Reduced intensity - we're in space with minimal ambient light
+    float rimIntensityByRoughness = mix(0.04, 0.15, 1.0 - rimRoughness);  // 10% of original
 
     // Rim color for fresnel reflections - uses lightEnvColor blended with atmosphere scatter
     vec3 rimEnvColor = mix(lightEnvColor, scatterColor, 0.3); // Blend with atmosphere scatter color
     vec3 rimColor = mix(rimEnvColor * 0.6, rimEnvColor * 1.0, oceanMask); // Ocean reflects more
     col += rimColor * fresnelRim * totalAttenuation * rimIntensityByRoughness;
-    // Glow contribution - scales with ambient and actual lighting
-    col += planetColor * vGlow * uAmbientIntensity;
-    col += planetColor * vGlow * fresnelRim.r * 0.4 * min(totalAttenuation, 1.0);
+    // Glow contribution - scales with ambient and actual lighting (reduced for space)
+    col += planetColor * vGlow * uAmbientIntensity * 0.1;
+    col += planetColor * vGlow * fresnelRim.r * 0.04 * min(totalAttenuation, 1.0);
 
     // Blend atmosphere with surface
     // The atmosphere affects both:
