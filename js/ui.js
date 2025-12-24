@@ -93,6 +93,25 @@
         if (titleEl) titleEl.textContent = activeItem.dataset.title;
         if (linkEl) { linkEl.href = activeItem.dataset.url; linkEl.style.display = activeItem.dataset.url ? '' : 'none'; }
         dots.forEach((dot, i) => dot.classList.toggle('active', i === currentIndex));
+
+        // Handle video playback - pause non-active videos, play active ones
+        items.forEach((item, i) => {
+            const video = item.querySelector('video');
+            if (!video) return;
+            if (i === currentIndex) {
+                // Unmute videos with audio when they become active
+                if (item.dataset.hasAudio === 'true') {
+                    video.muted = false;
+                }
+                video.play().catch(() => {});
+            } else {
+                video.pause();
+                // Re-mute audio videos when not active
+                if (item.dataset.hasAudio === 'true') {
+                    video.muted = true;
+                }
+            }
+        });
     }
 
     function goToSlide(index) {
@@ -107,8 +126,20 @@
 
     items.forEach((item, i) => {
         item.addEventListener('click', () => {
-            if (i === currentIndex) window.open(item.dataset.url, '_blank');
-            else goToSlide(i);
+            if (i === currentIndex) {
+                // Check if this item has audio that can be toggled
+                if (item.dataset.hasAudio === 'true') {
+                    const video = item.querySelector('video');
+                    if (video) {
+                        video.muted = !video.muted;
+                        if (!video.muted) video.play().catch(() => {});
+                    }
+                } else if (item.dataset.url) {
+                    window.open(item.dataset.url, '_blank');
+                }
+            } else {
+                goToSlide(i);
+            }
         });
     });
 
@@ -126,7 +157,14 @@
             const diff = touchStartX - e.changedTouches[0].screenX;
             if (Math.abs(diff) > 50) goToSlide(currentIndex + (diff > 0 ? 1 : -1));
         }, { passive: true });
-        scene.addEventListener('wheel', (e) => { e.preventDefault(); goToSlide(currentIndex + (e.deltaY > 0 ? 1 : -1)); }, { passive: false });
+        let wheelThrottled = false;
+        scene.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (wheelThrottled) return;
+            wheelThrottled = true;
+            goToSlide(currentIndex + (e.deltaY > 0 ? 1 : -1));
+            setTimeout(() => { wheelThrottled = false; }, 400);
+        }, { passive: false });
     }
 
     let resizeTimeout;
@@ -297,10 +335,12 @@
                             video.src = video.dataset.src;
                             video.preload = 'auto';
                             video.load();
-                            // Wait for enough data before playing
-                            video.addEventListener('canplaythrough', () => {
-                                video.play().catch(() => {});
-                            }, { once: true });
+                            // Only auto-play muted videos; videos with audio require user interaction
+                            if (video.muted) {
+                                video.addEventListener('canplaythrough', () => {
+                                    video.play().catch(() => {});
+                                }, { once: true });
+                            }
                         }
                     });
                 }

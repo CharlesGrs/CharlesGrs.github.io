@@ -342,12 +342,43 @@ float sampleNoiseAt(vec3 worldPos, float lightIndex) {
     return godRaysFBM(pos);
 }
 
+// Check if a light is visible by comparing screen position to world position
+// When JS puts a light behind camera, it sets screen pos to center
+// We detect this by checking if the screen position matches the world position
+// (which only happens when the light is actually at center, very unlikely)
+float isLightVisible(vec2 screenPos, vec2 worldPos) {
+    // Screen center in pixels
+    vec2 screenCenter = uResolution * 0.5;
+
+    // If screen position is at center but world position is not,
+    // the light is behind the camera
+    float distFromCenter = length(screenPos - screenCenter);
+    float worldDistFromCenter = length(worldPos - screenCenter);
+
+    // Light is behind camera if screen is at center but world is not
+    // Use a small threshold to account for floating point
+    if (distFromCenter < 1.0 && worldDistFromCenter > 10.0) {
+        return 0.0;
+    }
+    return 1.0;
+}
+
 // Single light volumetric contribution with self-shadowing
 // Uses physically-based inverse-power falloff: I / d^n
 // where n=2 gives inverse-square law (physically accurate for point lights)
-vec3 godRaysLight(vec2 uv, vec2 lightPos, vec3 lightColor, float lightIndex, vec3 skyDir, float lightIntensity) {
+vec3 godRaysLight(vec2 uv, vec2 lightScreenPos, vec3 lightColor, float lightIndex, vec3 skyDir, float lightIntensity, vec2 lightWorldPos) {
+    // Skip lights that are behind the camera
+    if (isLightVisible(lightScreenPos, lightWorldPos) < 0.5) return vec3(0.0);
+
+    vec2 lightPos = lightScreenPos;
+
     vec2 lightUV = lightPos / uResolution;
     lightUV.y = 1.0 - lightUV.y;
+
+    // Get light's world direction for shadowing calculations
+    vec2 lightScreen = (lightUV - 0.5) * 2.0;
+    lightScreen.x *= uResolution.x / uResolution.y;
+    vec3 lightWorldDir = getSkyboxDirection(lightScreen);
 
     // Aspect-corrected distance
     vec2 delta = uv - lightUV;
@@ -365,12 +396,7 @@ vec3 godRaysLight(vec2 uv, vec2 lightPos, vec3 lightColor, float lightIndex, vec
     // Sample fog density between us and the light, apply wavelength-dependent absorption
     vec3 shadow = vec3(1.0);
     if (uGodRaysShadow > 0.001 && uGodRaysShadowOffset > 0.001) {
-        // Get light's world direction using the same method as skyDir
-        vec2 lightScreen = (lightUV - 0.5) * 2.0;
-        lightScreen.x *= uResolution.x / uResolution.y;
-        vec3 lightWorldDir = getSkyboxDirection(lightScreen);
-
-        // Direction from current pixel toward light
+        // Direction from current pixel toward light (reuse lightWorldDir from above)
         vec3 towardLight = normalize(lightWorldDir - skyDir);
 
         // Sample fog density at offset position (between us and light)
@@ -411,10 +437,11 @@ vec3 godRaysLight(vec2 uv, vec2 lightPos, vec3 lightColor, float lightIndex, vec
 // Combined god rays from all lights (includes core scattering + noisy halo)
 vec3 godRaysContribution(vec2 uv, vec3 skyDir) {
     // Use pre-computed screen-space positions (already camera-transformed in JS)
+    // Visibility is computed in godRaysLight using world positions and camera rotation
     vec3 rays = vec3(0.0);
-    rays += godRaysLight(uv, uLight0Screen, uLightColor0, 0.0, skyDir, uLight0Intensity);
-    rays += godRaysLight(uv, uLight1Screen, uLightColor1, 1.0, skyDir, uLight1Intensity);
-    rays += godRaysLight(uv, uLight2Screen, uLightColor2, 2.0, skyDir, uLight2Intensity);
+    rays += godRaysLight(uv, uLight0Screen, uLightColor0, 0.0, skyDir, uLight0Intensity, uLight0);
+    rays += godRaysLight(uv, uLight1Screen, uLightColor1, 1.0, skyDir, uLight1Intensity, uLight1);
+    rays += godRaysLight(uv, uLight2Screen, uLightColor2, 2.0, skyDir, uLight2Intensity, uLight2);
 
     return rays;
 }
@@ -451,6 +478,11 @@ void main() {
     // Soft tone mapping
     finalColor = finalColor / (finalColor + vec3(0.6));
 
-    gl_FragColor = vec4(max(vec3(0.0), finalColor), 1.0);
+    // Base background color matching website's --bg-primary: #0a0f14
+    // Added after tone mapping to preserve exact color
+    vec3 bgColor = vec3(0.039, 0.059, 0.078);
+    finalColor = max(finalColor, bgColor);
+
+    gl_FragColor = vec4(finalColor, 1.0);
 }
 `;

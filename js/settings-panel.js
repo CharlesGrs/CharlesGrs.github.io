@@ -245,11 +245,8 @@
                         { type: 'subheader', label: 'Speed & Movement' },
                         { type: 'slider', id: 'orbit-speed', label: 'Orbit Speed', param: 'orbitParams.orbitSpeed', min: 0, max: 3, step: 0.05, decimals: 2 },
                         { type: 'slider', id: 'camera-rot-speed', label: 'Camera Speed', param: 'orbitParams.cameraRotSpeed', min: 0, max: 3, step: 0.05, decimals: 2 },
-                        { type: 'subheader', label: 'Sun Positioning' },
+                        { type: 'subheader', label: 'Global Scale' },
                         { type: 'slider', id: 'sun-spread', label: 'Sun Spread', param: 'orbitParams.sunSpread', min: 0.5, max: 2, step: 0.05, decimals: 2 },
-                        { type: 'slider', id: 'sun-spawn-min', label: 'Spawn Min', param: 'orbitParams.sunSpawnMin', min: 0.1, max: 0.5, step: 0.01, decimals: 2 },
-                        { type: 'slider', id: 'sun-spawn-max', label: 'Spawn Max', param: 'orbitParams.sunSpawnMax', min: 0.2, max: 0.8, step: 0.01, decimals: 2 },
-                        { type: 'slider', id: 'spawn-offset', label: 'Spawn Offset', param: 'orbitParams.spawnOffset', min: -0.5, max: 0.5, step: 0.01, decimals: 2 },
                         { type: 'subheader', label: 'Moon Orbits' },
                         { type: 'slider', id: 'moon-orbit-radius', label: 'Orbit Radius', param: 'orbitParams.moonOrbitRadius', min: 0.3, max: 3, step: 0.05, decimals: 2 },
                         { type: 'slider', id: 'moon-orbit-spacing', label: 'Orbit Spacing', param: 'orbitParams.moonOrbitSpacing', min: 0.3, max: 3, step: 0.05, decimals: 2 },
@@ -281,6 +278,54 @@
                         { type: 'slider', id: 'camera-move-speed', label: 'Move Speed', param: 'cameraParams.moveSpeed', min: 0.001, max: 0.05, step: 0.001, decimals: 3 },
                         { type: 'slider', id: 'camera-rot-speed', label: 'Look Speed', param: 'cameraParams.rotationSpeed', min: 0.001, max: 0.01, step: 0.0005, decimals: 4 },
                         { type: 'slider', id: 'camera-smoothing', label: 'Smoothing', param: 'cameraParams.smoothing', min: 0.01, max: 0.3, step: 0.01, decimals: 2 }
+                    ]
+                },
+                {
+                    id: 'solar-unity',
+                    label: 'Unity System',
+                    icon: 'orbit',
+                    color: '#aaccff',
+                    controls: [
+                        { type: 'subheader', label: 'Position' },
+                        { type: 'slider', id: 'unity-pos-x', label: 'X', param: 'solarSystemParams.unity.posX', min: -1, max: 1, step: 0.01, decimals: 2 },
+                        { type: 'slider', id: 'unity-pos-y', label: 'Y', param: 'solarSystemParams.unity.posY', min: -1, max: 1, step: 0.01, decimals: 2 },
+                        { type: 'slider', id: 'unity-pos-z', label: 'Z', param: 'solarSystemParams.unity.posZ', min: -1, max: 1, step: 0.01, decimals: 2 },
+                        { type: 'subheader', label: 'Orbital Tilt' },
+                        { type: 'slider', id: 'unity-tilt-x', label: 'Tilt X', param: 'solarSystemParams.unity.tiltX', min: -1.5, max: 1.5, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'unity-tilt-y', label: 'Tilt Y', param: 'solarSystemParams.unity.tiltY', min: -1.5, max: 1.5, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'unity-tilt-z', label: 'Tilt Z', param: 'solarSystemParams.unity.tiltZ', min: -1.5, max: 1.5, step: 0.05, decimals: 2 }
+                    ]
+                },
+                {
+                    id: 'solar-unreal',
+                    label: 'Unreal System',
+                    icon: 'orbit',
+                    color: '#ff6030',
+                    controls: [
+                        { type: 'subheader', label: 'Position' },
+                        { type: 'slider', id: 'unreal-pos-x', label: 'X', param: 'solarSystemParams.unreal.posX', min: -1, max: 1, step: 0.01, decimals: 2 },
+                        { type: 'slider', id: 'unreal-pos-y', label: 'Y', param: 'solarSystemParams.unreal.posY', min: -1, max: 1, step: 0.01, decimals: 2 },
+                        { type: 'slider', id: 'unreal-pos-z', label: 'Z', param: 'solarSystemParams.unreal.posZ', min: -1, max: 1, step: 0.01, decimals: 2 },
+                        { type: 'subheader', label: 'Orbital Tilt' },
+                        { type: 'slider', id: 'unreal-tilt-x', label: 'Tilt X', param: 'solarSystemParams.unreal.tiltX', min: -1.5, max: 1.5, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'unreal-tilt-y', label: 'Tilt Y', param: 'solarSystemParams.unreal.tiltY', min: -1.5, max: 1.5, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'unreal-tilt-z', label: 'Tilt Z', param: 'solarSystemParams.unreal.tiltZ', min: -1.5, max: 1.5, step: 0.05, decimals: 2 }
+                    ]
+                },
+                {
+                    id: 'solar-graphics',
+                    label: 'Graphics System',
+                    icon: 'orbit',
+                    color: '#ffcc66',
+                    controls: [
+                        { type: 'subheader', label: 'Position' },
+                        { type: 'slider', id: 'graphics-pos-x', label: 'X', param: 'solarSystemParams.graphics.posX', min: -1, max: 1, step: 0.01, decimals: 2 },
+                        { type: 'slider', id: 'graphics-pos-y', label: 'Y', param: 'solarSystemParams.graphics.posY', min: -1, max: 1, step: 0.01, decimals: 2 },
+                        { type: 'slider', id: 'graphics-pos-z', label: 'Z', param: 'solarSystemParams.graphics.posZ', min: -1, max: 1, step: 0.01, decimals: 2 },
+                        { type: 'subheader', label: 'Orbital Tilt' },
+                        { type: 'slider', id: 'graphics-tilt-x', label: 'Tilt X', param: 'solarSystemParams.graphics.tiltX', min: -1.5, max: 1.5, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'graphics-tilt-y', label: 'Tilt Y', param: 'solarSystemParams.graphics.tiltY', min: -1.5, max: 1.5, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'graphics-tilt-z', label: 'Tilt Z', param: 'solarSystemParams.graphics.tiltZ', min: -1.5, max: 1.5, step: 0.05, decimals: 2 }
                     ]
                 }
             ]

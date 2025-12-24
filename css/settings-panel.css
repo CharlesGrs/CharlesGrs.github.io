@@ -545,22 +545,7 @@
 /* Responsive */
 @media (max-width: 900px) {
     .settings-panel {
-        right: 8px;
-    }
-
-    .sp-container {
-        width: 260px;
-        max-height: 70vh;
-    }
-
-    .sp-toggle {
-        width: 32px;
-        height: 32px;
-    }
-
-    .sp-toggle svg {
-        width: 16px;
-        height: 16px;
+        display: none;
     }
 }
 

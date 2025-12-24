@@ -119,43 +119,32 @@
         ['python', 'unreal']
     ];
 
-    // Simple solar system: 3 suns at fixed positions, moons orbit around them
-    // Positions in world units (will be multiplied by minDim to get screen pixels)
-    // Spread them out more for better visibility
-    const sunBasePositions = {
-        unity:    { dirX: -0.92, dirY:  0.40, dist: 0.38 },   // Left-top direction
-        unreal:   { dirX:  0.87, dirY: -0.50, dist: 0.40 },   // Right-bottom direction
-        graphics: { dirX:  0.0,  dirY:  1.0,  dist: 0.38 }    // Top-center direction
-    };
+    // Simple solar system: 3 suns at positions defined in solarSystemParams
+    // Positions are now directly controlled via settings panel (X, Y, Z)
 
-    // Dynamic sun position calculation
+    // Dynamic sun position calculation - uses solarSystemParams from core.js
     function getSunPosition(sunId) {
-        const base = sunBasePositions[sunId];
-        const minDist = orbitParams.sunSpawnMin;
-        const maxDist = orbitParams.sunSpawnMax;
+        const params = window.solarSystemParams[sunId];
+        if (!params) return { x: 0, y: 0, z: 0 };
+
         const spread = orbitParams.sunSpread;
-        const offset = orbitParams.spawnOffset;
-        // Map base distance (0-1) to min-max range, then apply spread
-        const actualDist = (minDist + base.dist * (maxDist - minDist)) * spread;
-        // Apply rotation offset to the direction
-        const cosOff = Math.cos(offset);
-        const sinOff = Math.sin(offset);
-        const rotX = base.dirX * cosOff - base.dirY * sinOff;
-        const rotY = base.dirX * sinOff + base.dirY * cosOff;
         return {
-            x: rotX * actualDist,
-            y: rotY * actualDist,
-            z: 0
+            x: params.posX * spread,
+            y: params.posY * spread,
+            z: params.posZ * spread
         };
     }
 
-    // Per-solar-system orbital plane tilt (random axis for each sun's entire system)
-    // All moons of the same sun share the same orbital plane
-    const solarSystemTilts = {
-        unity:    { tiltX: 0.4, tiltY: 0.3 },    // Unity system tilted one way
-        unreal:   { tiltX: -0.5, tiltY: 0.2 },   // Unreal system tilted differently
-        graphics: { tiltX: 0.2, tiltY: -0.4 }    // Graphics system with its own tilt
-    };
+    // Get orbital tilt for a solar system - uses solarSystemParams from core.js
+    function getSolarSystemTilt(sunId) {
+        const params = window.solarSystemParams[sunId];
+        if (!params) return { tiltX: 0, tiltY: 0, tiltZ: 0 };
+        return {
+            tiltX: params.tiltX,
+            tiltY: params.tiltY,
+            tiltZ: params.tiltZ
+        };
+    }
 
     // Moon orbit configurations - baseRadius is normalized 0-1 (mapped to baseOrbitMin-Max)
     // All moons of the same sun share the solar system's orbital plane tilt
@@ -241,6 +230,57 @@
     let focusProgress = 0;            // 0 to 1 progress of the focus transition
     const focusDuration = 3.0;        // Seconds to complete focus transition (slower)
     const focusDistance = 0.35;       // How close to get to the target (in world units, further away)
+
+    // Solar system navigation - smooth travel to a sun
+    let isNavigating = false;         // True while camera is traveling to a solar system
+    let navTarget = null;             // The sun node being navigated to
+    let navTargetId = null;           // The sun ID for getting orbital tilt
+    let navPhase = 'look';            // 'look' = turning to face, 'wait' = pause, 'travel' = moving
+    let navPhaseTime = 0;             // Time spent in current phase
+    const navLookDuration = 1.5;      // Seconds to turn and look at target
+    const navWaitDuration = 0.8;      // Seconds to pause before traveling
+    const navTravelDuration = 10.0;   // Seconds to travel to target
+    const navDistance = 0.6;          // How far to stop from the sun (further)
+    let navStartPosX = 0, navStartPosY = 0, navStartPosZ = 0;  // Starting position for travel
+
+    // Navigate to a solar system by sun ID
+    function navigateToSolarSystem(sunId) {
+        const sunNode = nodes.find(n => n.id === sunId);
+        if (!sunNode) return;
+
+        // Don't restart if already navigating to this sun
+        if (isNavigating && navTarget === sunNode) return;
+
+        isNavigating = true;
+        isFocusing = false;  // Cancel any node focus
+        focusTarget = null;
+        navTarget = sunNode;
+        navTargetId = sunId;
+        navPhase = 'look';
+        navPhaseTime = 0;
+        // Store starting position for smooth travel interpolation
+        navStartPosX = cameraPosX;
+        navStartPosY = cameraPosY;
+        navStartPosZ = cameraPosZ;
+
+        // Update button states
+        updateNavButtonStates(sunId);
+    }
+
+    // Update nav button active states
+    function updateNavButtonStates(activeSunId) {
+        const buttons = document.querySelectorAll('.solar-nav-btn');
+        buttons.forEach(btn => {
+            if (btn.dataset.sun === activeSunId) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    // Expose navigation function globally
+    window.navigateToSolarSystem = navigateToSolarSystem;
 
     const tooltip = document.getElementById('skill-tooltip');
     const tooltipTitle = tooltip.querySelector('.skill-tooltip-title');
@@ -337,7 +377,7 @@
     }
 
     // WebGL sphere renderer
-    let gl, glCanvas, sphereProgram, sunProgram, debugQuadProgram, glReady = false;
+    let gl, glCanvas, sphereProgram, sunProgram, debugQuadProgram, orbitLineProgram, glReady = false;
     let debugQuadBuffer;
     let showDebugQuads = false; // Toggle for debug quad overlay
 
@@ -351,6 +391,12 @@
 
     // Simple blit program (copies texture to screen)
     let blitProgram = null;
+
+    // Final compositing FBO and post-process program (for edge fade)
+    let finalFBO = null;
+    let finalTexture = null;
+    let finalFBOWidth = 0, finalFBOHeight = 0;
+    let postProcessProgram = null;
 
     // Space particles system
     let spaceParticleProgram = null;
@@ -727,6 +773,57 @@
                         }
                     }
 
+                    // Create post-process program with edge fade
+                    const postProcessFsSource = `
+                        precision highp float;
+                        uniform sampler2D uTexture;
+                        uniform vec2 uResolution;
+                        uniform float uEdgeFadeSize;
+                        void main() {
+                            vec2 uv = gl_FragCoord.xy / uResolution;
+                            vec4 color = texture2D(uTexture, uv);
+
+                            // Edge fade to background color (#0a0f14)
+                            vec3 bgColor = vec3(0.039, 0.059, 0.078);
+
+                            // Calculate distance from edges (0 at edge, 1 at fadeSize distance)
+                            float fadeSize = uEdgeFadeSize;
+                            float left = smoothstep(0.0, fadeSize, uv.x);
+                            float right = smoothstep(0.0, fadeSize, 1.0 - uv.x);
+                            float top = smoothstep(0.0, fadeSize, 1.0 - uv.y);
+                            float bottom = smoothstep(0.0, fadeSize, uv.y);
+
+                            // Combine all edges
+                            float fade = left * right * top * bottom;
+
+                            // Mix to background color at edges
+                            gl_FragColor = vec4(mix(bgColor, color.rgb, fade), 1.0);
+                        }
+                    `;
+                    const postProcessVs = comp(blitVsSource, gl.VERTEX_SHADER);
+                    const postProcessFs = comp(postProcessFsSource, gl.FRAGMENT_SHADER);
+                    if (postProcessVs && postProcessFs) {
+                        postProcessProgram = gl.createProgram();
+                        gl.attachShader(postProcessProgram, postProcessVs);
+                        gl.attachShader(postProcessProgram, postProcessFs);
+                        gl.linkProgram(postProcessProgram);
+                        if (gl.getProgramParameter(postProcessProgram, gl.LINK_STATUS)) {
+                            postProcessProgram.aPosition = gl.getAttribLocation(postProcessProgram, 'aPosition');
+                            postProcessProgram.uTexture = gl.getUniformLocation(postProcessProgram, 'uTexture');
+                            postProcessProgram.uResolution = gl.getUniformLocation(postProcessProgram, 'uResolution');
+                            postProcessProgram.uEdgeFadeSize = gl.getUniformLocation(postProcessProgram, 'uEdgeFadeSize');
+                        }
+                    }
+
+                    // Create final compositing FBO
+                    finalFBO = gl.createFramebuffer();
+                    finalTexture = gl.createTexture();
+                    gl.bindTexture(gl.TEXTURE_2D, finalTexture);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
                     console.log('Nebula background program initialized with FBO');
                 } else {
                     console.error('Nebula program link error:', gl.getProgramInfoLog(nebulaProgram));
@@ -769,6 +866,42 @@
                     console.error('Debug quad program link error:', gl.getProgramInfoLog(debugQuadProgram));
                     debugQuadProgram = null;
                 }
+            }
+        }
+
+        // Orbit line program - simple 2D lines with color and alpha
+        const orbitLineVsSource = `
+            attribute vec2 aPosition;
+            uniform vec2 uResolution;
+            void main() {
+                vec2 clipSpace = (aPosition / uResolution) * 2.0 - 1.0;
+                gl_Position = vec4(clipSpace.x, -clipSpace.y, 0.0, 1.0);
+            }
+        `;
+        const orbitLineFsSource = `
+            precision mediump float;
+            uniform vec4 uColor;
+            void main() {
+                gl_FragColor = uColor;
+            }
+        `;
+        const olVs = comp(orbitLineVsSource, gl.VERTEX_SHADER);
+        const olFs = comp(orbitLineFsSource, gl.FRAGMENT_SHADER);
+        if (olVs && olFs) {
+            orbitLineProgram = gl.createProgram();
+            gl.attachShader(orbitLineProgram, olVs);
+            gl.attachShader(orbitLineProgram, olFs);
+            gl.linkProgram(orbitLineProgram);
+
+            if (gl.getProgramParameter(orbitLineProgram, gl.LINK_STATUS)) {
+                orbitLineProgram.aPosition = gl.getAttribLocation(orbitLineProgram, 'aPosition');
+                orbitLineProgram.uResolution = gl.getUniformLocation(orbitLineProgram, 'uResolution');
+                orbitLineProgram.uColor = gl.getUniformLocation(orbitLineProgram, 'uColor');
+                orbitLineProgram.buf = gl.createBuffer();
+                console.log('Orbit line program initialized');
+            } else {
+                console.error('Orbit line program link error:', gl.getProgramInfoLog(orbitLineProgram));
+                orbitLineProgram = null;
             }
         }
 
@@ -986,6 +1119,25 @@
         // Nebula FBO uses reduced resolution for performance
         const fboWidth = Math.floor(canvasWidth * nebulaResolutionScale);
         const fboHeight = Math.floor(canvasHeight * nebulaResolutionScale);
+
+        // Resize final FBO if needed (always, even when nebula disabled)
+        if (finalFBO && finalTexture && canvasWidth > 0 && canvasHeight > 0) {
+            if (finalFBOWidth !== canvasWidth || finalFBOHeight !== canvasHeight) {
+                finalFBOWidth = canvasWidth;
+                finalFBOHeight = canvasHeight;
+                gl.bindTexture(gl.TEXTURE_2D, finalTexture);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvasWidth, canvasHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, finalFBO);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, finalTexture, 0);
+            }
+            // Start rendering to final FBO
+            gl.bindFramebuffer(gl.FRAMEBUFFER, finalFBO);
+            gl.viewport(0, 0, canvasWidth, canvasHeight);
+            // Clear with background color
+            gl.clearColor(0.039, 0.059, 0.078, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+        }
+
         // Skip if canvas has no valid size yet
         if (nebulaEnabled && nebulaProgram && nebulaFBO && fboWidth > 0 && fboHeight > 0) {
             // Resize FBO if needed (use scaled resolution)
@@ -1071,12 +1223,11 @@
             gl.drawArrays(gl.TRIANGLES, 0, 6);
             gl.disableVertexAttribArray(nebulaProgram.aPosition);
 
-            // Switch back to default framebuffer at full resolution
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            // Switch back to final FBO at full resolution
+            gl.bindFramebuffer(gl.FRAMEBUFFER, finalFBO);
             gl.viewport(0, 0, canvasWidth, canvasHeight);
 
-            // Blit nebula FBO texture to screen (upscaled from reduced resolution)
-            // Blend is already disabled from FBO rendering
+            // Blit nebula FBO texture to final FBO (upscaled from reduced resolution)
             gl.useProgram(blitProgram);
             gl.uniform2f(blitProgram.uResolution, canvasWidth, canvasHeight);
             gl.activeTexture(gl.TEXTURE0);
@@ -1325,6 +1476,113 @@
         // PASS 1: Render FAR particles (behind planets, z < planetZ)
         if (!window.renderToggles || window.renderToggles.spaceParticles !== false) {
             renderParticles(1);
+        }
+
+        // Render orbit lines (behind planets) using WebGL
+        if (orbitLineProgram && orbitParams.showOrbits >= 1 && (!window.renderToggles || window.renderToggles.orbits !== false)) {
+            gl.useProgram(orbitLineProgram);
+            gl.uniform2f(orbitLineProgram.uResolution, glCanvas.width, glCanvas.height);
+
+            // Build orbit line vertices for all moons
+            const segments = 96;
+            const minDim = Math.min(width, height);
+            const worldToProjectScale = minDim / width;
+            const dpr = window.devicePixelRatio || 1;
+
+            // Helper to project world coords to screen
+            const projectToScreen = (wx, wy, wz) => {
+                const crx = Math.cos(cameraRotX), srx = Math.sin(cameraRotX);
+                const cry = Math.cos(cameraRotY), sry = Math.sin(cameraRotY);
+                const cpx = cameraPosX, cpy = cameraPosY, cpz = cameraPosZ;
+                const fx = sry * crx, fy = -srx, fz = cry * crx;
+                const rx = cry, rz = -sry;
+                const ux = fy * rz, uy = fz * rx - fx * rz, uz = -fy * rx;
+                const screenCenterX = width * 0.5;
+                const screenCenterY = height * 0.5;
+                const tx = wx - cpx, ty = wy - cpy, tz = wz - cpz;
+                const zd = tx * fx + ty * fy + tz * fz;
+                if (zd < 0.01) return null;
+                const ps = 1.0 / zd;
+                const px = (tx * rx + tz * rz) * ps;
+                const py = (tx * ux + ty * uy + tz * uz) * ps;
+                return { x: (screenCenterX + px * width) * dpr, y: (screenCenterY - py * width) * dpr };
+            };
+
+            // Group orbits by parent color for batched rendering
+            const orbitsByColor = {};
+
+            nodes.forEach(node => {
+                if (node.isSun || !node.orbitRadiusWorld || !node.parentSunId) return;
+                const parent = nodes.find(n => n.id === node.parentSunId);
+                if (!parent) return;
+
+                // Get parent's light color
+                const hexColor = parent.lightColor || '#aabbcc';
+                if (!orbitsByColor[hexColor]) {
+                    orbitsByColor[hexColor] = [];
+                }
+
+                const radius = node.orbitRadiusWorld * worldToProjectScale;
+                const centerWX = (parent.worldX || 0) * worldToProjectScale;
+                const centerWY = (parent.worldY || 0) * worldToProjectScale;
+                const centerWZ = parent.worldZ || 0;
+
+                const tiltX = node.orbitTiltX || 0;
+                const tiltY = node.orbitTiltY || 0;
+                const tiltZ = node.orbitTiltZ || 0;
+                const cosTX = Math.cos(tiltX), sinTX = Math.sin(tiltX);
+                const cosTY = Math.cos(tiltY), sinTY = Math.sin(tiltY);
+                const cosTZ = Math.cos(tiltZ), sinTZ = Math.sin(tiltZ);
+
+                let prevPoint = null;
+                for (let i = 0; i <= segments; i++) {
+                    const angle = (i / segments) * Math.PI * 2;
+                    let ox = Math.cos(angle) * radius;
+                    let oy = Math.sin(angle) * radius;
+                    let oz = 0;
+
+                    // Apply tilts
+                    let ny = oy * cosTX - oz * sinTX;
+                    let nz = oy * sinTX + oz * cosTX;
+                    oy = ny; oz = nz;
+
+                    let nx = ox * cosTY + oz * sinTY;
+                    oz = -ox * sinTY + oz * cosTY;
+                    ox = nx;
+
+                    const nx2 = ox * cosTZ - oy * sinTZ;
+                    const ny2 = ox * sinTZ + oy * cosTZ;
+                    ox = nx2; oy = ny2;
+
+                    const projected = projectToScreen(centerWX + ox, centerWY + oy, centerWZ + oz);
+                    if (projected && prevPoint) {
+                        orbitsByColor[hexColor].push(prevPoint.x, prevPoint.y, projected.x, projected.y);
+                    }
+                    prevPoint = projected;
+                }
+            });
+
+            // Render each color batch
+            const baseAlpha = orbitParams.orbitLineOpacity * globalFadeIn;
+            gl.bindBuffer(gl.ARRAY_BUFFER, orbitLineProgram.buf);
+            gl.enableVertexAttribArray(orbitLineProgram.aPosition);
+
+            for (const hexColor in orbitsByColor) {
+                const verts = orbitsByColor[hexColor];
+                if (verts.length === 0) continue;
+
+                // Parse hex color
+                const r = parseInt(hexColor.slice(1, 3), 16) / 255;
+                const g = parseInt(hexColor.slice(3, 5), 16) / 255;
+                const b = parseInt(hexColor.slice(5, 7), 16) / 255;
+
+                gl.uniform4f(orbitLineProgram.uColor, r, g, b, baseAlpha);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.DYNAMIC_DRAW);
+                gl.vertexAttribPointer(orbitLineProgram.aPosition, 2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.LINES, 0, verts.length / 2);
+            }
+
+            gl.disableVertexAttribArray(orbitLineProgram.aPosition);
         }
 
         // Compute light screen positions (after camera transform) for god rays
@@ -1700,6 +1958,27 @@
             renderParticles(2);
         }
 
+        // FINAL PASS: Blit final FBO to screen with post-process edge fade
+        if (finalFBO && postProcessProgram && finalTexture) {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl.viewport(0, 0, canvasWidth, canvasHeight);
+            gl.disable(gl.BLEND);
+
+            gl.useProgram(postProcessProgram);
+            gl.uniform2f(postProcessProgram.uResolution, canvasWidth, canvasHeight);
+            gl.uniform1f(postProcessProgram.uEdgeFadeSize, nebulaParams.edgeFadeSize || 0.15);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, finalTexture);
+            gl.uniform1i(postProcessProgram.uTexture, 0);
+            gl.bindBuffer(gl.ARRAY_BUFFER, nebulaQuadBuffer);
+            gl.enableVertexAttribArray(postProcessProgram.aPosition);
+            gl.vertexAttribPointer(postProcessProgram.aPosition, 2, gl.FLOAT, false, 0, 0);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+            gl.disableVertexAttribArray(postProcessProgram.aPosition);
+
+            gl.enable(gl.BLEND);
+        }
+
         return true;
     }
 
@@ -1940,8 +2219,9 @@
         const subMoonSpeedMult = orbitParams.subMoonSpeed;
         const baseSpacing = 0.045;  // Base gap between orbits
 
-        // STEP 1: Place suns at fixed positions (affected by sunSpread, sunSpawnMin/Max)
-        for (const sunId in sunBasePositions) {
+        // STEP 1: Place suns at positions from solarSystemParams
+        const sunIds = ['unity', 'unreal', 'graphics'];
+        for (const sunId of sunIds) {
             const node = nodes.find(n => n.id === sunId);
             if (!node) continue;
 
@@ -1981,9 +2261,12 @@
             const radius = (baseOrbit + orbitIndex * baseSpacing * moonSpacingMult) * moonRadiusMult;
             const angle = node.orbitAngle;
             // Get tilt from the solar system (shared by all moons of this sun)
-            const systemTilt = solarSystemTilts[config.sun] || { tiltX: 0, tiltY: 0 };
-            const tiltX = systemTilt.tiltX * moonTiltMult;
-            const tiltY = systemTilt.tiltY * moonTiltMult;
+            // Tilt values are used directly from solarSystemParams
+            // moonTiltMult adds additional global tilt on top (0 = no extra, 1 = double)
+            const systemTilt = getSolarSystemTilt(config.sun);
+            const tiltX = systemTilt.tiltX * (1 + moonTiltMult);
+            const tiltY = systemTilt.tiltY * (1 + moonTiltMult);
+            const tiltZ = systemTilt.tiltZ * (1 + moonTiltMult);
 
             // Start with circular orbit in XY plane
             let offsetX = Math.cos(angle) * radius;
@@ -2001,9 +2284,17 @@
             // Apply tilt around Y axis (yaw)
             const cosY = Math.cos(tiltY);
             const sinY = Math.sin(tiltY);
-            const newX = offsetX * cosY + offsetZ * sinY;
+            let newX = offsetX * cosY + offsetZ * sinY;
             offsetZ = -offsetX * sinY + offsetZ * cosY;
             offsetX = newX;
+
+            // Apply tilt around Z axis (roll)
+            const cosZ = Math.cos(tiltZ);
+            const sinZ = Math.sin(tiltZ);
+            const newX2 = offsetX * cosZ - offsetY * sinZ;
+            const newY2 = offsetX * sinZ + offsetY * cosZ;
+            offsetX = newX2;
+            offsetY = newY2;
 
             // Moon position = sun position + tilted orbit offset
             const sunX = parentSun.worldX || 0;
@@ -2026,6 +2317,7 @@
             node.orbitRadiusWorld = radius;
             node.orbitTiltX = tiltX;
             node.orbitTiltY = tiltY;
+            node.orbitTiltZ = tiltZ;
             node.parentSunId = config.sun;
             node.isMoon = true;
         }
@@ -2089,6 +2381,7 @@
             node.orbitRadiusWorld = radius;
             node.orbitTiltX = tiltX;
             node.orbitTiltY = tiltY;
+            node.orbitTiltZ = 0;  // Sub-moons don't have Z tilt
             node.parentSunId = config.parent;  // Used for circle drawing
             node.isSubMoon = true;
         }
@@ -2175,8 +2468,132 @@
                 focusProgress = 0;
                 container.style.cursor = 'grab';
             }
+        } else if (isNavigating && navTarget) {
+            // Solar system navigation - phased: look, wait, then travel
+            const targetWorldX = navTarget.worldX || 0;
+            const targetWorldY = navTarget.worldY || 0;
+            const targetWorldZ = navTarget.worldZ || 0;
+
+            // Get the orbital tilt of this solar system
+            const systemTilt = getSolarSystemTilt(navTargetId);
+            const tiltX = systemTilt.tiltX;
+            const tiltY = systemTilt.tiltY;
+
+            // Calculate camera position: offset from sun, perpendicular to orbital plane
+            let normalX = 0, normalY = 0, normalZ = 1;
+
+            // Apply tilt around X axis
+            const cosTX = Math.cos(tiltX), sinTX = Math.sin(tiltX);
+            let ny = normalY * cosTX - normalZ * sinTX;
+            let nz = normalY * sinTX + normalZ * cosTX;
+            normalY = ny; normalZ = nz;
+
+            // Apply tilt around Y axis
+            const cosTY = Math.cos(tiltY), sinTY = Math.sin(tiltY);
+            let nx = normalX * cosTY + normalZ * sinTY;
+            nz = -normalX * sinTY + normalZ * cosTY;
+            normalX = nx; normalZ = nz;
+
+            // Final position: sun position + normal * navDistance
+            const finalPosX = targetWorldX + normalX * navDistance;
+            const finalPosY = targetWorldY + normalY * navDistance;
+            const finalPosZ = targetWorldZ + normalZ * navDistance;
+
+            // Calculate target rotation to look at the sun from current position
+            const lookFromX = navPhase === 'travel' ? finalPosX : cameraPosX;
+            const lookFromY = navPhase === 'travel' ? finalPosY : cameraPosY;
+            const lookFromZ = navPhase === 'travel' ? finalPosZ : cameraPosZ;
+            const lookDx = targetWorldX - lookFromX;
+            const lookDy = targetWorldY - lookFromY;
+            const lookDz = targetWorldZ - lookFromZ;
+            const targetYaw = Math.atan2(lookDx, lookDz);
+            const horizontalDist = Math.sqrt(lookDx * lookDx + lookDz * lookDz);
+            const targetPitch = -Math.atan2(lookDy, horizontalDist);
+
+            // Update phase time
+            navPhaseTime += 0.016;
+
+            if (navPhase === 'look') {
+                // Phase 1: Turn to look at target (ease-out for smooth stop)
+                const t = Math.min(1, navPhaseTime / navLookDuration);
+                const ease = 1 - Math.pow(1 - t, 3);  // ease-out cubic
+
+                // Interpolate rotation toward target
+                let yawDiff = targetYaw - cameraRotY;
+                while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
+                while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
+                cameraRotY += yawDiff * ease * 0.12;
+                cameraRotX += (targetPitch - cameraRotX) * ease * 0.12;
+
+                // Transition to wait phase
+                if (navPhaseTime >= navLookDuration) {
+                    navPhase = 'wait';
+                    navPhaseTime = 0;
+                    // Update start position for travel phase
+                    navStartPosX = cameraPosX;
+                    navStartPosY = cameraPosY;
+                    navStartPosZ = cameraPosZ;
+                }
+            } else if (navPhase === 'wait') {
+                // Phase 2: Brief pause while looking at target
+                // Keep looking at target during wait
+                let yawDiff = targetYaw - cameraRotY;
+                while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
+                while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
+                cameraRotY += yawDiff * 0.1;
+                cameraRotX += (targetPitch - cameraRotX) * 0.1;
+
+                // Transition to travel phase
+                if (navPhaseTime >= navWaitDuration) {
+                    navPhase = 'travel';
+                    navPhaseTime = 0;
+                }
+            } else if (navPhase === 'travel') {
+                // Phase 3: Travel to destination with smooth acceleration/deceleration
+                const t = Math.min(1, navPhaseTime / navTravelDuration);
+                // Smooth ease-in-out (quintic for very smooth accel/decel)
+                const ease = t < 0.5
+                    ? 16 * t * t * t * t * t
+                    : 1 - Math.pow(-2 * t + 2, 5) / 2;
+
+                // Interpolate position from start to final
+                cameraPosX = navStartPosX + (finalPosX - navStartPosX) * ease;
+                cameraPosY = navStartPosY + (finalPosY - navStartPosY) * ease;
+                cameraPosZ = navStartPosZ + (finalPosZ - navStartPosZ) * ease;
+
+                // Keep looking at target during travel
+                const currentLookDx = targetWorldX - cameraPosX;
+                const currentLookDy = targetWorldY - cameraPosY;
+                const currentLookDz = targetWorldZ - cameraPosZ;
+                const currentTargetYaw = Math.atan2(currentLookDx, currentLookDz);
+                const currentHorizDist = Math.sqrt(currentLookDx * currentLookDx + currentLookDz * currentLookDz);
+                const currentTargetPitch = -Math.atan2(currentLookDy, currentHorizDist);
+
+                let yawDiff = currentTargetYaw - cameraRotY;
+                while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
+                while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
+                cameraRotY += yawDiff * 0.15;
+                cameraRotX += (currentTargetPitch - cameraRotX) * 0.15;
+
+                // Check if travel is complete
+                if (t >= 1) {
+                    isNavigating = false;
+                    navTarget = null;
+                    navTargetId = null;
+                    navPhase = 'look';
+                    navPhaseTime = 0;
+                    container.style.cursor = 'grab';
+                }
+            }
+
+            // Update targets to match current
+            targetCameraPosX = cameraPosX;
+            targetCameraPosY = cameraPosY;
+            targetCameraPosZ = cameraPosZ;
+            targetCameraRotX = cameraRotX;
+            targetCameraRotY = cameraRotY;
         } else {
-            // Normal camera controls (only when not focusing)
+            // Normal camera controls (only when not focusing or navigating)
 
             // Smooth camera rotation interpolation
             cameraRotX += (targetCameraRotX - cameraRotX) * 0.08;
@@ -2346,8 +2763,9 @@
         }
 
         // Draw orbit circles for moons (3D tilted circles, projected with camera)
-        // Skip if orbits are disabled via UI or render toggle
-        if (orbitParams.showOrbits >= 1 && (!window.renderToggles || window.renderToggles.orbits !== false)) {
+        // DISABLED: Orbits are now rendered in WebGL (behind planets) - see renderWebGL function
+        // This 2D canvas version would draw orbits on top of planets
+        if (false && orbitParams.showOrbits >= 1 && (!window.renderToggles || window.renderToggles.orbits !== false)) {
         // Scale factor to convert node.worldX/Y to the coordinate system projectToScreen expects
         const minDim = Math.min(width, height);
         const worldToProjectScale = minDim / width;
@@ -2376,7 +2794,7 @@
             ctx.beginPath();
 
             // Draw 3D tilted circle centered on parent's world position
-            const segments = 48;
+            const segments = 96;  // Double vertices for smoother circles
             const radius = node.orbitRadiusWorld * worldToProjectScale;
             const centerWX = (parent.worldX || 0) * worldToProjectScale;
             const centerWY = (parent.worldY || 0) * worldToProjectScale;
@@ -2385,8 +2803,10 @@
             // Get tilt angles for this orbit
             const tiltX = node.orbitTiltX || 0;
             const tiltY = node.orbitTiltY || 0;
+            const tiltZ = node.orbitTiltZ || 0;
             const cosTX = Math.cos(tiltX), sinTX = Math.sin(tiltX);
             const cosTY = Math.cos(tiltY), sinTY = Math.sin(tiltY);
+            const cosTZ = Math.cos(tiltZ), sinTZ = Math.sin(tiltZ);
 
             let firstPoint = true;
             for (let i = 0; i <= segments; i++) {
@@ -2404,9 +2824,15 @@
                 oz = nz;
 
                 // Apply tilt around Y axis
-                const nx = ox * cosTY + oz * sinTY;
+                let nx = ox * cosTY + oz * sinTY;
                 oz = -ox * sinTY + oz * cosTY;
                 ox = nx;
+
+                // Apply tilt around Z axis
+                const nx2 = ox * cosTZ - oy * sinTZ;
+                const ny2 = ox * sinTZ + oy * cosTZ;
+                ox = nx2;
+                oy = ny2;
 
                 const worldX = centerWX + ox;
                 const worldY = centerWY + oy;
@@ -2560,8 +2986,8 @@
     });
 
     canvas.addEventListener('mousemove', (e) => {
-        // Block all mouse look controls during focus transition
-        if (isFocusing) {
+        // Block all mouse look controls during focus/navigation transition
+        if (isFocusing || isNavigating) {
             // Still update mouse position for hover detection
             const rect = canvas.getBoundingClientRect();
             mouseScreenX = e.clientX - rect.left;
@@ -2648,8 +3074,8 @@
 
     canvas.addEventListener('touchmove', (e) => {
         e.preventDefault();
-        // Block touch interactions during focus
-        if (isFocusing) return;
+        // Block touch interactions during focus/navigation
+        if (isFocusing || isNavigating) return;
 
         const touch = e.touches[0];
         const rect = canvas.getBoundingClientRect();

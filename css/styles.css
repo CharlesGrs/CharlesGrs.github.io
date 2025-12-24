@@ -1042,6 +1042,16 @@ header {
     pointer-events: auto !important;
 }
 
+/* Solar nav buttons must be above the label overlay and clickable */
+.skills-panel.graph-active .solar-nav-container {
+    z-index: 100;
+    pointer-events: auto !important;
+}
+
+.skills-panel.graph-active .solar-nav-btn {
+    pointer-events: auto !important;
+}
+
 .skills-panel.graph-active .graph-legend,
 .skills-panel.graph-active .graph-hint {
     display: none;
@@ -2900,6 +2910,91 @@ header {
     font-size: 0.65rem;
     color: var(--text-muted);
     opacity: 0.7;
+}
+
+/* Solar System Navigation Buttons */
+.solar-nav-container {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    z-index: 100;
+    pointer-events: auto;
+}
+
+.solar-nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.7rem;
+    background: rgba(21, 29, 38, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(4px);
+    pointer-events: auto;
+}
+
+.solar-nav-btn:hover {
+    background: rgba(21, 29, 38, 0.95);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+
+.solar-nav-btn.active {
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
+    box-shadow: 0 0 12px rgba(232, 185, 35, 0.3);
+}
+
+.solar-nav-btn .nav-icon {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.solar-nav-btn .nav-icon.unity {
+    background: #aaccff;
+    box-shadow: 0 0 6px #aaccff;
+}
+
+.solar-nav-btn .nav-icon.unreal {
+    background: #ff6030;
+    box-shadow: 0 0 6px #ff6030;
+}
+
+.solar-nav-btn .nav-icon.graphics {
+    background: #ffcc66;
+    box-shadow: 0 0 6px #ffcc66;
+}
+
+.solar-nav-btn .nav-label {
+    white-space: nowrap;
+}
+
+/* Hide on mobile for space */
+@media (max-width: 768px) {
+    .solar-nav-container {
+        bottom: 0.5rem;
+        right: 0.5rem;
+        gap: 0.3rem;
+    }
+
+    .solar-nav-btn {
+        padding: 0.3rem 0.5rem;
+        font-size: 0.6rem;
+    }
+
+    .solar-nav-btn .nav-label {
+        display: none;
+    }
 }
 
 .skill-tooltip {

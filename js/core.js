@@ -56,17 +56,17 @@ window.renderTiming = {
 var planetParamsA = {
     noiseScale: 2.5,
     terrainHeight: 0,
-    atmosIntensity: 0.8,
-    atmosThickness: 1.22,
+    atmosIntensity: 0.4,
+    atmosThickness: 1.59,
     atmosPower: 42.2,
     scatterColor: '#1d4ad3',
     scatterScale: 20,
     sunsetStrength: 1,
-    oceanRoughness: 0.2,
-    sssIntensity: 0,
-    sssWrap: 0.3,
-    sssBacklight: 0.5,
-    sssColor: '#0d578c',
+    oceanRoughness: 0.15,
+    sssIntensity: 0.3,
+    sssWrap: 0.2,
+    sssBacklight: 1.4,
+    sssColor: '#0d8c7d',
     seaLevel: 0.08,
     landRoughness: 1,
     normalStrength: 0.12
@@ -76,14 +76,14 @@ var planetParamsA = {
 var planetParamsB = {
     noiseScale: 2.3,
     terrainHeight: 0,
-    atmosIntensity: 0.3,
+    atmosIntensity: 1.2,
     atmosThickness: 1.09,
     atmosPower: 48.2,
     scatterColor: '#8238cc',
     scatterScale: 20,
     sunsetStrength: 0.66,
-    lavaIntensity: 0,
-    seaLevel: -0.5,
+    lavaIntensity: 2,
+    seaLevel: 0.16,
     landRoughness: 1,
     normalStrength: 0.33
 };
@@ -95,17 +95,17 @@ var renderParams = {
 
 // Light properties
 var lightParams = {
-    light0Intensity: 1.7,
-    light0Attenuation: 0.232,
-    light0Kelvin: 12700,
+    light0Intensity: 1.4,
+    light0Attenuation: 0.03,
+    light0Kelvin: 11300,
     light1Intensity: 1,
-    light1Attenuation: 0.385,
-    light1Kelvin: 3800,
-    light2Intensity: 1.3,
-    light2Attenuation: 0.445,
-    light2Kelvin: 3000,
-    ambientIntensity: 0.67,
-    fogIntensity: 1.09
+    light1Attenuation: 0.14,
+    light1Kelvin: 2000,
+    light2Intensity: 0.8,
+    light2Attenuation: 0.04,
+    light2Kelvin: 4200,
+    ambientIntensity: 0.38,
+    fogIntensity: 1.35
 };
 
 // Sun/Star halo parameters
@@ -140,23 +140,40 @@ var orbitParams = {
     sunSpawnMax: 0.45,
     spawnOffset: -0.06,
     // Moon orbits (planets orbiting suns)
-    moonOrbitRadius: 0.8,
-    moonOrbitSpacing: 1.2,
+    moonOrbitRadius: 1.5,
+    moonOrbitSpacing: 0.85,
     moonOrbitTilt: 0,
     baseOrbitMin: 0.02,
     baseOrbitMax: 0.1,
     // Sub-moons (moons orbiting planets)
-    subMoonOrbitRadius: 1.85,
-    subMoonSpeed: 1.7,
+    subMoonOrbitRadius: 1,
+    subMoonSpeed: 0.9,
     // Size factors
     sunSizeFactor: 1.05,
     planetSizeFactor: 0.3,
     subMoonSize: 0.15,
     // Orbit display
-    orbitLineOpacity: 0,
-    orbitLineWidth: 2.4,
+    orbitLineOpacity: 0.08,
+    orbitLineWidth: 0.7,
     showOrbits: 1
 };
+
+// Per-solar-system parameters (position and orbital tilt)
+var solarSystemParams = {
+    unity: {
+        posX: -0.79, posY: 0.08, posZ: 0,
+        tiltX: -0.3, tiltY: -0.4, tiltZ: -0.4
+    },
+    unreal: {
+        posX: 0.35, posY: -0.28, posZ: 0,
+        tiltX: -0.4, tiltY: 0.1, tiltZ: 0.05
+    },
+    graphics: {
+        posX: 0, posY: 0.38, posZ: 0,
+        tiltX: -0.1, tiltY: 0.25, tiltZ: 0.75
+    }
+};
+window.solarSystemParams = solarSystemParams;
 
 // Legacy alias
 var physicsParams = orbitParams;
@@ -172,7 +189,7 @@ window.globalZoom = 1.0;
 
 // Nebula background parameters
 var nebulaParams = {
-    intensity: 1,
+    intensity: 0.77,
     scale: 0.5,
     detail: 1.1,
     speed: 0.5,
@@ -185,7 +202,8 @@ var nebulaParams = {
     fractalSpeed: 0,
     fractalSaturation: 3.9,
     fractalFalloff: 1,
-    vignetteStrength: 1,
+    vignetteStrength: 0.91,
+    edgeFadeSize: 0.15,
     colorPurple: [0.12, 0.04, 0.18],
     colorCyan: [0.04, 0.12, 0.2],
     colorBlue: [0.03, 0.06, 0.15],
@@ -230,10 +248,12 @@ window.PERSISTED_PARAM_OBJECTS = [
     'sunParams',
     'lightParams',
     'orbitParams',
+    'solarSystemParams',
     'spaceParticleParams',
     'godRaysParams',
     'nebulaParams',
-    'renderToggles'
+    'renderToggles',
+    'cameraParams'
 ];
 
 // Global light data (shared between skill network and background)
