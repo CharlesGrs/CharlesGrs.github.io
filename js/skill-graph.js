@@ -386,57 +386,57 @@
     // Property names match settings-panel.js controls
     const spaceParticleParams = {
         // Focus distance settings
-        focusDistance: 0.2,     // Distance from camera where particles are in focus
-        focusRange: 0.15,       // Range around focus distance that's sharp
-        nearBlur: 0.1,          // Distance where near blur starts
-        farBlur: 0.4,           // Distance where far blur starts
+        focusDistance: 1.15,
+        focusRange: 0.22,
+        nearBlur: 0.23,
+        farBlur: 1,
 
         // Bokeh effect
-        maxBlur: 25.0,          // Maximum blur circle size in pixels
-        aperture: 1.0,          // Affects bokeh intensity (f-stop simulation)
-        ringWidth: 0.5,         // Width of bokeh ring (0 = filled, 1 = thin ring)
-        ringIntensity: 0.8,     // Brightness of ring edge
+        maxBlur: 60,
+        aperture: 1.05,
+        ringWidth: 0.35,
+        ringIntensity: 0.85,
 
         // Circle quality
-        softness: 0.3,          // Edge softness (0 = hard, 1 = very soft)
+        softness: 0.6,
 
         // Appearance
-        particleSize: 2.0,      // Base particle size
-        brightness: 1.0,        // Overall particle brightness
-        lightFalloff: 3.0,      // How quickly light falls off with distance
-        baseColor: '#fffaf2',   // Default warm white particle color
+        particleSize: 1.5,
+        brightness: 0.1,
+        lightFalloff: 5.3,
+        baseColor: '#ffffff',
 
         // Shooting stars (merged for unified persistence)
-        shootingChance: 0.0003, // Chance per frame of spawning shooting star
-        shootingSpeed: 0.4,     // Speed multiplier
-        shootingDuration: 0.8,  // Duration in seconds
-        shootingGoldColor: '#e8b923',  // Gold color
-        shootingTealColor: '#2dd4bf',  // Teal color
+        shootingChance: 0.087,
+        shootingSpeed: 1.5,
+        shootingDuration: 2,
+        shootingGoldColor: '#e8b923',
+        shootingTealColor: '#2dd4bf',
 
         // Internal
-        sphereRadius: 0.35,     // Particle distribution sphere radius
-        planetZ: 0.0            // Z depth where planets live (for depth sorting)
+        sphereRadius: 0.35,
+        planetZ: 0
     };
 
     // God rays parameters (UI-controllable)
     const godRaysParams = {
         // Physically-based light scattering
-        lightIntensity: 1.2,    // Overall light intensity (0-3)
-        lightFalloff: 2.0,      // Falloff exponent (2.0 = inverse-square law)
-        lightScale: 3.0,        // Distance scale (controls spread/size)
-        lightSaturation: 1.8,   // Color saturation boost (1.0 = no change)
+        lightIntensity: 0.75,
+        lightFalloff: 2.2,
+        lightScale: 5.9,
+        lightSaturation: 1.7,
 
         // Edge Noise (organic displacement)
-        noiseScale: 4.0,        // Noise frequency (0.5-10)
-        noiseStrength: 0.12,    // Displacement amount (0-0.5)
-        noiseOctaves: 0.5,      // Noise detail 0-1 (0=smooth, 1=detailed)
+        noiseScale: 4,
+        noiseStrength: 1,
+        noiseOctaves: 1,
 
         // Self-shadowing with chromatic scattering
-        noiseShadow: 0.5,       // Self-shadowing intensity (0-1)
-        shadowOffset: 0.3,      // World-space offset away from light (0-1)
-        scatterR: 0.3,          // Red scatter rate (lower = less scatter)
-        scatterG: 0.6,          // Green scatter rate
-        scatterB: 1.0           // Blue scatter rate (higher = more scatter, Rayleigh-like)
+        noiseShadow: 0.4,
+        shadowOffset: 0.06,
+        scatterR: 0.55,
+        scatterG: 0.75,
+        scatterB: 1
     };
 
     function initSphereGL() {

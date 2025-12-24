@@ -74,6 +74,7 @@ body {
     height: 100%;
     display: block;
     cursor: grab;
+    pointer-events: auto; /* Capture mouse events for camera rotation */
 }
 
 .canvas-section #gpu-canvas:active {
@@ -147,7 +148,10 @@ body.canvas-fullscreen .skill-graph-container {
     height: 100vh !important;
     z-index: 10000;
     pointer-events: none;
-    background: transparent;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
 }
 
 .canvas-section.fullscreen .fullscreen-icon.expand {
@@ -223,10 +227,7 @@ body.canvas-fullscreen .contact-btn {
 
 @media (max-width: 900px) {
     .contact-btn {
-        top: 1rem;
-        right: 1rem;
-        padding: 0.6rem 1rem;
-        font-size: 0.75rem;
+        display: none !important;
     }
 }
 
@@ -1013,7 +1014,14 @@ header {
     height: 100%;
     z-index: 10;
     pointer-events: none; /* Let clicks pass through to WebGL canvas below */
-    background: transparent;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+}
+
+.skills-panel.graph-active #skill-graph-canvas {
+    pointer-events: none; /* Labels canvas shouldn't capture events */
 }
 
 .skills-panel.graph-active .graph-legend,
@@ -2422,9 +2430,9 @@ header {
 }
 
 @media (max-width: 900px) {
+    /* Hide view toggle on mobile - 3D graph not suitable for mobile */
     .skills-view-toggle {
-        top: 0.5rem;
-        right: 0.5rem;
+        display: none;
     }
 
     .skills-list-container {
@@ -3402,6 +3410,29 @@ footer {
 
     .portfolio-dots {
         display: none !important;
+    }
+
+    /* Testimonials mobile */
+    .testimonials-panel {
+        padding: 1rem;
+    }
+
+    .testimonial-card {
+        padding: 1rem;
+    }
+
+    .testimonial-quote {
+        font-size: 0.85rem;
+        padding-left: 1rem;
+    }
+
+    .testimonial-author {
+        padding-left: 1rem;
+    }
+
+    .testimonial-card::before {
+        font-size: 2rem;
+        left: 0.5rem;
     }
 }
 

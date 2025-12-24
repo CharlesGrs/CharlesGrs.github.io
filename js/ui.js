@@ -338,12 +338,15 @@
 
             // Toggle views
             if (view === 'graph') {
-                // Hide list view, show canvas section (NOT the old graphView)
+                // Hide list view, show canvas section AND graphView (for labels overlay)
                 listView.classList.remove('active');
-                if (graphView) graphView.classList.remove('active'); // Keep old graph hidden
-                // Show canvas section for 3D graph
+                // Show canvas section for 3D WebGL graph
                 if (canvasSection) {
                     canvasSection.classList.add('active');
+                }
+                // Show graphView as transparent overlay for 2D labels
+                if (graphView) {
+                    graphView.classList.add('active');
                 }
                 // Enable graph mode for panel
                 if (skillsPanel) {
