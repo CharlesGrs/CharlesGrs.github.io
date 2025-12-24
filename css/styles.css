@@ -63,6 +63,7 @@ body {
     overflow: hidden;
     background: transparent;
     display: none; /* Hidden by default, shown when graph view is active */
+    z-index: 1; /* Below the 2D label overlay */
 }
 
 .canvas-section.active {
@@ -97,8 +98,8 @@ body {
     color: var(--text-primary);
     cursor: pointer;
     transition: all 0.2s ease;
-    z-index: 1002;
-    pointer-events: auto;
+    z-index: 10001; /* Above the 2D label overlay (10000 in fullscreen) */
+    pointer-events: auto !important;
 }
 
 .fullscreen-btn:hover {
@@ -152,6 +153,17 @@ body.canvas-fullscreen .skill-graph-container {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     border: none !important;
+}
+
+body.canvas-fullscreen .skill-graph-container * {
+    pointer-events: none;
+}
+
+.canvas-section.fullscreen .fullscreen-btn {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10002;
 }
 
 .canvas-section.fullscreen .fullscreen-icon.expand {
@@ -1020,8 +1032,8 @@ header {
     border: none !important;
 }
 
-.skills-panel.graph-active #skill-graph-canvas {
-    pointer-events: none; /* Labels canvas shouldn't capture events */
+.skills-panel.graph-active .skill-graph-container * {
+    pointer-events: none; /* All elements in overlay shouldn't capture events */
 }
 
 .skills-panel.graph-active .graph-legend,
@@ -2430,9 +2442,9 @@ header {
 }
 
 @media (max-width: 900px) {
-    /* Hide view toggle on mobile - 3D graph not suitable for mobile */
     .skills-view-toggle {
-        display: none;
+        top: 0.5rem;
+        right: 0.5rem;
     }
 
     .skills-list-container {

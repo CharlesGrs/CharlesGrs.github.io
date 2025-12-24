@@ -406,11 +406,11 @@
                 '</div>' +
             '</div>' +
             '<div class="sp-control-row">' +
-                '<span class="sp-control-label">Attenuation</span>' +
+                '<span class="sp-control-label">Falloff</span>' +
                 '<div class="sp-control-input">' +
                     '<input type="range" class="sp-slider" id="sp-atten-' + ctrl.id + '" ' +
-                        'min="0.001" max="1" step="0.001" value="' + attenuation + '" data-param="lightParams.light' + ctrl.id + 'Attenuation" data-decimals="3">' +
-                    '<span class="sp-value" id="sp-atten-' + ctrl.id + '-value">' + attenuation.toFixed(3) + '</span>' +
+                        'min="0" max="1" step="0.01" value="' + attenuation + '" data-param="lightParams.light' + ctrl.id + 'Attenuation" data-decimals="2">' +
+                    '<span class="sp-value" id="sp-atten-' + ctrl.id + '-value">' + attenuation.toFixed(2) + '</span>' +
                 '</div>' +
             '</div>' +
         '</div>';

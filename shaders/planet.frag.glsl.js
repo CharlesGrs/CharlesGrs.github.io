@@ -594,9 +594,9 @@ void main() {
     vec3 L0 = normalize(light0WorldPos - surfaceWorldPos);
 
     // Distance-based attenuation: 1 / (1 + k * d^2)
-    // uLight0Atten controls falloff rate (higher = faster falloff)
+    // Scale so falloff slider 0-1 gives useful range (0=none, 1=strong localized)
     float dist0 = length(light0WorldPos - surfaceWorldPos);
-    float atten0 = 1.0 / (1.0 + uLight0Atten * dist0 * dist0);
+    float atten0 = 1.0 / (1.0 + uLight0Atten * 200.0 * dist0 * dist0);
     float NdL0 = max(dot(N_world, L0), 0.0);
 
     // PBR specular using world-space vectors (N_world, V_world, L0 all in same space)
@@ -614,7 +614,7 @@ void main() {
     vec3 light1WorldPos = uLight1WorldPos;
     vec3 L1 = normalize(light1WorldPos - surfaceWorldPos);
     float dist1 = length(light1WorldPos - surfaceWorldPos);
-    float atten1 = 1.0 / (1.0 + uLight1Atten * dist1 * dist1);
+    float atten1 = 1.0 / (1.0 + uLight1Atten * 200.0 * dist1 * dist1);
     float NdL1 = max(dot(N_world, L1), 0.0);
 
     // PBR specular using world-space vectors
@@ -632,7 +632,7 @@ void main() {
     vec3 light2WorldPos = uLight2WorldPos;
     vec3 L2 = normalize(light2WorldPos - surfaceWorldPos);
     float dist2 = length(light2WorldPos - surfaceWorldPos);
-    float atten2 = 1.0 / (1.0 + uLight2Atten * dist2 * dist2);
+    float atten2 = 1.0 / (1.0 + uLight2Atten * 200.0 * dist2 * dist2);
     float NdL2 = max(dot(N_world, L2), 0.0);
 
     // PBR specular using world-space vectors

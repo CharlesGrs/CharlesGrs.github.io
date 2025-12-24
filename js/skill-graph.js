@@ -209,8 +209,8 @@
     });
 
     let width, height, centerX, centerY;
-    let isDragging = false, dragNode = null, hoveredNode = null;
-    let mouseX = 0, mouseY = 0;  // World coordinates (for dragging nodes)
+    let hoveredNode = null;
+    let mouseX = 0, mouseY = 0;  // World coordinates
     let mouseScreenX = 0, mouseScreenY = 0;  // Screen coordinates (for hit testing)
     let globalFadeIn = 0;
     let mouseLightEnabled = false; // Toggle with spacebar
@@ -234,6 +234,13 @@
         rotationSpeed: 0.003,    // Mouse rotation sensitivity
         smoothing: 0.08          // Camera movement smoothing (0-1)
     };
+
+    // Camera focus system - smooth transition to look at and approach a node
+    let isFocusing = false;           // True while camera is transitioning to focus target
+    let focusTarget = null;           // The node being focused on
+    let focusProgress = 0;            // 0 to 1 progress of the focus transition
+    const focusDuration = 3.0;        // Seconds to complete focus transition (slower)
+    const focusDistance = 0.35;       // How close to get to the target (in world units, further away)
 
     const tooltip = document.getElementById('skill-tooltip');
     const tooltipTitle = tooltip.querySelector('.skill-tooltip-title');
@@ -269,25 +276,9 @@
         lineAnimStartTime = performance.now();
     }
 
-    function updateTooltipPositionForDrag(node) {
-        const margin = 20;
-        // Use screen-space coordinates (renderX/renderY) for tooltip positioning
-        const nodeScreenX = node.renderX !== undefined ? node.renderX : node.x;
-        const nodeScreenY = node.renderY !== undefined ? node.renderY : node.y;
-
-        let tx = Math.max(margin, Math.min(width - tooltipWidth - margin, nodeScreenX + tooltipOffset.x));
-        let ty = Math.max(margin, Math.min(height - tooltipHeight - margin, nodeScreenY + tooltipOffset.y));
-        tooltipPos = { x: tx, y: ty };
-        tooltipConnectPoint = tooltipSide === 'right'
-            ? { x: tx, y: ty + tooltipHeight / 2 }
-            : { x: tx + tooltipWidth, y: ty + tooltipHeight / 2 };
-        tooltip.style.left = tooltipPos.x + 'px';
-        tooltip.style.top = tooltipPos.y + 'px';
-    }
-
     function updateTooltip(node, forceKeep = false) {
         if (node) {
-            if (tooltipTarget !== node && !isDragging) {
+            if (tooltipTarget !== node) {
                 tooltipTarget = node;
                 generateTooltipPosition(node);
                 tooltip.classList.remove('visible');
@@ -1952,7 +1943,7 @@
         // STEP 1: Place suns at fixed positions (affected by sunSpread, sunSpawnMin/Max)
         for (const sunId in sunBasePositions) {
             const node = nodes.find(n => n.id === sunId);
-            if (!node || node === dragNode) continue;
+            if (!node) continue;
 
             // Get dynamic position based on spawn parameters
             const pos = getSunPosition(sunId);
@@ -1974,7 +1965,7 @@
         // STEP 2: Moons orbit their parent sun with 3D tilted orbits
         for (const moonId in moonOrbits) {
             const node = nodes.find(n => n.id === moonId);
-            if (!node || node === dragNode) continue;
+            if (!node) continue;
 
             const config = moonOrbits[moonId];
             const parentSun = nodes.find(n => n.id === config.sun);
@@ -2042,7 +2033,7 @@
         // STEP 3: Sub-moons orbit around planets (former free floaters)
         for (const subMoonId in subMoonOrbits) {
             const node = nodes.find(n => n.id === subMoonId);
-            if (!node || node === dragNode) continue;
+            if (!node) continue;
 
             const config = subMoonOrbits[subMoonId];
             const parentPlanet = nodes.find(n => n.id === config.parent);
@@ -2125,54 +2116,117 @@
         ctx.clearRect(0, 0, width, height);
         time += 0.016;
 
-        // Smooth camera rotation interpolation
-        cameraRotX += (targetCameraRotX - cameraRotX) * 0.08;
-        cameraRotY += (targetCameraRotY - cameraRotY) * 0.08;
+        // Camera focus transition - smooth look-at and approach a node
+        if (isFocusing && focusTarget) {
+            // Get target world position
+            const targetWorldX = focusTarget.worldX || 0;
+            const targetWorldY = focusTarget.worldY || 0;
+            const targetWorldZ = focusTarget.worldZ || 0;
 
-        // Process WASD/ZQSD keyboard input for free camera movement
-        // Movement is in the direction the camera is facing
-        // Can move while rotating (FPS-style controls)
-        let moveForward = 0, moveRight = 0, moveUp = 0;
-        // Forward/backward: W or Z (French AZERTY)
-        if (keysPressed['keyw'] || keysPressed['keyz']) moveForward = 1;
-        // Backward: S
-        if (keysPressed['keys']) moveForward = -1;
-        // Left: A or Q (French AZERTY)
-        if (keysPressed['keya'] || keysPressed['keyq']) moveRight = -1;
-        // Right: D
-        if (keysPressed['keyd']) moveRight = 1;
-        // Up: Space / Down: Shift (optional vertical movement)
-        if (keysPressed['space']) moveUp = 1;
-        if (keysPressed['shiftleft'] || keysPressed['shiftright']) moveUp = -1;
+            // Calculate direction from camera to target
+            const dx = targetWorldX - cameraPosX;
+            const dy = targetWorldY - cameraPosY;
+            const dz = targetWorldZ - cameraPosZ;
+            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-        // Apply movement in camera's local coordinate system (FPS-style)
-        if (moveForward !== 0 || moveRight !== 0 || moveUp !== 0) {
-            const cosRotX = Math.cos(cameraRotX);
-            const sinRotX = Math.sin(cameraRotX);
-            const sinRotY = Math.sin(cameraRotY);
-            const cosRotY = Math.cos(cameraRotY);
+            // Calculate target rotation to look at the node
+            // Yaw: angle in XZ plane
+            const targetYaw = Math.atan2(dx, dz);
+            // Pitch: angle up/down
+            const horizontalDist = Math.sqrt(dx * dx + dz * dz);
+            const targetPitch = -Math.atan2(dy, horizontalDist);
 
-            // Forward vector (direction camera is looking)
-            const fwdX = sinRotY * cosRotX;
-            const fwdY = -sinRotX;
-            const fwdZ = cosRotY * cosRotX;
+            // Calculate target position (approach but stop at focusDistance)
+            const stopDist = focusDistance + (focusTarget.size || focusTarget.baseSize || 20) * 0.0003;
+            const approachT = Math.max(0, 1 - stopDist / dist);
+            const targetPosX = cameraPosX + dx * approachT;
+            const targetPosY = cameraPosY + dy * approachT;
+            const targetPosZ = cameraPosZ + dz * approachT;
 
-            // Right vector (perpendicular to forward, in XZ plane)
-            const rightX = cosRotY;
-            const rightZ = -sinRotY;
+            // Smooth easing (ease-out cubic)
+            focusProgress += 0.016 / focusDuration;
+            const t = Math.min(1, focusProgress);
+            const ease = 1 - Math.pow(1 - t, 3);
 
-            // Combine movement vectors
-            const speed = window.cameraParams.moveSpeed;
-            targetCameraPosX += (fwdX * moveForward + rightX * moveRight) * speed;
-            targetCameraPosY += (fwdY * moveForward + moveUp) * speed;
-            targetCameraPosZ += (fwdZ * moveForward + rightZ * moveRight) * speed;
+            // Interpolate rotation toward target
+            // Handle angle wrapping for yaw
+            let yawDiff = targetYaw - cameraRotY;
+            while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
+            while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
+            cameraRotY += yawDiff * ease * 0.1;
+            cameraRotX += (targetPitch - cameraRotX) * ease * 0.1;
+
+            // Interpolate position toward target
+            cameraPosX += (targetPosX - cameraPosX) * ease * 0.05;
+            cameraPosY += (targetPosY - cameraPosY) * ease * 0.05;
+            cameraPosZ += (targetPosZ - cameraPosZ) * ease * 0.05;
+
+            // Update targets to match current (prevents snapping when focus ends)
+            targetCameraPosX = cameraPosX;
+            targetCameraPosY = cameraPosY;
+            targetCameraPosZ = cameraPosZ;
+            targetCameraRotX = cameraRotX;
+            targetCameraRotY = cameraRotY;
+
+            // Check if focus transition is complete
+            if (t >= 1 && dist < stopDist * 1.5) {
+                isFocusing = false;
+                focusTarget = null;
+                focusProgress = 0;
+                container.style.cursor = 'grab';
+            }
+        } else {
+            // Normal camera controls (only when not focusing)
+
+            // Smooth camera rotation interpolation
+            cameraRotX += (targetCameraRotX - cameraRotX) * 0.08;
+            cameraRotY += (targetCameraRotY - cameraRotY) * 0.08;
+
+            // Process WASD/ZQSD keyboard input for free camera movement
+            // Movement is in the direction the camera is facing
+            // Can move while rotating (FPS-style controls)
+            let moveForward = 0, moveRight = 0, moveUp = 0;
+            // Forward/backward: W or Z (French AZERTY)
+            if (keysPressed['keyw'] || keysPressed['keyz']) moveForward = 1;
+            // Backward: S
+            if (keysPressed['keys']) moveForward = -1;
+            // Left: A or Q (French AZERTY)
+            if (keysPressed['keya'] || keysPressed['keyq']) moveRight = -1;
+            // Right: D
+            if (keysPressed['keyd']) moveRight = 1;
+            // Up: Space / Down: Shift (optional vertical movement)
+            if (keysPressed['space']) moveUp = 1;
+            if (keysPressed['shiftleft'] || keysPressed['shiftright']) moveUp = -1;
+
+            // Apply movement in camera's local coordinate system (FPS-style)
+            if (moveForward !== 0 || moveRight !== 0 || moveUp !== 0) {
+                const cosRotX = Math.cos(cameraRotX);
+                const sinRotX = Math.sin(cameraRotX);
+                const sinRotY = Math.sin(cameraRotY);
+                const cosRotY = Math.cos(cameraRotY);
+
+                // Forward vector (direction camera is looking)
+                const fwdX = sinRotY * cosRotX;
+                const fwdY = -sinRotX;
+                const fwdZ = cosRotY * cosRotX;
+
+                // Right vector (perpendicular to forward, in XZ plane)
+                const rightX = cosRotY;
+                const rightZ = -sinRotY;
+
+                // Combine movement vectors
+                const speed = window.cameraParams.moveSpeed;
+                targetCameraPosX += (fwdX * moveForward + rightX * moveRight) * speed;
+                targetCameraPosY += (fwdY * moveForward + moveUp) * speed;
+                targetCameraPosZ += (fwdZ * moveForward + rightZ * moveRight) * speed;
+            }
+
+            // Smooth camera position interpolation (always runs for FPS-style movement)
+            const smooth = window.cameraParams.smoothing;
+            cameraPosX += (targetCameraPosX - cameraPosX) * smooth;
+            cameraPosY += (targetCameraPosY - cameraPosY) * smooth;
+            cameraPosZ += (targetCameraPosZ - cameraPosZ) * smooth;
         }
-
-        // Smooth camera position interpolation (always runs for FPS-style movement)
-        const smooth = window.cameraParams.smoothing;
-        cameraPosX += (targetCameraPosX - cameraPosX) * smooth;
-        cameraPosY += (targetCameraPosY - cameraPosY) * smooth;
-        cameraPosZ += (targetCameraPosZ - cameraPosZ) * smooth;
 
         // Update global camera state for shaders
         window.globalCameraRotX = cameraRotX;
@@ -2480,16 +2534,22 @@
         const clickedNode = getNodeAt(screenX, screenY);
 
         if (clickedNode) {
-            // Clicking on a node: start dragging
-            dragNode = clickedNode;
-            isDragging = true;
-            container.style.cursor = 'grabbing';
-            if (hoveredNode === dragNode && !tooltipTarget) {
-                tooltipTarget = dragNode;
-                generateTooltipPosition(dragNode);
+            // Clicking on a node: start camera focus transition
+            // Don't start if already focusing on this node
+            if (isFocusing && focusTarget === clickedNode) return;
+
+            isFocusing = true;
+            focusTarget = clickedNode;
+            focusProgress = 0;
+            container.style.cursor = 'default';
+
+            // Show tooltip for the focused node
+            if (!tooltipTarget || tooltipTarget !== clickedNode) {
+                tooltipTarget = clickedNode;
+                generateTooltipPosition(clickedNode);
             }
-        } else {
-            // Clicking on empty space: start camera rotation
+        } else if (!isFocusing) {
+            // Clicking on empty space: start camera rotation (only if not focusing)
             isOrbiting = true;
             orbitStartX = e.clientX;
             orbitStartY = e.clientY;
@@ -2500,6 +2560,15 @@
     });
 
     canvas.addEventListener('mousemove', (e) => {
+        // Block all mouse look controls during focus transition
+        if (isFocusing) {
+            // Still update mouse position for hover detection
+            const rect = canvas.getBoundingClientRect();
+            mouseScreenX = e.clientX - rect.left;
+            mouseScreenY = e.clientY - rect.top;
+            return;
+        }
+
         // Handle camera orbit dragging
         if (isOrbiting) {
             const deltaX = e.clientX - orbitStartX;
@@ -2521,16 +2590,11 @@
         const world = screenToWorld(screenX, screenY);
         mouseX = world.x;
         mouseY = world.y;
-        if (isDragging && dragNode) {
-            dragNode.x = mouseX; dragNode.y = mouseY;
-            dragNode.baseX = mouseX; dragNode.baseY = mouseY;
-            dragNode.vx = 0; dragNode.vy = 0;
-            if (tooltipTarget === dragNode) updateTooltipPositionForDrag(dragNode);
-        } else {
-            hoveredNode = getNodeAt(screenX, screenY);  // Use screen coords for hit testing
-            container.style.cursor = hoveredNode ? 'pointer' : 'grab';
-            updateTooltip(hoveredNode);
-        }
+
+        // Update hover state (no more dragging)
+        hoveredNode = getNodeAt(screenX, screenY);
+        container.style.cursor = hoveredNode ? 'pointer' : 'grab';
+        updateTooltip(hoveredNode);
     });
 
     canvas.addEventListener('mouseup', () => {
@@ -2539,14 +2603,18 @@
             container.style.cursor = hoveredNode ? 'pointer' : 'grab';
             return;
         }
-        isDragging = false; dragNode = null;
-        container.style.cursor = hoveredNode ? 'pointer' : 'grab';
+        // No more dragging - just reset cursor
+        if (!isFocusing) {
+            container.style.cursor = hoveredNode ? 'pointer' : 'grab';
+        }
     });
 
     canvas.addEventListener('mouseleave', () => {
-        isDragging = false; dragNode = null; hoveredNode = null;
+        hoveredNode = null;
         isOrbiting = false;
-        container.style.cursor = 'grab';
+        if (!isFocusing) {
+            container.style.cursor = 'grab';
+        }
         updateTooltip(null);
     });
 
@@ -2558,34 +2626,38 @@
         const screenY = touch.clientY - rect.top;
         mouseScreenX = screenX;
         mouseScreenY = screenY;
-        const world = screenToWorld(screenX, screenY);
-        mouseX = world.x;
-        mouseY = world.y;
-        dragNode = getNodeAt(screenX, screenY);  // Use screen coords for hit testing
-        if (dragNode) {
-            isDragging = true;
-            tooltipTarget = dragNode;
-            generateTooltipPosition(dragNode);
-            updateTooltip(dragNode);
+
+        // Check if tapping on a node - start focus transition
+        const tappedNode = getNodeAt(screenX, screenY);
+        if (tappedNode) {
+            // Don't start if already focusing on this node
+            if (isFocusing && focusTarget === tappedNode) return;
+
+            isFocusing = true;
+            focusTarget = tappedNode;
+            focusProgress = 0;
+
+            // Show tooltip for the focused node
+            if (!tooltipTarget || tooltipTarget !== tappedNode) {
+                tooltipTarget = tappedNode;
+                generateTooltipPosition(tappedNode);
+            }
+            updateTooltip(tappedNode);
         }
     }, { passive: false });
 
     canvas.addEventListener('touchmove', (e) => {
         e.preventDefault();
-        if (!isDragging || !dragNode) return;
+        // Block touch interactions during focus
+        if (isFocusing) return;
+
         const touch = e.touches[0];
         const rect = canvas.getBoundingClientRect();
-        const screenX = touch.clientX - rect.left;
-        const screenY = touch.clientY - rect.top;
-        const world = screenToWorld(screenX, screenY);
-        dragNode.x = world.x;
-        dragNode.y = world.y;
-        dragNode.baseX = dragNode.x; dragNode.baseY = dragNode.y;
-        dragNode.vx = 0; dragNode.vy = 0;
-        if (tooltipTarget === dragNode) updateTooltipPositionForDrag(dragNode);
+        mouseScreenX = touch.clientX - rect.left;
+        mouseScreenY = touch.clientY - rect.top;
     }, { passive: false });
 
-    canvas.addEventListener('touchend', () => { isDragging = false; dragNode = null; });
+    canvas.addEventListener('touchend', () => { /* Touch end - focus continues automatically */ });
 
     // Keyboard controls
     document.addEventListener('keydown', (e) => {
