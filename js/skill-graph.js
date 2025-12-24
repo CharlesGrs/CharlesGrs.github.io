@@ -246,7 +246,17 @@
     // Navigate to a solar system by sun ID
     function navigateToSolarSystem(sunId) {
         const sunNode = nodes.find(n => n.id === sunId);
-        if (!sunNode) return;
+        if (!sunNode) {
+            console.warn('navigateToSolarSystem: sun node not found:', sunId);
+            return;
+        }
+
+        // Ensure worldX/Y/Z are set (they're populated by simulate())
+        if (sunNode.worldX === undefined) {
+            // Force update node positions if not yet initialized
+            console.log('navigateToSolarSystem: forcing position update for', sunId);
+            simulate();
+        }
 
         // Don't restart if already navigating to this sun
         if (isNavigating && navTarget === sunNode) return;

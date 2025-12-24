@@ -114,7 +114,7 @@
     </div>
 
     <!-- Version Badge -->
-    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.25</span></div>
+    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.26</span></div>
 
     <a href="mailto:contact.charles.grassi@gmail.com" class="contact-btn" aria-label="Send email to Charles Grassi">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -1226,15 +1226,15 @@
                         <canvas id="skill-graph-canvas"></canvas>
                         <!-- Solar System Navigation Buttons -->
                         <div class="solar-nav-container" id="solar-nav">
-                            <button class="solar-nav-btn" data-sun="unity" onclick="window.navigateToSolarSystem('unity')" title="Navigate to Unity">
+                            <button class="solar-nav-btn" data-sun="unity" onclick="window.navigateToSolarSystem && window.navigateToSolarSystem('unity')" ontouchend="event.preventDefault(); window.navigateToSolarSystem && window.navigateToSolarSystem('unity')" title="Navigate to Unity">
                                 <span class="nav-icon unity"></span>
                                 <span class="nav-label">Unity</span>
                             </button>
-                            <button class="solar-nav-btn" data-sun="unreal" onclick="window.navigateToSolarSystem('unreal')" title="Navigate to Unreal">
+                            <button class="solar-nav-btn" data-sun="unreal" onclick="window.navigateToSolarSystem && window.navigateToSolarSystem('unreal')" ontouchend="event.preventDefault(); window.navigateToSolarSystem && window.navigateToSolarSystem('unreal')" title="Navigate to Unreal">
                                 <span class="nav-icon unreal"></span>
                                 <span class="nav-label">Unreal</span>
                             </button>
-                            <button class="solar-nav-btn" data-sun="graphics" onclick="window.navigateToSolarSystem('graphics')" title="Navigate to Graphics APIs">
+                            <button class="solar-nav-btn" data-sun="graphics" onclick="window.navigateToSolarSystem && window.navigateToSolarSystem('graphics')" ontouchend="event.preventDefault(); window.navigateToSolarSystem && window.navigateToSolarSystem('graphics')" title="Navigate to Graphics APIs">
                                 <span class="nav-icon graphics"></span>
                                 <span class="nav-label">Graphics</span>
                             </button>
