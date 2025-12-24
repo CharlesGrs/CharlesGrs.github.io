@@ -652,6 +652,7 @@ header {
 /* Typewriter effect */
 .typewriter-text {
     position: relative;
+    min-height: 6.5em; /* Fixed height to prevent layout shift during typing */
 }
 
 .typewriter-cursor {

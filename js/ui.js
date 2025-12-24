@@ -322,10 +322,40 @@
 
     if (!viewToggleBtns.length || !listView) return;
 
-    // Hide shader controls and canvas by default (list view is default)
-    if (shaderControls) {
-        shaderControls.style.display = 'none';
+    // Set graph view as default
+    function setGraphViewActive() {
+        // Update button states
+        viewToggleBtns.forEach(b => {
+            b.classList.toggle('active', b.dataset.view === 'graph');
+        });
+        // Hide list view
+        listView.classList.remove('active');
+        // Show canvas section for 3D WebGL graph
+        if (canvasSection) {
+            canvasSection.classList.add('active');
+        }
+        // Show graphView as transparent overlay for 2D labels
+        if (graphView) {
+            graphView.classList.add('active');
+        }
+        // Enable graph mode for panel
+        if (skillsPanel) {
+            skillsPanel.classList.add('graph-active');
+        }
+        // Show shader controls
+        if (shaderControls) {
+            shaderControls.style.display = '';
+        }
+        // Trigger resize after DOM is ready
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                window.dispatchEvent(new Event('resize'));
+            });
+        });
     }
+
+    // Initialize with graph view as default
+    setGraphViewActive();
 
     // View toggle (graph/list)
     viewToggleBtns.forEach(btn => {
