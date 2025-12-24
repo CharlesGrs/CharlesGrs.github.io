@@ -2979,22 +2979,54 @@ header {
     white-space: nowrap;
 }
 
-/* Hide on mobile for space */
+/* Mobile adjustments for solar nav */
 @media (max-width: 768px) {
     .solar-nav-container {
+        display: flex !important;
         bottom: 0.5rem;
         right: 0.5rem;
         gap: 0.3rem;
+        z-index: 100;
+        pointer-events: auto !important;
     }
 
     .solar-nav-btn {
+        display: flex !important;
         padding: 0.3rem 0.5rem;
         font-size: 0.6rem;
+        pointer-events: auto !important;
     }
 
     .solar-nav-btn .nav-label {
         display: none;
     }
+}
+
+/* Ensure solar nav buttons show and work on mobile in graph mode */
+@media (max-width: 900px) {
+    .skills-panel.graph-active .solar-nav-container {
+        display: flex !important;
+        z-index: 100;
+        pointer-events: auto !important;
+    }
+
+    .skills-panel.graph-active .solar-nav-btn {
+        display: flex !important;
+        pointer-events: auto !important;
+    }
+}
+
+/* Fullscreen mode - solar nav must stay visible and clickable */
+body.canvas-fullscreen .solar-nav-container {
+    position: fixed !important;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 10002;
+    pointer-events: auto !important;
+}
+
+body.canvas-fullscreen .solar-nav-btn {
+    pointer-events: auto !important;
 }
 
 .skill-tooltip {
