@@ -33,10 +33,6 @@ uniform float uLight0Intensity;
 uniform float uLight1Intensity;
 uniform float uLight2Intensity;
 
-// Zoom/camera parameters (for screen-space light positioning)
-uniform float uZoom;
-uniform vec2 uZoomCenter;
-
 // Nebula parameters
 uniform float uNebulaIntensity;    // Overall nebula brightness (default 0.3)
 uniform float uNebulaScale;        // Noise scale (default 2.0)
@@ -57,6 +53,25 @@ uniform vec3 uNebulaColorPurple;   // Purple nebula tint (default 0.12, 0.04, 0.
 uniform vec3 uNebulaColorCyan;     // Cyan nebula tint (default 0.04, 0.12, 0.20)
 uniform vec3 uNebulaColorBlue;     // Blue nebula tint (default 0.03, 0.06, 0.15)
 uniform vec3 uNebulaColorGold;     // Gold nebula tint (default 0.15, 0.10, 0.03)
+
+// Volumetric light parameters
+uniform float uGodRaysIntensity;   // Overall light brightness (default 1.0)
+uniform float uGodRaysFalloff;     // Falloff exponent (default 2.0, inverse-square law)
+uniform float uGodRaysScale;       // Distance scale factor (default 3.0, controls spread)
+uniform float uGodRaysSaturation;  // Color saturation boost (default 1.8)
+uniform float uGodRaysNoiseScale;  // Edge noise frequency (default 4.0)
+uniform float uGodRaysNoiseStrength; // Edge noise displacement (default 0.12)
+uniform float uGodRaysNoiseOctaves; // Noise detail level 0-1 (default 0.5, blends octaves)
+uniform float uGodRaysShadow;      // Self-shadowing intensity (default 0.5)
+uniform float uGodRaysShadowOffset; // World-space offset away from light (default 0.3)
+uniform float uGodRaysScatterR;    // Red channel scatter rate (default 0.3, lower = less scatter)
+uniform float uGodRaysScatterG;    // Green channel scatter rate (default 0.5)
+uniform float uGodRaysScatterB;    // Blue channel scatter rate (default 1.0, higher = more scatter)
+
+// Screen-space light positions (camera-transformed, in pixels)
+uniform vec2 uLight0Screen;
+uniform vec2 uLight1Screen;
+uniform vec2 uLight2Screen;
 
 // ========================================
 // 3D SIMPLEX NOISE
@@ -224,12 +239,9 @@ vec3 saturate(vec3 color, float amount) {
     return mix(vec3(luma), color, amount);
 }
 
-// Transform world position to screen position (matching god rays)
+// Transform world position to screen position
 vec2 worldToScreen(vec2 worldPos) {
-    vec2 screenCenter = uResolution * 0.5;
-    vec2 offsetFromCenter = worldPos - screenCenter;
-    vec2 scaledOffset = offsetFromCenter * uZoom;
-    return screenCenter + scaledOffset;
+    return worldPos;  // No zoom transform needed
 }
 
 // ========================================
@@ -274,6 +286,140 @@ vec3 lightContribution(vec2 uv, vec3 skyDir, out float totalFalloff) {
 }
 
 // ========================================
+// GOD RAYS / VOLUMETRIC LIGHT
+// ========================================
+
+// Simple 3D hash for god rays noise
+float hash31(vec3 p) {
+    return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453);
+}
+
+// Value noise for god rays
+float godRaysNoise3D(vec3 p) {
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+
+    float a = hash31(i);
+    float b = hash31(i + vec3(1.0, 0.0, 0.0));
+    float c = hash31(i + vec3(0.0, 1.0, 0.0));
+    float d = hash31(i + vec3(1.0, 1.0, 0.0));
+    float e = hash31(i + vec3(0.0, 0.0, 1.0));
+    float f1 = hash31(i + vec3(1.0, 0.0, 1.0));
+    float g = hash31(i + vec3(0.0, 1.0, 1.0));
+    float h = hash31(i + vec3(1.0, 1.0, 1.0));
+
+    return mix(
+        mix(mix(a, b, f.x), mix(c, d, f.x), f.y),
+        mix(mix(e, f1, f.x), mix(g, h, f.x), f.y),
+        f.z
+    );
+}
+
+// FBM for god rays with controllable octaves
+float godRaysFBM(vec3 p) {
+    float totalAmp = 0.5;
+    float v = godRaysNoise3D(p) * 0.5;
+
+    // Second octave (blend in based on uGodRaysNoiseOctaves)
+    float oct2 = uGodRaysNoiseOctaves * 2.0;  // 0-1 maps to 0-2, clamp to 0-1
+    oct2 = clamp(oct2, 0.0, 1.0);
+    v += godRaysNoise3D(p * 2.0) * 0.25 * oct2;
+    totalAmp += 0.25 * oct2;
+
+    // Third octave (only when octaves > 0.5)
+    float oct3 = (uGodRaysNoiseOctaves - 0.5) * 2.0;  // 0.5-1 maps to 0-1
+    oct3 = clamp(oct3, 0.0, 1.0);
+    v += godRaysNoise3D(p * 4.0) * 0.125 * oct3;
+    totalAmp += 0.125 * oct3;
+
+    return v / totalAmp;  // Normalize
+}
+
+// Sample noise at a world position (for consistent noise in 3D space)
+float sampleNoiseAt(vec3 worldPos, float lightIndex) {
+    vec3 pos = worldPos * uGodRaysNoiseScale + vec3(0.0, 0.0, lightIndex * 50.0 + uTime * 0.02);
+    return godRaysFBM(pos);
+}
+
+// Single light volumetric contribution with self-shadowing
+// Uses physically-based inverse-power falloff: I / d^n
+// where n=2 gives inverse-square law (physically accurate for point lights)
+vec3 godRaysLight(vec2 uv, vec2 lightPos, vec3 lightColor, float lightIndex, vec3 skyDir, float lightIntensity) {
+    vec2 lightUV = lightPos / uResolution;
+    lightUV.y = 1.0 - lightUV.y;
+
+    // Aspect-corrected distance
+    vec2 delta = uv - lightUV;
+    delta.x *= uResolution.x / uResolution.y;
+    float dist = length(delta);
+
+    // Early out for distant pixels
+    if (dist > 2.0) return vec3(0.0);
+
+    // Sample fog density at current position (noise = density field)
+    // High density = more light scattered toward camera = brighter volumetric
+    float density = sampleNoiseAt(skyDir, lightIndex);
+
+    // Self-shadowing with chromatic absorption (Beer-Lambert style)
+    // Sample fog density between us and the light, apply wavelength-dependent absorption
+    vec3 shadow = vec3(1.0);
+    if (uGodRaysShadow > 0.001 && uGodRaysShadowOffset > 0.001) {
+        // Get light's world direction using the same method as skyDir
+        vec2 lightScreen = (lightUV - 0.5) * 2.0;
+        lightScreen.x *= uResolution.x / uResolution.y;
+        vec3 lightWorldDir = getSkyboxDirection(lightScreen);
+
+        // Direction from current pixel toward light
+        vec3 towardLight = normalize(lightWorldDir - skyDir);
+
+        // Sample fog density at offset position (between us and light)
+        vec3 offsetPos = normalize(skyDir + towardLight * uGodRaysShadowOffset);
+        float fogDensityThere = sampleNoiseAt(offsetPos, lightIndex);
+
+        // Optical depth from two components:
+        // 1. Density at offset position (toward light)
+        // 2. Gradient: if density increases toward light, extra shadow
+        float gradient = max(0.0, fogDensityThere - density);
+        float opticalDepth = (fogDensityThere + gradient) * uGodRaysShadow;
+
+        // Absorption coefficients per channel (Rayleigh-like: blue scatters/absorbs most)
+        vec3 absorption = vec3(uGodRaysScatterR, uGodRaysScatterG, uGodRaysScatterB);
+
+        // Beer-Lambert transmittance: T = exp(-optical_depth * absorption)
+        shadow = exp(-opticalDepth * absorption * 3.0);
+    }
+
+    // Base light falloff (inverse-power law)
+    float light = 1.0 / (1.0 + pow(dist * uGodRaysScale, uGodRaysFalloff));
+
+    // Modulate by local fog density - dense fog adds brightness, sparse is baseline
+    // density centered around 0.5, so (density - 0.5) gives -0.5 to +0.5 range
+    light *= 1.0 + (density - 0.5) * uGodRaysNoiseStrength;
+
+    // Apply intensity
+    light *= uGodRaysIntensity * lightIntensity;
+
+    // Saturate color for more vivid appearance
+    float luma = dot(lightColor, vec3(0.299, 0.587, 0.114));
+    vec3 saturatedColor = mix(vec3(luma), lightColor, uGodRaysSaturation);
+
+    // Apply chromatic shadow (each channel affected differently)
+    return saturatedColor * light * shadow;
+}
+
+// Combined god rays from all lights (includes core scattering + noisy halo)
+vec3 godRaysContribution(vec2 uv, vec3 skyDir) {
+    // Use pre-computed screen-space positions (already camera-transformed in JS)
+    vec3 rays = vec3(0.0);
+    rays += godRaysLight(uv, uLight0Screen, uLightColor0, 0.0, skyDir, uLight0Intensity);
+    rays += godRaysLight(uv, uLight1Screen, uLightColor1, 1.0, skyDir, uLight1Intensity);
+    rays += godRaysLight(uv, uLight2Screen, uLightColor2, 2.0, skyDir, uLight2Intensity);
+
+    return rays;
+}
+
+// ========================================
 // MAIN
 // ========================================
 
@@ -288,134 +434,15 @@ void main() {
     // Get skybox direction for this pixel
     vec3 skyDir = getSkyboxDirection(screenPos);
 
-    // Slow animation
-    float animTime = uTime * uNebulaSpeed * 0.5;
-
     // ========================================
-    // NEBULA LAYERS (at infinity - use direction, not position)
-    // Scale is high to make features appear distant
+    // VOLUMETRIC LIGHT (Core scattering + Noisy halo)
     // ========================================
 
-    float skyboxScale = uNebulaScale * 3.0;  // Multiply to push features "further away"
-
-    // Large-scale nebula clouds
-    vec3 p1 = skyDir * skyboxScale + vec3(animTime * 0.02, animTime * 0.01, 0.0);
-    float nebula1 = nebulaNoise(p1, uNebulaDetail);
-    nebula1 = smoothstep(-0.1, 0.5, nebula1);
-
-    // Medium wisps
-    vec3 p2 = skyDir * skyboxScale * 1.7 + vec3(0.0, animTime * 0.015, animTime * 0.01);
-    float nebula2 = turbulence(p2, 1.0);
-    nebula2 = smoothstep(0.3, 0.9, nebula2);
-
-    // Fine filaments
-    vec3 p3 = skyDir * skyboxScale * 3.0 + vec3(animTime * 0.01, 0.0, animTime * 0.02);
-    float nebula3 = abs(snoise3D(p3)) * abs(snoise3D(p3 * 1.3 + 50.0));
-    nebula3 = smoothstep(0.15, 0.6, nebula3);
-
-    // Combine with falloff toward edges (makes it feel like looking through a window)
-    float nebulaDensity = nebula1 * 0.5 + nebula2 * 0.3 + nebula3 * 0.2;
-    nebulaDensity = pow(nebulaDensity, 1.3);
+    vec3 godRays = godRaysContribution(uv, skyDir);
 
     // ========================================
-    // NEBULA COLORING
-    // ========================================
 
-    // Deep space colors - use uniform colors
-    vec3 deepSpace = vec3(0.01, 0.012, 0.02);
-
-    // Color variation based on direction
-    float colorVar1 = snoise3D(skyDir * 2.0 + vec3(200.0, 0.0, 0.0)) * 0.5 + 0.5;
-    float colorVar2 = snoise3D(skyDir * 1.5 + vec3(0.0, 200.0, 0.0)) * 0.5 + 0.5;
-
-    vec3 nebulaColor = mix(uNebulaColorBlue, uNebulaColorPurple, colorVar1 * uColorVariation);
-    nebulaColor = mix(nebulaColor, uNebulaColorCyan, colorVar2 * 0.5 * uColorVariation);
-
-    // Warm accents in bright regions
-    float warmZone = smoothstep(0.4, 0.7, nebulaDensity);
-    nebulaColor = mix(nebulaColor, uNebulaColorGold, warmZone * 0.25 * uColorVariation);
-
-    // Final nebula contribution
-    vec3 nebulaCol = nebulaColor * nebulaDensity * uNebulaIntensity;
-
-    // ========================================
-    // LIGHT INFLUENCE FROM SCENE LIGHTS
-    // ========================================
-
-    float totalFalloff;
-    vec3 lightInfluence = lightContribution(uv, skyDir, totalFalloff) * uLightInfluence;
-
-    // Lights subtly enhance nebula colors nearby
-    nebulaCol += nebulaCol * lightInfluence * 1.5;
-
-    // Lights add subtle glow to dark regions
-    float darkRegion = 1.0 - smoothstep(0.0, 0.2, nebulaDensity);
-    nebulaCol += lightInfluence * darkRegion * 0.03;
-
-    // ========================================
-    // FRACTAL PATTERN (screen space, radiating from each light)
-    // ========================================
-
-    vec3 fractalColor = vec3(0.0);
-
-    // Transform light positions from world to screen space with zoom
-    vec2 light0Screen = worldToScreen(uLight0);
-    vec2 light1Screen = worldToScreen(uLight1);
-    vec2 light2Screen = worldToScreen(uLight2);
-
-    // Convert to UV space
-    vec2 fracLight0UV = light0Screen / uResolution;
-    vec2 fracLight1UV = light1Screen / uResolution;
-    vec2 fracLight2UV = light2Screen / uResolution;
-    fracLight0UV.y = 1.0 - fracLight0UV.y;
-    fracLight1UV.y = 1.0 - fracLight1UV.y;
-    fracLight2UV.y = 1.0 - fracLight2UV.y;
-
-    // Detail nebula multiplier (adds texture variation to the fractal)
-    float detailNebula = turbulence(skyDir * 12.0 + uTime * 0.01, 2.0);
-    detailNebula = smoothstep(0.2, 0.8, detailNebula) * 0.7 + 0.3;
-
-    // For each light: sample fractal on skybox (rotates with camera)
-    // Use skyDir for consistent rotation with nebula
-    vec3 fractalPos = skyDir * uFractalScale + vec3(uTime * uFractalSpeed);
-    float fractal = cheapFractal(fractalPos);
-    fractal = smoothstep(0.2, 0.7, fractal);
-
-    // Light 0
-    vec2 toLight0 = uv - fracLight0UV;
-    float fdist0 = length(toLight0);
-    float ffalloff0 = exp(-fdist0 * uFractalFalloff) * uLight0Intensity;
-    float vignette0 = smoothstep(0.6, 0.1, fdist0);
-    fractalColor += saturate(uLightColor0, uFractalSaturation) * fractal * ffalloff0 * vignette0 * detailNebula;
-
-    // Light 1
-    vec2 toLight1 = uv - fracLight1UV;
-    float fdist1 = length(toLight1);
-    float ffalloff1 = exp(-fdist1 * uFractalFalloff) * uLight1Intensity;
-    float vignette1 = smoothstep(0.6, 0.1, fdist1);
-    fractalColor += saturate(uLightColor1, uFractalSaturation) * fractal * ffalloff1 * vignette1 * detailNebula;
-
-    // Light 2
-    vec2 toLight2 = uv - fracLight2UV;
-    float fdist2 = length(toLight2);
-    float ffalloff2 = exp(-fdist2 * uFractalFalloff) * uLight2Intensity;
-    float vignette2 = smoothstep(0.6, 0.1, fdist2);
-    fractalColor += saturate(uLightColor2, uFractalSaturation) * fractal * ffalloff2 * vignette2 * detailNebula;
-
-    fractalColor *= uFractalIntensity;
-
-    // ========================================
-    // FINAL COMPOSITION
-    // ========================================
-
-    vec3 finalColor = deepSpace;
-    finalColor += nebulaCol;
-    finalColor += fractalColor;
-
-    // Subtle mouse interaction glow
-    float mouseDist = length(uv - uMouse);
-    float mouseGlow = exp(-mouseDist * 5.0) * 0.02;
-    finalColor += vec3(0.05, 0.08, 0.12) * mouseGlow;
+    vec3 finalColor = godRays;
 
     // Vignette (subtle darkening at edges)
     float vignette = 1.0 - length(uv - 0.5) * uVignetteStrength;
@@ -424,6 +451,6 @@ void main() {
     // Soft tone mapping
     finalColor = finalColor / (finalColor + vec3(0.6));
 
-    gl_FragColor = vec4(finalColor, 0.95);
+    gl_FragColor = vec4(max(vec3(0.0), finalColor), 1.0);
 }
 `;

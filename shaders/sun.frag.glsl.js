@@ -249,6 +249,7 @@ void main() {
     alpha = clamp(alpha, 0.0, 1.0) * edgeFade;
     alpha *= smoothstep(0.0, 0.5, ap) * vAlpha;
 
-    gl_FragColor = vec4(col, alpha);
+    // Output for additive blending
+    gl_FragColor = vec4(col * alpha, alpha);
 }
 `;

@@ -6,8 +6,6 @@ window.SPACE_PARTICLE_VERTEX_SHADER = `
     attribute float aLife;     // 0-1 lifecycle for twinkling, or shooting star data packed
 
     uniform vec2 uResolution;
-    uniform float uZoom;
-    uniform vec2 uZoomCenter;
     uniform float uTime;
 
     // DoF parameters
@@ -28,6 +26,7 @@ window.SPACE_PARTICLE_VERTEX_SHADER = `
     uniform float uRenderPass;      // 0 = all, 1 = far only, 2 = near only
     uniform float uCameraRotX;      // Camera pitch
     uniform float uCameraRotY;      // Camera yaw
+    uniform vec3 uCameraPos;        // Camera position XYZ (free camera)
 
     varying float vBlurAmount;      // 0 = sharp, 1 = max blur
     varying float vLife;
@@ -48,27 +47,18 @@ window.SPACE_PARTICLE_VERTEX_SHADER = `
         vShootingProgress = fract(lifeEncoded);
         float actualLife = vShootingProgress;
 
-        // 3D perspective camera
-        float orbitDist = 1.0;
-        float zoomScale = uZoom;
-
         // Camera rotation
         float cosRotX = cos(uCameraRotX);
         float sinRotX = sin(uCameraRotX);
         float cosRotY = cos(uCameraRotY);
         float sinRotY = sin(uCameraRotY);
 
-        // Camera position (orbiting at fixed distance)
-        vec3 cameraPos = vec3(
-            orbitDist * sinRotY * cosRotX,
-            orbitDist * sinRotX,
-            orbitDist * cosRotY * cosRotX
-        );
+        // Free camera: direct position
+        vec3 cameraPos = uCameraPos;
 
-        // Camera basis vectors
-        vec3 cameraForward = normalize(-cameraPos);
-        vec3 worldUp = vec3(0.0, 1.0, 0.0);
-        vec3 cameraRight = normalize(cross(worldUp, cameraForward));
+        // Camera basis vectors (from rotation angles, not looking at origin)
+        vec3 cameraForward = vec3(sinRotY * cosRotX, -sinRotX, cosRotY * cosRotX);
+        vec3 cameraRight = vec3(cosRotY, 0.0, -sinRotY);
         vec3 cameraUp = cross(cameraForward, cameraRight);
 
         // Vector from camera to particle
@@ -103,11 +93,11 @@ window.SPACE_PARTICLE_VERTEX_SHADER = `
         }
 
         // Perspective projection
-        float perspectiveScale = orbitDist / zDist;
+        float perspectiveScale = 1.0 / zDist;
         vec2 screenCenter = uResolution * 0.5;
         float projX = dot(toParticle, cameraRight) * perspectiveScale;
         float projY = dot(toParticle, cameraUp) * perspectiveScale;
-        vec2 projectedPos = screenCenter + vec2(projX, -projY) * uResolution.x * zoomScale;
+        vec2 projectedPos = screenCenter + vec2(projX, -projY) * uResolution.x;
 
         // Convert to clip space
         vec2 clipPos = (projectedPos / uResolution) * 2.0 - 1.0;
@@ -135,10 +125,10 @@ window.SPACE_PARTICLE_VERTEX_SHADER = `
         vBlurAmount = clamp(max(nearBlur, farBlur) * uApertureSize, 0.0, 1.0);
 
         // Base particle size with perspective
-        float baseSize = uParticleSize * perspectiveScale * zoomScale;
+        float baseSize = uParticleSize * perspectiveScale;
 
         // Add blur size (Circle of Confusion)
-        float blurSize = vBlurAmount * uMaxBlurSize * perspectiveScale * zoomScale;
+        float blurSize = vBlurAmount * uMaxBlurSize * perspectiveScale;
         float finalSize = baseSize + blurSize;
 
         // Twinkling
@@ -303,17 +293,18 @@ window.SPACE_PARTICLE_FRAGMENT_SHADER = `
         }
         color *= twinkle;
 
-        // Final brightness
-        float focusBrightness = 0.5 + sharpness * 0.5;
+        // Final brightness - blurred particles fade to invisible
+        // sharpness = 1 means in focus, sharpness = 0 means max blur (invisible)
+        float focusBrightness = sharpness * sharpness; // Quadratic falloff for smooth fade
         float boostedLight = lightIntensity * 8.0;
         float brightness = softShape * vAlpha * focusBrightness * min(boostedLight, 2.5);
 
-        // Shooting stars are extra bright
+        // Shooting stars are extra bright (and ignore blur fade)
         if (vShootingStar > 0.5) {
-            brightness *= 1.5;
+            brightness = softShape * vAlpha * min(boostedLight, 2.5) * 1.5;
         }
 
-        // Discard very dim particles
+        // Discard very dim particles (including fully blurred ones)
         if (brightness < 0.005) discard;
 
         // Additive blending output

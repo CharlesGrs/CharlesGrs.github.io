@@ -414,6 +414,7 @@
 /* Sliders */
 .sp-slider {
     flex: 1;
+    max-width: 90px;
     height: 4px;
     -webkit-appearance: none;
     appearance: none;
@@ -448,7 +449,7 @@
 }
 
 .sp-value {
-    width: 40px;
+    min-width: 36px;
     text-align: right;
     font-size: 10px;
     color: #aaa;

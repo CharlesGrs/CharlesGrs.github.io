@@ -11,13 +11,9 @@
 
     const colors = {
         gold: '#e8b923',
-        goldDim: '#c49a1a',
         teal: '#2dd4bf',
-        tealDim: '#1a9a87',
         textPrimary: '#e8eaed',
-        textMuted: '#6b7280',
-        border: '#1f2937',
-        bgCard: '#151d26'
+        textMuted: '#6b7280'
     };
 
     // Color palette - brighter, more saturated for visibility:
@@ -167,8 +163,10 @@
     const moonOrbits = {
         // Unity moons (all share unity's orbital plane)
         csharp:   { baseRadius: 0.5, orbitIndex: 0, speed: 0.008, phase: 0, sun: 'unity' },
-        vfx:      { baseRadius: 0.5, orbitIndex: 1, speed: -0.006, phase: Math.PI * 0.66, sun: 'unity' },
-        arvr:     { baseRadius: 0.5, orbitIndex: 2, speed: 0.005, phase: Math.PI * 1.33, sun: 'unity' },
+        hdrp:     { baseRadius: 0.5, orbitIndex: 1, speed: -0.007, phase: Math.PI * 0.5, sun: 'unity' },
+        urp:      { baseRadius: 0.5, orbitIndex: 2, speed: 0.006, phase: Math.PI, sun: 'unity' },
+        vfx:      { baseRadius: 0.5, orbitIndex: 3, speed: -0.006, phase: Math.PI * 1.25, sun: 'unity' },
+        arvr:     { baseRadius: 0.5, orbitIndex: 4, speed: 0.005, phase: Math.PI * 1.6, sun: 'unity' },
         // Unreal moons (all share unreal's orbital plane)
         cpp:      { baseRadius: 0.5, orbitIndex: 0, speed: 0.007, phase: 0, sun: 'unreal' },
         niagara:  { baseRadius: 0.5, orbitIndex: 1, speed: -0.005, phase: Math.PI, sun: 'unreal' },
@@ -189,54 +187,17 @@
         threejs:   { radius: 0.038, speed: -0.014, phase: Math.PI * 1.5, parent: 'glsl', tiltX: -0.25, tiltY: -0.4 }
     };
 
-    // Find parent sun for each planet based on connections
-    function findParentSun(skillId) {
-        const suns = ['unity', 'unreal', 'graphics'];
-        if (suns.includes(skillId)) return null; // Suns have no parent
-
-        // Check direct connections first
-        for (const [a, b] of connections) {
-            if (a === skillId && suns.includes(b)) return b;
-            if (b === skillId && suns.includes(a)) return a;
-        }
-
-        // Check indirect connections (connected to something connected to a sun)
-        for (const [a, b] of connections) {
-            const connectedId = a === skillId ? b : (b === skillId ? a : null);
-            if (!connectedId) continue;
-            for (const [c, d] of connections) {
-                if (c === connectedId && suns.includes(d)) return d;
-                if (d === connectedId && suns.includes(c)) return c;
-            }
-        }
-        return null;
-    }
-
     let nodes = skills.map((skill) => {
         // Compute depth based on size: larger = closer (depth 1), smaller = farther (depth 0)
-        // This is used for visual layering, NOT for perspective Z position
         const depth = Math.min(1.0, Math.max(0.0, (skill.baseSize - 6) / 28));
-
-        // Orbital parameters for planets
-        const parentSun = findParentSun(skill.id);
-
-        // Random but not perpendicular orbital plane tilt (max ~45 degrees from XY plane)
-        const orbitTiltX = (Math.random() - 0.5) * 0.8; // Tilt around X axis
-        const orbitTiltZ = (Math.random() - 0.5) * 0.8; // Tilt around Z axis
 
         return {
             ...skill,
             size: skill.baseSize,
-            x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, // Added z and vz for 3D positioning
-            renderX: 0, renderY: 0, // Parallax-adjusted render positions
-            depth: depth, // Depth for parallax (0=far, 1=near)
-            // Orbital parameters
-            parentSun: parentSun,
-            orbitAngle: Math.random() * Math.PI * 2, // Starting angle in orbit
-            orbitRadius: 0, // Will be assigned based on distance from sun
-            orbitSpeed: 0.0005 + Math.random() * 0.001, // Orbital speed (radians per frame)
-            orbitTiltX: orbitTiltX,
-            orbitTiltZ: orbitTiltZ,
+            x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0,
+            renderX: 0, renderY: 0,
+            depth: depth,
+            orbitAngle: Math.random() * Math.PI * 2,
             // Visual effects
             pulseSpeed: 0.05 + Math.random() * 0.1,
             pulsePhase: Math.random() * Math.PI * 2,
@@ -251,20 +212,28 @@
     let isDragging = false, dragNode = null, hoveredNode = null;
     let mouseX = 0, mouseY = 0;  // World coordinates (for dragging nodes)
     let mouseScreenX = 0, mouseScreenY = 0;  // Screen coordinates (for hit testing)
-    let settled = false, settleTimer = 0;
-    let startupPhase = true, globalFadeIn = 0;
-    let zoomLevel = 1.0, targetZoom = 1.0;
-    let zoomCenterX = 0, zoomCenterY = 0;
-    let targetZoomCenterX = 0, targetZoomCenterY = 0;
-    const MIN_ZOOM = 1.0, MAX_ZOOM = 3.0;
+    let globalFadeIn = 0;
     let mouseLightEnabled = false; // Toggle with spacebar
 
-    // Camera rotation (Alt + Right Click orbit)
-    let cameraRotX = 0, cameraRotY = 0;  // Current rotation
-    let targetCameraRotX = 0, targetCameraRotY = 0;  // Target rotation
-    let isOrbiting = false;  // Alt + Right Click dragging
-    let orbitStartX = 0, orbitStartY = 0;  // Mouse position when orbit started
-    let orbitStartRotX = 0, orbitStartRotY = 0;  // Camera rotation when orbit started
+    // Free camera system - position + rotation (FPS-style)
+    // Camera position in world space
+    let cameraPosX = 0, cameraPosY = 0, cameraPosZ = 1.0;  // Start at Z=1 looking toward origin
+    let targetCameraPosX = 0, targetCameraPosY = 0, targetCameraPosZ = 1.0;
+    // Camera rotation (pitch = up/down, yaw = left/right)
+    // rotY=π means looking in -Z direction (toward origin from Z=1)
+    let cameraRotX = 0, cameraRotY = Math.PI;  // Current rotation (pitch, yaw)
+    let targetCameraRotX = 0, targetCameraRotY = Math.PI;  // Target rotation
+    let isOrbiting = false;  // Left click dragging on empty space
+    let orbitStartX = 0, orbitStartY = 0;  // Mouse position when drag started
+    let orbitStartRotX = 0, orbitStartRotY = 0;  // Camera rotation when drag started
+    const keysPressed = {};  // Track which keys are currently held
+
+    // Camera parameters (exposed for settings panel)
+    window.cameraParams = {
+        moveSpeed: 0.005,        // Movement speed per frame (WASD)
+        rotationSpeed: 0.003,    // Mouse rotation sensitivity
+        smoothing: 0.08          // Camera movement smoothing (0-1)
+    };
 
     const tooltip = document.getElementById('skill-tooltip');
     const tooltipTitle = tooltip.querySelector('.skill-tooltip-title');
@@ -377,9 +346,20 @@
     }
 
     // WebGL sphere renderer
-    let gl, glCanvas, sphereProgram, sunProgram, godRaysProgram, debugQuadProgram, glReady = false;
-    let godRaysQuadBuffer, debugQuadBuffer;
+    let gl, glCanvas, sphereProgram, sunProgram, debugQuadProgram, glReady = false;
+    let debugQuadBuffer;
     let showDebugQuads = false; // Toggle for debug quad overlay
+
+    // Nebula background (rendered to FBO for planet fog sampling)
+    let nebulaProgram = null;
+    let nebulaQuadBuffer = null;
+    let nebulaFBO = null;
+    let nebulaTexture = null;
+    let nebulaFBOWidth = 0, nebulaFBOHeight = 0;
+    const nebulaResolutionScale = 0.5; // Render nebula at half resolution for performance
+
+    // Simple blit program (copies texture to screen)
+    let blitProgram = null;
 
     // Space particles system
     let spaceParticleProgram = null;
@@ -403,27 +383,35 @@
     };
 
     // Space particle DoF parameters (UI-controllable)
+    // Property names match settings-panel.js controls
     const spaceParticleParams = {
         // Focus distance settings
-        focusDistance: 0.7,     // Distance from camera where particles are in focus
+        focusDistance: 0.2,     // Distance from camera where particles are in focus
         focusRange: 0.15,       // Range around focus distance that's sharp
-        nearBlurDist: 0.3,      // Distance where near blur starts
-        farBlurDist: 1.2,       // Distance where far blur starts
+        nearBlur: 0.1,          // Distance where near blur starts
+        farBlur: 0.4,           // Distance where far blur starts
 
         // Bokeh effect
-        maxBlurSize: 25.0,      // Maximum blur circle size in pixels
-        apertureSize: 1.0,      // Affects bokeh intensity (f-stop simulation)
-        bokehRingWidth: 0.5,    // Width of bokeh ring (0 = filled, 1 = thin ring)
-        bokehRingIntensity: 0.8, // Brightness of ring edge
+        maxBlur: 25.0,          // Maximum blur circle size in pixels
+        aperture: 1.0,          // Affects bokeh intensity (f-stop simulation)
+        ringWidth: 0.5,         // Width of bokeh ring (0 = filled, 1 = thin ring)
+        ringIntensity: 0.8,     // Brightness of ring edge
 
         // Circle quality
-        circleSoftness: 0.3,    // Edge softness (0 = hard, 1 = very soft)
+        softness: 0.3,          // Edge softness (0 = hard, 1 = very soft)
 
         // Appearance
         particleSize: 2.0,      // Base particle size
         brightness: 1.0,        // Overall particle brightness
         lightFalloff: 3.0,      // How quickly light falls off with distance
         baseColor: '#fffaf2',   // Default warm white particle color
+
+        // Shooting stars (merged for unified persistence)
+        shootingChance: 0.0003, // Chance per frame of spawning shooting star
+        shootingSpeed: 0.4,     // Speed multiplier
+        shootingDuration: 0.8,  // Duration in seconds
+        shootingGoldColor: '#e8b923',  // Gold color
+        shootingTealColor: '#2dd4bf',  // Teal color
 
         // Internal
         sphereRadius: 0.35,     // Particle distribution sphere radius
@@ -432,24 +420,36 @@
 
     // God rays parameters (UI-controllable)
     const godRaysParams = {
-        rayIntensity: 0.5,    // Light ray intensity (0-2)
-        rayFalloff: 4.0,      // Ray falloff exponent (1-10)
-        glowIntensity: 0.5,   // Glow intensity (0-2)
-        glowSize: 4.0,        // Glow size/falloff (1-12)
-        fogDensity: 6.0,      // Fog noise density (1-15)
-        ambientFog: 0.08,     // Ambient fog intensity (0-0.3)
-        animSpeed: 1.0,       // Animation speed multiplier (0-3)
-        noiseScale: 1.0,      // Noise frequency scale (0.1-3)
-        noiseOctaves: 1.0,    // Noise detail/octaves blend (0-2)
-        noiseContrast: 1.0    // Noise contrast/sharpness (0.2-3)
+        // Physically-based light scattering
+        lightIntensity: 1.2,    // Overall light intensity (0-3)
+        lightFalloff: 2.0,      // Falloff exponent (2.0 = inverse-square law)
+        lightScale: 3.0,        // Distance scale (controls spread/size)
+        lightSaturation: 1.8,   // Color saturation boost (1.0 = no change)
+
+        // Edge Noise (organic displacement)
+        noiseScale: 4.0,        // Noise frequency (0.5-10)
+        noiseStrength: 0.12,    // Displacement amount (0-0.5)
+        noiseOctaves: 0.5,      // Noise detail 0-1 (0=smooth, 1=detailed)
+
+        // Self-shadowing with chromatic scattering
+        noiseShadow: 0.5,       // Self-shadowing intensity (0-1)
+        shadowOffset: 0.3,      // World-space offset away from light (0-1)
+        scatterR: 0.3,          // Red scatter rate (lower = less scatter)
+        scatterG: 0.6,          // Green scatter rate
+        scatterB: 1.0           // Blue scatter rate (higher = more scatter, Rayleigh-like)
     };
 
     function initSphereGL() {
-        glCanvas = document.createElement('canvas');
-        glCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;';
-        container.insertBefore(glCanvas, container.firstChild);
+        // Use the gpu-canvas element from the HTML (inside canvas-section)
+        glCanvas = document.getElementById('gpu-canvas');
+        if (!glCanvas) {
+            // Fallback: create canvas dynamically if gpu-canvas doesn't exist
+            glCanvas = document.createElement('canvas');
+            glCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;';
+            container.insertBefore(glCanvas, container.firstChild);
+        }
 
-        gl = glCanvas.getContext('webgl', { alpha: true, antialias: true, premultipliedAlpha: false });
+        gl = glCanvas.getContext('webgl', { alpha: true, antialias: true, premultipliedAlpha: true });
         if (!gl) return false;
 
         function comp(s, t) {
@@ -489,6 +489,7 @@
         sphereProgram.aDepth = gl.getAttribLocation(sphereProgram, 'aDepth');
         sphereProgram.aZ = gl.getAttribLocation(sphereProgram, 'aZ');
         sphereProgram.uRes = gl.getUniformLocation(sphereProgram, 'uRes');
+        sphereProgram.uFBORes = gl.getUniformLocation(sphereProgram, 'uFBORes');
         sphereProgram.uMouse = gl.getUniformLocation(sphereProgram, 'uMouse');
         sphereProgram.uTime = gl.getUniformLocation(sphereProgram, 'uTime');
         sphereProgram.uLight0 = gl.getUniformLocation(sphereProgram, 'uLight0');
@@ -515,10 +516,12 @@
         sphereProgram.uMouseLightEnabled = gl.getUniformLocation(sphereProgram, 'uMouseLightEnabled');
         sphereProgram.uAmbientIntensity = gl.getUniformLocation(sphereProgram, 'uAmbientIntensity');
         sphereProgram.uFogIntensity = gl.getUniformLocation(sphereProgram, 'uFogIntensity');
-        sphereProgram.uZoom = gl.getUniformLocation(sphereProgram, 'uZoom');
-        sphereProgram.uZoomCenter = gl.getUniformLocation(sphereProgram, 'uZoomCenter');
         sphereProgram.uCameraRotX = gl.getUniformLocation(sphereProgram, 'uCameraRotX');
         sphereProgram.uCameraRotY = gl.getUniformLocation(sphereProgram, 'uCameraRotY');
+        sphereProgram.uCameraPos = gl.getUniformLocation(sphereProgram, 'uCameraPos');
+        // Background texture for fog sampling
+        sphereProgram.uBackgroundTexture = gl.getUniformLocation(sphereProgram, 'uBackgroundTexture');
+        sphereProgram.uUseBackgroundTexture = gl.getUniformLocation(sphereProgram, 'uUseBackgroundTexture');
 
         // Planet A (Oceanic/Mountain) uniforms
         sphereProgram.uNoiseScaleA = gl.getUniformLocation(sphereProgram, 'uNoiseScaleA');
@@ -533,6 +536,9 @@
         sphereProgram.uSunsetStrengthA = gl.getUniformLocation(sphereProgram, 'uSunsetStrengthA');
         sphereProgram.uOceanRoughnessA = gl.getUniformLocation(sphereProgram, 'uOceanRoughnessA');
         sphereProgram.uSSSIntensityA = gl.getUniformLocation(sphereProgram, 'uSSSIntensityA');
+        sphereProgram.uSSSWrapA = gl.getUniformLocation(sphereProgram, 'uSSSWrapA');
+        sphereProgram.uSSSBacklightA = gl.getUniformLocation(sphereProgram, 'uSSSBacklightA');
+        sphereProgram.uSSSColorA = gl.getUniformLocation(sphereProgram, 'uSSSColorA');
         sphereProgram.uSeaLevelA = gl.getUniformLocation(sphereProgram, 'uSeaLevelA');
         sphereProgram.uLandRoughnessA = gl.getUniformLocation(sphereProgram, 'uLandRoughnessA');
         sphereProgram.uNormalStrengthA = gl.getUniformLocation(sphereProgram, 'uNormalStrengthA');
@@ -588,10 +594,9 @@
         // Sun program uniforms
         sunProgram.uRes = gl.getUniformLocation(sunProgram, 'uRes');
         sunProgram.uTime = gl.getUniformLocation(sunProgram, 'uTime');
-        sunProgram.uZoom = gl.getUniformLocation(sunProgram, 'uZoom');
-        sunProgram.uZoomCenter = gl.getUniformLocation(sunProgram, 'uZoomCenter');
         sunProgram.uCameraRotX = gl.getUniformLocation(sunProgram, 'uCameraRotX');
         sunProgram.uCameraRotY = gl.getUniformLocation(sunProgram, 'uCameraRotY');
+        sunProgram.uCameraPos = gl.getUniformLocation(sunProgram, 'uCameraPos');
 
         // Sun halo parameter uniforms
         sunProgram.uSunCoreSize = gl.getUniformLocation(sunProgram, 'uSunCoreSize');
@@ -614,56 +619,134 @@
 
         sunProgram.buf = gl.createBuffer();
 
-        // God rays program
-        const grVs = comp(godRaysVertexShader, gl.VERTEX_SHADER);
-        const grFs = comp(godRaysFragmentShader, gl.FRAGMENT_SHADER);
-        if (grVs && grFs) {
-            godRaysProgram = gl.createProgram();
-            gl.attachShader(godRaysProgram, grVs);
-            gl.attachShader(godRaysProgram, grFs);
-            gl.linkProgram(godRaysProgram);
+        // Nebula background program (renders to FBO, sampled by planets for fog)
+        const nebulaVertexShader = window.NEBULA_BACKGROUND_VERTEX_SHADER || window.BACKGROUND_VERTEX_SHADER;
+        const nebulaFragmentShader = window.NEBULA_BACKGROUND_FRAGMENT_SHADER;
+        if (nebulaVertexShader && nebulaFragmentShader) {
+            const nbVs = comp(nebulaVertexShader, gl.VERTEX_SHADER);
+            const nbFs = comp(nebulaFragmentShader, gl.FRAGMENT_SHADER);
+            if (nbVs && nbFs) {
+                nebulaProgram = gl.createProgram();
+                gl.attachShader(nebulaProgram, nbVs);
+                gl.attachShader(nebulaProgram, nbFs);
+                gl.linkProgram(nebulaProgram);
 
-            if (gl.getProgramParameter(godRaysProgram, gl.LINK_STATUS)) {
-                godRaysProgram.aPosition = gl.getAttribLocation(godRaysProgram, 'aPosition');
-                godRaysProgram.uResolution = gl.getUniformLocation(godRaysProgram, 'uResolution');
-                godRaysProgram.uTime = gl.getUniformLocation(godRaysProgram, 'uTime');
-                godRaysProgram.uMouse = gl.getUniformLocation(godRaysProgram, 'uMouse');
-                godRaysProgram.uLight0 = gl.getUniformLocation(godRaysProgram, 'uLight0');
-                godRaysProgram.uLight1 = gl.getUniformLocation(godRaysProgram, 'uLight1');
-                godRaysProgram.uLight2 = gl.getUniformLocation(godRaysProgram, 'uLight2');
-                godRaysProgram.uLightColor0 = gl.getUniformLocation(godRaysProgram, 'uLightColor0');
-                godRaysProgram.uLightColor1 = gl.getUniformLocation(godRaysProgram, 'uLightColor1');
-                godRaysProgram.uLightColor2 = gl.getUniformLocation(godRaysProgram, 'uLightColor2');
-                godRaysProgram.uZoom = gl.getUniformLocation(godRaysProgram, 'uZoom');
-                godRaysProgram.uZoomCenter = gl.getUniformLocation(godRaysProgram, 'uZoomCenter');
-                godRaysProgram.uCameraRotX = gl.getUniformLocation(godRaysProgram, 'uCameraRotX');
-                godRaysProgram.uCameraRotY = gl.getUniformLocation(godRaysProgram, 'uCameraRotY');
-                // Controllable parameters
-                godRaysProgram.uRayIntensity = gl.getUniformLocation(godRaysProgram, 'uRayIntensity');
-                godRaysProgram.uRayFalloff = gl.getUniformLocation(godRaysProgram, 'uRayFalloff');
-                godRaysProgram.uGlowIntensity = gl.getUniformLocation(godRaysProgram, 'uGlowIntensity');
-                godRaysProgram.uGlowSize = gl.getUniformLocation(godRaysProgram, 'uGlowSize');
-                godRaysProgram.uFogDensity = gl.getUniformLocation(godRaysProgram, 'uFogDensity');
-                godRaysProgram.uAmbientFog = gl.getUniformLocation(godRaysProgram, 'uAmbientFog');
-                godRaysProgram.uAnimSpeed = gl.getUniformLocation(godRaysProgram, 'uAnimSpeed');
-                godRaysProgram.uNoiseScale = gl.getUniformLocation(godRaysProgram, 'uNoiseScale');
-                godRaysProgram.uNoiseOctaves = gl.getUniformLocation(godRaysProgram, 'uNoiseOctaves');
-                godRaysProgram.uNoiseContrast = gl.getUniformLocation(godRaysProgram, 'uNoiseContrast');
+                if (gl.getProgramParameter(nebulaProgram, gl.LINK_STATUS)) {
+                    nebulaProgram.aPosition = gl.getAttribLocation(nebulaProgram, 'aPosition');
+                    nebulaProgram.uTime = gl.getUniformLocation(nebulaProgram, 'uTime');
+                    nebulaProgram.uMouse = gl.getUniformLocation(nebulaProgram, 'uMouse');
+                    nebulaProgram.uResolution = gl.getUniformLocation(nebulaProgram, 'uResolution');
+                    nebulaProgram.uCameraRotX = gl.getUniformLocation(nebulaProgram, 'uCameraRotX');
+                    nebulaProgram.uCameraRotY = gl.getUniformLocation(nebulaProgram, 'uCameraRotY');
+                    // Light positions and colors
+                    nebulaProgram.uLight0 = gl.getUniformLocation(nebulaProgram, 'uLight0');
+                    nebulaProgram.uLight1 = gl.getUniformLocation(nebulaProgram, 'uLight1');
+                    nebulaProgram.uLight2 = gl.getUniformLocation(nebulaProgram, 'uLight2');
+                    nebulaProgram.uLightColor0 = gl.getUniformLocation(nebulaProgram, 'uLightColor0');
+                    nebulaProgram.uLightColor1 = gl.getUniformLocation(nebulaProgram, 'uLightColor1');
+                    nebulaProgram.uLightColor2 = gl.getUniformLocation(nebulaProgram, 'uLightColor2');
+                    nebulaProgram.uLight0Intensity = gl.getUniformLocation(nebulaProgram, 'uLight0Intensity');
+                    nebulaProgram.uLight1Intensity = gl.getUniformLocation(nebulaProgram, 'uLight1Intensity');
+                    nebulaProgram.uLight2Intensity = gl.getUniformLocation(nebulaProgram, 'uLight2Intensity');
+                    // Screen-space light positions (camera-transformed)
+                    nebulaProgram.uLight0Screen = gl.getUniformLocation(nebulaProgram, 'uLight0Screen');
+                    nebulaProgram.uLight1Screen = gl.getUniformLocation(nebulaProgram, 'uLight1Screen');
+                    nebulaProgram.uLight2Screen = gl.getUniformLocation(nebulaProgram, 'uLight2Screen');
+                    // Nebula parameters
+                    nebulaProgram.uNebulaIntensity = gl.getUniformLocation(nebulaProgram, 'uNebulaIntensity');
+                    nebulaProgram.uNebulaScale = gl.getUniformLocation(nebulaProgram, 'uNebulaScale');
+                    nebulaProgram.uNebulaDetail = gl.getUniformLocation(nebulaProgram, 'uNebulaDetail');
+                    nebulaProgram.uNebulaSpeed = gl.getUniformLocation(nebulaProgram, 'uNebulaSpeed');
+                    nebulaProgram.uLightInfluence = gl.getUniformLocation(nebulaProgram, 'uLightInfluence');
+                    nebulaProgram.uColorVariation = gl.getUniformLocation(nebulaProgram, 'uColorVariation');
+                    nebulaProgram.uFractalIntensity = gl.getUniformLocation(nebulaProgram, 'uFractalIntensity');
+                    nebulaProgram.uFractalScale = gl.getUniformLocation(nebulaProgram, 'uFractalScale');
+                    nebulaProgram.uFractalSpeed = gl.getUniformLocation(nebulaProgram, 'uFractalSpeed');
+                    nebulaProgram.uFractalSaturation = gl.getUniformLocation(nebulaProgram, 'uFractalSaturation');
+                    nebulaProgram.uFractalFalloff = gl.getUniformLocation(nebulaProgram, 'uFractalFalloff');
+                    nebulaProgram.uVignetteStrength = gl.getUniformLocation(nebulaProgram, 'uVignetteStrength');
+                    // Nebula colors
+                    nebulaProgram.uNebulaColorPurple = gl.getUniformLocation(nebulaProgram, 'uNebulaColorPurple');
+                    nebulaProgram.uNebulaColorCyan = gl.getUniformLocation(nebulaProgram, 'uNebulaColorCyan');
+                    nebulaProgram.uNebulaColorBlue = gl.getUniformLocation(nebulaProgram, 'uNebulaColorBlue');
+                    nebulaProgram.uNebulaColorGold = gl.getUniformLocation(nebulaProgram, 'uNebulaColorGold');
+                    // God rays parameters
+                    nebulaProgram.uGodRaysIntensity = gl.getUniformLocation(nebulaProgram, 'uGodRaysIntensity');
+                    nebulaProgram.uGodRaysFalloff = gl.getUniformLocation(nebulaProgram, 'uGodRaysFalloff');
+                    nebulaProgram.uGodRaysScale = gl.getUniformLocation(nebulaProgram, 'uGodRaysScale');
+                    nebulaProgram.uGodRaysSaturation = gl.getUniformLocation(nebulaProgram, 'uGodRaysSaturation');
+                    nebulaProgram.uGodRaysNoiseScale = gl.getUniformLocation(nebulaProgram, 'uGodRaysNoiseScale');
+                    nebulaProgram.uGodRaysNoiseStrength = gl.getUniformLocation(nebulaProgram, 'uGodRaysNoiseStrength');
+                    nebulaProgram.uGodRaysNoiseOctaves = gl.getUniformLocation(nebulaProgram, 'uGodRaysNoiseOctaves');
+                    nebulaProgram.uGodRaysShadow = gl.getUniformLocation(nebulaProgram, 'uGodRaysShadow');
+                    nebulaProgram.uGodRaysShadowOffset = gl.getUniformLocation(nebulaProgram, 'uGodRaysShadowOffset');
+                    nebulaProgram.uGodRaysScatterR = gl.getUniformLocation(nebulaProgram, 'uGodRaysScatterR');
+                    nebulaProgram.uGodRaysScatterG = gl.getUniformLocation(nebulaProgram, 'uGodRaysScatterG');
+                    nebulaProgram.uGodRaysScatterB = gl.getUniformLocation(nebulaProgram, 'uGodRaysScatterB');
 
-                // Fullscreen quad buffer
-                godRaysQuadBuffer = gl.createBuffer();
-                gl.bindBuffer(gl.ARRAY_BUFFER, godRaysQuadBuffer);
-                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-                    -1, -1,  1, -1,  1, 1,
-                    -1, -1,  1, 1,  -1, 1
-                ]), gl.STATIC_DRAW);
-            } else {
-                console.error('God rays program link error:', gl.getProgramInfoLog(godRaysProgram));
-                godRaysProgram = null;
+                    // Fullscreen quad buffer for nebula
+                    nebulaQuadBuffer = gl.createBuffer();
+                    gl.bindBuffer(gl.ARRAY_BUFFER, nebulaQuadBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                        -1, -1,  1, -1,  1, 1,
+                        -1, -1,  1, 1,  -1, 1
+                    ]), gl.STATIC_DRAW);
+
+                    // Create FBO for nebula background (texture created/resized in render loop)
+                    nebulaFBO = gl.createFramebuffer();
+                    nebulaTexture = gl.createTexture();
+                    gl.bindTexture(gl.TEXTURE_2D, nebulaTexture);
+                    // Use LINEAR filtering for smooth upscaling from reduced resolution
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                    // Don't allocate texture or attach to FBO yet - done in render loop when size is known
+                    nebulaFBOWidth = 0;
+                    nebulaFBOHeight = 0;
+
+                    // Create simple blit program to copy FBO texture to screen
+                    // Uses gl_FragCoord for UV to match planet shader sampling exactly
+                    const blitVsSource = `
+                        attribute vec2 aPosition;
+                        void main() {
+                            gl_Position = vec4(aPosition, 0.0, 1.0);
+                        }
+                    `;
+                    const blitFsSource = `
+                        precision highp float;
+                        uniform sampler2D uTexture;
+                        uniform vec2 uResolution;
+                        void main() {
+                            vec2 uv = gl_FragCoord.xy / uResolution;
+                            gl_FragColor = texture2D(uTexture, uv);
+                        }
+                    `;
+                    const blitVs = comp(blitVsSource, gl.VERTEX_SHADER);
+                    const blitFs = comp(blitFsSource, gl.FRAGMENT_SHADER);
+                    if (blitVs && blitFs) {
+                        blitProgram = gl.createProgram();
+                        gl.attachShader(blitProgram, blitVs);
+                        gl.attachShader(blitProgram, blitFs);
+                        gl.linkProgram(blitProgram);
+                        if (gl.getProgramParameter(blitProgram, gl.LINK_STATUS)) {
+                            blitProgram.aPosition = gl.getAttribLocation(blitProgram, 'aPosition');
+                            blitProgram.uTexture = gl.getUniformLocation(blitProgram, 'uTexture');
+                            blitProgram.uResolution = gl.getUniformLocation(blitProgram, 'uResolution');
+                        }
+                    }
+
+                    console.log('Nebula background program initialized with FBO');
+                } else {
+                    console.error('Nebula program link error:', gl.getProgramInfoLog(nebulaProgram));
+                    nebulaProgram = null;
+                }
             }
         }
 
         // Debug quad program
+        const debugQuadVertexShader = window.DEBUG_QUAD_VERTEX_SHADER;
+        const debugQuadFragmentShader = window.DEBUG_QUAD_FRAGMENT_SHADER;
         if (debugQuadVertexShader && debugQuadFragmentShader) {
             const dqVs = comp(debugQuadVertexShader, gl.VERTEX_SHADER);
             const dqFs = comp(debugQuadFragmentShader, gl.FRAGMENT_SHADER);
@@ -678,9 +761,9 @@
                     debugQuadProgram.uCenter = gl.getUniformLocation(debugQuadProgram, 'uCenter');
                     debugQuadProgram.uSize = gl.getUniformLocation(debugQuadProgram, 'uSize');
                     debugQuadProgram.uResolution = gl.getUniformLocation(debugQuadProgram, 'uResolution');
-                    debugQuadProgram.uZoom = gl.getUniformLocation(debugQuadProgram, 'uZoom');
                     debugQuadProgram.uCameraRotX = gl.getUniformLocation(debugQuadProgram, 'uCameraRotX');
                     debugQuadProgram.uCameraRotY = gl.getUniformLocation(debugQuadProgram, 'uCameraRotY');
+                    debugQuadProgram.uCameraPos = gl.getUniformLocation(debugQuadProgram, 'uCameraPos');
                     debugQuadProgram.uWorldZ = gl.getUniformLocation(debugQuadProgram, 'uWorldZ');
 
                     // Quad buffer (2 triangles)
@@ -711,8 +794,6 @@
                 spaceParticleProgram.aPosition = gl.getAttribLocation(spaceParticleProgram, 'aPosition');
                 spaceParticleProgram.aLife = gl.getAttribLocation(spaceParticleProgram, 'aLife');
                 spaceParticleProgram.uResolution = gl.getUniformLocation(spaceParticleProgram, 'uResolution');
-                spaceParticleProgram.uZoom = gl.getUniformLocation(spaceParticleProgram, 'uZoom');
-                spaceParticleProgram.uZoomCenter = gl.getUniformLocation(spaceParticleProgram, 'uZoomCenter');
                 spaceParticleProgram.uTime = gl.getUniformLocation(spaceParticleProgram, 'uTime');
 
                 // DoF uniforms
@@ -733,6 +814,7 @@
                 spaceParticleProgram.uRenderPass = gl.getUniformLocation(spaceParticleProgram, 'uRenderPass');
                 spaceParticleProgram.uCameraRotX = gl.getUniformLocation(spaceParticleProgram, 'uCameraRotX');
                 spaceParticleProgram.uCameraRotY = gl.getUniformLocation(spaceParticleProgram, 'uCameraRotY');
+                spaceParticleProgram.uCameraPos = gl.getUniformLocation(spaceParticleProgram, 'uCameraPos');
 
                 // Fragment shader uniforms
                 spaceParticleProgram.uCircleSoftness = gl.getUniformLocation(spaceParticleProgram, 'uCircleSoftness');
@@ -759,8 +841,10 @@
                 spaceParticleProgram.uBaseParticleColor = gl.getUniformLocation(spaceParticleProgram, 'uBaseParticleColor');
 
                 // Initialize particle data: x, y, z (world space), life
-                // Particles fill a larger sphere encompassing all planet positions
-                const particleSphereRadius = 0.35; // Much larger to surround all planets
+                // Particles fill a sphere AROUND THE CAMERA so you can travel through them
+                const particleSphereRadius = 0.35;
+                // Initial camera position (must match cameraPosX/Y/Z initial values)
+                const initCamX = 0, initCamY = 0, initCamZ = 1.0;
                 spaceParticleData = new Float32Array(SPACE_PARTICLE_COUNT * 4);
                 for (let i = 0; i < SPACE_PARTICLE_COUNT; i++) {
                     const idx = i * 4;
@@ -771,10 +855,10 @@
                         y = (Math.random() * 2 - 1);
                         z = (Math.random() * 2 - 1);
                     } while (x * x + y * y + z * z > 1);
-                    // Scale to particle sphere radius (in world units)
-                    spaceParticleData[idx] = x * particleSphereRadius;      // x (world units)
-                    spaceParticleData[idx + 1] = y * particleSphereRadius;  // y (world units)
-                    spaceParticleData[idx + 2] = z * particleSphereRadius;  // z (world units)
+                    // Scale to particle sphere radius and offset by initial camera position
+                    spaceParticleData[idx] = initCamX + x * particleSphereRadius;      // x (world units)
+                    spaceParticleData[idx + 1] = initCamY + y * particleSphereRadius;  // y (world units)
+                    spaceParticleData[idx + 2] = initCamZ + z * particleSphereRadius;  // z (world units)
                     spaceParticleData[idx + 3] = Math.random();              // life (0-1)
                 }
 
@@ -793,18 +877,63 @@
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.clearColor(0, 0, 0, 0);
 
+        // Add mouse event handlers to glCanvas for camera rotation
+        glCanvas.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return; // Only left click
+            isOrbiting = true;
+            orbitStartX = e.clientX;
+            orbitStartY = e.clientY;
+            orbitStartRotX = targetCameraRotX;
+            orbitStartRotY = targetCameraRotY;
+            glCanvas.style.cursor = 'grabbing';
+        });
+
+        glCanvas.addEventListener('mousemove', (e) => {
+            if (!isOrbiting) return;
+            const deltaX = e.clientX - orbitStartX;
+            const deltaY = e.clientY - orbitStartY;
+            const sensitivity = window.cameraParams ? window.cameraParams.rotationSpeed : 0.005;
+            targetCameraRotY = orbitStartRotY + deltaX * sensitivity;
+            targetCameraRotX = orbitStartRotX + deltaY * sensitivity;
+            targetCameraRotX = Math.max(-Math.PI * 0.4, Math.min(Math.PI * 0.4, targetCameraRotX));
+        });
+
+        glCanvas.addEventListener('mouseup', () => {
+            if (isOrbiting) {
+                isOrbiting = false;
+                glCanvas.style.cursor = 'grab';
+            }
+        });
+
+        glCanvas.addEventListener('mouseleave', () => {
+            if (isOrbiting) {
+                isOrbiting = false;
+                glCanvas.style.cursor = 'grab';
+            }
+        });
+
         glReady = true;
         return true;
     }
 
     function resizeSphereGL() {
-        if (!glReady) return;
-        glCanvas.width = width * (window.devicePixelRatio || 1);
-        glCanvas.height = height * (window.devicePixelRatio || 1);
+        if (!glReady || !glCanvas) return;
+        // Get dimensions from the canvas's parent (canvas-section) for proper sizing
+        const canvasSection = glCanvas.parentElement;
+        if (canvasSection) {
+            const rect = canvasSection.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            glCanvas.width = rect.width * dpr;
+            glCanvas.height = rect.height * dpr;
+        } else {
+            glCanvas.width = width * (window.devicePixelRatio || 1);
+            glCanvas.height = height * (window.devicePixelRatio || 1);
+        }
         gl.viewport(0, 0, glCanvas.width, glCanvas.height);
     }
 
     function hex2vec(h) {
+        if (!h || typeof h !== 'string') return [1, 1, 1]; // Default to white if invalid
         return [parseInt(h.slice(1,3),16)/255, parseInt(h.slice(3,5),16)/255, parseInt(h.slice(5,7),16)/255];
     }
 
@@ -819,7 +948,7 @@
 
         gl.clear(gl.COLOR_BUFFER_BIT);
 
-        // Get light data first (needed for both god rays and spheres)
+        // Get light data first (needed for nebula, god rays and spheres)
         const lightNodes = nodes.filter(n => n.isLight);
         const light0 = lightNodes[0] || { x: 0, y: 0, lightColor: '#ffaa33' };
         const light1 = lightNodes[1] || { x: 0, y: 0, lightColor: '#9b4dca' };
@@ -828,14 +957,156 @@
         const lc1 = hex2vec(light1.lightColor || '#9b4dca');
         const lc2 = hex2vec(light2.lightColor || '#33ddff');
 
-        // Export light data globally for background nebula shader
+        // Compute screen-space light positions (camera-transformed) for nebula god rays
+        // Use WebGL canvas dimensions (CSS pixels, not device pixels)
+        const glWidth = glCanvas ? (glCanvas.width / (window.devicePixelRatio || 1)) : width;
+        const glHeight = glCanvas ? (glCanvas.height / (window.devicePixelRatio || 1)) : height;
+        const computeLightScreenPosEarly = (lx, ly, lz) => {
+            const crx = Math.cos(cameraRotX), srx = Math.sin(cameraRotX);
+            const cry = Math.cos(cameraRotY), sry = Math.sin(cameraRotY);
+            // Free camera: direct position and rotation-based forward
+            const cpx = cameraPosX, cpy = cameraPosY, cpz = cameraPosZ;
+            const fx = sry * crx, fy = -srx, fz = cry * crx;
+            const rx = cry, rz = -sry;
+            const ux = fy * rz, uy = fz * rx - fx * rz, uz = -fy * rx;
+            const ws = 1.0 / glWidth;
+            const scx = glWidth * 0.5;
+            const scy = glHeight * 0.5;
+            const wx = (lx - scx) * ws, wy = -(ly - scy) * ws, wz = lz || 0;
+            const tx = wx - cpx, ty = wy - cpy, tz = wz - cpz;
+            const zd = tx * fx + ty * fy + tz * fz;
+            if (zd < 0.01) return { x: scx, y: scy };
+            const ps = 1.0 / zd;
+            const px = (tx * rx + tz * rz) * ps;
+            const py = (tx * ux + ty * uy + tz * uz) * ps;
+            return { x: scx + px * glWidth, y: scy - py * glWidth };
+        };
+        const screenLight0 = computeLightScreenPosEarly(light0.x, light0.y, light0.z);
+        const screenLight1 = computeLightScreenPosEarly(light1.x, light1.y, light1.z);
+        const screenLight2 = computeLightScreenPosEarly(light2.x, light2.y, light2.z);
+
+        // ========================================
+        // RENDER NEBULA BACKGROUND TO FBO
+        // ========================================
+        const nebulaEnabled = !window.renderToggles || window.renderToggles.nebula !== false;
+        // Use actual canvas pixel dimensions (with DPR) for full resolution
+        const canvasWidth = glCanvas.width;
+        const canvasHeight = glCanvas.height;
+        // Nebula FBO uses reduced resolution for performance
+        const fboWidth = Math.floor(canvasWidth * nebulaResolutionScale);
+        const fboHeight = Math.floor(canvasHeight * nebulaResolutionScale);
+        // Skip if canvas has no valid size yet
+        if (nebulaEnabled && nebulaProgram && nebulaFBO && fboWidth > 0 && fboHeight > 0) {
+            // Resize FBO if needed (use scaled resolution)
+            if (nebulaFBOWidth !== fboWidth || nebulaFBOHeight !== fboHeight) {
+                nebulaFBOWidth = fboWidth;
+                nebulaFBOHeight = fboHeight;
+                // Allocate texture with scaled size
+                gl.bindTexture(gl.TEXTURE_2D, nebulaTexture);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, fboWidth, fboHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+                // Attach texture to FBO
+                gl.bindFramebuffer(gl.FRAMEBUFFER, nebulaFBO);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, nebulaTexture, 0);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            }
+
+            // Render to FBO
+            gl.bindFramebuffer(gl.FRAMEBUFFER, nebulaFBO);
+            gl.viewport(0, 0, fboWidth, fboHeight);
+            gl.disable(gl.BLEND);  // Disable blend so we get raw RGB values, not premultiplied
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            gl.useProgram(nebulaProgram);
+            gl.uniform1f(nebulaProgram.uTime, time);
+            gl.uniform2f(nebulaProgram.uMouse, mouseScreenX / width, 1.0 - mouseScreenY / height);
+            gl.uniform2f(nebulaProgram.uResolution, fboWidth, fboHeight);
+            gl.uniform1f(nebulaProgram.uCameraRotX, cameraRotX);
+            gl.uniform1f(nebulaProgram.uCameraRotY, cameraRotY);
+            // Light positions (world space)
+            gl.uniform2f(nebulaProgram.uLight0, light0.x, light0.y);
+            gl.uniform2f(nebulaProgram.uLight1, light1.x, light1.y);
+            gl.uniform2f(nebulaProgram.uLight2, light2.x, light2.y);
+            gl.uniform3f(nebulaProgram.uLightColor0, lc0[0], lc0[1], lc0[2]);
+            gl.uniform3f(nebulaProgram.uLightColor1, lc1[0], lc1[1], lc1[2]);
+            gl.uniform3f(nebulaProgram.uLightColor2, lc2[0], lc2[1], lc2[2]);
+            gl.uniform1f(nebulaProgram.uLight0Intensity, lightParams.light0Intensity);
+            gl.uniform1f(nebulaProgram.uLight1Intensity, lightParams.light1Intensity);
+            gl.uniform1f(nebulaProgram.uLight2Intensity, lightParams.light2Intensity);
+            // Screen-space light positions (for god rays)
+            // Multiply by DPR and resolution scale to convert to FBO pixel coordinates
+            const dpr = window.devicePixelRatio || 1;
+            const lightScale = dpr * nebulaResolutionScale;
+            gl.uniform2f(nebulaProgram.uLight0Screen, screenLight0.x * lightScale, screenLight0.y * lightScale);
+            gl.uniform2f(nebulaProgram.uLight1Screen, screenLight1.x * lightScale, screenLight1.y * lightScale);
+            gl.uniform2f(nebulaProgram.uLight2Screen, screenLight2.x * lightScale, screenLight2.y * lightScale);
+            // Nebula parameters
+            gl.uniform1f(nebulaProgram.uNebulaIntensity, nebulaParams.intensity);
+            gl.uniform1f(nebulaProgram.uNebulaScale, nebulaParams.scale);
+            gl.uniform1f(nebulaProgram.uNebulaDetail, nebulaParams.detail);
+            gl.uniform1f(nebulaProgram.uNebulaSpeed, nebulaParams.speed);
+            gl.uniform1f(nebulaProgram.uLightInfluence, nebulaParams.lightInfluence);
+            gl.uniform1f(nebulaProgram.uColorVariation, nebulaParams.colorVariation);
+            gl.uniform1f(nebulaProgram.uFractalIntensity, nebulaParams.fractalIntensity);
+            gl.uniform1f(nebulaProgram.uFractalScale, nebulaParams.fractalScale);
+            gl.uniform1f(nebulaProgram.uFractalSpeed, nebulaParams.fractalSpeed);
+            gl.uniform1f(nebulaProgram.uFractalSaturation, nebulaParams.fractalSaturation);
+            gl.uniform1f(nebulaProgram.uFractalFalloff, nebulaParams.fractalFalloff);
+            gl.uniform1f(nebulaProgram.uVignetteStrength, nebulaParams.vignetteStrength);
+            // Nebula colors
+            gl.uniform3f(nebulaProgram.uNebulaColorPurple, nebulaParams.colorPurple[0], nebulaParams.colorPurple[1], nebulaParams.colorPurple[2]);
+            gl.uniform3f(nebulaProgram.uNebulaColorCyan, nebulaParams.colorCyan[0], nebulaParams.colorCyan[1], nebulaParams.colorCyan[2]);
+            gl.uniform3f(nebulaProgram.uNebulaColorBlue, nebulaParams.colorBlue[0], nebulaParams.colorBlue[1], nebulaParams.colorBlue[2]);
+            gl.uniform3f(nebulaProgram.uNebulaColorGold, nebulaParams.colorGold[0], nebulaParams.colorGold[1], nebulaParams.colorGold[2]);
+            // God rays parameters
+            if (window.godRaysParams) {
+                gl.uniform1f(nebulaProgram.uGodRaysIntensity, window.godRaysParams.lightIntensity || 1.2);
+                gl.uniform1f(nebulaProgram.uGodRaysFalloff, window.godRaysParams.lightFalloff || 2.0);
+                gl.uniform1f(nebulaProgram.uGodRaysScale, window.godRaysParams.lightScale || 3.0);
+                gl.uniform1f(nebulaProgram.uGodRaysSaturation, window.godRaysParams.lightSaturation || 1.8);
+                gl.uniform1f(nebulaProgram.uGodRaysNoiseScale, window.godRaysParams.noiseScale || 4.0);
+                gl.uniform1f(nebulaProgram.uGodRaysNoiseStrength, window.godRaysParams.noiseStrength || 0.12);
+                gl.uniform1f(nebulaProgram.uGodRaysNoiseOctaves, window.godRaysParams.noiseOctaves || 0.5);
+                gl.uniform1f(nebulaProgram.uGodRaysShadow, window.godRaysParams.noiseShadow || 0.5);
+                gl.uniform1f(nebulaProgram.uGodRaysShadowOffset, window.godRaysParams.shadowOffset || 0.3);
+                gl.uniform1f(nebulaProgram.uGodRaysScatterR, window.godRaysParams.scatterR || 0.3);
+                gl.uniform1f(nebulaProgram.uGodRaysScatterG, window.godRaysParams.scatterG || 0.6);
+                gl.uniform1f(nebulaProgram.uGodRaysScatterB, window.godRaysParams.scatterB || 1.0);
+            }
+
+            // Draw fullscreen quad
+            gl.bindBuffer(gl.ARRAY_BUFFER, nebulaQuadBuffer);
+            gl.enableVertexAttribArray(nebulaProgram.aPosition);
+            gl.vertexAttribPointer(nebulaProgram.aPosition, 2, gl.FLOAT, false, 0, 0);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+            gl.disableVertexAttribArray(nebulaProgram.aPosition);
+
+            // Switch back to default framebuffer at full resolution
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl.viewport(0, 0, canvasWidth, canvasHeight);
+
+            // Blit nebula FBO texture to screen (upscaled from reduced resolution)
+            // Blend is already disabled from FBO rendering
+            gl.useProgram(blitProgram);
+            gl.uniform2f(blitProgram.uResolution, canvasWidth, canvasHeight);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, nebulaTexture);
+            gl.uniform1i(blitProgram.uTexture, 0);
+            gl.bindBuffer(gl.ARRAY_BUFFER, nebulaQuadBuffer);
+            gl.enableVertexAttribArray(blitProgram.aPosition);
+            gl.vertexAttribPointer(blitProgram.aPosition, 2, gl.FLOAT, false, 0, 0);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+            gl.disableVertexAttribArray(blitProgram.aPosition);
+            gl.enable(gl.BLEND);
+        }
+
+        // Export light data globally (legacy, for any remaining external uses)
         window.globalLights.light0 = { x: light0.x, y: light0.y, color: lc0, intensity: lightParams.light0Intensity };
         window.globalLights.light1 = { x: light1.x, y: light1.y, color: lc1, intensity: lightParams.light1Intensity };
         window.globalLights.light2 = { x: light2.x, y: light2.y, color: lc2, intensity: lightParams.light2Intensity };
         window.globalLights.resolution = { width: width, height: height };
 
         // Particle simulation (run once per frame, not per render pass)
-        // Particles fill larger sphere surrounding all planets
+        // Particles fill a sphere AROUND THE CAMERA so you can travel through them
         // Skip particle simulation entirely if particles are disabled
         const particleSphereRadius = 0.35;
         const particlesEnabled = !window.renderToggles || window.renderToggles.spaceParticles !== false;
@@ -843,13 +1114,18 @@
             const deltaTime = Math.min(time - spaceParticleLastTime, 0.033);
             spaceParticleLastTime = time;
 
+            // Get current camera position
+            const camX = cameraPosX;
+            const camY = cameraPosY;
+            const camZ = cameraPosZ;
+
             // Update existing shooting stars
             for (let s = shootingStars.length - 1; s >= 0; s--) {
                 const star = shootingStars[s];
-                star.progress += deltaTime / shootingStarParams.duration;
+                star.progress += deltaTime / spaceParticleParams.shootingDuration;
 
                 if (star.progress >= 1.0) {
-                    // Shooting star finished - reset particle to random position
+                    // Shooting star finished - reset particle to random position around camera
                     const idx = star.originalIdx * 4;
                     let rx, ry, rz;
                     do {
@@ -857,9 +1133,9 @@
                         ry = (Math.random() * 2 - 1);
                         rz = (Math.random() * 2 - 1);
                     } while (rx * rx + ry * ry + rz * rz > 1);
-                    spaceParticleData[idx] = rx * particleSphereRadius;
-                    spaceParticleData[idx + 1] = ry * particleSphereRadius;
-                    spaceParticleData[idx + 2] = rz * particleSphereRadius;
+                    spaceParticleData[idx] = camX + rx * particleSphereRadius;
+                    spaceParticleData[idx + 1] = camY + ry * particleSphereRadius;
+                    spaceParticleData[idx + 2] = camZ + rz * particleSphereRadius;
                     spaceParticleData[idx + 3] = Math.random(); // Reset to normal particle
                     shootingStars.splice(s, 1);
                     continue;
@@ -867,7 +1143,7 @@
 
                 // Move shooting star fast in its direction
                 const idx = star.originalIdx * 4;
-                const speed = shootingStarParams.speed * deltaTime * (1.0 - star.progress * 0.5); // Slow down as it fades
+                const speed = spaceParticleParams.shootingSpeed * deltaTime * (1.0 - star.progress * 0.5); // Slow down as it fades
                 spaceParticleData[idx] += star.vx * speed;
                 spaceParticleData[idx + 1] += star.vy * speed;
                 spaceParticleData[idx + 2] += star.vz * speed;
@@ -878,7 +1154,7 @@
             }
 
             // Randomly spawn new shooting stars (very rare)
-            if (Math.random() < shootingStarParams.chance && shootingStars.length < shootingStarParams.maxActive) {
+            if (Math.random() < spaceParticleParams.shootingChance && shootingStars.length < 5) {
                 // Pick a random particle that's not already a shooting star
                 const candidateIdx = Math.floor(Math.random() * SPACE_PARTICLE_COUNT);
                 const isAlreadyShooting = shootingStars.some(s => s.originalIdx === candidateIdx);
@@ -916,36 +1192,55 @@
                 // Ensure normal particles have life < 1 (fractional only)
                 if (life >= 1.0) life = life % 1.0;
 
-                // Distance from origin for depth-based effects
-                const dist = Math.sqrt(x * x + y * y + z * z);
-                const distNorm = dist / particleSphereRadius; // 0 = center, 1 = edge
+                // Calculate position relative to camera
+                const relX = x - camX;
+                const relY = y - camY;
+                const relZ = z - camZ;
 
-                // Speed based on distance from center (edge particles orbit slower)
+                // Distance from camera for depth-based effects
+                const dist = Math.sqrt(relX * relX + relY * relY + relZ * relZ);
+                const distNorm = Math.min(dist / particleSphereRadius, 1.0); // 0 = center, 1 = edge
+
+                // Speed based on distance from camera (edge particles orbit slower)
                 const speedFactor = 0.3 + (1 - distNorm) * 0.7;
 
-                // Orbital drift around origin (creates swirling effect)
+                // Orbital drift around camera position (creates swirling effect)
                 const phase = i * 0.1;
-                // Tangential velocity (orbit around Y axis primarily)
+                // Tangential velocity (orbit around camera's Y axis primarily)
                 const orbitSpeed = 0.0002 * speedFactor;
-                const tangentX = -z * orbitSpeed;
-                const tangentZ = x * orbitSpeed;
+                const tangentX = -relZ * orbitSpeed;
+                const tangentZ = relX * orbitSpeed;
                 // Add some turbulence
-                const turbX = Math.sin(time * 0.3 + phase + y * 10) * 0.00005;
-                const turbY = Math.cos(time * 0.25 + phase + x * 10) * 0.00004;
-                const turbZ = Math.sin(time * 0.2 + phase + z * 10) * 0.00005;
+                const turbX = Math.sin(time * 0.3 + phase + relY * 10) * 0.00005;
+                const turbY = Math.cos(time * 0.25 + phase + relX * 10) * 0.00004;
+                const turbZ = Math.sin(time * 0.2 + phase + relZ * 10) * 0.00005;
 
                 // Apply movement
                 x += (tangentX + turbX) * 60 * deltaTime;
                 y += turbY * 60 * deltaTime;
                 z += (tangentZ + turbZ) * 60 * deltaTime;
 
-                // Keep particles inside sphere (soft boundary)
-                const newDist = Math.sqrt(x * x + y * y + z * z);
+                // Calculate new distance from camera
+                const newRelX = x - camX;
+                const newRelY = y - camY;
+                const newRelZ = z - camZ;
+                const newDist = Math.sqrt(newRelX * newRelX + newRelY * newRelY + newRelZ * newRelZ);
+
+                // Keep particles inside sphere around camera
+                // Immediately respawn any particle outside the sphere
                 if (newDist > particleSphereRadius) {
-                    const scale = particleSphereRadius / newDist;
-                    x *= scale * 0.99; // Slight inward push
-                    y *= scale * 0.99;
-                    z *= scale * 0.99;
+                    // Respawn at random position in sphere around camera
+                    let rx, ry, rz;
+                    do {
+                        rx = (Math.random() * 2 - 1);
+                        ry = (Math.random() * 2 - 1);
+                        rz = (Math.random() * 2 - 1);
+                    } while (rx * rx + ry * ry + rz * rz > 1);
+                    // Bias toward sphere edges for better depth distribution
+                    const edgeBias = 0.3 + Math.random() * 0.7;
+                    x = camX + rx * particleSphereRadius * edgeBias;
+                    y = camY + ry * particleSphereRadius * edgeBias;
+                    z = camZ + rz * particleSphereRadius * edgeBias;
                 }
 
                 spaceParticleData[idx] = x;
@@ -969,17 +1264,15 @@
 
             gl.useProgram(spaceParticleProgram);
             gl.uniform2f(spaceParticleProgram.uResolution, width, height);
-            gl.uniform1f(spaceParticleProgram.uZoom, zoomLevel);
-            gl.uniform2f(spaceParticleProgram.uZoomCenter, zoomCenterX, zoomCenterY);
             gl.uniform1f(spaceParticleProgram.uTime, time);
 
             // DoF uniforms
             gl.uniform1f(spaceParticleProgram.uFocusDistance, spaceParticleParams.focusDistance);
             gl.uniform1f(spaceParticleProgram.uFocusRange, spaceParticleParams.focusRange);
-            gl.uniform1f(spaceParticleProgram.uNearBlurDist, spaceParticleParams.nearBlurDist);
-            gl.uniform1f(spaceParticleProgram.uFarBlurDist, spaceParticleParams.farBlurDist);
-            gl.uniform1f(spaceParticleProgram.uMaxBlurSize, spaceParticleParams.maxBlurSize);
-            gl.uniform1f(spaceParticleProgram.uApertureSize, spaceParticleParams.apertureSize);
+            gl.uniform1f(spaceParticleProgram.uNearBlurDist, spaceParticleParams.nearBlur);
+            gl.uniform1f(spaceParticleProgram.uFarBlurDist, spaceParticleParams.farBlur);
+            gl.uniform1f(spaceParticleProgram.uMaxBlurSize, spaceParticleParams.maxBlur);
+            gl.uniform1f(spaceParticleProgram.uApertureSize, spaceParticleParams.aperture);
 
             // Particle appearance uniforms
             gl.uniform1f(spaceParticleProgram.uParticleSize, spaceParticleParams.particleSize);
@@ -991,11 +1284,12 @@
             gl.uniform1f(spaceParticleProgram.uRenderPass, pass);
             gl.uniform1f(spaceParticleProgram.uCameraRotX, cameraRotX);
             gl.uniform1f(spaceParticleProgram.uCameraRotY, cameraRotY);
+            gl.uniform3f(spaceParticleProgram.uCameraPos, cameraPosX, cameraPosY, cameraPosZ);
 
             // Fragment shader uniforms
-            gl.uniform1f(spaceParticleProgram.uCircleSoftness, spaceParticleParams.circleSoftness);
-            gl.uniform1f(spaceParticleProgram.uBokehRingWidth, spaceParticleParams.bokehRingWidth);
-            gl.uniform1f(spaceParticleProgram.uBokehRingIntensity, spaceParticleParams.bokehRingIntensity);
+            gl.uniform1f(spaceParticleProgram.uCircleSoftness, spaceParticleParams.softness);
+            gl.uniform1f(spaceParticleProgram.uBokehRingWidth, spaceParticleParams.ringWidth);
+            gl.uniform1f(spaceParticleProgram.uBokehRingIntensity, spaceParticleParams.ringIntensity);
             gl.uniform1f(spaceParticleProgram.uLightFalloff, spaceParticleParams.lightFalloff);
 
             // Sun light uniforms for particle coloring
@@ -1010,8 +1304,8 @@
             gl.uniform1f(spaceParticleProgram.uLight2Intensity, lightParams.light2Intensity);
 
             // Shooting star colors
-            const goldRGB = hex2vec(shootingStarParams.goldColor);
-            const tealRGB = hex2vec(shootingStarParams.tealColor);
+            const goldRGB = hex2vec(spaceParticleParams.shootingGoldColor);
+            const tealRGB = hex2vec(spaceParticleParams.shootingTealColor);
             gl.uniform3f(spaceParticleProgram.uShootingGoldColor, goldRGB[0], goldRGB[1], goldRGB[2]);
             gl.uniform3f(spaceParticleProgram.uShootingTealColor, tealRGB[0], tealRGB[1], tealRGB[2]);
 
@@ -1045,14 +1339,12 @@
         // Compute light screen positions (after camera transform) for god rays
         // Same math as vertex shader for sphere program
         const computeLightScreenPos = (lx, ly, lz) => {
-            const od = 1.0;
             const crx = Math.cos(cameraRotX), srx = Math.sin(cameraRotX);
             const cry = Math.cos(cameraRotY), sry = Math.sin(cameraRotY);
-            const cpx = od * sry * crx, cpy = od * srx, cpz = od * cry * crx;
-            const cfLen = Math.sqrt(cpx*cpx + cpy*cpy + cpz*cpz);
-            const fx = -cpx/cfLen, fy = -cpy/cfLen, fz = -cpz/cfLen;
-            const rxLen = Math.sqrt(fz*fz + fx*fx) || 1;
-            const rx = fz/rxLen, rz = -fx/rxLen;
+            // Free camera: direct position and rotation-based forward
+            const cpx = cameraPosX, cpy = cameraPosY, cpz = cameraPosZ;
+            const fx = sry * crx, fy = -srx, fz = cry * crx;
+            const rx = cry, rz = -sry;
             const ux = fy * rz, uy = fz * rx - fx * rz, uz = -fy * rx;
             const ws = 1.0 / width;
             const scx = width * 0.5;
@@ -1061,53 +1353,33 @@
             const tx = wx - cpx, ty = wy - cpy, tz = wz - cpz;
             const zd = tx * fx + ty * fy + tz * fz;
             if (zd < 0.01) return { x: scx, y: scy };
-            const ps = od / zd;
+            const ps = 1.0 / zd;
             const px = (tx * rx + tz * rz) * ps;
             const py = (tx * ux + ty * uy + tz * uz) * ps;
-            return { x: scx + px * width * zoomLevel, y: scy - py * width * zoomLevel };
+            return { x: scx + px * width, y: scy - py * width };
         };
         const godRayLight0 = computeLightScreenPos(light0.x, light0.y, light0.z);
         const godRayLight1 = computeLightScreenPos(light1.x, light1.y, light1.z);
         const godRayLight2 = computeLightScreenPos(light2.x, light2.y, light2.z);
 
-        // Render god rays (background layer, after particles)
-        if (godRaysProgram && (!window.renderToggles || window.renderToggles.godRays !== false)) {
-            gl.useProgram(godRaysProgram);
-            gl.uniform2f(godRaysProgram.uResolution, width, height);
-            gl.uniform1f(godRaysProgram.uTime, time);
-            gl.uniform2f(godRaysProgram.uMouse, mouseScreenX, mouseScreenY);
-            gl.uniform2f(godRaysProgram.uLight0, godRayLight0.x, godRayLight0.y);
-            gl.uniform2f(godRaysProgram.uLight1, godRayLight1.x, godRayLight1.y);
-            gl.uniform2f(godRaysProgram.uLight2, godRayLight2.x, godRayLight2.y);
-            gl.uniform3f(godRaysProgram.uLightColor0, lc0[0], lc0[1], lc0[2]);
-            gl.uniform3f(godRaysProgram.uLightColor1, lc1[0], lc1[1], lc1[2]);
-            gl.uniform3f(godRaysProgram.uLightColor2, lc2[0], lc2[1], lc2[2]);
-            gl.uniform1f(godRaysProgram.uZoom, zoomLevel);
-            gl.uniform2f(godRaysProgram.uZoomCenter, zoomCenterX, zoomCenterY);
-            gl.uniform1f(godRaysProgram.uCameraRotX, cameraRotX);
-            gl.uniform1f(godRaysProgram.uCameraRotY, cameraRotY);
-            // Controllable parameters
-            gl.uniform1f(godRaysProgram.uRayIntensity, godRaysParams.rayIntensity);
-            gl.uniform1f(godRaysProgram.uRayFalloff, godRaysParams.rayFalloff);
-            gl.uniform1f(godRaysProgram.uGlowIntensity, godRaysParams.glowIntensity);
-            gl.uniform1f(godRaysProgram.uGlowSize, godRaysParams.glowSize);
-            gl.uniform1f(godRaysProgram.uFogDensity, godRaysParams.fogDensity);
-            gl.uniform1f(godRaysProgram.uAmbientFog, godRaysParams.ambientFog);
-            gl.uniform1f(godRaysProgram.uAnimSpeed, godRaysParams.animSpeed);
-            gl.uniform1f(godRaysProgram.uNoiseScale, godRaysParams.noiseScale);
-            gl.uniform1f(godRaysProgram.uNoiseOctaves, godRaysParams.noiseOctaves);
-            gl.uniform1f(godRaysProgram.uNoiseContrast, godRaysParams.noiseContrast);
+        // Export screen-space light positions for nebula background god rays
+        window.globalLights.light0.screenX = godRayLight0.x;
+        window.globalLights.light0.screenY = godRayLight0.y;
+        window.globalLights.light1.screenX = godRayLight1.x;
+        window.globalLights.light1.screenY = godRayLight1.y;
+        window.globalLights.light2.screenX = godRayLight2.x;
+        window.globalLights.light2.screenY = godRayLight2.y;
 
-            gl.bindBuffer(gl.ARRAY_BUFFER, godRaysQuadBuffer);
-            gl.enableVertexAttribArray(godRaysProgram.aPosition);
-            gl.vertexAttribPointer(godRaysProgram.aPosition, 2, gl.FLOAT, false, 0, 0);
-            gl.drawArrays(gl.TRIANGLES, 0, 6);
-            gl.disableVertexAttribArray(godRaysProgram.aPosition);
-        }
+        // Use premultiplied alpha blending for planets/suns
+        // This properly composites over transparent canvas without darkening
+        // RGB: src + dst * (1 - srcAlpha), Alpha: src + dst * (1 - srcAlpha)
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
-        // Render spheres on top
+        // Render spheres (planets and suns)
         gl.useProgram(sphereProgram);
+        // uRes in CSS pixels (for vertex calculations), uFBORes in actual pixels (for texture sampling)
         gl.uniform2f(sphereProgram.uRes, width, height);
+        gl.uniform2f(sphereProgram.uFBORes, glCanvas.width, glCanvas.height);
         gl.uniform2f(sphereProgram.uMouse, mouseScreenX, mouseScreenY);
         gl.uniform1f(sphereProgram.uTime, time);
         gl.uniform2f(sphereProgram.uLight0, light0.x, light0.y);
@@ -1135,14 +1407,12 @@
 
         // Compute light screen positions (after camera transform) - same math as vertex shader
         {
-            const od = 1.0;
             const crx = Math.cos(cameraRotX), srx = Math.sin(cameraRotX);
             const cry = Math.cos(cameraRotY), sry = Math.sin(cameraRotY);
-            const cpx = od * sry * crx, cpy = od * srx, cpz = od * cry * crx;
-            const cfLen = Math.sqrt(cpx*cpx + cpy*cpy + cpz*cpz);
-            const fx = -cpx/cfLen, fy = -cpy/cfLen, fz = -cpz/cfLen;
-            const rxLen = Math.sqrt(fz*fz + fx*fx) || 1;
-            const rx = fz/rxLen, rz = -fx/rxLen;
+            // Free camera: direct position and rotation-based forward
+            const cpx = cameraPosX, cpy = cameraPosY, cpz = cameraPosZ;
+            const fx = sry * crx, fy = -srx, fz = cry * crx;
+            const rx = cry, rz = -sry;
             const ux = fy * rz, uy = fz * rx - fx * rz, uz = -fy * rx;
 
             const proj = (lx, ly, lz) => {
@@ -1150,10 +1420,10 @@
                 const tx = wx - cpx, ty = wy - cpy, tz = wz - cpz;
                 const zd = tx * fx + ty * fy + tz * fz;
                 if (zd < 0.01) return { x: scx, y: scy };
-                const ps = od / zd;
+                const ps = 1.0 / zd;
                 const px = (tx * rx + tz * rz) * ps;
                 const py = (tx * ux + ty * uy + tz * uz) * ps;
-                return { x: scx + px * width * zoomLevel, y: scy - py * width * zoomLevel };
+                return { x: scx + px * width, y: scy - py * width };
             };
             const l0s = proj(light0.x, light0.y, light0.z);
             const l1s = proj(light1.x, light1.y, light1.z);
@@ -1165,10 +1435,19 @@
         gl.uniform1f(sphereProgram.uMouseLightEnabled, mouseLightEnabled ? 1.0 : 0.0);
         gl.uniform1f(sphereProgram.uAmbientIntensity, lightParams.ambientIntensity);
         gl.uniform1f(sphereProgram.uFogIntensity, lightParams.fogIntensity);
-        gl.uniform1f(sphereProgram.uZoom, zoomLevel);
-        gl.uniform2f(sphereProgram.uZoomCenter, zoomCenterX, zoomCenterY);
         gl.uniform1f(sphereProgram.uCameraRotX, cameraRotX);
         gl.uniform1f(sphereProgram.uCameraRotY, cameraRotY);
+        gl.uniform3f(sphereProgram.uCameraPos, cameraPosX, cameraPosY, cameraPosZ);
+
+        // Bind background texture for fog sampling
+        if (nebulaTexture) {
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, nebulaTexture);
+            gl.uniform1i(sphereProgram.uBackgroundTexture, 0);
+            gl.uniform1f(sphereProgram.uUseBackgroundTexture, 1.0);
+        } else {
+            gl.uniform1f(sphereProgram.uUseBackgroundTexture, 0.0);
+        }
 
         // Planet A (Oceanic/Mountain) uniforms
         gl.uniform1f(sphereProgram.uNoiseScaleA, planetParamsA.noiseScale);
@@ -1185,6 +1464,10 @@
         gl.uniform1f(sphereProgram.uSunsetStrengthA, planetParamsA.sunsetStrength);
         gl.uniform1f(sphereProgram.uOceanRoughnessA, planetParamsA.oceanRoughness);
         gl.uniform1f(sphereProgram.uSSSIntensityA, planetParamsA.sssIntensity);
+        gl.uniform1f(sphereProgram.uSSSWrapA, planetParamsA.sssWrap);
+        gl.uniform1f(sphereProgram.uSSSBacklightA, planetParamsA.sssBacklight);
+        const sssColorA = hex2vec(planetParamsA.sssColor);
+        gl.uniform3f(sphereProgram.uSSSColorA, sssColorA[0], sssColorA[1], sssColorA[2]);
         gl.uniform1f(sphereProgram.uSeaLevelA, planetParamsA.seaLevel);
         gl.uniform1f(sphereProgram.uLandRoughnessA, planetParamsA.landRoughness);
         gl.uniform1f(sphereProgram.uNormalStrengthA, planetParamsA.normalStrength);
@@ -1247,22 +1530,21 @@
         const sunNodes = nodes.filter(n => n.isLight);
 
         // Sort nodes by distance from camera (back to front for proper alpha blending)
-        // Compute camera position and forward direction (same as vertex shader)
-        const orbitDist = 1.0;
+        // Compute camera position and forward direction (free camera)
         const cosRotX = Math.cos(cameraRotX);
         const sinRotX = Math.sin(cameraRotX);
         const cosRotY = Math.cos(cameraRotY);
         const sinRotY = Math.sin(cameraRotY);
 
-        const camX = orbitDist * sinRotY * cosRotX;
-        const camY = orbitDist * sinRotX;
-        const camZ = orbitDist * cosRotY * cosRotX;
+        // Free camera: direct position
+        const camX = cameraPosX;
+        const camY = cameraPosY;
+        const camZ = cameraPosZ;
 
-        // Camera forward = -cameraPos normalized (looking at origin)
-        const camLen = Math.sqrt(camX * camX + camY * camY + camZ * camZ);
-        const fwdX = -camX / camLen;
-        const fwdY = -camY / camLen;
-        const fwdZ = -camZ / camLen;
+        // Camera forward from rotation angles
+        const fwdX = sinRotY * cosRotX;
+        const fwdY = -sinRotX;
+        const fwdZ = cosRotY * cosRotX;
 
         // World scale (same as vertex shader)
         const worldScale = 1.0 / width;
@@ -1296,28 +1578,24 @@
 
         // Helper to set up vertex attributes for a program
         function setupVertexAttribs(program) {
-            gl.enableVertexAttribArray(program.aPos);
-            gl.vertexAttribPointer(program.aPos, 2, gl.FLOAT, false, st, 0);
-            gl.enableVertexAttribArray(program.aCenter);
-            gl.vertexAttribPointer(program.aCenter, 2, gl.FLOAT, false, st, 8);
-            gl.enableVertexAttribArray(program.aRadius);
-            gl.vertexAttribPointer(program.aRadius, 1, gl.FLOAT, false, st, 16);
-            gl.enableVertexAttribArray(program.aColor);
-            gl.vertexAttribPointer(program.aColor, 3, gl.FLOAT, false, st, 20);
-            gl.enableVertexAttribArray(program.aAlpha);
-            gl.vertexAttribPointer(program.aAlpha, 1, gl.FLOAT, false, st, 32);
-            gl.enableVertexAttribArray(program.aAppear);
-            gl.vertexAttribPointer(program.aAppear, 1, gl.FLOAT, false, st, 36);
-            gl.enableVertexAttribArray(program.aGlow);
-            gl.vertexAttribPointer(program.aGlow, 1, gl.FLOAT, false, st, 40);
-            gl.enableVertexAttribArray(program.aIndex);
-            gl.vertexAttribPointer(program.aIndex, 1, gl.FLOAT, false, st, 44);
-            gl.enableVertexAttribArray(program.aIsLight);
-            gl.vertexAttribPointer(program.aIsLight, 1, gl.FLOAT, false, st, 48);
-            gl.enableVertexAttribArray(program.aDepth);
-            gl.vertexAttribPointer(program.aDepth, 1, gl.FLOAT, false, st, 52);
-            gl.enableVertexAttribArray(program.aZ);
-            gl.vertexAttribPointer(program.aZ, 1, gl.FLOAT, false, st, 56);
+            // Helper to safely enable attribute (skip if optimized out by compiler, returns -1)
+            function enableAttr(loc, size, offset) {
+                if (loc >= 0) {
+                    gl.enableVertexAttribArray(loc);
+                    gl.vertexAttribPointer(loc, size, gl.FLOAT, false, st, offset);
+                }
+            }
+            enableAttr(program.aPos, 2, 0);
+            enableAttr(program.aCenter, 2, 8);
+            enableAttr(program.aRadius, 1, 16);
+            enableAttr(program.aColor, 3, 20);
+            enableAttr(program.aAlpha, 1, 32);
+            enableAttr(program.aAppear, 1, 36);
+            enableAttr(program.aGlow, 1, 40);
+            enableAttr(program.aIndex, 1, 44);
+            enableAttr(program.aIsLight, 1, 48);
+            enableAttr(program.aDepth, 1, 52);
+            enableAttr(program.aZ, 1, 56);
         }
 
         // Track current shader type and blend mode to minimize state changes
@@ -1350,10 +1628,9 @@
                     gl.useProgram(sunProgram);
                     gl.uniform2f(sunProgram.uRes, width, height);
                     gl.uniform1f(sunProgram.uTime, time);
-                    gl.uniform1f(sunProgram.uZoom, zoomLevel);
-                    gl.uniform2f(sunProgram.uZoomCenter, zoomCenterX, zoomCenterY);
                     gl.uniform1f(sunProgram.uCameraRotX, cameraRotX);
                     gl.uniform1f(sunProgram.uCameraRotY, cameraRotY);
+                    gl.uniform3f(sunProgram.uCameraPos, cameraPosX, cameraPosY, cameraPosZ);
 
                     // Sun halo uniforms
                     gl.uniform1f(sunProgram.uSunCoreSize, sunParams.coreSize);
@@ -1383,7 +1660,6 @@
                 gl.drawArrays(gl.TRIANGLES, 0, verts.length / 15);
             } else {
                 // Planets use premultiplied alpha blending
-                // This allows the opaque core to occlude while edges blend nicely
                 if (currentBlendAdditive !== false) {
                     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
                     currentBlendAdditive = false;
@@ -1410,9 +1686,9 @@
         if (showDebugQuads && debugQuadProgram) {
             gl.useProgram(debugQuadProgram);
             gl.uniform2f(debugQuadProgram.uResolution, width, height);
-            gl.uniform1f(debugQuadProgram.uZoom, zoomLevel);
             gl.uniform1f(debugQuadProgram.uCameraRotX, cameraRotX);
             gl.uniform1f(debugQuadProgram.uCameraRotY, cameraRotY);
+            gl.uniform3f(debugQuadProgram.uCameraPos, cameraPosX, cameraPosY, cameraPosZ);
 
             gl.bindBuffer(gl.ARRAY_BUFFER, debugQuadBuffer);
             gl.enableVertexAttribArray(debugQuadProgram.aPosition);
@@ -1478,7 +1754,19 @@
     }
 
     function resize() {
-        const rect = container.getBoundingClientRect();
+        // Always prefer canvas-section dimensions (the visible WebGL canvas container)
+        // The old skills-graph-view container is now just an overlay for labels
+        const canvasSection = document.getElementById('canvas-section');
+        let rect = canvasSection ? canvasSection.getBoundingClientRect() : { width: 0, height: 0 };
+
+        // Fallback to old container if canvas-section has no dimensions
+        if (rect.width === 0 || rect.height === 0) {
+            rect = container.getBoundingClientRect();
+        }
+        // Final fallback to window dimensions if still 0
+        if (rect.width === 0 || rect.height === 0) {
+            rect = { width: window.innerWidth, height: window.innerHeight };
+        }
         const dpr = window.devicePixelRatio || 1;
         width = rect.width;
         height = rect.height;
@@ -1489,15 +1777,6 @@
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         centerX = width / 2;
         centerY = height / 2;
-        // Initialize zoom center to canvas center
-        if (zoomCenterX === 0 && zoomCenterY === 0) {
-            zoomCenterX = centerX;
-            zoomCenterY = centerY;
-            targetZoomCenterX = centerX;
-            targetZoomCenterY = centerY;
-        }
-        settled = false;
-        settleTimer = 0;
 
         const minDim = Math.min(width, height);
         sizeScale = Math.max(0.5, Math.min(1.2, minDim / BASE_DIMENSION));
@@ -1645,15 +1924,6 @@
         return null;
     }
 
-    function getConnectedNodes(node) {
-        const connected = new Set();
-        connections.forEach(([a, b]) => {
-            if (a === node.id) connected.add(b);
-            if (b === node.id) connected.add(a);
-        });
-        return connected;
-    }
-
     // Build connection lookup for fast access
     const connectionMap = new Map();
     connections.forEach(([a, b]) => {
@@ -1665,7 +1935,6 @@
 
     function simulate() {
         if (globalFadeIn < 1 && time > 1.5) globalFadeIn = Math.min(1, (time - 1.5) / 2);
-        if (globalFadeIn >= 1) startupPhase = false;
 
         const minDim = Math.min(width, height);
 
@@ -1831,34 +2100,88 @@
             node.orbitTiltY = tiltY;
             node.parentSunId = config.parent;  // Used for circle drawing
             node.isSubMoon = true;
-            // Apply sub-moon size multiplier
-            node.size = node.baseSize * sizeScale * orbitParams.subMoonSize;
         }
-    }
 
-    let lastHoveredNode = null, hoverStartTime = 0;
+        // Apply size factors to all nodes based on their type
+        const sunSizeFactor = orbitParams.sunSizeFactor || 1.0;
+        const planetSizeFactor = orbitParams.planetSizeFactor || 1.0;
+        const subMoonSizeFactor = orbitParams.subMoonSize || 0.5;
+
+        nodes.forEach(node => {
+            if (node.isSun || node.isLight) {
+                // Suns use sunSizeFactor
+                node.size = node.baseSize * sizeScale * sunSizeFactor;
+            } else if (node.isSubMoon) {
+                // Sub-moons use subMoonSize
+                node.size = node.baseSize * sizeScale * subMoonSizeFactor;
+            } else {
+                // Regular moons/planets use planetSizeFactor
+                node.size = node.baseSize * sizeScale * planetSizeFactor;
+            }
+        });
+    }
 
     function draw() {
         ctx.clearRect(0, 0, width, height);
         time += 0.016;
 
-        // Smooth zoom interpolation (slower for smoother feel)
-        zoomLevel += (targetZoom - zoomLevel) * 0.05;
-        zoomCenterX += (targetZoomCenterX - zoomCenterX) * 0.05;
-        zoomCenterY += (targetZoomCenterY - zoomCenterY) * 0.05;
-
         // Smooth camera rotation interpolation
         cameraRotX += (targetCameraRotX - cameraRotX) * 0.08;
         cameraRotY += (targetCameraRotY - cameraRotY) * 0.08;
 
-        // Update global camera rotation and zoom for background shader
+        // Process WASD/ZQSD keyboard input for free camera movement
+        // Movement is in the direction the camera is facing
+        // Can move while rotating (FPS-style controls)
+        let moveForward = 0, moveRight = 0, moveUp = 0;
+        // Forward/backward: W or Z (French AZERTY)
+        if (keysPressed['keyw'] || keysPressed['keyz']) moveForward = 1;
+        // Backward: S
+        if (keysPressed['keys']) moveForward = -1;
+        // Left: A or Q (French AZERTY)
+        if (keysPressed['keya'] || keysPressed['keyq']) moveRight = -1;
+        // Right: D
+        if (keysPressed['keyd']) moveRight = 1;
+        // Up: Space / Down: Shift (optional vertical movement)
+        if (keysPressed['space']) moveUp = 1;
+        if (keysPressed['shiftleft'] || keysPressed['shiftright']) moveUp = -1;
+
+        // Apply movement in camera's local coordinate system (FPS-style)
+        if (moveForward !== 0 || moveRight !== 0 || moveUp !== 0) {
+            const cosRotX = Math.cos(cameraRotX);
+            const sinRotX = Math.sin(cameraRotX);
+            const sinRotY = Math.sin(cameraRotY);
+            const cosRotY = Math.cos(cameraRotY);
+
+            // Forward vector (direction camera is looking)
+            const fwdX = sinRotY * cosRotX;
+            const fwdY = -sinRotX;
+            const fwdZ = cosRotY * cosRotX;
+
+            // Right vector (perpendicular to forward, in XZ plane)
+            const rightX = cosRotY;
+            const rightZ = -sinRotY;
+
+            // Combine movement vectors
+            const speed = window.cameraParams.moveSpeed;
+            targetCameraPosX += (fwdX * moveForward + rightX * moveRight) * speed;
+            targetCameraPosY += (fwdY * moveForward + moveUp) * speed;
+            targetCameraPosZ += (fwdZ * moveForward + rightZ * moveRight) * speed;
+        }
+
+        // Smooth camera position interpolation (always runs for FPS-style movement)
+        const smooth = window.cameraParams.smoothing;
+        cameraPosX += (targetCameraPosX - cameraPosX) * smooth;
+        cameraPosY += (targetCameraPosY - cameraPosY) * smooth;
+        cameraPosZ += (targetCameraPosZ - cameraPosZ) * smooth;
+
+        // Update global camera state for shaders
         window.globalCameraRotX = cameraRotX;
         window.globalCameraRotY = cameraRotY;
-        window.globalZoom = zoomLevel;
+        window.globalCameraPosX = cameraPosX;
+        window.globalCameraPosY = cameraPosY;
+        window.globalCameraPosZ = cameraPosZ;
 
-        // 3D perspective camera (matching planet/particle shaders)
-        // Fixed orbit distance, zoom applied as scale factor
-        const orbitDist = 1.0;
+        // 3D perspective camera (FPS-style free camera)
         const screenCenterX = width * 0.5;
         const screenCenterY = height * 0.5;
 
@@ -1868,24 +2191,20 @@
         const cosRotY = Math.cos(cameraRotY);
         const sinRotY = Math.sin(cameraRotY);
 
-        // Camera position (orbiting at fixed distance)
-        const camPosX = orbitDist * sinRotY * cosRotX;
-        const camPosY = orbitDist * sinRotX;
-        const camPosZ = orbitDist * cosRotY * cosRotX;
+        // Camera position (free camera - direct position)
+        const camPosX = cameraPosX;
+        const camPosY = cameraPosY;
+        const camPosZ = cameraPosZ;
 
-        // Camera forward direction (looking at origin)
-        const camLen = Math.sqrt(camPosX * camPosX + camPosY * camPosY + camPosZ * camPosZ);
-        const camFwdX = -camPosX / camLen;
-        const camFwdY = -camPosY / camLen;
-        const camFwdZ = -camPosZ / camLen;
+        // Camera forward direction (from rotation angles, not looking at origin)
+        const camFwdX = sinRotY * cosRotX;
+        const camFwdY = -sinRotX;
+        const camFwdZ = cosRotY * cosRotX;
 
-        // Camera right vector (cross product of worldUp and forward)
-        const worldUpX = 0, worldUpY = 1, worldUpZ = 0;
-        let camRightX = worldUpY * camFwdZ - worldUpZ * camFwdY;
-        let camRightY = worldUpZ * camFwdX - worldUpX * camFwdZ;
-        let camRightZ = worldUpX * camFwdY - worldUpY * camFwdX;
-        const rightLen = Math.sqrt(camRightX * camRightX + camRightY * camRightY + camRightZ * camRightZ);
-        camRightX /= rightLen; camRightY /= rightLen; camRightZ /= rightLen;
+        // Camera right vector (perpendicular to forward in XZ plane)
+        const camRightX = cosRotY;
+        const camRightY = 0;
+        const camRightZ = -sinRotY;
 
         // Camera up vector (cross product of forward and right)
         const camUpX = camFwdY * camRightZ - camFwdZ * camRightY;
@@ -1895,24 +2214,14 @@
         // No canvas transform - we apply perspective manually to each element
         ctx.save();
 
-        const connectedToHovered = hoveredNode ? getConnectedNodes(hoveredNode) : new Set();
-        if (hoveredNode !== lastHoveredNode) { hoverStartTime = time; lastHoveredNode = hoveredNode; }
-        const timeSinceHover = time - hoverStartTime;
-
+        // No hover effects - all nodes stay at normal state
         nodes.forEach(node => {
-            const isHovered = node === hoveredNode;
-            const isConnected = connectedToHovered.has(node.id);
+            node.targetGlowIntensity = 0;
+            node.targetShrink = 1;
+            node.glowDelay = 0;
 
-            if (isHovered) { node.targetGlowIntensity = 1; node.glowDelay = 0; node.targetShrink = 1; }
-            else if (isConnected) { node.targetGlowIntensity = 0.6; node.glowDelay = 0.15; node.targetShrink = 1; }
-            else if (hoveredNode) { node.targetGlowIntensity = 0; node.glowDelay = 0; node.targetShrink = 0; }
-            else { node.targetGlowIntensity = 0; node.glowDelay = 0; node.targetShrink = 1; }
-
-            const effectiveTime = Math.max(0, timeSinceHover - node.glowDelay);
-            if (effectiveTime > 0 || node.targetGlowIntensity === 0) {
-                const lerpSpeed = node.targetGlowIntensity > node.glowIntensity ? 0.08 : 0.12;
-                node.glowIntensity += (node.targetGlowIntensity - node.glowIntensity) * lerpSpeed;
-            }
+            const lerpSpeed = node.targetGlowIntensity > node.glowIntensity ? 0.08 : 0.12;
+            node.glowIntensity += (node.targetGlowIntensity - node.glowIntensity) * lerpSpeed;
             node.shrinkProgress += (node.targetShrink - node.shrinkProgress) * (node.targetShrink > node.shrinkProgress ? 0.12 : 0.08);
             if (node.glowIntensity < 0.01) node.glowIntensity = 0;
             if (node.shrinkProgress < 0.01) node.shrinkProgress = 0;
@@ -1955,17 +2264,17 @@
                 return;
             }
 
-            // Perspective scale (fixed orbit distance)
-            const perspectiveScale = orbitDist / zDist;
+            // Perspective scale (1/distance)
+            const nodeScale = 1.0 / zDist;
 
             // Project node position onto screen (dot with right and up)
-            const projX = (toNodeX * camRightX + toNodeY * camRightY + toNodeZ * camRightZ) * perspectiveScale;
-            const projY = (toNodeX * camUpX + toNodeY * camUpY + toNodeZ * camUpZ) * perspectiveScale;
+            const projX = (toNodeX * camRightX + toNodeY * camRightY + toNodeZ * camRightZ) * nodeScale;
+            const projY = (toNodeX * camUpX + toNodeY * camUpY + toNodeZ * camUpZ) * nodeScale;
 
-            // Convert back to screen coordinates with zoom applied
-            node.renderX = screenCenterX + projX * width * zoomLevel;
-            node.renderY = screenCenterY - projY * width * zoomLevel;  // Flip Y back
-            node.renderScale = perspectiveScale * zoomLevel;
+            // Convert back to screen coordinates
+            node.renderX = screenCenterX + projX * width;
+            node.renderY = screenCenterY - projY * width;  // Flip Y back
+            node.renderScale = nodeScale;
 
             // Fade when very close to camera
             node.renderAlpha = zDist < 0.2 ? zDist / 0.2 : 1.0;
@@ -1976,10 +2285,10 @@
             const tx = wx - camPosX, ty = wy - camPosY, tz = wz - camPosZ;
             const zd = tx * camFwdX + ty * camFwdY + tz * camFwdZ;
             if (zd < 0.01) return null;
-            const ps = orbitDist / zd;
+            const ps = 1.0 / zd;
             const px = (tx * camRightX + ty * camRightY + tz * camRightZ) * ps;
             const py = (tx * camUpX + ty * camUpY + tz * camUpZ) * ps;
-            return { x: screenCenterX + px * width * zoomLevel, y: screenCenterY - py * width * zoomLevel };
+            return { x: screenCenterX + px * width, y: screenCenterY - py * width };
         }
 
         // Draw orbit circles for moons (3D tilted circles, projected with camera)
@@ -2079,34 +2388,9 @@
                 ctx.lineTo(bx, by);
                 ctx.stroke();
             });
-
-            // Draw highlighted connections on top (yellow opaque)
-            if (hoveredNode) {
-                connections.forEach(([a, b]) => {
-                    const isHighlighted = hoveredNode.id === a || hoveredNode.id === b;
-                    if (!isHighlighted) return;
-
-                    const nodeA = nodes.find(n => n.id === a);
-                    const nodeB = nodes.find(n => n.id === b);
-                    if (!nodeA || !nodeB) return;
-                    if (nodeA.renderX < -1000 || nodeB.renderX < -1000) return; // Skip if culled
-
-                    const ax = nodeA.renderX, ay = nodeA.renderY;
-                    const bx = nodeB.renderX, by = nodeB.renderY;
-                    const avgScale = ((nodeA.renderScale || 1) + (nodeB.renderScale || 1)) * 0.5;
-                    const avgAlpha = ((nodeA.renderAlpha || 1) + (nodeB.renderAlpha || 1)) * 0.5;
-
-                    ctx.strokeStyle = `rgba(232, 185, 35, ${globalFadeIn * avgAlpha})`;
-                    ctx.lineWidth = 2 * avgScale;
-                    ctx.beginPath();
-                    ctx.moveTo(ax, ay);
-                    ctx.lineTo(bx, by);
-                    ctx.stroke();
-                });
-            }
         }
 
-        if (!renderSpheresGL(nodes, hoveredNode, connectedToHovered)) {
+        if (!renderSpheresGL(nodes, hoveredNode, null)) {
             nodes.forEach(node => {
                 const fadeAmount = node.shrinkProgress !== undefined ? node.shrinkProgress : 1;
                 if (globalFadeIn < 0.01) return;
@@ -2172,50 +2456,46 @@
 
     // Convert screen coords to world coords (accounting for 3D perspective camera)
     function screenToWorld(sx, sy) {
-        // Fixed orbit distance, zoom applied as scale
-        // In the shader: projectedCenter = screenCenter + projection * zoomScale
-        // So we reverse: worldPos = (screenPos - screenCenter) / zoomScale + screenCenter
-        const screenCenterX = width * 0.5;
-        const screenCenterY = height * 0.5;
-
-        // Zoom is a simple scale factor around screen center
-        return {
-            x: (sx - screenCenterX) / zoomLevel + screenCenterX,
-            y: (sy - screenCenterY) / zoomLevel + screenCenterY
-        };
+        // With camera-distance zoom, screen coords directly map to world coords
+        // for objects at Z=0 (the main interaction plane)
+        // The zoom effect comes from camera being closer, not from scaling
+        return { x: sx, y: sy };
     }
 
     canvas.addEventListener('mousedown', (e) => {
+        // Only handle left click
+        if (e.button !== 0) return;
+
         const rect = canvas.getBoundingClientRect();
         const screenX = e.clientX - rect.left;
         const screenY = e.clientY - rect.top;
-
-        // Alt + Right Click: Start camera orbit
-        if (e.altKey && e.button === 2) {
-            isOrbiting = true;
-            orbitStartX = e.clientX;
-            orbitStartY = e.clientY;
-            orbitStartRotX = targetCameraRotX;
-            orbitStartRotY = targetCameraRotY;
-            container.style.cursor = 'move';
-            e.preventDefault();
-            return;
-        }
 
         mouseScreenX = screenX;
         mouseScreenY = screenY;
         const world = screenToWorld(screenX, screenY);
         mouseX = world.x;
         mouseY = world.y;
-        dragNode = getNodeAt(screenX, screenY);  // Use screen coords for hit testing
-        if (dragNode) {
+
+        // Check if clicking on a node
+        const clickedNode = getNodeAt(screenX, screenY);
+
+        if (clickedNode) {
+            // Clicking on a node: start dragging
+            dragNode = clickedNode;
             isDragging = true;
-            settled = false;
             container.style.cursor = 'grabbing';
             if (hoveredNode === dragNode && !tooltipTarget) {
                 tooltipTarget = dragNode;
                 generateTooltipPosition(dragNode);
             }
+        } else {
+            // Clicking on empty space: start camera rotation
+            isOrbiting = true;
+            orbitStartX = e.clientX;
+            orbitStartY = e.clientY;
+            orbitStartRotX = targetCameraRotX;
+            orbitStartRotY = targetCameraRotY;
+            container.style.cursor = 'move';
         }
     });
 
@@ -2224,8 +2504,8 @@
         if (isOrbiting) {
             const deltaX = e.clientX - orbitStartX;
             const deltaY = e.clientY - orbitStartY;
-            // Sensitivity affected by UI slider
-            const sensitivity = 0.005 * orbitParams.cameraRotSpeed;
+            // Sensitivity from camera params
+            const sensitivity = window.cameraParams.rotationSpeed;
             targetCameraRotY = orbitStartRotY + deltaX * sensitivity;
             targetCameraRotX = orbitStartRotX + deltaY * sensitivity;
             // Clamp pitch to avoid flipping
@@ -2245,7 +2525,6 @@
             dragNode.x = mouseX; dragNode.y = mouseY;
             dragNode.baseX = mouseX; dragNode.baseY = mouseY;
             dragNode.vx = 0; dragNode.vy = 0;
-            settled = false; settleTimer = 0;
             if (tooltipTarget === dragNode) updateTooltipPositionForDrag(dragNode);
         } else {
             hoveredNode = getNodeAt(screenX, screenY);  // Use screen coords for hit testing
@@ -2271,13 +2550,6 @@
         updateTooltip(null);
     });
 
-    // Prevent context menu when using Alt + Right Click for camera orbit
-    canvas.addEventListener('contextmenu', (e) => {
-        if (e.altKey) {
-            e.preventDefault();
-        }
-    });
-
     canvas.addEventListener('touchstart', (e) => {
         e.preventDefault();
         const touch = e.touches[0];
@@ -2291,7 +2563,7 @@
         mouseY = world.y;
         dragNode = getNodeAt(screenX, screenY);  // Use screen coords for hit testing
         if (dragNode) {
-            isDragging = true; settled = false;
+            isDragging = true;
             tooltipTarget = dragNode;
             generateTooltipPosition(dragNode);
             updateTooltip(dragNode);
@@ -2310,41 +2582,34 @@
         dragNode.y = world.y;
         dragNode.baseX = dragNode.x; dragNode.baseY = dragNode.y;
         dragNode.vx = 0; dragNode.vy = 0;
-        settled = false;
         if (tooltipTarget === dragNode) updateTooltipPositionForDrag(dragNode);
     }, { passive: false });
 
     canvas.addEventListener('touchend', () => { isDragging = false; dragNode = null; });
 
-    // Mouse wheel zoom - zooms toward mouse position
-    canvas.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        const rect = canvas.getBoundingClientRect();
-        const mouseScreenX = e.clientX - rect.left;
-        const mouseScreenY = e.clientY - rect.top;
+    // Keyboard controls
+    document.addEventListener('keydown', (e) => {
+        if (e.target.matches('input, textarea')) return;
 
-        const zoomSpeed = 0.0008;
-        const delta = -e.deltaY * zoomSpeed;
-        const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, targetZoom + delta * targetZoom));
-
-        // Don't change zoom center if already at max zoom
-        if (targetZoom >= MAX_ZOOM && newZoom >= MAX_ZOOM) {
+        // Spacebar toggles mouse light on planets
+        if (e.code === 'Space') {
+            e.preventDefault();
+            mouseLightEnabled = !mouseLightEnabled;
             return;
         }
 
-        // Only update zoom center when zooming in, not when at min zoom
-        if (newZoom > MIN_ZOOM) {
-            targetZoomCenterX = mouseScreenX;
-            targetZoomCenterY = mouseScreenY;
-        }
-        targetZoom = newZoom;
-    }, { passive: false });
-
-    // Spacebar toggles mouse light on planets
-    document.addEventListener('keydown', (e) => {
-        if (e.code === 'Space' && !e.target.matches('input, textarea')) {
+        // Track WASD/ZQSD keys for camera movement
+        const key = e.code.toLowerCase();
+        if (['keyw', 'keyz', 'keys', 'keya', 'keyd', 'keyq'].includes(key)) {
+            keysPressed[key] = true;
             e.preventDefault();
-            mouseLightEnabled = !mouseLightEnabled;
+        }
+    });
+
+    document.addEventListener('keyup', (e) => {
+        const key = e.code.toLowerCase();
+        if (['keyw', 'keyz', 'keys', 'keya', 'keyd', 'keyq'].includes(key)) {
+            keysPressed[key] = false;
         }
     });
 
@@ -2354,14 +2619,14 @@
 
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
-            time = 0; globalFadeIn = 0; startupPhase = true;
+            time = 0; globalFadeIn = 0;
             tooltip.classList.remove('visible');
             tooltipTarget = null;
         }
     });
 
     window.addEventListener('skillsTabActivated', () => {
-        time = 0; globalFadeIn = 0; startupPhase = true;
+        time = 0; globalFadeIn = 0;
         tooltip.classList.remove('visible');
         tooltipTarget = null;
     });
@@ -2658,6 +2923,8 @@
         'a-sunset-strength': { param: 'sunsetStrength', valueEl: 'a-sunset-strength-value', default: 1.0, decimals: 2 },
         'a-ocean-roughness': { param: 'oceanRoughness', valueEl: 'a-ocean-roughness-value', default: 0.55, decimals: 2 },
         'a-sss-intensity': { param: 'sssIntensity', valueEl: 'a-sss-intensity-value', default: 1.0, decimals: 1 },
+        'a-sss-wrap': { param: 'sssWrap', valueEl: 'a-sss-wrap-value', default: 0.3, decimals: 2 },
+        'a-sss-backlight': { param: 'sssBacklight', valueEl: 'a-sss-backlight-value', default: 0.5, decimals: 2 },
         'a-sea-level': { param: 'seaLevel', valueEl: 'a-sea-level-value', default: 0.0, decimals: 2 },
         'a-land-roughness': { param: 'landRoughness', valueEl: 'a-land-roughness-value', default: 0.65, decimals: 2 },
         'a-normal-strength': { param: 'normalStrength', valueEl: 'a-normal-strength-value', default: 0.15, decimals: 2 }
@@ -2669,6 +2936,15 @@
         scatterColorA.value = planetParamsA.scatterColor;
         scatterColorA.addEventListener('input', () => {
             planetParamsA.scatterColor = scatterColorA.value;
+        });
+    }
+
+    // SSS color picker for Planet A
+    const sssColorA = document.getElementById('a-sss-color');
+    if (sssColorA) {
+        sssColorA.value = planetParamsA.sssColor;
+        sssColorA.addEventListener('input', () => {
+            planetParamsA.sssColor = sssColorA.value;
         });
     }
 
@@ -2707,6 +2983,10 @@
             // Reset scatter color picker
             planetParamsA.scatterColor = '#1a40e6';
             if (scatterColorA) scatterColorA.value = '#1a40e6';
+            // Reset SSS color picker
+            planetParamsA.sssColor = '#0d578c';
+            const sssColorReset = document.getElementById('a-sss-color');
+            if (sssColorReset) sssColorReset.value = '#0d578c';
         });
     }
 
@@ -2952,34 +3232,34 @@
 
     const particlesSlidersConfig = {
         // Focus distance settings
-        'particles-focus-distance': { param: 'focusDistance', valueEl: 'particles-focus-distance-value', default: 0.7, decimals: 2 },
+        'particles-focus-distance': { param: 'focusDistance', valueEl: 'particles-focus-distance-value', default: 0.2, decimals: 2 },
         'particles-focus-range': { param: 'focusRange', valueEl: 'particles-focus-range-value', default: 0.15, decimals: 2 },
-        'particles-near-blur': { param: 'nearBlurDist', valueEl: 'particles-near-blur-value', default: 0.3, decimals: 2 },
-        'particles-far-blur': { param: 'farBlurDist', valueEl: 'particles-far-blur-value', default: 1.2, decimals: 2 },
+        'particles-near-blur': { param: 'nearBlur', valueEl: 'particles-near-blur-value', default: 0.1, decimals: 2 },
+        'particles-far-blur': { param: 'farBlur', valueEl: 'particles-far-blur-value', default: 0.4, decimals: 2 },
         // Bokeh effect
-        'particles-max-blur': { param: 'maxBlurSize', valueEl: 'particles-max-blur-value', default: 25.0, decimals: 1 },
-        'particles-aperture': { param: 'apertureSize', valueEl: 'particles-aperture-value', default: 1.0, decimals: 2 },
-        'particles-ring-width': { param: 'bokehRingWidth', valueEl: 'particles-ring-width-value', default: 0.5, decimals: 2 },
-        'particles-ring-intensity': { param: 'bokehRingIntensity', valueEl: 'particles-ring-intensity-value', default: 0.8, decimals: 2 },
+        'particles-max-blur': { param: 'maxBlur', valueEl: 'particles-max-blur-value', default: 25.0, decimals: 1 },
+        'particles-aperture': { param: 'aperture', valueEl: 'particles-aperture-value', default: 1.0, decimals: 2 },
+        'particles-ring-width': { param: 'ringWidth', valueEl: 'particles-ring-width-value', default: 0.5, decimals: 2 },
+        'particles-ring-intensity': { param: 'ringIntensity', valueEl: 'particles-ring-intensity-value', default: 0.8, decimals: 2 },
         // Circle quality
-        'particles-softness': { param: 'circleSoftness', valueEl: 'particles-softness-value', default: 0.3, decimals: 2 },
+        'particles-softness': { param: 'softness', valueEl: 'particles-softness-value', default: 0.3, decimals: 2 },
         // Appearance
         'particles-size': { param: 'particleSize', valueEl: 'particles-size-value', default: 2.0, decimals: 2 },
         'particles-brightness': { param: 'brightness', valueEl: 'particles-brightness-value', default: 1.0, decimals: 2 },
         'particles-light-falloff': { param: 'lightFalloff', valueEl: 'particles-light-falloff-value', default: 3.0, decimals: 2 }
     };
 
-    // Shooting star sliders config
+    // Shooting star sliders config (now uses spaceParticleParams)
     const shootingStarSlidersConfig = {
-        'shooting-chance': { param: 'chance', valueEl: 'shooting-chance-value', default: 0.0003, decimals: 3 },
-        'shooting-speed': { param: 'speed', valueEl: 'shooting-speed-value', default: 0.4, decimals: 2 },
-        'shooting-duration': { param: 'duration', valueEl: 'shooting-duration-value', default: 0.8, decimals: 2 }
+        'shooting-chance': { param: 'shootingChance', valueEl: 'shooting-chance-value', default: 0.0003, decimals: 3 },
+        'shooting-speed': { param: 'shootingSpeed', valueEl: 'shooting-speed-value', default: 0.4, decimals: 2 },
+        'shooting-duration': { param: 'shootingDuration', valueEl: 'shooting-duration-value', default: 0.8, decimals: 2 }
     };
 
-    // Shooting star color pickers config
+    // Shooting star color pickers config (now uses spaceParticleParams)
     const shootingStarColorConfig = {
-        'shooting-gold-color': { param: 'goldColor', default: '#e8b923' },
-        'shooting-teal-color': { param: 'tealColor', default: '#2dd4bf' }
+        'shooting-gold-color': { param: 'shootingGoldColor', default: '#e8b923' },
+        'shooting-teal-color': { param: 'shootingTealColor', default: '#2dd4bf' }
     };
 
     // Initialize particles sliders
@@ -2998,29 +3278,29 @@
         }
     });
 
-    // Initialize shooting star sliders
+    // Initialize shooting star sliders (now uses spaceParticleParams)
     Object.entries(shootingStarSlidersConfig).forEach(([sliderId, config]) => {
         const slider = document.getElementById(sliderId);
         const valueEl = document.getElementById(config.valueEl);
-        if (slider && valueEl) {
-            slider.value = shootingStarParams[config.param];
-            valueEl.textContent = shootingStarParams[config.param].toFixed(config.decimals);
+        if (slider && valueEl && spaceParticleParams[config.param] !== undefined) {
+            slider.value = spaceParticleParams[config.param];
+            valueEl.textContent = spaceParticleParams[config.param].toFixed(config.decimals);
 
             slider.addEventListener('input', () => {
                 const value = parseFloat(slider.value);
-                shootingStarParams[config.param] = value;
+                spaceParticleParams[config.param] = value;
                 valueEl.textContent = value.toFixed(config.decimals);
             });
         }
     });
 
-    // Initialize shooting star color pickers
+    // Initialize shooting star color pickers (now uses spaceParticleParams)
     Object.entries(shootingStarColorConfig).forEach(([pickerId, config]) => {
         const picker = document.getElementById(pickerId);
-        if (picker) {
-            picker.value = shootingStarParams[config.param];
+        if (picker && spaceParticleParams[config.param] !== undefined) {
+            picker.value = spaceParticleParams[config.param];
             picker.addEventListener('input', () => {
-                shootingStarParams[config.param] = picker.value;
+                spaceParticleParams[config.param] = picker.value;
             });
         }
     });
@@ -3060,18 +3340,18 @@
                 if (slider) slider.value = config.default;
                 if (valueEl) valueEl.textContent = config.default.toFixed(config.decimals);
             });
-            // Reset shooting star sliders
+            // Reset shooting star sliders (now uses spaceParticleParams)
             Object.entries(shootingStarSlidersConfig).forEach(([sliderId, config]) => {
                 const slider = document.getElementById(sliderId);
                 const valueEl = document.getElementById(config.valueEl);
-                shootingStarParams[config.param] = config.default;
+                spaceParticleParams[config.param] = config.default;
                 if (slider) slider.value = config.default;
                 if (valueEl) valueEl.textContent = config.default.toFixed(config.decimals);
             });
-            // Reset shooting star colors
+            // Reset shooting star colors (now uses spaceParticleParams)
             Object.entries(shootingStarColorConfig).forEach(([pickerId, config]) => {
                 const picker = document.getElementById(pickerId);
-                shootingStarParams[config.param] = config.default;
+                spaceParticleParams[config.param] = config.default;
                 if (picker) picker.value = config.default;
             });
             // Reset base particle color
@@ -3230,16 +3510,22 @@
     const godraysResetBtn = document.getElementById('godrays-reset-btn');
 
     const godraysSlidersConfig = {
-        'godrays-ray-intensity': { param: 'rayIntensity', valueEl: 'godrays-ray-intensity-value', default: 0.5, decimals: 2 },
-        'godrays-ray-falloff': { param: 'rayFalloff', valueEl: 'godrays-ray-falloff-value', default: 4.0, decimals: 2 },
-        'godrays-glow-intensity': { param: 'glowIntensity', valueEl: 'godrays-glow-intensity-value', default: 0.5, decimals: 2 },
-        'godrays-glow-size': { param: 'glowSize', valueEl: 'godrays-glow-size-value', default: 4.0, decimals: 2 },
-        'godrays-fog-density': { param: 'fogDensity', valueEl: 'godrays-fog-density-value', default: 6.0, decimals: 2 },
-        'godrays-ambient-fog': { param: 'ambientFog', valueEl: 'godrays-ambient-fog-value', default: 0.08, decimals: 2 },
-        'godrays-noise-scale': { param: 'noiseScale', valueEl: 'godrays-noise-scale-value', default: 1.0, decimals: 2 },
-        'godrays-noise-octaves': { param: 'noiseOctaves', valueEl: 'godrays-noise-octaves-value', default: 1.0, decimals: 2 },
-        'godrays-noise-contrast': { param: 'noiseContrast', valueEl: 'godrays-noise-contrast-value', default: 1.0, decimals: 2 },
-        'godrays-anim-speed': { param: 'animSpeed', valueEl: 'godrays-anim-speed-value', default: 1.0, decimals: 2 }
+        // Physically-based light scattering
+        'godrays-light-intensity': { param: 'lightIntensity', valueEl: 'godrays-light-intensity-value', default: 1.2, decimals: 2 },
+        'godrays-light-falloff': { param: 'lightFalloff', valueEl: 'godrays-light-falloff-value', default: 2.0, decimals: 1 },
+        'godrays-light-scale': { param: 'lightScale', valueEl: 'godrays-light-scale-value', default: 3.0, decimals: 1 },
+        'godrays-light-saturation': { param: 'lightSaturation', valueEl: 'godrays-light-saturation-value', default: 1.8, decimals: 1 },
+        // Edge Noise
+        'godrays-noise-scale': { param: 'noiseScale', valueEl: 'godrays-noise-scale-value', default: 4.0, decimals: 1 },
+        'godrays-noise-strength': { param: 'noiseStrength', valueEl: 'godrays-noise-strength-value', default: 0.12, decimals: 2 },
+        'godrays-noise-octaves': { param: 'noiseOctaves', valueEl: 'godrays-noise-octaves-value', default: 0.5, decimals: 2 },
+        // Self-shadowing
+        'godrays-noise-shadow': { param: 'noiseShadow', valueEl: 'godrays-noise-shadow-value', default: 0.5, decimals: 2 },
+        'godrays-shadow-offset': { param: 'shadowOffset', valueEl: 'godrays-shadow-offset-value', default: 0.3, decimals: 2 },
+        // Chromatic scattering
+        'godrays-scatter-r': { param: 'scatterR', valueEl: 'godrays-scatter-r-value', default: 0.3, decimals: 2 },
+        'godrays-scatter-g': { param: 'scatterG', valueEl: 'godrays-scatter-g-value', default: 0.6, decimals: 2 },
+        'godrays-scatter-b': { param: 'scatterB', valueEl: 'godrays-scatter-b-value', default: 1.0, decimals: 2 }
     };
 
     // Initialize god rays sliders
@@ -3292,51 +3578,65 @@
     const SETTINGS_STORAGE_KEY = 'shaderSettings_v1';
 
     // Collect all current settings
+    // Uses the PERSISTED_PARAM_OBJECTS registry from core.js
+    // To add a new param object to persistence, add its name to window.PERSISTED_PARAM_OBJECTS in core.js
     function getAllSettings() {
-        return {
-            version: 1,
-            timestamp: new Date().toISOString(),
-            planetParamsA: { ...planetParamsA },
-            planetParamsB: { ...planetParamsB },
-            sunParams: { ...sunParams },
-            lightParams: { ...lightParams },
-            physicsParams: { ...physicsParams },
-            spaceParticleParams: { ...spaceParticleParams },
-            shootingStarParams: { ...shootingStarParams },
-            godRaysParams: { ...godRaysParams },
-            nebulaParams: { ...nebulaParams }
+        const settings = {
+            version: 2,
+            timestamp: new Date().toISOString()
         };
+
+        // Use the centralized registry from core.js
+        const paramObjects = window.PERSISTED_PARAM_OBJECTS || [];
+
+        // Copy each param object
+        paramObjects.forEach(name => {
+            const obj = window[name];
+            if (obj && typeof obj === 'object') {
+                settings[name] = { ...obj };
+            }
+        });
+
+        return settings;
     }
 
     // Apply settings to param objects and update UI
+    // Uses the PERSISTED_PARAM_OBJECTS registry from core.js
     function applySettings(settings) {
         if (!settings) return;
 
-        // Apply to each param object
-        const paramMappings = [
-            ['planetParamsA', planetParamsA],
-            ['planetParamsB', planetParamsB],
-            ['sunParams', sunParams],
-            ['lightParams', lightParams],
-            ['physicsParams', physicsParams],
-            ['spaceParticleParams', spaceParticleParams],
-            ['shootingStarParams', shootingStarParams],
-            ['godRaysParams', godRaysParams],
-            ['nebulaParams', nebulaParams]
-        ];
+        // Use the centralized registry from core.js
+        const paramObjects = window.PERSISTED_PARAM_OBJECTS || [];
 
-        paramMappings.forEach(([key, paramObj]) => {
-            if (settings[key]) {
-                Object.keys(settings[key]).forEach(param => {
-                    if (param in paramObj) {
-                        paramObj[param] = settings[key][param];
+        // Apply each saved object to its corresponding window object
+        paramObjects.forEach(name => {
+            const savedObj = settings[name];
+            const targetObj = window[name];
+            if (savedObj && targetObj && typeof targetObj === 'object') {
+                Object.keys(savedObj).forEach(key => {
+                    if (key in targetObj) {
+                        targetObj[key] = savedObj[key];
                     }
                 });
             }
         });
 
+        // Legacy support: apply physicsParams if present (maps to orbitParams)
+        if (settings.physicsParams && window.orbitParams) {
+            Object.keys(settings.physicsParams).forEach(key => {
+                if (key in window.orbitParams) {
+                    window.orbitParams[key] = settings.physicsParams[key];
+                }
+            });
+        }
+
         // Update all sliders to reflect loaded values
         updateAllSliders();
+
+        // Refresh settings panel toggles if available
+        if (window.refreshSettingsPanel) {
+            window.refreshSettingsPanel();
+        }
     }
 
     // Update all slider UI elements to match current param values
@@ -3370,6 +3670,11 @@
         // Scatter color picker
         const scatterColorA = document.getElementById('a-scatter-color');
         if (scatterColorA) scatterColorA.value = planetParamsA.scatterColor;
+        // SSS controls
+        updateSlider('a-sss-wrap', planetParamsA.sssWrap, 2);
+        updateSlider('a-sss-backlight', planetParamsA.sssBacklight, 1);
+        const sssColorAEl = document.getElementById('a-sss-color');
+        if (sssColorAEl) sssColorAEl.value = planetParamsA.sssColor;
 
         // Planet B sliders
         updateSlider('b-noise-scale', planetParamsB.noiseScale, 1);
@@ -3409,41 +3714,43 @@
         // Particles sliders
         updateSlider('particles-focus-distance', spaceParticleParams.focusDistance, 2);
         updateSlider('particles-focus-range', spaceParticleParams.focusRange, 2);
-        updateSlider('particles-near-blur', spaceParticleParams.nearBlurDist, 2);
-        updateSlider('particles-far-blur', spaceParticleParams.farBlurDist, 2);
-        updateSlider('particles-max-blur', spaceParticleParams.maxBlurSize, 1);
-        updateSlider('particles-aperture', spaceParticleParams.apertureSize, 2);
-        updateSlider('particles-ring-width', spaceParticleParams.bokehRingWidth, 2);
-        updateSlider('particles-ring-intensity', spaceParticleParams.bokehRingIntensity, 2);
-        updateSlider('particles-softness', spaceParticleParams.circleSoftness, 2);
-        updateSlider('particles-size', spaceParticleParams.particleSize, 2);
+        updateSlider('particles-near-blur', spaceParticleParams.nearBlur, 2);
+        updateSlider('particles-far-blur', spaceParticleParams.farBlur, 2);
+        updateSlider('particles-max-blur', spaceParticleParams.maxBlur, 0);
+        updateSlider('particles-aperture', spaceParticleParams.aperture, 2);
+        updateSlider('particles-ring-width', spaceParticleParams.ringWidth, 2);
+        updateSlider('particles-ring-intensity', spaceParticleParams.ringIntensity, 2);
+        updateSlider('particles-softness', spaceParticleParams.softness, 2);
+        updateSlider('particles-size', spaceParticleParams.particleSize, 1);
         updateSlider('particles-brightness', spaceParticleParams.brightness, 2);
-        updateSlider('particles-light-falloff', spaceParticleParams.lightFalloff, 2);
+        updateSlider('particles-light-falloff', spaceParticleParams.lightFalloff, 1);
         // Particles base color picker
         const particlesBaseColorPicker = document.getElementById('particles-base-color');
         if (particlesBaseColorPicker) particlesBaseColorPicker.value = spaceParticleParams.baseColor;
 
         // Shooting star sliders
-        updateSlider('shooting-chance', shootingStarParams.chance, 3);
-        updateSlider('shooting-speed', shootingStarParams.speed, 2);
-        updateSlider('shooting-duration', shootingStarParams.duration, 2);
+        updateSlider('shooting-chance', spaceParticleParams.shootingChance, 3);
+        updateSlider('shooting-speed', spaceParticleParams.shootingSpeed, 2);
+        updateSlider('shooting-duration', spaceParticleParams.shootingDuration, 2);
         // Shooting star color pickers
         const shootingGoldPicker = document.getElementById('shooting-gold-color');
         const shootingTealPicker = document.getElementById('shooting-teal-color');
-        if (shootingGoldPicker) shootingGoldPicker.value = shootingStarParams.goldColor;
-        if (shootingTealPicker) shootingTealPicker.value = shootingStarParams.tealColor;
+        if (shootingGoldPicker) shootingGoldPicker.value = spaceParticleParams.shootingGoldColor;
+        if (shootingTealPicker) shootingTealPicker.value = spaceParticleParams.shootingTealColor;
 
         // God rays sliders
-        updateSlider('godrays-ray-intensity', godRaysParams.rayIntensity, 2);
-        updateSlider('godrays-ray-falloff', godRaysParams.rayFalloff, 2);
-        updateSlider('godrays-glow-intensity', godRaysParams.glowIntensity, 2);
-        updateSlider('godrays-glow-size', godRaysParams.glowSize, 2);
-        updateSlider('godrays-fog-density', godRaysParams.fogDensity, 2);
-        updateSlider('godrays-ambient-fog', godRaysParams.ambientFog, 2);
-        updateSlider('godrays-noise-scale', godRaysParams.noiseScale, 2);
+        updateSlider('godrays-light-intensity', godRaysParams.lightIntensity, 2);
+        updateSlider('godrays-light-falloff', godRaysParams.lightFalloff, 1);
+        updateSlider('godrays-light-scale', godRaysParams.lightScale, 1);
+        updateSlider('godrays-light-saturation', godRaysParams.lightSaturation, 1);
+        updateSlider('godrays-noise-scale', godRaysParams.noiseScale, 1);
+        updateSlider('godrays-noise-strength', godRaysParams.noiseStrength, 2);
         updateSlider('godrays-noise-octaves', godRaysParams.noiseOctaves, 2);
-        updateSlider('godrays-noise-contrast', godRaysParams.noiseContrast, 2);
-        updateSlider('godrays-anim-speed', godRaysParams.animSpeed, 2);
+        updateSlider('godrays-noise-shadow', godRaysParams.noiseShadow, 2);
+        updateSlider('godrays-shadow-offset', godRaysParams.shadowOffset, 2);
+        updateSlider('godrays-scatter-r', godRaysParams.scatterR, 2);
+        updateSlider('godrays-scatter-g', godRaysParams.scatterG, 2);
+        updateSlider('godrays-scatter-b', godRaysParams.scatterB, 2);
 
         // Nebula sliders
         updateSlider('nebula-intensity', nebulaParams.intensity, 2);
@@ -3572,6 +3879,9 @@ const nebulaParams = ${JSON.stringify(settings.nebulaParams, null, 4)};
 
 // Orbital system parameters
 const orbitParams = ${JSON.stringify(settings.orbitParams, null, 4)};
+
+// Render feature toggles (enable/disable individual renderers)
+window.renderToggles = ${JSON.stringify(settings.renderToggles, null, 4)};
 `;
 
         // Copy to clipboard
@@ -3738,9 +4048,11 @@ const orbitParams = ${JSON.stringify(settings.orbitParams, null, 4)};
         });
     }
 
-    // Initialize: load saved settings and create buttons
-    loadFromLocalStorage();
-    createSettingsButtons();
+    // Expose parameter objects globally for settings panel BEFORE loading settings
+    // This ensures applySettings() can find and update these objects
+    window.spaceParticleParams = spaceParticleParams;
+    window.shootingStarParams = shootingStarParams;
+    window.godRaysParams = godRaysParams;
 
     // Expose functions globally for settings panel
     window.saveToLocalStorage = saveToLocalStorage;
@@ -3749,9 +4061,10 @@ const orbitParams = ${JSON.stringify(settings.orbitParams, null, 4)};
     window.importSettings = importSettings;
     window.updateLightFromKelvin = updateLightFromKelvin;
 
-    // Expose parameter objects globally for settings panel
-    window.spaceParticleParams = spaceParticleParams;
-    window.godRaysParams = godRaysParams;
+    // Initialize: load saved settings and create buttons
+    // Must be called AFTER exposing param objects to window
+    loadFromLocalStorage();
+    createSettingsButtons();
 
     animate();
 })();

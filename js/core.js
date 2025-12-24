@@ -73,6 +73,9 @@ var planetParamsA = {
     sunsetStrength: 1.0,
     oceanRoughness: 0.55,
     sssIntensity: 1.0,
+    sssWrap: 0.3,
+    sssBacklight: 0.5,
+    sssColor: '#0d578c',
     seaLevel: 0.0,
     landRoughness: 0.65,
     normalStrength: 0.15
@@ -137,22 +140,30 @@ var sunParams = {
 
 // Orbital system parameters
 var orbitParams = {
+    // Speed & Movement
     orbitSpeed: 1.0,
+    cameraRotSpeed: 1.0,
+    // Sun positioning
     sunSpread: 1.0,
     sunSpawnMin: 0.2,
     sunSpawnMax: 0.45,
+    spawnOffset: 0.0,
+    // Moon orbits (planets orbiting suns)
     moonOrbitRadius: 1.0,
     moonOrbitSpacing: 1.0,
     moonOrbitTilt: 1.0,
     baseOrbitMin: 0.04,
     baseOrbitMax: 0.08,
-    spawnOffset: 0.0,
+    // Sub-moons (moons orbiting planets)
     subMoonOrbitRadius: 1.0,
     subMoonSpeed: 1.0,
+    // Size factors
+    sunSizeFactor: 1.0,
+    planetSizeFactor: 1.0,
     subMoonSize: 0.5,
+    // Orbit display
     orbitLineOpacity: 0.25,
     orbitLineWidth: 1.0,
-    cameraRotSpeed: 1.0,
     showOrbits: 1.0
 };
 
@@ -196,6 +207,7 @@ window.planetParamsB = planetParamsB;
 window.lightParams = lightParams;
 window.sunParams = sunParams;
 window.nebulaParams = nebulaParams;
+window.orbitParams = orbitParams;
 
 // Render feature toggles (enable/disable individual renderers)
 window.renderToggles = {
@@ -206,6 +218,32 @@ window.renderToggles = {
     godRays: true,          // God rays post-process
     orbits: true            // Orbital path lines
 };
+
+// ============================================
+// PERSISTED SETTINGS REGISTRY
+// ============================================
+// All param objects in this list will be automatically saved/loaded from localStorage
+//
+// AUTOMATIC PERSISTENCE BY DESIGN:
+// The settings panel (settings-panel.js) automatically extracts all param objects
+// from its CONTROLS configuration and adds them to this list on init.
+// This means adding any new param to the settings panel will automatically persist it.
+//
+// To manually add persistence for a param object NOT in settings panel:
+// 1. Define the object (e.g., var myNewParams = { ... })
+// 2. Expose it on window (e.g., window.myNewParams = myNewParams)
+// 3. Add its name to this list
+window.PERSISTED_PARAM_OBJECTS = [
+    'planetParamsA',
+    'planetParamsB',
+    'sunParams',
+    'lightParams',
+    'orbitParams',
+    'spaceParticleParams',
+    'godRaysParams',
+    'nebulaParams',
+    'renderToggles'
+];
 
 // Global light data (shared between skill network and background)
 window.globalLights = {
@@ -230,10 +268,6 @@ var backgroundFragmentShader = nebulaFragmentShaderRaw.replace(/vUV/g, 'vUv');
 var sphereVertexShader = window.PLANET_VERTEX_SHADER;
 var sphereFragmentShader = window.PLANET_FRAGMENT_SHADER;
 var sunFragmentShader = window.SUN_FRAGMENT_SHADER;
-
-// God rays shaders
-var godRaysVertexShader = window.GODRAYS_VERTEX_SHADER;
-var godRaysFragmentShader = window.GODRAYS_FRAGMENT_SHADER;
 
 // Debug quad shaders
 var debugQuadVertexShader = window.DEBUG_QUAD_VERTEX_SHADER;

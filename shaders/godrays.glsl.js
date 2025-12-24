@@ -1,6 +1,6 @@
 // God Rays / Volumetric Light Post-Process Shader
-// Lightweight fullscreen pass for atmospheric fog and light glow
-// The GLSL code is inside the template literal strings below
+// SDF-based light halos with noise displacement at SDF edge
+// Creates fake volumetric lighting by warping the light boundary
 
 window.GODRAYS_VERTEX_SHADER = `
 attribute vec2 aPosition;
@@ -15,245 +15,281 @@ void main() {
 window.GODRAYS_FRAGMENT_SHADER = `
 precision highp float;
 varying vec2 vUV;
+
+// Scene uniforms
 uniform vec2 uResolution;
 uniform float uTime;
+
+// Light positions (screen space pixels)
 uniform vec2 uLight0;
 uniform vec2 uLight1;
 uniform vec2 uLight2;
+
+// Light colors
 uniform vec3 uLightColor0;
 uniform vec3 uLightColor1;
 uniform vec3 uLightColor2;
-uniform float uZoom;
-uniform vec2 uZoomCenter;
-uniform float uCameraRotX;  // Camera pitch
-uniform float uCameraRotY;  // Camera yaw
 
-// Controllable parameters
-uniform float uRayIntensity;      // Ray intensity multiplier (default 0.5)
-uniform float uRayFalloff;        // Ray falloff exponent (default 4.0)
-uniform float uGlowIntensity;     // Glow intensity multiplier (default 0.5)
-uniform float uGlowSize;          // Glow size/falloff (default 4.0)
-uniform float uFogDensity;        // Fog noise density (default 6.0)
-uniform float uAmbientFog;        // Ambient fog intensity (default 0.08)
-uniform float uAnimSpeed;         // Animation speed multiplier (default 1.0)
-uniform float uNoiseScale;        // Noise frequency scale (default 1.0)
-uniform float uNoiseOctaves;      // Noise detail/octaves blend (default 1.0)
+// Camera rotation (for consistent world-space noise)
+uniform float uCameraRotX;
+uniform float uCameraRotY;
+
+// ========================================
+// SDF LIGHT CONTROLS
+// ========================================
+uniform float uLightFalloff;      // Falloff curve power (default 2.0, range 0.5-8.0)
+uniform float uLightRadius;       // Base radius multiplier (default 0.3, range 0.1-1.0)
+uniform float uLightIntensity;    // Overall light intensity (default 1.0)
+uniform float uLightSaturation;   // Color saturation boost (default 1.5)
+
+// ========================================
+// 3D NOISE CONTROLS (SDF Edge Displacement)
+// ========================================
+uniform float uNoiseScale;        // Noise frequency (default 3.0, range 0.5-10.0)
+uniform float uNoiseSpeed;        // Animation speed (default 0.02)
+uniform float uNoiseStrength;     // SDF displacement amount (default 0.15, range 0-0.5)
 uniform float uNoiseContrast;     // Noise contrast/sharpness (default 1.0)
+uniform float uNoiseOctaves;      // Detail level 0-1 blends octaves (default 0.5)
+uniform float uNoiseBrightness;   // Noise brightness offset (default 0.0, range -0.5 to 0.5)
 
 // ========================================
-// 3D NOISE FOR CAMERA ROTATION
+// VOLUMETRIC CONTROLS
+// ========================================
+uniform float uVolumetricDensity; // Fog density around lights (default 1.0)
+uniform float uVolumetricFalloff; // How fast volumetric fades (default 3.0)
+uniform float uAmbientNoise;      // Global ambient noise intensity (default 0.05)
+
+// ========================================
+// 3D NOISE FUNCTIONS
 // ========================================
 
-float hash3D(vec3 p) {
+float hash31(vec3 p) {
     return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453);
 }
 
+// Smooth 3D value noise with quintic interpolation
 float noise3D(vec3 p) {
     vec3 i = floor(p);
     vec3 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
 
+    // Quintic interpolation for C2 continuity (smoother derivatives)
+    vec3 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+
+    // 8 corners of the cube
+    float a = hash31(i);
+    float b = hash31(i + vec3(1.0, 0.0, 0.0));
+    float c = hash31(i + vec3(0.0, 1.0, 0.0));
+    float d = hash31(i + vec3(1.0, 1.0, 0.0));
+    float e = hash31(i + vec3(0.0, 0.0, 1.0));
+    float f1 = hash31(i + vec3(1.0, 0.0, 1.0));
+    float g = hash31(i + vec3(0.0, 1.0, 1.0));
+    float h = hash31(i + vec3(1.0, 1.0, 1.0));
+
+    // Trilinear interpolation
     return mix(
-        mix(
-            mix(hash3D(i), hash3D(i + vec3(1.0, 0.0, 0.0)), f.x),
-            mix(hash3D(i + vec3(0.0, 1.0, 0.0)), hash3D(i + vec3(1.0, 1.0, 0.0)), f.x),
-            f.y
-        ),
-        mix(
-            mix(hash3D(i + vec3(0.0, 0.0, 1.0)), hash3D(i + vec3(1.0, 0.0, 1.0)), f.x),
-            mix(hash3D(i + vec3(0.0, 1.0, 1.0)), hash3D(i + vec3(1.0, 1.0, 1.0)), f.x),
-            f.y
-        ),
-        f.z
+        mix(mix(a, b, u.x), mix(c, d, u.x), u.y),
+        mix(mix(e, f1, u.x), mix(g, h, u.x), u.y),
+        u.z
     );
 }
 
-// Convert screen position to a point on a distant sphere, rotated by camera
-vec3 screenToSphere(vec2 screenPos) {
-    // Treat screen as a view into a sphere - convert to spherical coords
-    // screenPos is in -1 to 1 range
-    float fov = 1.0; // Field of view factor
+// FBM with controllable octaves
+float fbm3D(vec3 p, float octaveBlend) {
+    float value = 0.0;
+    float amplitude = 0.5;
+    float frequency = 1.0;
+    float totalAmplitude = 0.0;
 
-    // Create ray direction from screen position
-    vec3 rayDir = normalize(vec3(screenPos.x * fov, screenPos.y * fov, 1.0));
+    // Base octave (always full)
+    value += noise3D(p * frequency) * amplitude;
+    totalAmplitude += amplitude;
 
-    // Apply camera rotation (inverse - we rotate the ray)
-    float cosRotX = cos(-uCameraRotX);
-    float sinRotX = sin(-uCameraRotX);
-    float cosRotY = cos(-uCameraRotY);
-    float sinRotY = sin(-uCameraRotY);
+    // Second octave (blend in)
+    amplitude *= 0.5;
+    frequency *= 2.0;
+    value += noise3D(p * frequency) * amplitude * octaveBlend;
+    totalAmplitude += amplitude * octaveBlend;
 
-    // Rotate around X axis (pitch)
-    float ry = rayDir.y * cosRotX - rayDir.z * sinRotX;
-    float rz = rayDir.y * sinRotX + rayDir.z * cosRotX;
-    rayDir.y = ry;
-    rayDir.z = rz;
+    // Third octave (blend in squared for finer detail)
+    amplitude *= 0.5;
+    frequency *= 2.0;
+    float octave3 = octaveBlend * octaveBlend;
+    value += noise3D(p * frequency) * amplitude * octave3;
+    totalAmplitude += amplitude * octave3;
 
-    // Rotate around Y axis (yaw)
-    float rx = rayDir.x * cosRotY + rayDir.z * sinRotY;
-    rz = -rayDir.x * sinRotY + rayDir.z * cosRotY;
-    rayDir.x = rx;
-    rayDir.z = rz;
-
-    // The ray direction IS the point on the unit sphere
-    return rayDir;
-}
-
-// Controllable FBM with 3D noise on distant sphere
-float fbm3D(vec2 screenPos) {
-    // Sample noise on a distant sphere rotated by camera
-    vec3 p = screenToSphere(screenPos) * uNoiseScale;
-
-    // Base octave
-    float n = noise3D(p) * 0.5;
-
-    // Additional octaves (controlled by uNoiseOctaves)
-    n += noise3D(p * 2.0) * 0.25 * uNoiseOctaves;
-    n += noise3D(p * 4.0) * 0.125 * uNoiseOctaves * uNoiseOctaves;
-
-    // Apply contrast (power function)
-    n = pow(n, uNoiseContrast);
-
-    return n;
-}
-
-// Legacy 2D noise for compatibility
-float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-}
-
-float noise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    return mix(
-        mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
-        mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
-        f.y
-    );
-}
-
-// Controllable FBM with noise parameters (2D version for backward compat)
-float fbm(vec2 p) {
-    // Apply noise scale
-    p *= uNoiseScale;
-
-    // Base octave
-    float n = noise(p) * 0.5;
-
-    // Additional octaves (controlled by uNoiseOctaves)
-    n += noise(p * 2.0) * 0.25 * uNoiseOctaves;
-    n += noise(p * 4.0) * 0.125 * uNoiseOctaves * uNoiseOctaves;
-
-    // Apply contrast (power function)
-    n = pow(n, uNoiseContrast);
-
-    return n;
+    return value / totalAmplitude;
 }
 
 // ========================================
-// RADIAL LIGHT RAYS (6 samples)
+// WORLD SPACE CONVERSION
 // ========================================
 
-// Saturate color - boost saturation significantly
-vec3 saturateColor(vec3 color, float amount) {
-    float luma = dot(color, vec3(0.299, 0.587, 0.114));
-    vec3 saturated = mix(vec3(luma), color, 1.0 + amount);
-    // Clamp to valid range to prevent negative/overflow artifacts
-    return clamp(saturated, 0.0, 1.0);
-}
+// Convert screen UV + light position to world-space 3D point for noise sampling
+// This creates noise that is anchored in world space around each light
+vec3 getWorldNoisePosition(vec2 uv, vec2 lightUV, float lightIndex) {
+    // Direction from light to current pixel (in UV space)
+    vec2 delta = uv - lightUV;
 
-vec3 lightRays(vec2 uv, vec2 lightPos, vec3 lightColor, float intensity) {
-    vec2 lightUV = lightPos / uResolution;
-    lightUV.y = 1.0 - lightUV.y;
+    // Aspect correct
+    delta.x *= uResolution.x / uResolution.y;
 
-    vec2 delta = lightUV - uv;
+    // Distance from light center
     float dist = length(delta);
 
-    if (dist > 0.6) return vec3(0.0);
+    // Angle around light (for radial noise pattern)
+    float angle = atan(delta.y, delta.x);
 
-    // Saturate the light color heavily
-    vec3 saturatedColor = saturateColor(lightColor, 2.0);
+    // Create a 3D position based on angle and distance (cylindrical coords)
+    vec3 pos = vec3(
+        cos(angle) * dist * 5.0,
+        sin(angle) * dist * 5.0,
+        dist * 2.0
+    );
 
-    // 6 samples toward light
-    vec3 accum = vec3(0.0);
-    vec2 step = delta / 6.0;
-    vec2 pos = uv;
+    // Apply camera rotation so noise stays fixed in world space
+    // Rotate around Y (yaw)
+    float cy = cos(uCameraRotY);
+    float sy = sin(uCameraRotY);
+    pos = vec3(pos.x * cy + pos.z * sy, pos.y, -pos.x * sy + pos.z * cy);
 
-    for (int i = 0; i < 6; i++) {
-        float d = length(lightUV - pos);
-        float falloff = exp(-d * uRayFalloff);
+    // Rotate around X (pitch)
+    float cx = cos(uCameraRotX);
+    float sx = sin(uCameraRotX);
+    pos = vec3(pos.x, pos.y * cx - pos.z * sx, pos.y * sx + pos.z * cx);
 
-        // Sample noise on distant sphere - matches camera rotation
-        // Apply uNoiseScale to control noise frequency
-        vec2 noisePos = (pos - 0.5) * 2.0 * uFogDensity;
-        vec3 spherePos = screenToSphere(noisePos) * max(uNoiseScale, 0.01);
-        float fog = noise3D(spherePos + vec3(0.0, 0.0, uTime * 0.02 * uAnimSpeed)) * 0.5
-                  + noise3D(spherePos * 2.0) * 0.25 * uNoiseOctaves;
-        fog = clamp(fog, 0.0, 1.0);
-        fog = pow(fog + 0.001, max(uNoiseContrast, 0.1));
-        accum += saturatedColor * falloff * fog * intensity * uRayIntensity;
+    // Add light index offset AFTER rotation (so each light has unique but consistent noise)
+    pos.z += lightIndex * 50.0;
 
-        pos += step;
-    }
+    return pos;
+}
 
-    return accum * 0.12;
+// Sample displacement noise for SDF edge warping
+float sampleEdgeNoise(vec2 uv, vec2 lightUV, float lightIndex) {
+    vec3 worldPos = getWorldNoisePosition(uv, lightUV, lightIndex);
+
+    // Scale and animate
+    vec3 noisePos = worldPos * uNoiseScale + vec3(0.0, 0.0, uTime * uNoiseSpeed);
+
+    // Sample FBM
+    float n = fbm3D(noisePos, uNoiseOctaves);
+
+    // Apply contrast
+    n = pow(n, uNoiseContrast);
+
+    // Apply brightness offset and center around 0 for displacement
+    n = n + uNoiseBrightness;
+
+    // Return centered value (-0.5 to +0.5 range for displacement)
+    return n - 0.5;
 }
 
 // ========================================
-// SOFT GLOW
+// SDF LIGHT FUNCTIONS
 // ========================================
 
-vec3 glow(vec2 uv, vec2 lightPos, vec3 lightColor, float intensity) {
+// Smooth circular SDF for light (returns distance)
+float lightSDF(vec2 uv, vec2 lightPos) {
+    vec2 lightUV = lightPos / uResolution;
+    lightUV.y = 1.0 - lightUV.y; // Flip Y
+
+    // Aspect-corrected distance
+    vec2 delta = uv - lightUV;
+    delta.x *= uResolution.x / uResolution.y;
+
+    return length(delta);
+}
+
+// Get light UV (for noise sampling)
+vec2 getLightUV(vec2 lightPos) {
     vec2 lightUV = lightPos / uResolution;
     lightUV.y = 1.0 - lightUV.y;
+    return lightUV;
+}
 
-    float dist = length(uv - lightUV);
+// Light falloff function with controls
+float lightFalloff(float dist, float radius) {
+    // Smooth falloff using inverse power
+    float normalizedDist = dist / radius;
+    float falloff = 1.0 / (1.0 + pow(normalizedDist, uLightFalloff));
 
-    // Saturate the light color heavily
-    vec3 saturatedColor = saturateColor(lightColor, 2.0);
+    // Soft fade at very far distances (1.5 in UV space = covers most of screen)
+    falloff *= smoothstep(1.5, 0.0, dist);
 
-    // Two-layer glow with controllable size
-    float g = exp(-dist * uGlowSize) * 0.6 + exp(-dist * uGlowSize * 3.0) * 0.4;
-    g *= intensity * uGlowIntensity;
+    return falloff;
+}
 
-    // Sample noise on distant sphere - matches camera rotation
-    // Apply uNoiseScale to control noise frequency
-    vec2 noisePos = (uv - 0.5) * 2.0 * 4.0 + lightUV * 2.0;
-    vec3 spherePos = screenToSphere(noisePos) * max(uNoiseScale, 0.01);
-    float noiseVar = noise3D(spherePos + vec3(0.0, 0.0, uTime * 0.01 * uAnimSpeed)) * 0.5
-                   + noise3D(spherePos * 2.0) * 0.25;
-    noiseVar = clamp(noiseVar, 0.0, 1.0);
-    g *= 0.7 + noiseVar * 0.5;
-
-    // Fade with distance
-    g *= smoothstep(0.6, 0.0, dist);
-
-    return saturatedColor * g;
+// Saturate color
+vec3 saturateColor(vec3 color, float amount) {
+    float luma = dot(color, vec3(0.299, 0.587, 0.114));
+    return clamp(mix(vec3(luma), color, amount), 0.0, 1.0);
 }
 
 // ========================================
-// PERSPECTIVE CAMERA HELPERS
+// VOLUMETRIC LIGHT WITH SDF DISPLACEMENT
 // ========================================
 
-// Transform world position to screen position
-// Uses simple zoom-as-scale approach (camera rotation not supported in post-process)
-vec2 worldToScreen(vec2 worldPos) {
-    vec2 screenCenter = uResolution * 0.5;
-    vec2 offsetFromCenter = worldPos - screenCenter;
-    // Zoom is a simple scale factor
-    vec2 scaledOffset = offsetFromCenter * uZoom;
-    return screenCenter + scaledOffset;
+vec3 volumetricLight(vec2 uv, vec2 lightPos, vec3 lightColor, float lightIndex) {
+    // Get light UV for calculations
+    vec2 lightUV = getLightUV(lightPos);
+
+    // Get base SDF distance
+    float baseDist = lightSDF(uv, lightPos);
+
+    // Early out only for very distant pixels (full screen coverage)
+    if (baseDist > 2.0) return vec3(0.0);
+
+    // Sample noise for SDF edge displacement
+    // Noise strength increases toward the edge for organic boundary
+    float edgeFactor = smoothstep(0.0, uLightRadius * 1.5, baseDist);
+    float noise = sampleEdgeNoise(uv, lightUV, lightIndex);
+
+    // Displace the SDF - noise warps the light boundary
+    // More displacement at the edges, less at center (keeps core solid)
+    float displacement = noise * uNoiseStrength * edgeFactor;
+    float warpedDist = baseDist + displacement;
+
+    // Clamp to prevent negative distances (which would cause artifacts)
+    warpedDist = max(warpedDist, 0.001);
+
+    // Apply falloff to the warped SDF
+    float light = lightFalloff(warpedDist, uLightRadius);
+
+    // Add subtle secondary glow layer (unaffected by noise for stable core)
+    float coreGlow = lightFalloff(baseDist, uLightRadius * 0.3) * 0.3;
+    light = max(light, coreGlow);
+
+    // Apply density control
+    light *= uVolumetricDensity;
+
+    // Saturate and apply color
+    vec3 saturatedColor = saturateColor(lightColor, uLightSaturation);
+
+    return saturatedColor * light * uLightIntensity;
 }
 
-// Transform screen UV to world UV (inverse zoom for sampling)
-vec2 screenToWorldUV(vec2 screenUV) {
-    // Screen center in UV space
-    vec2 centerUV = vec2(0.5);
-    vec2 offsetFromCenter = screenUV - centerUV;
-    // Inverse zoom
-    vec2 worldOffset = offsetFromCenter / uZoom;
-    return centerUV + worldOffset;
+// ========================================
+// AMBIENT VOLUMETRIC FOG
+// ========================================
+
+vec3 ambientFog(vec2 uv) {
+    if (uAmbientNoise < 0.001) return vec3(0.0);
+
+    // Sample noise in screen space with camera rotation for consistency
+    vec2 centered = (uv - 0.5) * 2.0;
+    centered.x *= uResolution.x / uResolution.y;
+
+    vec3 noisePos = vec3(centered * uNoiseScale * 0.5, uTime * uNoiseSpeed * 0.5);
+
+    // Apply camera rotation
+    float cy = cos(uCameraRotY * 0.5);
+    float sy = sin(uCameraRotY * 0.5);
+    noisePos = vec3(noisePos.x * cy + noisePos.z * sy, noisePos.y, -noisePos.x * sy + noisePos.z * cy);
+
+    float noise = fbm3D(noisePos, uNoiseOctaves);
+    noise = pow(noise, uNoiseContrast);
+
+    vec3 ambientColor = vec3(0.02, 0.03, 0.05);
+    return ambientColor * noise * uAmbientNoise;
 }
 
 // ========================================
@@ -261,42 +297,27 @@ vec2 screenToWorldUV(vec2 screenUV) {
 // ========================================
 
 void main() {
-    // Screen-space UV (0-1)
-    vec2 screenUV = vUV;
+    vec2 uv = vUV;
 
-    // Light positions are already in screen space (transformed by JS with camera rotation)
-    // Use them directly without worldToScreen transform
-    vec3 fog = vec3(0.0);
+    // Debug: visualize light positions
+    vec2 light0UV = uLight0 / uResolution;
+    light0UV.y = 1.0 - light0UV.y;
+    float d0 = length(uv - light0UV);
 
-    // Light rays from each source (using screen-space positions)
-    fog += lightRays(screenUV, uLight0, uLightColor0, 0.5);
-    fog += lightRays(screenUV, uLight1, uLightColor1, 0.5);
-    fog += lightRays(screenUV, uLight2, uLightColor2, 0.5);
+    vec2 light1UV = uLight1 / uResolution;
+    light1UV.y = 1.0 - light1UV.y;
+    float d1 = length(uv - light1UV);
 
-    // Soft glow halos (using screen-space positions)
-    fog += glow(screenUV, uLight0, uLightColor0, 0.5);
-    fog += glow(screenUV, uLight1, uLightColor1, 0.5);
-    fog += glow(screenUV, uLight2, uLightColor2, 0.5);
+    vec2 light2UV = uLight2 / uResolution;
+    light2UV.y = 1.0 - light2UV.y;
+    float d2 = length(uv - light2UV);
 
-    // Subtle ambient fog - sample noise on distant sphere
-    // Apply uNoiseScale to control noise frequency
-    vec2 worldUV = screenToWorldUV(screenUV);
-    vec2 ambientNoisePos = (worldUV - 0.5) * 2.0 * 3.0;
-    vec3 ambientSpherePos = screenToSphere(ambientNoisePos) * max(uNoiseScale, 0.01);
-    float ambient = noise3D(ambientSpherePos + vec3(0.0, 0.0, uTime * 0.005 * uAnimSpeed)) * 0.5
-                  + noise3D(ambientSpherePos * 2.0) * 0.25;
-    ambient = clamp(ambient, 0.0, 1.0);
-    ambient = pow(ambient + 0.001, max(uNoiseContrast, 0.1)) * uAmbientFog;
-    fog += vec3(0.03, 0.04, 0.05) * ambient;
+    // Simple radial glow for debugging
+    vec3 color = vec3(0.0);
+    color += uLightColor0 * 0.3 / (1.0 + d0 * 3.0);
+    color += uLightColor1 * 0.3 / (1.0 + d1 * 3.0);
+    color += uLightColor2 * 0.3 / (1.0 + d2 * 3.0);
 
-    // Soft tone mapping
-    fog = fog / (fog + vec3(0.8));
-
-    // Soft alpha - gradual falloff based on intensity
-    float intensity = (fog.r + fog.g + fog.b) / 3.0;
-    float alpha = smoothstep(0.0, 0.3, intensity) * 0.6;
-    alpha = pow(alpha, 0.7); // Soften the blend curve
-
-    gl_FragColor = vec4(fog, alpha);
+    gl_FragColor = vec4(color, 1.0);
 }
 `;

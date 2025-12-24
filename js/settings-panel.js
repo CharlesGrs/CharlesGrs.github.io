@@ -13,7 +13,8 @@
         { id: 'planets', label: 'Planets', icon: 'planet' },
         { id: 'lighting', label: 'Lighting', icon: 'sun' },
         { id: 'effects', label: 'Effects', icon: 'sparkle' },
-        { id: 'post', label: 'Post', icon: 'layers' }
+        { id: 'post', label: 'Post', icon: 'layers' },
+        { id: 'settings', label: 'Settings', icon: 'settings' }
     ];
 
     // Control definitions - maps param objects to UI controls
@@ -33,7 +34,11 @@
                         { type: 'slider', id: 'a-normal-strength', label: 'Normal Strength', param: 'planetParamsA.normalStrength', min: 0, max: 0.5, step: 0.01, decimals: 2 },
                         { type: 'slider', id: 'a-ocean-roughness', label: 'Ocean Roughness', param: 'planetParamsA.oceanRoughness', min: 0, max: 1, step: 0.05, decimals: 2 },
                         { type: 'slider', id: 'a-sea-level', label: 'Sea Level', param: 'planetParamsA.seaLevel', min: -0.5, max: 0.5, step: 0.02, decimals: 2 },
-                        { type: 'slider', id: 'a-sss-intensity', label: 'SSS Intensity', param: 'planetParamsA.sssIntensity', min: 0, max: 3, step: 0.1, decimals: 1 },
+                        { type: 'subheader', label: 'Water SSS' },
+                        { type: 'slider', id: 'a-sss-intensity', label: 'Intensity', param: 'planetParamsA.sssIntensity', min: 0, max: 3, step: 0.1, decimals: 1 },
+                        { type: 'slider', id: 'a-sss-wrap', label: 'Wrap', param: 'planetParamsA.sssWrap', min: 0, max: 1, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'a-sss-backlight', label: 'Backlight', param: 'planetParamsA.sssBacklight', min: 0, max: 2, step: 0.1, decimals: 1 },
+                        { type: 'color', id: 'a-sss-color', label: 'Color', param: 'planetParamsA.sssColor' },
                         { type: 'subheader', label: 'Atmosphere' },
                         { type: 'slider', id: 'a-atmos-intensity', label: 'Brightness', param: 'planetParamsA.atmosIntensity', min: 0, max: 10, step: 0.1, decimals: 1 },
                         { type: 'slider', id: 'a-atmos-thickness', label: 'Radius', param: 'planetParamsA.atmosThickness', min: 1, max: 3, step: 0.01, decimals: 2 },
@@ -110,9 +115,9 @@
                         { type: 'light', id: 0, label: 'Unity', param: 'lightParams' },
                         { type: 'light', id: 1, label: 'Unreal', param: 'lightParams' },
                         { type: 'light', id: 2, label: 'Graphics', param: 'lightParams' },
-                        { type: 'subheader', label: 'Global' },
+                        { type: 'subheader', label: 'Global Lighting' },
                         { type: 'slider', id: 'ambient-intensity', label: 'Ambient', param: 'lightParams.ambientIntensity', min: 0, max: 1, step: 0.01, decimals: 2 },
-                        { type: 'slider', id: 'fog-intensity', label: 'Fog', param: 'lightParams.fogIntensity', min: 0, max: 1, step: 0.01, decimals: 2 }
+                        { type: 'slider', id: 'fog-intensity', label: 'Fog', param: 'lightParams.fogIntensity', min: 0, max: 3, step: 0.01, decimals: 2 }
                     ]
                 },
                 {
@@ -138,10 +143,10 @@
                     toggle: 'spaceParticles',
                     controls: [
                         { type: 'subheader', label: 'Depth of Field' },
-                        { type: 'slider', id: 'particles-focus-distance', label: 'Focus Distance', param: 'spaceParticleParams.focusDistance', min: 0.1, max: 1.5, step: 0.01, decimals: 2 },
+                        { type: 'slider', id: 'particles-focus-distance', label: 'Focus Distance', param: 'spaceParticleParams.focusDistance', min: 0.05, max: 0.5, step: 0.01, decimals: 2 },
                         { type: 'slider', id: 'particles-focus-range', label: 'Focus Range', param: 'spaceParticleParams.focusRange', min: 0.01, max: 0.5, step: 0.01, decimals: 2 },
-                        { type: 'slider', id: 'particles-near-blur', label: 'Near Blur', param: 'spaceParticleParams.nearBlur', min: 0.05, max: 1.0, step: 0.01, decimals: 2 },
-                        { type: 'slider', id: 'particles-far-blur', label: 'Far Blur', param: 'spaceParticleParams.farBlur', min: 0.5, max: 2.0, step: 0.01, decimals: 2 },
+                        { type: 'slider', id: 'particles-near-blur', label: 'Near Blur', param: 'spaceParticleParams.nearBlur', min: 0.01, max: 0.5, step: 0.01, decimals: 2 },
+                        { type: 'slider', id: 'particles-far-blur', label: 'Far Blur', param: 'spaceParticleParams.farBlur', min: 0.1, max: 1.0, step: 0.01, decimals: 2 },
                         { type: 'subheader', label: 'Bokeh' },
                         { type: 'slider', id: 'particles-max-blur', label: 'Max Blur', param: 'spaceParticleParams.maxBlur', min: 5, max: 60, step: 1, decimals: 0 },
                         { type: 'slider', id: 'particles-aperture', label: 'Aperture', param: 'spaceParticleParams.aperture', min: 0.1, max: 2.0, step: 0.05, decimals: 2 },
@@ -196,25 +201,26 @@
             sections: [
                 {
                     id: 'godrays',
-                    label: 'God Rays',
+                    label: 'Volumetric Light',
                     icon: 'rays',
                     color: '#fcd34d',
                     toggle: 'godRays',
                     controls: [
-                        { type: 'subheader', label: 'Light Rays' },
-                        { type: 'slider', id: 'godrays-ray-intensity', label: 'Ray Intensity', param: 'godRaysParams.rayIntensity', min: 0, max: 5, step: 0.05, decimals: 2 },
-                        { type: 'slider', id: 'godrays-ray-falloff', label: 'Ray Falloff', param: 'godRaysParams.rayFalloff', min: 0.1, max: 20, step: 0.1, decimals: 1 },
-                        { type: 'subheader', label: 'Glow' },
-                        { type: 'slider', id: 'godrays-glow-intensity', label: 'Glow Intensity', param: 'godRaysParams.glowIntensity', min: 0, max: 5, step: 0.05, decimals: 2 },
-                        { type: 'slider', id: 'godrays-glow-size', label: 'Glow Size', param: 'godRaysParams.glowSize', min: 0.5, max: 30, step: 0.5, decimals: 1 },
-                        { type: 'subheader', label: 'Fog' },
-                        { type: 'slider', id: 'godrays-fog-density', label: 'Fog Density', param: 'godRaysParams.fogDensity', min: 0.5, max: 30, step: 0.5, decimals: 1 },
-                        { type: 'slider', id: 'godrays-ambient-fog', label: 'Ambient Fog', param: 'godRaysParams.ambientFog', min: 0, max: 1, step: 0.01, decimals: 2 },
-                        { type: 'subheader', label: 'Noise' },
-                        { type: 'slider', id: 'godrays-noise-scale', label: 'Scale', param: 'godRaysParams.noiseScale', min: 0.05, max: 10, step: 0.05, decimals: 2 },
-                        { type: 'slider', id: 'godrays-noise-octaves', label: 'Detail', param: 'godRaysParams.noiseOctaves', min: 0, max: 5, step: 0.1, decimals: 1 },
-                        { type: 'slider', id: 'godrays-noise-contrast', label: 'Contrast', param: 'godRaysParams.noiseContrast', min: 0.1, max: 5, step: 0.1, decimals: 1 },
-                        { type: 'slider', id: 'godrays-anim-speed', label: 'Anim Speed', param: 'godRaysParams.animSpeed', min: 0, max: 10, step: 0.1, decimals: 1 }
+                        { type: 'slider', id: 'godrays-light-intensity', label: 'Intensity', param: 'godRaysParams.lightIntensity', min: 0, max: 3, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'godrays-light-falloff', label: 'Falloff', param: 'godRaysParams.lightFalloff', min: 0.5, max: 5, step: 0.1, decimals: 1 },
+                        { type: 'slider', id: 'godrays-light-scale', label: 'Scale', param: 'godRaysParams.lightScale', min: 0.5, max: 10, step: 0.1, decimals: 1 },
+                        { type: 'slider', id: 'godrays-light-saturation', label: 'Saturation', param: 'godRaysParams.lightSaturation', min: 0, max: 3, step: 0.1, decimals: 1 },
+                        { type: 'subheader', label: 'Edge Noise' },
+                        { type: 'slider', id: 'godrays-noise-scale', label: 'Scale', param: 'godRaysParams.noiseScale', min: 0.5, max: 12, step: 0.1, decimals: 1 },
+                        { type: 'slider', id: 'godrays-noise-strength', label: 'Strength', param: 'godRaysParams.noiseStrength', min: 0, max: 1, step: 0.01, decimals: 2 },
+                        { type: 'slider', id: 'godrays-noise-octaves', label: 'Octaves', param: 'godRaysParams.noiseOctaves', min: 0, max: 1, step: 0.05, decimals: 2 },
+                        { type: 'subheader', label: 'Self Shadow' },
+                        { type: 'slider', id: 'godrays-noise-shadow', label: 'Intensity', param: 'godRaysParams.noiseShadow', min: 0, max: 1, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'godrays-shadow-offset', label: 'Offset', param: 'godRaysParams.shadowOffset', min: 0, max: 1, step: 0.001, decimals: 3 },
+                        { type: 'subheader', label: 'Chromatic Scatter' },
+                        { type: 'slider', id: 'godrays-scatter-r', label: 'Red', param: 'godRaysParams.scatterR', min: 0, max: 2, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'godrays-scatter-g', label: 'Green', param: 'godRaysParams.scatterG', min: 0, max: 2, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'godrays-scatter-b', label: 'Blue', param: 'godRaysParams.scatterB', min: 0, max: 2, step: 0.05, decimals: 2 }
                     ]
                 },
                 {
@@ -224,6 +230,57 @@
                     color: '#94a3b8',
                     controls: [
                         { type: 'slider', id: 'nebula-vignette', label: 'Vignette', param: 'nebulaParams.vignetteStrength', min: 0, max: 1, step: 0.01, decimals: 2 }
+                    ]
+                }
+            ]
+        },
+        settings: {
+            sections: [
+                {
+                    id: 'orbital-physics',
+                    label: 'Orbital Physics',
+                    icon: 'orbit',
+                    color: '#60a5fa',
+                    controls: [
+                        { type: 'subheader', label: 'Speed & Movement' },
+                        { type: 'slider', id: 'orbit-speed', label: 'Orbit Speed', param: 'orbitParams.orbitSpeed', min: 0, max: 3, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'camera-rot-speed', label: 'Camera Speed', param: 'orbitParams.cameraRotSpeed', min: 0, max: 3, step: 0.05, decimals: 2 },
+                        { type: 'subheader', label: 'Sun Positioning' },
+                        { type: 'slider', id: 'sun-spread', label: 'Sun Spread', param: 'orbitParams.sunSpread', min: 0.5, max: 2, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'sun-spawn-min', label: 'Spawn Min', param: 'orbitParams.sunSpawnMin', min: 0.1, max: 0.5, step: 0.01, decimals: 2 },
+                        { type: 'slider', id: 'sun-spawn-max', label: 'Spawn Max', param: 'orbitParams.sunSpawnMax', min: 0.2, max: 0.8, step: 0.01, decimals: 2 },
+                        { type: 'slider', id: 'spawn-offset', label: 'Spawn Offset', param: 'orbitParams.spawnOffset', min: -0.5, max: 0.5, step: 0.01, decimals: 2 },
+                        { type: 'subheader', label: 'Moon Orbits' },
+                        { type: 'slider', id: 'moon-orbit-radius', label: 'Orbit Radius', param: 'orbitParams.moonOrbitRadius', min: 0.3, max: 3, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'moon-orbit-spacing', label: 'Orbit Spacing', param: 'orbitParams.moonOrbitSpacing', min: 0.3, max: 3, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'moon-orbit-tilt', label: 'Orbit Tilt', param: 'orbitParams.moonOrbitTilt', min: 0, max: 2, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'base-orbit-min', label: 'Base Orbit Min', param: 'orbitParams.baseOrbitMin', min: 0.02, max: 0.15, step: 0.005, decimals: 3 },
+                        { type: 'slider', id: 'base-orbit-max', label: 'Base Orbit Max', param: 'orbitParams.baseOrbitMax', min: 0.04, max: 0.2, step: 0.005, decimals: 3 },
+                        { type: 'subheader', label: 'Sub-Moons' },
+                        { type: 'slider', id: 'submoon-orbit-radius', label: 'Orbit Radius', param: 'orbitParams.subMoonOrbitRadius', min: 0.3, max: 3, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'submoon-speed', label: 'Orbit Speed', param: 'orbitParams.subMoonSpeed', min: 0.1, max: 3, step: 0.05, decimals: 2 }
+                    ]
+                },
+                {
+                    id: 'size-factors',
+                    label: 'Size Factors',
+                    icon: 'sliders',
+                    color: '#f472b6',
+                    controls: [
+                        { type: 'slider', id: 'sun-size-factor', label: 'Sun Size', param: 'orbitParams.sunSizeFactor', min: 0.3, max: 3, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'planet-size-factor', label: 'Planet Size', param: 'orbitParams.planetSizeFactor', min: 0.3, max: 3, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'submoon-size', label: 'Sub-Moon Size', param: 'orbitParams.subMoonSize', min: 0.1, max: 1.5, step: 0.05, decimals: 2 }
+                    ]
+                },
+                {
+                    id: 'camera-controls',
+                    label: 'Camera',
+                    icon: 'camera',
+                    color: '#a78bfa',
+                    controls: [
+                        { type: 'slider', id: 'camera-move-speed', label: 'Move Speed', param: 'cameraParams.moveSpeed', min: 0.001, max: 0.05, step: 0.001, decimals: 3 },
+                        { type: 'slider', id: 'camera-rot-speed', label: 'Look Speed', param: 'cameraParams.rotationSpeed', min: 0.001, max: 0.01, step: 0.0005, decimals: 4 },
+                        { type: 'slider', id: 'camera-smoothing', label: 'Smoothing', param: 'cameraParams.smoothing', min: 0.01, max: 0.3, step: 0.01, decimals: 2 }
                     ]
                 }
             ]
@@ -247,7 +304,8 @@
         sliders: '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="10" r="2"/><circle cx="20" cy="14" r="2"/>',
         orbit: '<ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-30 12 12)"/><circle cx="12" cy="12" r="3"/>',
         chevron: '<polyline points="6,9 12,15 18,9"/>',
-        settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>'
+        settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+        camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>'
     };
 
     function icon(name) {
@@ -631,11 +689,47 @@
     }
 
     // ============================================
+    // AUTO-DISCOVER PARAM OBJECTS FROM CONTROLS
+    // ============================================
+    // Extracts all unique param object names from CONTROLS configuration
+    // This ensures any new params added to the settings panel are automatically persisted
+    function extractParamObjects() {
+        const paramObjects = new Set();
+
+        // Always include renderToggles for feature toggles
+        paramObjects.add('renderToggles');
+
+        Object.keys(CONTROLS).forEach(function(tabId) {
+            const tab = CONTROLS[tabId];
+            if (!tab.sections) return;
+
+            tab.sections.forEach(function(section) {
+                if (!section.controls) return;
+
+                section.controls.forEach(function(ctrl) {
+                    if (ctrl.param) {
+                        // Extract the param object name (e.g., 'planetParamsA' from 'planetParamsA.noiseScale')
+                        const objName = ctrl.param.split('.')[0];
+                        paramObjects.add(objName);
+                    }
+                    // Handle light controls which use lightParams
+                    if (ctrl.type === 'light' && ctrl.param) {
+                        paramObjects.add(ctrl.param);
+                    }
+                });
+            });
+        });
+
+        return Array.from(paramObjects);
+    }
+
+    // ============================================
     // INITIALIZATION
     // ============================================
     function init() {
-        // Wait for DOM and param objects to be ready
-        if (!window.planetParamsA || !window.sunParams) {
+        // Wait for DOM and ALL param objects to be ready
+        // godRaysParams and spaceParticleParams are exposed at the end of skill-graph.js
+        if (!window.planetParamsA || !window.sunParams || !window.godRaysParams || !window.spaceParticleParams) {
             setTimeout(init, 100);
             return;
         }
@@ -651,8 +745,115 @@
             });
         });
 
-        console.log('Settings panel initialized');
+        // Auto-register all param objects used in settings panel for persistence
+        // This ensures any new params added to CONTROLS are automatically saved/loaded
+        const discoveredParams = extractParamObjects();
+        window.SETTINGS_PANEL_PARAMS = discoveredParams;
+
+        // Merge with existing PERSISTED_PARAM_OBJECTS if it exists
+        if (window.PERSISTED_PARAM_OBJECTS) {
+            discoveredParams.forEach(function(param) {
+                if (window.PERSISTED_PARAM_OBJECTS.indexOf(param) === -1) {
+                    window.PERSISTED_PARAM_OBJECTS.push(param);
+                }
+            });
+        } else {
+            window.PERSISTED_PARAM_OBJECTS = discoveredParams;
+        }
+
+        console.log('Settings panel initialized with auto-persistence for:', discoveredParams);
     }
+
+    // Refresh all toggle switches to match current renderToggles state
+    function refreshToggles() {
+        if (!panel) return;
+
+        panel.querySelectorAll('.sp-toggle-input').forEach(function(toggle) {
+            const toggleKey = toggle.dataset.toggle;
+            const isEnabled = window.renderToggles && window.renderToggles[toggleKey] !== false;
+            toggle.checked = isEnabled;
+
+            const section = toggle.closest('.sp-section');
+            if (section) {
+                section.classList.toggle('disabled', !isEnabled);
+            }
+        });
+    }
+
+    // Refresh all slider values from current param objects
+    function refreshSliders() {
+        if (!panel) return;
+
+        // Update all sliders
+        panel.querySelectorAll('.sp-slider').forEach(function(slider) {
+            const param = slider.dataset.param;
+            const decimals = parseInt(slider.dataset.decimals) || 2;
+            if (param) {
+                const value = getParamValue(param);
+                if (value !== undefined) {
+                    slider.value = value;
+                    const valueEl = document.getElementById(slider.id + '-value');
+                    if (valueEl) {
+                        valueEl.textContent = value.toFixed(decimals);
+                    }
+                }
+            }
+        });
+
+        // Update color pickers
+        panel.querySelectorAll('.sp-color').forEach(function(picker) {
+            const param = picker.dataset.param;
+            const isRgb = picker.dataset.rgb === 'true';
+            if (param) {
+                let value = getParamValue(param);
+                if (value !== undefined) {
+                    if (isRgb && Array.isArray(value)) {
+                        value = rgbToHex(value[0], value[1], value[2]);
+                    }
+                    picker.value = value;
+                }
+            }
+        });
+
+        // Update light controls (kelvin, intensity, attenuation)
+        [0, 1, 2].forEach(function(i) {
+            const kelvin = getParamValue('lightParams.light' + i + 'Kelvin');
+            const intensity = getParamValue('lightParams.light' + i + 'Intensity');
+            const attenuation = getParamValue('lightParams.light' + i + 'Attenuation');
+
+            const kelvinSlider = document.getElementById('sp-kelvin-' + i);
+            const kelvinDisplay = document.getElementById('sp-kelvin-display-' + i);
+            const intensitySlider = document.getElementById('sp-intensity-' + i);
+            const intensityValue = document.getElementById('sp-intensity-' + i + '-value');
+            const attenSlider = document.getElementById('sp-atten-' + i);
+            const attenValue = document.getElementById('sp-atten-' + i + '-value');
+            const preview = document.getElementById('sp-light-preview-' + i);
+
+            if (kelvinSlider && kelvin !== undefined) {
+                kelvinSlider.value = kelvin;
+                if (kelvinDisplay) kelvinDisplay.textContent = kelvin + 'K';
+                if (preview) preview.style.background = kelvinToRgb(kelvin);
+            }
+            if (intensitySlider && intensity !== undefined) {
+                intensitySlider.value = intensity;
+                if (intensityValue) intensityValue.textContent = intensity.toFixed(1);
+            }
+            if (attenSlider && attenuation !== undefined) {
+                attenSlider.value = attenuation;
+                if (attenValue) attenValue.textContent = attenuation.toFixed(3);
+            }
+        });
+    }
+
+    // Full refresh - toggles and sliders
+    // Called after loading settings from localStorage
+    function refreshAll() {
+        refreshToggles();
+        refreshSliders();
+    }
+
+    // Expose refresh function globally so it can be called after loading settings
+    window.refreshSettingsPanel = refreshAll;
 
     // Start initialization when DOM is ready
     if (document.readyState === 'loading') {

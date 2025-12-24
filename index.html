@@ -96,7 +96,6 @@
     <!-- Skip to main content link for accessibility -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <canvas id="gpu-canvas" aria-hidden="true"></canvas>
     <div class="noise-overlay" aria-hidden="true"></div>
 
     <!-- FPS Performance Badge -->
@@ -115,7 +114,7 @@
     </div>
 
     <!-- Version Badge -->
-    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.17</span></div>
+    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.18</span></div>
 
     <a href="mailto:contact.charles.grassi@gmail.com" class="contact-btn" aria-label="Send email to Charles Grassi">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -185,6 +184,18 @@
                         </button>
                         <button class="view-toggle-btn" data-view="graph" aria-label="3D Graph view (GPU intensive)">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="12" cy="19" r="2"/><line x1="7" y1="12" x2="10" y2="7"/><line x1="14" y1="7" x2="17" y2="12"/><line x1="17" y1="12" x2="14" y2="17"/><line x1="10" y1="17" x2="7" y2="12"/></svg>
+                        </button>
+                    </div>
+                    <!-- GPU Canvas Section (3D Graph View) -->
+                    <div class="canvas-section" id="canvas-section">
+                        <canvas id="gpu-canvas" aria-label="Interactive 3D skill graph"></canvas>
+                        <button class="fullscreen-btn" id="fullscreen-btn" aria-label="Toggle fullscreen">
+                            <svg class="fullscreen-icon expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                            </svg>
+                            <svg class="fullscreen-icon collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
+                            </svg>
                         </button>
                     </div>
                     <!-- Shader Controls Container (Bottom Right) -->
@@ -655,9 +666,9 @@
                             <div class="render-control-item">
                                 <label class="render-label" for="particles-focus-distance">
                                     <span class="render-name">Focus Distance</span>
-                                    <span class="render-value" id="particles-focus-distance-value">0.70</span>
+                                    <span class="render-value" id="particles-focus-distance-value">0.20</span>
                                 </label>
-                                <input type="range" id="particles-focus-distance" class="render-slider" min="0.1" max="1.5" step="0.01" value="0.7">
+                                <input type="range" id="particles-focus-distance" class="render-slider" min="0.05" max="0.5" step="0.01" value="0.2">
                             </div>
                             <div class="render-control-item">
                                 <label class="render-label" for="particles-focus-range">
@@ -671,16 +682,16 @@
                             <div class="render-control-item">
                                 <label class="render-label" for="particles-near-blur">
                                     <span class="render-name">Near Blur Start</span>
-                                    <span class="render-value" id="particles-near-blur-value">0.30</span>
+                                    <span class="render-value" id="particles-near-blur-value">0.10</span>
                                 </label>
-                                <input type="range" id="particles-near-blur" class="render-slider" min="0.05" max="1.0" step="0.01" value="0.3">
+                                <input type="range" id="particles-near-blur" class="render-slider" min="0.01" max="0.5" step="0.01" value="0.1">
                             </div>
                             <div class="render-control-item">
                                 <label class="render-label" for="particles-far-blur">
                                     <span class="render-name">Far Blur Start</span>
-                                    <span class="render-value" id="particles-far-blur-value">1.20</span>
+                                    <span class="render-value" id="particles-far-blur-value">0.40</span>
                                 </label>
-                                <input type="range" id="particles-far-blur" class="render-slider" min="0.5" max="2.0" step="0.01" value="1.2">
+                                <input type="range" id="particles-far-blur" class="render-slider" min="0.1" max="1.0" step="0.01" value="0.4">
                             </div>
 
                             <div class="planet-control-subheader">Bokeh Effect</div>
@@ -1307,10 +1318,10 @@
                                     <img src="https://cdna.artstation.com/p/assets/images/images/084/274/870/large/charles-grassi-screenshot-2024-10-08-064527.jpg" alt="Volumetric Fog | Cloud With Rain & Thunder" loading="lazy">
                                 </div>
                                 <div class="portfolio-item" data-index="4" data-title="Maelstrom - Unreal Engine" data-url="https://www.artstation.com/artwork/WXKB2E">
-                                    <video data-src="https://cdn.artstation.com/p/video_sources/002/151/772/out-3.mp4" poster="https://cdnb.artstation.com/p/assets/images/images/079/164/965/large/charles-grassi-screenshot-2024-08-15-031337.jpg" muted loop playsinline preload="none"></video>
+                                    <video data-src="videos/maelstrom.mp4" poster="https://cdnb.artstation.com/p/assets/images/images/079/164/965/large/charles-grassi-screenshot-2024-08-15-031337.jpg" muted loop playsinline preload="none"></video>
                                 </div>
                                 <div class="portfolio-item" data-index="5" data-title="Cartoon Ocean Shader & Breakdown" data-url="https://www.artstation.com/artwork/x3AvG2">
-                                    <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/424/977/large/charles-grassi-thumb.jpg" alt="Cartoon Ocean Shader" loading="lazy">
+                                    <video data-src="videos/cartoon-ocean.mp4" poster="https://cdnb.artstation.com/p/assets/video_clips/images/078/424/977/large/charles-grassi-thumb.jpg" muted loop playsinline preload="none"></video>
                                 </div>
                                 <div class="portfolio-item" data-index="6" data-title="Raytraced Mountain Scene in a Single Shader" data-url="https://www.artstation.com/artwork/EzqE08">
                                     <img src="https://cdnb.artstation.com/p/assets/images/images/078/404/623/large/charles-grassi-screenshot-2024-03-06-030921.jpg" alt="Raytraced Mountain Scene" loading="lazy">
@@ -1324,17 +1335,14 @@
                                 <div class="portfolio-item" data-index="9" data-title="SABDA - Projection Mapping Immersive 360° Scenes" data-url="https://www.artstation.com/artwork/6LnRor">
                                     <img src="https://cdnb.artstation.com/p/assets/images/images/078/435/209/large/charles-grassi-copy-of-sabda-20240118-010.jpg" alt="SABDA Projection Mapping" loading="lazy">
                                 </div>
-                                <div class="portfolio-item" data-index="10" data-title="Multi-Threaded Space Colonization Algorithm" data-url="https://www.artstation.com/artwork/zxKvQw">
-                                    <img src="https://cdnb.artstation.com/p/assets/images/images/084/275/951/large/charles-grassi-screenshot-2023-12-25-213543.jpg" alt="Space Colonization Algorithm" loading="lazy">
-                                </div>
-                                <div class="portfolio-item" data-index="11" data-title="Alien Egg Shader" data-url="https://www.artstation.com/artwork/K36Por">
-                                    <video data-src="https://cdn.artstation.com/p/video_sources/002/099/541/alienegg.mp4" poster="https://cdna.artstation.com/p/assets/images/images/078/403/954/large/charles-grassi-screenshot-2023-10-18-193823.jpg" muted loop playsinline preload="none"></video>
+                                <div class="portfolio-item" data-index="10" data-title="Alien Egg Shader" data-url="https://www.artstation.com/artwork/K36Por">
+                                    <video data-src="videos/alien-egg.mp4" poster="https://cdna.artstation.com/p/assets/images/images/078/403/954/large/charles-grassi-screenshot-2023-10-18-193823.jpg" muted loop playsinline preload="none"></video>
                                 </div>
                                 <div class="portfolio-item" data-index="12" data-title="Sandbox Stylized Cloud & God Rays Shader" data-url="https://www.artstation.com/artwork/nJwNLO">
-                                    <img src="https://cdna.artstation.com/p/assets/images/images/078/429/084/large/charles-grassi-sandbox-stylized-cloud-night.jpg" alt="Sandbox Stylized Cloud Shaders" loading="lazy">
+                                    <img src="https://cdna.artstation.com/p/assets/images/images/078/429/086/large/charles-grassi-sandbox-stylized-cloud.jpg" alt="Sandbox Stylized Cloud Shaders" loading="lazy">
                                 </div>
                                 <div class="portfolio-item" data-index="13" data-title="Oily Ocean Surface Shader" data-url="https://www.artstation.com/artwork/gRgVEK">
-                                    <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/425/435/large/charles-grassi-thumb.jpg" alt="Oily Ocean Surface Shader" loading="lazy">
+                                    <video data-src="videos/oily-ocean.mp4" poster="https://cdnb.artstation.com/p/assets/video_clips/images/078/425/435/large/charles-grassi-thumb.jpg" muted loop playsinline preload="none"></video>
                                 </div>
                                 <div class="portfolio-item" data-index="14" data-title="Baked Volumetric Colored Fog" data-url="https://www.artstation.com/artwork/JraPGz">
                                     <img src="https://cdnb.artstation.com/p/assets/images/images/078/404/507/large/charles-grassi-screenshot-2023-03-27-145100.jpg" alt="Baked Volumetric Colored Fog" loading="lazy">
@@ -1343,12 +1351,9 @@
                                     <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/425/261/large/charles-grassi-thumb.jpg" alt="Single Draw Call Grass Shader" loading="lazy">
                                 </div>
                                 <div class="portfolio-item" data-index="16" data-title="CPU Multi-Threaded Burst Marching Cube Terrain" data-url="https://www.artstation.com/artwork/Ovqgby">
-                                    <img src="https://cdna.artstation.com/p/assets/video_clips/images/078/425/098/large/charles-grassi-thumb.jpg" alt="Marching Cube Terrain" loading="lazy">
+                                    <video data-src="videos/marching-cube.mp4" poster="https://cdna.artstation.com/p/assets/video_clips/images/078/425/098/large/charles-grassi-thumb.jpg" muted loop playsinline preload="none"></video>
                                 </div>
-                                <div class="portfolio-item" data-index="17" data-title="HDRP - Interior Lighting Scenarios" data-url="https://www.artstation.com/artwork/Bko5el">
-                                    <img src="https://cdna.artstation.com/p/assets/images/images/078/519/226/large/charles-grassi-screenshot-2023-10-29-140203-2.jpg" alt="HDRP Interior Lighting" loading="lazy">
-                                </div>
-                                <div class="portfolio-item" data-index="18" data-title="Orthographic Water Surface" data-url="https://www.artstation.com/artwork/wrAvRL">
+                                <div class="portfolio-item" data-index="17" data-title="Orthographic Water Surface" data-url="https://www.artstation.com/artwork/wrAvRL">
                                     <img src="https://cdnb.artstation.com/p/assets/video_clips/images/078/425/243/large/charles-grassi-thumb.jpg" alt="Orthographic Water Surface" loading="lazy">
                                 </div>
                             </div>

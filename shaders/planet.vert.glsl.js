@@ -26,10 +26,9 @@ varying float vIsLight;
 varying float vWorldZ;  // Pass world Z to fragment shader
 
 uniform vec2 uRes;
-uniform float uZoom;
-uniform vec2 uZoomCenter;
 uniform float uCameraRotX;  // Camera rotation around X axis (pitch)
 uniform float uCameraRotY;  // Camera rotation around Y axis (yaw)
+uniform vec3 uCameraPos;    // Camera position XYZ (free camera)
 
 void main() {
     vUV = aPos;
@@ -40,30 +39,18 @@ void main() {
     vIsLight = aIsLight;
     vWorldZ = aZ;
 
-    // Fixed orbit distance for camera rotation (not affected by zoom)
-    float orbitDist = 1.0;
-
-    // Zoom is applied as a separate scale factor
-    float zoomScale = uZoom;
-
-    // Calculate camera position on sphere around origin
-    // Using spherical coordinates: camera orbits at fixed distance
+    // Camera rotation
     float cosRotX = cos(uCameraRotX);
     float sinRotX = sin(uCameraRotX);
     float cosRotY = cos(uCameraRotY);
     float sinRotY = sin(uCameraRotY);
 
-    // Camera position in 3D (orbiting around origin at fixed distance)
-    vec3 cameraPos = vec3(
-        orbitDist * sinRotY * cosRotX,
-        orbitDist * sinRotX,
-        orbitDist * cosRotY * cosRotX
-    );
+    // Free camera: direct position
+    vec3 cameraPos = uCameraPos;
 
-    // Camera basis vectors (looking at origin)
-    vec3 cameraForward = normalize(-cameraPos);  // Looking at origin
-    vec3 worldUp = vec3(0.0, 1.0, 0.0);
-    vec3 cameraRight = normalize(cross(worldUp, cameraForward));
+    // Camera basis vectors (from rotation angles, not looking at origin)
+    vec3 cameraForward = vec3(sinRotY * cosRotX, -sinRotX, cosRotY * cosRotX);
+    vec3 cameraRight = vec3(cosRotY, 0.0, -sinRotY);
     vec3 cameraUp = cross(cameraForward, cameraRight);
 
     // Convert 2D screen position to 3D world position
@@ -93,18 +80,18 @@ void main() {
         return;
     }
 
-    // Perspective projection (fixed orbit distance, zoom applied separately)
-    float perspectiveScale = orbitDist / zDist;
+    // Perspective projection (1/distance)
+    float perspectiveScale = 1.0 / zDist;
 
     // Project node position onto screen
     float projX = dot(toNode, cameraRight) * perspectiveScale;
     float projY = dot(toNode, cameraUp) * perspectiveScale;
 
-    // Convert back to screen coordinates with zoom applied
-    vec2 projectedCenter = screenCenter + vec2(projX, -projY) * uRes.x * zoomScale;
+    // Convert back to screen coordinates
+    vec2 projectedCenter = screenCenter + vec2(projX, -projY) * uRes.x;
 
-    // Scale the radius by perspective and zoom
-    float scaledRadius = aRadius * perspectiveScale * zoomScale;
+    // Scale the radius by perspective
+    float scaledRadius = aRadius * perspectiveScale;
 
     // Build quad vertices
     vec2 quadPos = projectedCenter + aPos * scaledRadius * 3.0;

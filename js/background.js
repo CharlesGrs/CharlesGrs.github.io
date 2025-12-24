@@ -1,8 +1,14 @@
 // ============================================
 // BACKGROUND NEBULA EFFECT (Three.js)
+// DISABLED - Now rendered in skill-graph.js WebGL context
 // Uses distant sphere sampling with light integration from skill graph
 // ============================================
 (function initBackground() {
+    // Nebula is now rendered in skill-graph.js for unified WebGL context
+    // This allows planets to sample the background texture for fog/atmosphere
+    console.log('Three.js background disabled - using WebGL nebula in skill-graph.js');
+    return;
+
     var canvas = document.getElementById('gpu-canvas');
     if (!canvas || typeof THREE === 'undefined') return;
 
@@ -67,8 +73,16 @@
             uNebulaColorCyan: { value: new THREE.Vector3(0.04, 0.12, 0.20) },
             uNebulaColorBlue: { value: new THREE.Vector3(0.03, 0.06, 0.15) },
             uNebulaColorGold: { value: new THREE.Vector3(0.15, 0.10, 0.03) },
-            uZoom: { value: 1.0 },
-            uZoomCenter: { value: new THREE.Vector2(0.5, 0.5) }
+            // God rays uniforms
+            uGodRaysIntensity: { value: 0.8 },
+            uGodRaysRadius: { value: 0.4 },
+            uGodRaysFalloff: { value: 2.5 },
+            uGodRaysNoiseScale: { value: 4.0 },
+            uGodRaysNoiseStrength: { value: 0.1 },
+            // Screen-space light positions (camera-transformed)
+            uLight0Screen: { value: new THREE.Vector2(0, 0) },
+            uLight1Screen: { value: new THREE.Vector2(0, 0) },
+            uLight2Screen: { value: new THREE.Vector2(0, 0) }
         },
         transparent: true,
         depthWrite: false
@@ -108,6 +122,10 @@
                     );
                 }
                 material.uniforms.uLight0Intensity.value = lights.light0.intensity || 1.0;
+                // Screen-space position (camera-transformed)
+                if (lights.light0.screenX !== undefined) {
+                    material.uniforms.uLight0Screen.value.set(lights.light0.screenX, lights.light0.screenY);
+                }
             }
             if (lights.light1) {
                 material.uniforms.uLight1.value.set(lights.light1.x, lights.light1.y);
@@ -117,6 +135,10 @@
                     );
                 }
                 material.uniforms.uLight1Intensity.value = lights.light1.intensity || 1.0;
+                // Screen-space position (camera-transformed)
+                if (lights.light1.screenX !== undefined) {
+                    material.uniforms.uLight1Screen.value.set(lights.light1.screenX, lights.light1.screenY);
+                }
             }
             if (lights.light2) {
                 material.uniforms.uLight2.value.set(lights.light2.x, lights.light2.y);
@@ -126,6 +148,10 @@
                     );
                 }
                 material.uniforms.uLight2Intensity.value = lights.light2.intensity || 1.0;
+                // Screen-space position (camera-transformed)
+                if (lights.light2.screenX !== undefined) {
+                    material.uniforms.uLight2Screen.value.set(lights.light2.screenX, lights.light2.screenY);
+                }
             }
         }
 
@@ -148,7 +174,15 @@
         material.uniforms.uNebulaColorCyan.value.set(nebulaParams.colorCyan[0], nebulaParams.colorCyan[1], nebulaParams.colorCyan[2]);
         material.uniforms.uNebulaColorBlue.value.set(nebulaParams.colorBlue[0], nebulaParams.colorBlue[1], nebulaParams.colorBlue[2]);
         material.uniforms.uNebulaColorGold.value.set(nebulaParams.colorGold[0], nebulaParams.colorGold[1], nebulaParams.colorGold[2]);
-        material.uniforms.uZoom.value = window.globalZoom || 1.0;
+
+        // Read god rays parameters from global (if available)
+        if (window.godRaysParams) {
+            material.uniforms.uGodRaysIntensity.value = window.godRaysParams.lightIntensity || 0.8;
+            material.uniforms.uGodRaysRadius.value = window.godRaysParams.lightRadius || 0.4;
+            material.uniforms.uGodRaysFalloff.value = window.godRaysParams.lightFalloff || 2.5;
+            material.uniforms.uGodRaysNoiseScale.value = window.godRaysParams.noiseScale || 4.0;
+            material.uniforms.uGodRaysNoiseStrength.value = window.godRaysParams.noiseStrength || 0.1;
+        }
 
         var t0 = window.renderTiming.start();
         renderer.render(scene, camera);

@@ -318,10 +318,11 @@
     const listView = document.getElementById('skills-list-view');
     const shaderControls = document.getElementById('shader-controls-container');
     const skillsPanel = document.getElementById('panel-skills');
+    const canvasSection = document.getElementById('canvas-section');
 
-    if (!viewToggleBtns.length || !graphView || !listView) return;
+    if (!viewToggleBtns.length || !listView) return;
 
-    // Hide shader controls by default (list view is default)
+    // Hide shader controls and canvas by default (list view is default)
     if (shaderControls) {
         shaderControls.style.display = 'none';
     }
@@ -337,9 +338,14 @@
 
             // Toggle views
             if (view === 'graph') {
-                graphView.classList.add('active');
+                // Hide list view, show canvas section (NOT the old graphView)
                 listView.classList.remove('active');
-                // Enable fullscreen mode for graph
+                if (graphView) graphView.classList.remove('active'); // Keep old graph hidden
+                // Show canvas section for 3D graph
+                if (canvasSection) {
+                    canvasSection.classList.add('active');
+                }
+                // Enable graph mode for panel
                 if (skillsPanel) {
                     skillsPanel.classList.add('graph-active');
                 }
@@ -347,12 +353,26 @@
                 if (shaderControls) {
                     shaderControls.style.display = '';
                 }
-                // Trigger resize for canvas
-                window.dispatchEvent(new Event('resize'));
+                // Trigger multiple resizes to ensure canvas gets proper dimensions
+                // Double RAF ensures CSS transitions have fully applied
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        window.dispatchEvent(new Event('resize'));
+                        // Additional resize after a short delay for safety
+                        setTimeout(() => {
+                            window.dispatchEvent(new Event('resize'));
+                        }, 100);
+                    });
+                });
             } else {
-                graphView.classList.remove('active');
+                // Show list view, hide canvas
                 listView.classList.add('active');
-                // Disable fullscreen mode for list
+                if (graphView) graphView.classList.remove('active');
+                // Hide canvas section for list view
+                if (canvasSection) {
+                    canvasSection.classList.remove('active');
+                }
+                // Disable graph mode for panel
                 if (skillsPanel) {
                     skillsPanel.classList.remove('graph-active');
                 }
@@ -450,4 +470,31 @@
     }
 
     requestAnimationFrame(updateFPS);
+})();
+
+// ============================================
+// CANVAS FULLSCREEN TOGGLE
+// ============================================
+(function initCanvasFullscreen() {
+    const canvasSection = document.getElementById('canvas-section');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+
+    if (!canvasSection || !fullscreenBtn) return;
+
+    fullscreenBtn.addEventListener('click', function() {
+        canvasSection.classList.toggle('fullscreen');
+        document.body.classList.toggle('canvas-fullscreen');
+
+        // Trigger resize event so canvas updates its dimensions
+        window.dispatchEvent(new Event('resize'));
+    });
+
+    // ESC key to exit fullscreen
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && canvasSection.classList.contains('fullscreen')) {
+            canvasSection.classList.remove('fullscreen');
+            document.body.classList.remove('canvas-fullscreen');
+            window.dispatchEvent(new Event('resize'));
+        }
+    });
 })();
