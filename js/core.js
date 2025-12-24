@@ -223,9 +223,9 @@ window.renderToggles = {
     nebula: true,           // Nebula background (Three.js)
     planets: true,          // Planet/moon spheres
     suns: true,             // Sun/star rendering
-    spaceParticles: false,  // Space dust particles
+    spaceParticles: true,   // Space dust particles
     godRays: true,          // God rays post-process
-    orbits: false           // Orbital path lines
+    orbits: true            // Orbital path lines
 };
 
 // ============================================

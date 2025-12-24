@@ -430,18 +430,18 @@
 
         // Bokeh effect
         maxBlur: 60,
-        aperture: 1.05,
-        ringWidth: 0.35,
+        aperture: 0.65,
+        ringWidth: 0.75,
         ringIntensity: 0.85,
 
         // Circle quality
-        softness: 0.6,
+        softness: 1,
 
         // Appearance
-        particleSize: 1.5,
-        brightness: 0.1,
+        particleSize: 0.5,
+        brightness: 0.05,
         lightFalloff: 5.3,
-        baseColor: '#ffffff',
+        baseColor: '#00bfe6',
 
         // Shooting stars (merged for unified persistence)
         shootingChance: 0.087,
@@ -458,7 +458,7 @@
     // God rays parameters (UI-controllable)
     const godRaysParams = {
         // Physically-based light scattering
-        lightIntensity: 0.75,
+        lightIntensity: 0,
         lightFalloff: 2.2,
         lightScale: 5.9,
         lightSaturation: 1.7,
