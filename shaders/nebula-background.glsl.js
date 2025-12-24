@@ -44,8 +44,7 @@ uniform float uNebulaDetail;       // Detail/octaves (default 1.0)
 uniform float uNebulaSpeed;        // Animation speed (default 0.1)
 uniform float uLightInfluence;     // How much lights affect nebula (default 0.3)
 uniform float uColorVariation;     // Color variation amount (default 1.0)
-uniform float uDustDensity;        // Dust lane density (default 0.5)
-uniform float uStarDensity;        // Background star density (default 0.3)
+// uDustDensity and uStarDensity removed for performance
 uniform float uFractalIntensity;   // Fractal pattern intensity in lit areas (default 0.15)
 uniform float uFractalScale;       // Fractal pattern scale (default 8.0)
 uniform float uFractalSpeed;       // Fractal animation speed (default 0.03)
@@ -170,58 +169,29 @@ float nebulaNoise(vec3 p, float detail) {
     float amplitude = 0.5;
     float frequency = 1.0;
 
-    // Multiple octaves for detail
-    value += snoise3D(p * frequency) * amplitude;
+    // 4 octaves for detail (reduced from 8)
+    for (int i = 0; i < 4; i++) {
+        value += snoise3D(p * frequency) * amplitude;
+        amplitude *= 0.5;
+        frequency *= 2.0;
+    }
 
-    amplitude *= 0.5;
-    frequency *= 2.0;
-    value += snoise3D(p * frequency) * amplitude * min(detail, 1.0);
-
-    amplitude *= 0.5;
-    frequency *= 2.0;
-    value += snoise3D(p * frequency) * amplitude * max(detail - 1.0, 0.0) * 0.5;
-
-    return value;
+    return value * detail;
 }
 
-// Wispy turbulence for gas clouds
+// Wispy turbulence for gas clouds (reduced to 2 iterations)
 float turbulence(vec3 p, float detail) {
     float value = 0.0;
     float amplitude = 0.5;
     float frequency = 1.0;
 
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 2; i++) {
         value += abs(snoise3D(p * frequency)) * amplitude;
         amplitude *= 0.5;
         frequency *= 2.1;
     }
 
     return value * detail;
-}
-
-// ========================================
-// STAR FIELD
-// ========================================
-
-float starField(vec3 dir) {
-    // Create a stable star field based on direction
-    // Use high frequency to get many small stars
-    vec3 p = dir * 500.0;  // High multiplier = many tiny stars
-    vec3 cell = floor(p);
-
-    // Hash for star existence and brightness
-    float h = fract(sin(dot(cell, vec3(127.1, 311.7, 74.7))) * 43758.5453);
-
-    // Only ~1% of cells have stars
-    float starExists = step(0.992, h);
-
-    // Vary star brightness
-    float brightness = h * h * h;  // Cubic falloff for more dim stars
-
-    // Twinkle effect
-    float twinkle = sin(h * 1000.0 + uTime * (1.0 + h * 2.0)) * 0.2 + 0.8;
-
-    return starExists * brightness * twinkle;
 }
 
 // ========================================
@@ -232,7 +202,8 @@ float cheapFractal(vec3 p) {
     float v = 0.0;
     float a = 0.5;
     vec3 offset = vec3(1.7, 2.3, 1.9);
-    for (int i = 0; i < 5; i++) {
+    // Reduced from 5 to 3 iterations
+    for (int i = 0; i < 3; i++) {
         // Twisted domain for organic look
         vec3 q = vec3(
             sin(p.y * 1.3 + p.z * 0.7),
@@ -347,15 +318,6 @@ void main() {
     nebulaDensity = pow(nebulaDensity, 1.3);
 
     // ========================================
-    // DUST LANES (dark absorption regions)
-    // ========================================
-
-    vec3 dustDir = skyDir * skyboxScale * 1.2;
-    float dust = nebulaNoise(dustDir + vec3(100.0, 0.0, 0.0), 1.5);
-    dust = smoothstep(0.2, 0.6, dust) * uDustDensity;
-    nebulaDensity *= 1.0 - dust * 0.5;
-
-    // ========================================
     // NEBULA COLORING
     // ========================================
 
@@ -377,17 +339,6 @@ void main() {
     vec3 nebulaCol = nebulaColor * nebulaDensity * uNebulaIntensity;
 
     // ========================================
-    // STAR FIELD
-    // ========================================
-
-    float stars = starField(skyDir) * uStarDensity;
-
-    // Dim stars in nebula-dense regions
-    stars *= 1.0 - nebulaDensity * 0.7;
-
-    vec3 starColor = vec3(0.95, 0.97, 1.0) * stars;
-
-    // ========================================
     // LIGHT INFLUENCE FROM SCENE LIGHTS
     // ========================================
 
@@ -400,9 +351,6 @@ void main() {
     // Lights add subtle glow to dark regions
     float darkRegion = 1.0 - smoothstep(0.0, 0.2, nebulaDensity);
     nebulaCol += lightInfluence * darkRegion * 0.03;
-
-    // Tint stars near lights
-    starColor += lightInfluence * stars * 0.3;
 
     // ========================================
     // FRACTAL PATTERN (screen space, radiating from each light)
@@ -462,7 +410,6 @@ void main() {
 
     vec3 finalColor = deepSpace;
     finalColor += nebulaCol;
-    finalColor += starColor;
     finalColor += fractalColor;
 
     // Subtle mouse interaction glow

@@ -87,6 +87,7 @@
     <!-- Load fonts -->
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/settings-panel.css">
 
     <!-- Defer Three.js to eliminate render-blocking -->
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -101,12 +102,20 @@
     <!-- FPS Performance Badge -->
     <div class="fps-badge good" id="fps-badge" title="Real-time performance metrics" aria-label="Performance: 60 FPS" role="status">
         <span class="fps-icon"></span>
-        <span class="fps-value" id="fps-value">60</span>
-        <span class="fps-label">FPS</span>
+        <div class="fps-metrics">
+            <div class="gpu-row" id="gpu-row">
+                <span class="gpu-value" id="gpu-value">--</span>
+                <span class="gpu-label">ms</span>
+            </div>
+            <div class="fps-row">
+                <span class="fps-value" id="fps-value">60</span>
+                <span class="fps-label">FPS</span>
+            </div>
+        </div>
     </div>
 
     <!-- Version Badge -->
-    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.16</span></div>
+    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.17</span></div>
 
     <a href="mailto:contact.charles.grassi@gmail.com" class="contact-btn" aria-label="Send email to Charles Grassi">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -1630,7 +1639,7 @@
         </footer>
     </div>
 
-    <!-- Shaders - load before main.js -->
+    <!-- Shaders - load before JS modules -->
     <script src="shaders/planet.vert.glsl.js"></script>
     <script src="shaders/planet.frag.glsl.js"></script>
     <script src="shaders/sun.frag.glsl.js"></script>
@@ -1638,6 +1647,16 @@
     <script src="shaders/debug-quad.glsl.js"></script>
     <script src="shaders/nebula-background.glsl.js"></script>
     <script src="shaders/space-particles.glsl.js"></script>
-    <script defer src="js/main.js"></script>
+    <script src="shaders/background-threejs.glsl.js"></script>
+    <script src="shaders/playground-particles.glsl.js"></script>
+    <script src="shaders/playground-effects.glsl.js"></script>
+
+    <!-- JavaScript modules (order matters) -->
+    <script defer src="js/core.js"></script>
+    <script defer src="js/background.js"></script>
+    <script defer src="js/skill-graph.js"></script>
+    <script defer src="js/ui.js"></script>
+    <script defer src="js/playground.js"></script>
+    <script defer src="js/settings-panel.js"></script>
 </body>
 </html>

@@ -1,445 +1,3 @@
-// Charles Grassi CV - Main JavaScript
-// All interactive functionality for the portfolio site
-
-// ============================================
-// MOBILE FULLSCREEN SIMULATION MODE
-// ============================================
-(function initMobileSimulationMode() {
-    const isMobile = window.innerWidth <= 900;
-    if (isMobile) {
-        document.body.classList.add('mobile-simulation-mode');
-    }
-    // Also handle orientation changes
-    window.addEventListener('resize', function() {
-        if (window.innerWidth <= 900) {
-            document.body.classList.add('mobile-simulation-mode');
-        } else {
-            document.body.classList.remove('mobile-simulation-mode');
-        }
-    });
-})();
-
-// ============================================
-// CACHED WINDOW DIMENSIONS (avoid forced reflow)
-// ============================================
-let cachedWindowWidth = window.innerWidth;
-let cachedWindowHeight = window.innerHeight;
-
-// ============================================
-// RENDER PARAMETERS (UI-controllable)
-// ============================================
-// Planet A: Oceanic/Mountain planets (blue/green, water)
-const planetParamsA = {
-    noiseScale: 1.8,
-    terrainHeight: 0.6,
-    atmosIntensity: 0.6,
-    atmosThickness: 2.5,
-    atmosPower: 37.1,
-    scatterColor: '#1a40e6',  // Blue-dominant for Earth-like Rayleigh scattering
-    scatterScale: 0.5,
-    sunsetStrength: 1.0,
-    oceanRoughness: 0.55,
-    sssIntensity: 1.0,
-    seaLevel: 0.0,
-    landRoughness: 0.65,
-    normalStrength: 0.15
-};
-
-// Planet B: Lava/Desert planets (volcanic)
-const planetParamsB = {
-    noiseScale: 1.8,
-    terrainHeight: 0.6,
-    atmosIntensity: 0.8,
-    atmosThickness: 2.0,
-    atmosPower: 25.0,
-    scatterColor: '#e63319',  // Red-dominant for volcanic/Mars-like atmosphere
-    scatterScale: 0.8,
-    sunsetStrength: 0.5,
-    lavaIntensity: 3.0,
-    seaLevel: 0.0,
-    landRoughness: 0.75,
-    normalStrength: 0.2
-};
-
-// Global render params (for backwards compatibility)
-const renderParams = {
-    parallaxStrength: 1.0   // 3D parallax effect strength (0=off, 1=normal)
-};
-
-// Light properties (shared across all planet types)
-const lightParams = {
-    light0Intensity: 1.0,
-    light0Attenuation: 0.06,
-    light0Kelvin: 15000,
-    light1Intensity: 1.0,
-    light1Attenuation: 0.06,
-    light1Kelvin: 2000,
-    light2Intensity: 1.0,
-    light2Attenuation: 0.06,
-    light2Kelvin: 5000,
-    ambientIntensity: 0.0,  // Ambient light in space (default 0)
-    fogIntensity: 0.15       // Fog intensity (colored by env light)
-};
-
-// Sun/Star halo parameters (UI-controllable)
-const sunParams = {
-    coreSize: 0.5,
-    glowSize: 1.0,
-    glowIntensity: 0.6,
-    coronaIntensity: 1.0,
-    rayCount: 12,
-    rayIntensity: 1.0,
-    rayLength: 2.0,
-    streamerCount: 6,
-    streamerIntensity: 1.0,
-    streamerLength: 1.5,
-    haloRing1Dist: 1.2,
-    haloRing1Intensity: 0.15,
-    haloRing2Dist: 1.8,
-    haloRing2Intensity: 0.08,
-    flickerSpeed: 3.0,
-    pulseSpeed: 2.0,
-    chromaticShift: 1.0
-};
-
-// Orbital system parameters (UI-controllable)
-const orbitParams = {
-    // Global orbital speed multiplier
-    orbitSpeed: 1.0,           // Global orbit speed multiplier (0 - 3.0)
-    // Sun positioning
-    sunSpread: 1.0,            // How far apart suns are positioned (0.5 - 2.0)
-    sunSpawnMin: 0.2,          // Minimum distance from center for suns (0.1 - 0.5)
-    sunSpawnMax: 0.45,         // Maximum distance from center for suns (0.3 - 0.6)
-    // Moon orbit settings
-    moonOrbitRadius: 1.0,      // Moon orbit radius multiplier (0.5 - 2.0)
-    moonOrbitSpacing: 1.0,     // Gap between successive moon orbits (0.5 - 2.0)
-    moonOrbitTilt: 1.0,        // How tilted moon orbits are (0 - 2.0)
-    baseOrbitMin: 0.04,        // Minimum base orbit radius (0.02 - 0.1)
-    baseOrbitMax: 0.08,        // Maximum base orbit radius (0.05 - 0.15)
-    spawnOffset: 0.0,          // Offset angle for all spawning positions in radians (-PI to PI)
-    // Sub-moon settings
-    subMoonOrbitRadius: 1.0,   // Sub-moon orbit radius multiplier (0.5 - 2.0)
-    subMoonSpeed: 1.0,         // Sub-moon speed multiplier (0.5 - 3.0)
-    subMoonSize: 0.5,          // Sub-moon size multiplier (0.2 - 1.0)
-    // Visual settings
-    orbitLineOpacity: 0.25,    // Orbit circle line opacity (0 - 1)
-    orbitLineWidth: 1.0,       // Orbit circle line width (0.5 - 3)
-    // Camera settings
-    cameraRotSpeed: 1.0,       // Camera rotation sensitivity (0.2 - 3.0)
-    // Display toggles
-    showOrbits: 1.0            // Show orbit circles (0 or 1)
-};
-
-// Legacy alias for compatibility
-const physicsParams = orbitParams;
-
-// Display settings
-let showPlanetLabels = true;  // Toggle for planet labels visibility
-let showConnectionLinks = false;  // Toggle for connection links visibility (hidden by default)
-
-// Global camera rotation (shared between skill network and background)
-// Updated by skill network, read by background shader
-window.globalCameraRotX = 0;
-window.globalCameraRotY = 0;
-window.globalZoom = 1.0;
-
-// Nebula background parameters (UI-controllable)
-// Used by the Three.js background shader
-const nebulaParams = {
-    intensity: 0.25,        // Overall nebula brightness (0-1)
-    scale: 2.0,             // Noise scale - higher = smaller features (0.5-10)
-    detail: 2.0,            // Detail/octaves (0-4)
-    speed: 0.08,            // Animation speed (0-0.5)
-    colorVariation: 0.8,    // Color variation amount (0-2)
-    dustDensity: 0.4,       // Dust lane density (0-1)
-    starDensity: 0.25,      // Background star density (0-1)
-    lightInfluence: 0.4,    // How much lights affect nebula (0-2)
-    fractalIntensity: 0.15, // Fractal pattern intensity in lit areas (0-1)
-    fractalScale: 8.0,      // Fractal pattern scale (1-20)
-    fractalSpeed: 0.03,     // Fractal animation speed (0-0.1)
-    fractalSaturation: 3.0, // Fractal color saturation (1-5)
-    fractalFalloff: 3.0,    // Fractal light falloff (1-10)
-    vignetteStrength: 0.3,  // Vignette darkness (0-1)
-    // Nebula colors (RGB 0-1)
-    colorPurple: [0.12, 0.04, 0.18],
-    colorCyan: [0.04, 0.12, 0.20],
-    colorBlue: [0.03, 0.06, 0.15],
-    colorGold: [0.15, 0.10, 0.03]
-};
-
-// Global light data (shared between skill network and background nebula shader)
-// Updated by skill network renderSpheresGL, read by background shader
-window.globalLights = {
-    light0: { x: 0, y: 0, color: [1.0, 0.67, 0.2], intensity: 1.0 },
-    light1: { x: 0, y: 0, color: [0.6, 0.3, 0.8], intensity: 1.0 },
-    light2: { x: 0, y: 0, color: [0.2, 0.87, 1.0], intensity: 1.0 },
-    resolution: { width: 1920, height: 1080 }
-};
-
-// Update cache on resize (debounced elsewhere)
-window.addEventListener('resize', () => {
-    cachedWindowWidth = window.innerWidth;
-    cachedWindowHeight = window.innerHeight;
-}, { passive: true });
-
-// ============================================
-// SHADER DEFINITIONS
-// ============================================
-
-// Background Nebula Shaders - loaded from external file shaders/nebula-background.glsl.js
-// Uses distant sphere sampling technique matching god rays for consistent camera rotation
-const backgroundVertexShader = `
-    varying vec2 vUv;
-    void main() {
-        vUv = uv;
-        gl_Position = vec4(position, 1.0);
-    }
-`;
-
-// The fragment shader is loaded from window.NEBULA_BACKGROUND_FRAGMENT_SHADER
-// but we need to convert it for Three.js (uses vUv instead of vUV)
-const nebulaFragmentShaderRaw = window.NEBULA_BACKGROUND_FRAGMENT_SHADER || '';
-// Replace all vUV with vUv for Three.js compatibility
-const backgroundFragmentShader = nebulaFragmentShaderRaw.replace(/vUV/g, 'vUv');
-
-const particleVertexShader = `
-    uniform float uTime;
-    uniform float uPixelRatio;
-    uniform vec2 uParallax;
-    attribute float aScale;
-    attribute float aSpeed;
-    attribute float aDepth;
-    varying float vAlpha;
-
-    void main() {
-        vec3 pos = position;
-        pos.x += sin(uTime * aSpeed * 0.5 + position.y * 2.0) * 0.02;
-        pos.y += mod(uTime * aSpeed * 0.1, 2.0) - 1.0;
-        pos.y = mod(pos.y + 1.0, 2.0) - 1.0;
-
-        // Apply parallax based on depth - far particles move less
-        float parallaxFactor = 0.1 + aDepth * 0.9; // Far=10%, Near=100%
-        pos.xy += uParallax * parallaxFactor;
-
-        gl_Position = vec4(pos, 1.0);
-        gl_PointSize = aScale * uPixelRatio * 3.0;
-        vAlpha = smoothstep(1.0, 0.7, abs(pos.y)) * 0.4;
-    }
-`;
-
-const particleFragmentShader = `
-    varying float vAlpha;
-    void main() {
-        float dist = length(gl_PointCoord - 0.5);
-        float alpha = smoothstep(0.5, 0.0, dist) * vAlpha;
-        vec3 color = mix(vec3(0.91, 0.73, 0.14), vec3(0.18, 0.83, 0.75), 0.5);
-        gl_FragColor = vec4(color, alpha);
-    }
-`;
-
-// Skill Sphere WebGL Shaders - loaded from external .glsl.js files
-// Edit shaders in: shaders/planet.vert.glsl.js, shaders/planet.frag.glsl.js, and shaders/sun.frag.glsl.js
-// These are loaded via <script> tags in index.html BEFORE main.js
-const sphereVertexShader = window.PLANET_VERTEX_SHADER;
-const sphereFragmentShader = window.PLANET_FRAGMENT_SHADER;
-const sunFragmentShader = window.SUN_FRAGMENT_SHADER;
-
-// Verify shaders loaded correctly
-if (!sphereVertexShader || !sphereFragmentShader || !sunFragmentShader) {
-    console.error('Shaders not loaded! Make sure shader script tags are before main.js');
-} else {
-    console.log('Planet and Sun shaders loaded from external .glsl.js files');
-}
-
-// Nebula background shader - loaded from shaders/nebula-background.glsl.js
-const nebulaBackgroundVertexShader = window.NEBULA_BACKGROUND_VERTEX_SHADER;
-const nebulaBackgroundFragmentShader = window.NEBULA_BACKGROUND_FRAGMENT_SHADER;
-if (!nebulaBackgroundFragmentShader) {
-    console.error('Nebula background shader not loaded! Make sure nebula-background.glsl.js is before main.js');
-} else {
-    console.log('Nebula background shader loaded from external .glsl.js file');
-}
-
-// ============================================
-// BACKGROUND NEBULA EFFECT (Three.js)
-// Uses distant sphere sampling with light integration from skill graph
-// ============================================
-(function initBackground() {
-    const canvas = document.getElementById('gpu-canvas');
-    if (!canvas || typeof THREE === 'undefined') return;
-
-    // Check if nebula shader loaded
-    if (!window.NEBULA_BACKGROUND_FRAGMENT_SHADER) {
-        console.error('Nebula background shader not loaded!');
-        return;
-    }
-
-    const renderer = new THREE.WebGLRenderer({
-        canvas,
-        antialias: false,
-        alpha: true,
-        premultipliedAlpha: false
-    });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-    renderer.setSize(cachedWindowWidth, cachedWindowHeight);
-    renderer.setClearColor(0x000000, 0);  // Fully transparent clear
-
-    const scene = new THREE.Scene();
-    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-
-    const mouse = { x: 0.5, y: 0.5, targetX: 0.5, targetY: 0.5 };
-    document.addEventListener('mousemove', (e) => {
-        mouse.targetX = e.clientX / cachedWindowWidth;
-        mouse.targetY = 1.0 - e.clientY / cachedWindowHeight;
-    }, { passive: true });
-
-    const geometry = new THREE.PlaneGeometry(2, 2);
-    const material = new THREE.ShaderMaterial({
-        vertexShader: backgroundVertexShader,
-        fragmentShader: backgroundFragmentShader,
-        uniforms: {
-            // Basic uniforms
-            uTime: { value: 0 },
-            uMouse: { value: new THREE.Vector2(0.5, 0.5) },
-            uResolution: { value: new THREE.Vector2(cachedWindowWidth, cachedWindowHeight) },
-            uCameraRotX: { value: 0 },
-            uCameraRotY: { value: 0 },
-            // Light sources from skill graph
-            uLight0: { value: new THREE.Vector2(0, 0) },
-            uLight1: { value: new THREE.Vector2(0, 0) },
-            uLight2: { value: new THREE.Vector2(0, 0) },
-            uLightColor0: { value: new THREE.Vector3(1.0, 0.67, 0.2) },
-            uLightColor1: { value: new THREE.Vector3(0.6, 0.3, 0.8) },
-            uLightColor2: { value: new THREE.Vector3(0.2, 0.87, 1.0) },
-            uLight0Intensity: { value: 1.0 },
-            uLight1Intensity: { value: 1.0 },
-            uLight2Intensity: { value: 1.0 },
-            // Nebula parameters (subtle defaults)
-            uNebulaIntensity: { value: 0.25 },
-            uNebulaScale: { value: 2.0 },
-            uNebulaDetail: { value: 2.0 },
-            uNebulaSpeed: { value: 0.08 },
-            uLightInfluence: { value: 0.4 },
-            uColorVariation: { value: 0.8 },
-            uDustDensity: { value: 0.4 },
-            uStarDensity: { value: 0.25 },
-            uFractalIntensity: { value: 0.15 },
-            uFractalScale: { value: 8.0 },
-            uFractalSpeed: { value: 0.03 },
-            uFractalSaturation: { value: 3.0 },
-            uFractalFalloff: { value: 3.0 },
-            uVignetteStrength: { value: 0.3 },
-            // Nebula colors
-            uNebulaColorPurple: { value: new THREE.Vector3(0.12, 0.04, 0.18) },
-            uNebulaColorCyan: { value: new THREE.Vector3(0.04, 0.12, 0.20) },
-            uNebulaColorBlue: { value: new THREE.Vector3(0.03, 0.06, 0.15) },
-            uNebulaColorGold: { value: new THREE.Vector3(0.15, 0.10, 0.03) },
-            uZoom: { value: 1.0 },
-            uZoomCenter: { value: new THREE.Vector2(0.5, 0.5) }
-        },
-        transparent: true,
-        depthWrite: false
-    });
-
-    const mesh = new THREE.Mesh(geometry, material);
-    scene.add(mesh);
-
-    let time = 0;
-    function animate() {
-        requestAnimationFrame(animate);
-        time += 0.016;
-        mouse.x += (mouse.targetX - mouse.x) * 0.02;
-        mouse.y += (mouse.targetY - mouse.y) * 0.02;
-        material.uniforms.uTime.value = time;
-        material.uniforms.uMouse.value.set(mouse.x, mouse.y);
-
-        // Read camera rotation from global (set by skill network)
-        material.uniforms.uCameraRotX.value = window.globalCameraRotX || 0;
-        material.uniforms.uCameraRotY.value = window.globalCameraRotY || 0;
-
-        // Read light data from global (set by skill network renderSpheresGL)
-        const lights = window.globalLights;
-        if (lights) {
-            const res = lights.resolution || { width: cachedWindowWidth, height: cachedWindowHeight };
-            material.uniforms.uResolution.value.set(res.width, res.height);
-
-            // Update light positions (convert to normalized coordinates for shader)
-            if (lights.light0) {
-                material.uniforms.uLight0.value.set(lights.light0.x, lights.light0.y);
-                if (lights.light0.color) {
-                    material.uniforms.uLightColor0.value.set(
-                        lights.light0.color[0], lights.light0.color[1], lights.light0.color[2]
-                    );
-                }
-                material.uniforms.uLight0Intensity.value = lights.light0.intensity || 1.0;
-            }
-            if (lights.light1) {
-                material.uniforms.uLight1.value.set(lights.light1.x, lights.light1.y);
-                if (lights.light1.color) {
-                    material.uniforms.uLightColor1.value.set(
-                        lights.light1.color[0], lights.light1.color[1], lights.light1.color[2]
-                    );
-                }
-                material.uniforms.uLight1Intensity.value = lights.light1.intensity || 1.0;
-            }
-            if (lights.light2) {
-                material.uniforms.uLight2.value.set(lights.light2.x, lights.light2.y);
-                if (lights.light2.color) {
-                    material.uniforms.uLightColor2.value.set(
-                        lights.light2.color[0], lights.light2.color[1], lights.light2.color[2]
-                    );
-                }
-                material.uniforms.uLight2Intensity.value = lights.light2.intensity || 1.0;
-            }
-        }
-
-        // Read nebula parameters from global nebulaParams object (set by UI)
-        material.uniforms.uNebulaIntensity.value = nebulaParams.intensity;
-        material.uniforms.uNebulaScale.value = nebulaParams.scale;
-        material.uniforms.uNebulaDetail.value = nebulaParams.detail;
-        material.uniforms.uNebulaSpeed.value = nebulaParams.speed;
-        material.uniforms.uColorVariation.value = nebulaParams.colorVariation;
-        material.uniforms.uDustDensity.value = nebulaParams.dustDensity;
-        material.uniforms.uStarDensity.value = nebulaParams.starDensity;
-        material.uniforms.uLightInfluence.value = nebulaParams.lightInfluence;
-        material.uniforms.uFractalIntensity.value = nebulaParams.fractalIntensity;
-        material.uniforms.uFractalScale.value = nebulaParams.fractalScale;
-        material.uniforms.uFractalSpeed.value = nebulaParams.fractalSpeed;
-        material.uniforms.uFractalSaturation.value = nebulaParams.fractalSaturation;
-        material.uniforms.uFractalFalloff.value = nebulaParams.fractalFalloff;
-        material.uniforms.uVignetteStrength.value = nebulaParams.vignetteStrength;
-        // Nebula colors
-        material.uniforms.uNebulaColorPurple.value.set(nebulaParams.colorPurple[0], nebulaParams.colorPurple[1], nebulaParams.colorPurple[2]);
-        material.uniforms.uNebulaColorCyan.value.set(nebulaParams.colorCyan[0], nebulaParams.colorCyan[1], nebulaParams.colorCyan[2]);
-        material.uniforms.uNebulaColorBlue.value.set(nebulaParams.colorBlue[0], nebulaParams.colorBlue[1], nebulaParams.colorBlue[2]);
-        material.uniforms.uNebulaColorGold.value.set(nebulaParams.colorGold[0], nebulaParams.colorGold[1], nebulaParams.colorGold[2]);
-        material.uniforms.uZoom.value = window.globalZoom || 1.0;
-
-        renderer.render(scene, camera);
-    }
-
-    animate();
-
-    window.addEventListener('resize', () => {
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        material.uniforms.uResolution.value.set(window.innerWidth, window.innerHeight);
-    });
-
-    console.log('Nebula background initialized with light integration');
-})();
-
-// God Rays Fullscreen Shader - loaded from shaders/godrays.glsl.js
-const godRaysVertexShader = window.GODRAYS_VERTEX_SHADER;
-const godRaysFragmentShader = window.GODRAYS_FRAGMENT_SHADER;
-
-// Debug Quad Shader - loaded from shaders/debug-quad.glsl.js
-const debugQuadVertexShader = window.DEBUG_QUAD_VERTEX_SHADER;
-const debugQuadFragmentShader = window.DEBUG_QUAD_FRAGMENT_SHADER;
-
-// Space particles shaders (loaded from shaders/space-particles.glsl.js)
-const spaceParticleVertexShader = window.SPACE_PARTICLE_VERTEX_SHADER;
-const spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
-
 // ============================================
 // SKILL NETWORK GRAPH
 // ============================================
@@ -1253,6 +811,12 @@ const spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
     function renderSpheresGL(nodes, hovered, connected) {
         if (!glReady) return false;
 
+        // Early exit if all WebGL features are disabled
+        const toggles = window.renderToggles;
+        if (toggles && !toggles.planets && !toggles.suns && !toggles.spaceParticles && !toggles.godRays) {
+            return true; // Return true so canvas fallback isn't used
+        }
+
         gl.clear(gl.COLOR_BUFFER_BIT);
 
         // Get light data first (needed for both god rays and spheres)
@@ -1272,8 +836,10 @@ const spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
 
         // Particle simulation (run once per frame, not per render pass)
         // Particles fill larger sphere surrounding all planets
+        // Skip particle simulation entirely if particles are disabled
         const particleSphereRadius = 0.35;
-        if (spaceParticleProgram && spaceParticleData) {
+        const particlesEnabled = !window.renderToggles || window.renderToggles.spaceParticles !== false;
+        if (particlesEnabled && spaceParticleProgram && spaceParticleData) {
             const deltaTime = Math.min(time - spaceParticleLastTime, 0.033);
             spaceParticleLastTime = time;
 
@@ -1472,7 +1038,9 @@ const spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
         }
 
         // PASS 1: Render FAR particles (behind planets, z < planetZ)
-        renderParticles(1);
+        if (!window.renderToggles || window.renderToggles.spaceParticles !== false) {
+            renderParticles(1);
+        }
 
         // Compute light screen positions (after camera transform) for god rays
         // Same math as vertex shader for sphere program
@@ -1503,7 +1071,7 @@ const spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
         const godRayLight2 = computeLightScreenPos(light2.x, light2.y, light2.z);
 
         // Render god rays (background layer, after particles)
-        if (godRaysProgram) {
+        if (godRaysProgram && (!window.renderToggles || window.renderToggles.godRays !== false)) {
             gl.useProgram(godRaysProgram);
             gl.uniform2f(godRaysProgram.uResolution, width, height);
             gl.uniform1f(godRaysProgram.uTime, time);
@@ -1759,6 +1327,13 @@ const spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
         // Render all nodes in depth order, switching shaders and blend modes as needed
         for (const n of allNodes) {
             const isSun = n.isLight;
+
+            // Skip rendering based on render toggles
+            if (window.renderToggles) {
+                if (isSun && window.renderToggles.suns === false) continue;
+                if (!isSun && window.renderToggles.planets === false) continue;
+            }
+
             const nodeIdx = nodes.indexOf(n);
             const verts = buildNodeVertices(n, nodeIdx);
             const vertData = new Float32Array(verts);
@@ -1854,7 +1429,9 @@ const spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
         }
 
         // PASS 2: Render NEAR particles (in front of planets, z >= planetZ)
-        renderParticles(2);
+        if (!window.renderToggles || window.renderToggles.spaceParticles !== false) {
+            renderParticles(2);
+        }
 
         return true;
     }
@@ -2406,8 +1983,8 @@ const spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
         }
 
         // Draw orbit circles for moons (3D tilted circles, projected with camera)
-        // Skip if orbits are disabled via UI
-        if (orbitParams.showOrbits >= 1) {
+        // Skip if orbits are disabled via UI or render toggle
+        if (orbitParams.showOrbits >= 1 && (!window.renderToggles || window.renderToggles.orbits !== false)) {
         // Scale factor to convert node.worldX/Y to the coordinate system projectToScreen expects
         const minDim = Math.min(width, height);
         const worldToProjectScale = minDim / width;
@@ -2585,7 +2162,11 @@ const spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
 
     function animate() {
         simulate();
+        var t0 = window.renderTiming.start();
         draw();
+        window.renderTiming.end('planets', t0);
+        // Update timing aggregation (this is the "main" loop)
+        window.renderTiming.update();
         requestAnimationFrame(animate);
     }
 
@@ -3958,6 +3539,116 @@ const spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
         URL.revokeObjectURL(url);
     }
 
+    // Export settings as JavaScript code (for embedding in source)
+    function exportAsCode() {
+        const settings = getAllSettings();
+
+        // Generate JavaScript code that can be pasted into main.js
+        const code = `// ============================================
+// EXPORTED SHADER SETTINGS - Generated ${new Date().toISOString()}
+// Paste this at the top of main.js (replace the existing param objects)
+// ============================================
+
+// Planet A: Oceanic/Mountain planets (blue/green, water)
+const planetParamsA = ${JSON.stringify(settings.planetParamsA, null, 4)};
+
+// Planet B: Lava/Desert planets (volcanic)
+const planetParamsB = ${JSON.stringify(settings.planetParamsB, null, 4)};
+
+// Sun/Star halo parameters
+const sunParams = ${JSON.stringify(settings.sunParams, null, 4)};
+
+// Light properties (shared across all planet types)
+const lightParams = ${JSON.stringify(settings.lightParams, null, 4)};
+
+// God rays parameters
+const godRaysParams = ${JSON.stringify(settings.godRaysParams, null, 4)};
+
+// Space particles parameters
+const spaceParticleParams = ${JSON.stringify(settings.spaceParticleParams, null, 4)};
+
+// Nebula background parameters
+const nebulaParams = ${JSON.stringify(settings.nebulaParams, null, 4)};
+
+// Orbital system parameters
+const orbitParams = ${JSON.stringify(settings.orbitParams, null, 4)};
+`;
+
+        // Copy to clipboard
+        navigator.clipboard.writeText(code).then(() => {
+            showCodeExportModal(code, true);
+        }).catch(() => {
+            showCodeExportModal(code, false);
+        });
+    }
+
+    // Show modal with exported code
+    function showCodeExportModal(code, copied) {
+        // Remove existing modal if any
+        const existing = document.getElementById('code-export-modal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'code-export-modal';
+        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;';
+
+        const content = document.createElement('div');
+        content.style.cssText = 'background:#1a1f2e;border:1px solid #e8b923;border-radius:8px;max-width:800px;max-height:80vh;width:100%;display:flex;flex-direction:column;overflow:hidden;';
+
+        const header = document.createElement('div');
+        header.style.cssText = 'padding:12px 16px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;';
+
+        const statusColor = copied ? '#2dd4bf' : '#ff6b6b';
+        const statusText = copied ? 'Copied to clipboard!' : 'Could not copy - select and copy manually';
+        header.innerHTML = '<div><strong style="color:#e8b923;">Export as JavaScript Code</strong><span style="color:' + statusColor + ';margin-left:12px;font-size:12px;">' + statusText + '</span></div><button id="close-code-modal" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;">&times;</button>';
+
+        const instructions = document.createElement('div');
+        instructions.style.cssText = 'padding:12px 16px;background:#0d1117;font-size:12px;color:#8b949e;border-bottom:1px solid #333;';
+        instructions.innerHTML = '<strong>Instructions:</strong> Replace the parameter objects at the top of <code style="color:#e8b923;">js/main.js</code> (lines ~32-103) with this code.';
+
+        const codeArea = document.createElement('textarea');
+        codeArea.value = code;
+        codeArea.readOnly = true;
+        codeArea.style.cssText = 'flex:1;background:#0d1117;color:#c9d1d9;border:none;padding:16px;font-family:Consolas,Monaco,monospace;font-size:11px;line-height:1.5;resize:none;overflow:auto;min-height:300px;';
+
+        const footer = document.createElement('div');
+        footer.style.cssText = 'padding:12px 16px;border-top:1px solid #333;display:flex;gap:8px;justify-content:flex-end;';
+        footer.innerHTML = '<button id="copy-code-btn" style="background:#2dd4bf;color:#000;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-size:12px;">Copy Code</button><button id="download-code-btn" style="background:#e8b923;color:#000;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-size:12px;">Download .js</button>';
+
+        content.appendChild(header);
+        content.appendChild(instructions);
+        content.appendChild(codeArea);
+        content.appendChild(footer);
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+
+        // Event listeners
+        document.getElementById('close-code-modal').addEventListener('click', function() { modal.remove(); });
+        modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+
+        document.getElementById('copy-code-btn').addEventListener('click', function() {
+            codeArea.select();
+            navigator.clipboard.writeText(code).then(function() {
+                document.getElementById('copy-code-btn').textContent = 'Copied!';
+                setTimeout(function() {
+                    document.getElementById('copy-code-btn').textContent = 'Copy Code';
+                }, 2000);
+            });
+        });
+
+        document.getElementById('download-code-btn').addEventListener('click', function() {
+            const blob = new Blob([code], { type: 'text/javascript' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'shader-params-' + new Date().toISOString().slice(0, 10) + '.js';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+    }
+
     // Import settings from JSON file
     function importSettings() {
         const input = document.createElement('input');
@@ -4016,22 +3707,30 @@ const spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
                 // Create button container
                 const btnContainer = document.createElement('div');
                 btnContainer.className = 'settings-btn-container';
-                btnContainer.style.cssText = 'display:flex;gap:6px;margin-top:8px;';
+                btnContainer.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;';
 
                 const exportBtn = document.createElement('button');
                 exportBtn.className = 'render-reset-btn';
-                exportBtn.textContent = 'Export All';
-                exportBtn.style.cssText = 'flex:1;font-size:10px;';
+                exportBtn.textContent = 'Export JSON';
+                exportBtn.style.cssText = 'flex:1;font-size:10px;min-width:70px;';
                 exportBtn.addEventListener('click', exportSettings);
 
                 const importBtn = document.createElement('button');
                 importBtn.className = 'render-reset-btn';
                 importBtn.textContent = 'Import';
-                importBtn.style.cssText = 'flex:1;font-size:10px;';
+                importBtn.style.cssText = 'flex:1;font-size:10px;min-width:70px;';
                 importBtn.addEventListener('click', importSettings);
+
+                const exportCodeBtn = document.createElement('button');
+                exportCodeBtn.className = 'render-reset-btn';
+                exportCodeBtn.textContent = 'Export as Code';
+                exportCodeBtn.style.cssText = 'flex:2;font-size:10px;min-width:100px;background:#e8b923;color:#000;';
+                exportCodeBtn.title = 'Export settings as JavaScript code to embed in main.js';
+                exportCodeBtn.addEventListener('click', exportAsCode);
 
                 btnContainer.appendChild(exportBtn);
                 btnContainer.appendChild(importBtn);
+                btnContainer.appendChild(exportCodeBtn);
 
                 // Insert after reset button
                 resetBtn.parentNode.insertBefore(btnContainer, resetBtn.nextSibling);
@@ -4043,1705 +3742,16 @@ const spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
     loadFromLocalStorage();
     createSettingsButtons();
 
+    // Expose functions globally for settings panel
+    window.saveToLocalStorage = saveToLocalStorage;
+    window.exportSettings = exportSettings;
+    window.exportAsCode = exportAsCode;
+    window.importSettings = importSettings;
+    window.updateLightFromKelvin = updateLightFromKelvin;
+
+    // Expose parameter objects globally for settings panel
+    window.spaceParticleParams = spaceParticleParams;
+    window.godRaysParams = godRaysParams;
+
     animate();
-})();
-
-// ============================================
-// COUNTING ANIMATION FOR STATS
-// ============================================
-(function initStats() {
-    const stats = document.querySelectorAll('.stat-number[data-target]');
-    stats.forEach((stat, index) => {
-        const target = parseInt(stat.dataset.target);
-        const suffix = stat.dataset.suffix || '';
-        let current = 0;
-        const duration = 1500;
-        const startDelay = 600 + index * 200;
-        const stepTime = duration / target;
-
-        setTimeout(() => {
-            const interval = setInterval(() => {
-                current++;
-                stat.textContent = current + (current === target ? suffix : '');
-                if (current >= target) clearInterval(interval);
-            }, stepTime);
-        }, startDelay);
-    });
-})();
-
-// ============================================
-// STAGGERED REVEAL ANIMATIONS
-// ============================================
-(function initAnimations() {
-    document.querySelectorAll('.client-card').forEach((card, i) => { card.style.animationDelay = `${0.6 + i * 0.08}s`; });
-    document.querySelectorAll('.testimonial-card').forEach((card, i) => { card.style.animationDelay = `${0.6 + i * 0.15}s`; });
-    document.querySelectorAll('.project-card').forEach((card, i) => { card.style.animationDelay = `${0.6 + i * 0.12}s`; });
-})();
-
-// ============================================
-// 3D CURVED PORTFOLIO CAROUSEL
-// ============================================
-(function initPortfolio() {
-    const items = document.querySelectorAll('.portfolio-item');
-    const prevBtn = document.querySelector('.portfolio-nav.prev');
-    const nextBtn = document.querySelector('.portfolio-nav.next');
-    const titleEl = document.getElementById('portfolio-title');
-    const linkEl = document.getElementById('portfolio-link');
-    const dotsContainer = document.getElementById('portfolio-dots');
-    const scene = document.querySelector('.portfolio-scene');
-
-    if (!items.length) return;
-
-    let currentIndex = 0;
-    const totalItems = items.length;
-    const visibleItems = 5;
-
-    items.forEach((_, i) => {
-        const dot = document.createElement('div');
-        dot.className = 'portfolio-dot' + (i === 0 ? ' active' : '');
-        dot.addEventListener('click', () => goToSlide(i));
-        dotsContainer.appendChild(dot);
-    });
-    const dots = dotsContainer.querySelectorAll('.portfolio-dot');
-
-    function updateCarousel() {
-        const isMobile = cachedWindowWidth <= 900;
-        if (isMobile) {
-            items.forEach((item) => { item.style.transform = ''; item.style.opacity = ''; item.style.zIndex = ''; item.style.pointerEvents = ''; });
-            return;
-        }
-
-        items.forEach((item, i) => {
-            let offset = i - currentIndex;
-            if (offset > totalItems / 2) offset -= totalItems;
-            if (offset < -totalItems / 2) offset += totalItems;
-            const absOffset = Math.abs(offset);
-
-            if (absOffset > Math.floor(visibleItems / 2)) {
-                item.style.opacity = '0';
-                item.style.pointerEvents = 'none';
-                item.style.transform = `translate(-50%, -50%) translateX(${offset * 300}px) translateZ(-500px) scale(0.5)`;
-                return;
-            }
-
-            const angle = offset * 25;
-            const translateX = offset * 180;
-            const translateZ = -absOffset * 150;
-            const scale = 1 - absOffset * 0.15;
-            const opacity = 1 - absOffset * 0.3;
-
-            item.style.transform = `translate(-50%, -50%) translateX(${translateX}px) translateZ(${translateZ}px) rotateY(${-angle}deg) scale(${scale})`;
-            item.style.opacity = opacity;
-            item.style.zIndex = visibleItems - absOffset;
-            item.style.pointerEvents = offset === 0 ? 'auto' : 'none';
-            item.classList.toggle('active', offset === 0);
-        });
-
-        const activeItem = items[currentIndex];
-        if (titleEl) titleEl.textContent = activeItem.dataset.title;
-        if (linkEl) { linkEl.href = activeItem.dataset.url; linkEl.style.display = activeItem.dataset.url ? '' : 'none'; }
-        dots.forEach((dot, i) => dot.classList.toggle('active', i === currentIndex));
-    }
-
-    function goToSlide(index) {
-        if (index < 0) index = totalItems - 1;
-        if (index >= totalItems) index = 0;
-        currentIndex = index;
-        updateCarousel();
-    }
-
-    if (prevBtn) prevBtn.addEventListener('click', () => goToSlide(currentIndex - 1));
-    if (nextBtn) nextBtn.addEventListener('click', () => goToSlide(currentIndex + 1));
-
-    items.forEach((item, i) => {
-        item.addEventListener('click', () => {
-            if (i === currentIndex) window.open(item.dataset.url, '_blank');
-            else goToSlide(i);
-        });
-    });
-
-    document.addEventListener('keydown', (e) => {
-        const portfolioPanel = document.getElementById('panel-portfolio');
-        if (!portfolioPanel || !portfolioPanel.classList.contains('active')) return;
-        if (e.key === 'ArrowLeft') goToSlide(currentIndex - 1);
-        if (e.key === 'ArrowRight') goToSlide(currentIndex + 1);
-    });
-
-    let touchStartX = 0;
-    if (scene) {
-        scene.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
-        scene.addEventListener('touchend', (e) => {
-            const diff = touchStartX - e.changedTouches[0].screenX;
-            if (Math.abs(diff) > 50) goToSlide(currentIndex + (diff > 0 ? 1 : -1));
-        }, { passive: true });
-        scene.addEventListener('wheel', (e) => { e.preventDefault(); goToSlide(currentIndex + (e.deltaY > 0 ? 1 : -1)); }, { passive: false });
-    }
-
-    let resizeTimeout;
-    window.addEventListener('resize', () => { clearTimeout(resizeTimeout); resizeTimeout = setTimeout(updateCarousel, 100); });
-    updateCarousel();
-})();
-
-// ============================================
-// TYPEWRITER EFFECT WITH TYPOS
-// ============================================
-(function initTypewriter() {
-    const container = document.getElementById('typewriter-container');
-    const typingIndicator = document.getElementById('typing-indicator');
-    const dots = typingIndicator ? typingIndicator.querySelectorAll('.typing-dots span') : [];
-    if (!container) return;
-
-    const fullText = [
-        { text: 'I run ', highlight: false },
-        { text: 'Zylaris Ltd', highlight: true },
-        { text: ', a specialized consultancy delivering high-performance graphics solutions for games, VR, and immersive installations. From ', highlight: false },
-        { text: 'GPU-based light baking', highlight: true },
-        { text: ' using SDFs to ', highlight: false },
-        { text: '16K projection-mapped environments', highlight: true },
-        { text: ', I help studios push the boundaries of real-time rendering across mobile, desktop, VR, and web platforms. I\'ve shipped graphics systems for studios including ', highlight: false },
-        { text: 'Nexus', highlight: true },
-        { text: ', ', highlight: false },
-        { text: 'Ubisoft', highlight: true },
-        { text: ', ', highlight: false },
-        { text: '22cans', highlight: true },
-        { text: ', and ', highlight: false },
-        { text: 'The Sandbox', highlight: true },
-        { text: '.', highlight: false }
-    ];
-
-    const typos = [
-        { pos: 15, wrong: 'x', correct: 'c' },
-        { pos: 78, wrong: 'f', correct: 'g' },
-        { pos: 142, wrong: 'b', correct: 'p' },
-        { pos: 245, wrong: 'r', correct: 't' },
-    ];
-
-    let cursor = document.createElement('span');
-    cursor.className = 'typewriter-cursor';
-    container.appendChild(cursor);
-
-    let globalPos = 0, segmentIndex = 0, charIndex = 0, currentSpan = null;
-    let typoQueue = [...typos].sort((a, b) => a.pos - b.pos);
-    let isDeleting = false, deleteCount = 0, typoChar = null;
-    let dotIndex = 0;
-
-    const dotInterval = setInterval(() => {
-        if (!dots.length) return;
-        dots.forEach((dot, i) => dot.classList.toggle('visible', i < dotIndex));
-        dotIndex = (dotIndex + 1) % 4;
-    }, 300);
-
-    function getBaseDelay() { return 12 + Math.random() * 18; }
-
-    function finishTyping() {
-        cursor.classList.add('hidden');
-        if (typingIndicator) typingIndicator.classList.add('hidden');
-        clearInterval(dotInterval);
-    }
-
-    function type() {
-        if (segmentIndex >= fullText.length) { finishTyping(); return; }
-
-        const segment = fullText[segmentIndex];
-        if (!currentSpan) {
-            currentSpan = document.createElement('span');
-            if (segment.highlight) currentSpan.className = 'highlight-text';
-            container.insertBefore(currentSpan, cursor);
-        }
-
-        const currentTypo = typoQueue[0];
-        if (currentTypo && globalPos === currentTypo.pos && !isDeleting && !typoChar) {
-            typoChar = document.createElement('span');
-            typoChar.className = 'typo-char';
-            typoChar.textContent = currentTypo.wrong;
-            currentSpan.appendChild(typoChar);
-            globalPos++; charIndex++;
-            setTimeout(() => { isDeleting = true; deleteCount = 1; setTimeout(type, 80 + Math.random() * 50); }, 120 + Math.random() * 80);
-            return;
-        }
-
-        if (isDeleting && deleteCount > 0) {
-            if (typoChar) { typoChar.remove(); typoChar = null; }
-            globalPos--; charIndex--; deleteCount--;
-            isDeleting = false; typoQueue.shift();
-            setTimeout(type, 50);
-            return;
-        }
-
-        if (charIndex < segment.text.length) {
-            currentSpan.textContent += segment.text[charIndex];
-            charIndex++; globalPos++;
-            let delay = getBaseDelay();
-            const char = segment.text[charIndex - 1];
-            if (['.', ',', '!', '?'].includes(char)) delay += 80 + Math.random() * 60;
-            else if (char === ' ') delay += Math.random() * 15;
-            setTimeout(type, delay);
-        } else {
-            segmentIndex++; charIndex = 0; currentSpan = null;
-            setTimeout(type, getBaseDelay());
-        }
-    }
-
-    setTimeout(type, 500);
-})();
-
-// ============================================
-// PROJECT LIST SCROLL HANDLER
-// ============================================
-(function initProjectScroll() {
-    const wrapper = document.getElementById('project-list-wrapper');
-    const list = document.getElementById('project-list');
-    const hint = wrapper ? wrapper.querySelector('.scroll-hint') : null;
-    if (!wrapper || !list) return;
-
-    function updateScrollState() {
-        const scrollPos = list.scrollTop;
-        const maxScroll = list.scrollHeight - list.clientHeight;
-        wrapper.classList.remove('scrolled-top', 'scrolled-middle', 'scrolled-end');
-        if (scrollPos <= 10) { wrapper.classList.add('scrolled-top'); if (hint) hint.style.opacity = '0.7'; }
-        else if (scrollPos >= maxScroll - 10) { wrapper.classList.add('scrolled-end'); if (hint) hint.style.opacity = '0'; }
-        else { wrapper.classList.add('scrolled-middle'); if (hint) hint.style.opacity = '0.5'; }
-    }
-
-    list.addEventListener('scroll', updateScrollState);
-    updateScrollState();
-})();
-
-// ============================================
-// TABBED CAROUSEL
-// ============================================
-(function initTabs() {
-    const tabs = document.querySelectorAll('.carousel-tab');
-    const panels = document.querySelectorAll('.carousel-panel');
-    if (!tabs.length || !panels.length) return;
-
-    function triggerPanelAnimations(panel) {
-        panel.querySelectorAll('.client-card').forEach((card, i) => { card.style.animation = 'none'; card.offsetHeight; card.style.animation = ''; card.style.animationDelay = `${i * 0.08}s`; });
-        panel.querySelectorAll('.testimonial-card').forEach((card, i) => { card.style.animation = 'none'; card.offsetHeight; card.style.animation = ''; card.style.animationDelay = `${i * 0.15}s`; });
-        panel.querySelectorAll('.project-card').forEach((card, i) => { card.style.animation = 'none'; card.offsetHeight; card.style.animation = ''; card.style.animationDelay = `${i * 0.12}s`; });
-        const portfolioCarousel = panel.querySelector('.portfolio-carousel');
-        if (portfolioCarousel) { portfolioCarousel.style.animation = 'none'; portfolioCarousel.offsetHeight; portfolioCarousel.style.animation = ''; }
-    }
-
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const panelId = tab.dataset.panel;
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            panels.forEach(panel => {
-                if (panel.id === `panel-${panelId}`) { panel.classList.add('active'); triggerPanelAnimations(panel); }
-                else panel.classList.remove('active');
-            });
-            if (panelId === 'skills') {
-                window.dispatchEvent(new Event('skillsTabActivated'));
-                window.dispatchEvent(new Event('resize'));
-            }
-            // Lazy load portfolio videos when Portfolio tab is activated
-            if (panelId === 'portfolio') {
-                const portfolioPanel = document.getElementById('panel-portfolio');
-                if (portfolioPanel) {
-                    portfolioPanel.querySelectorAll('video[data-src]').forEach(video => {
-                        if (!video.src || video.src === window.location.href) {
-                            video.src = video.dataset.src;
-                            video.preload = 'auto';
-                            video.load();
-                            // Wait for enough data before playing
-                            video.addEventListener('canplaythrough', () => {
-                                video.play().catch(() => {});
-                            }, { once: true });
-                        }
-                    });
-                }
-            }
-        });
-    });
-})();
-
-// ============================================
-// SKILLS VIEW TOGGLE
-// ============================================
-(function initSkillsToggle() {
-    const viewToggleBtns = document.querySelectorAll('.view-toggle-btn[data-view]');
-    const graphView = document.getElementById('skills-graph-view');
-    const listView = document.getElementById('skills-list-view');
-    const shaderControls = document.getElementById('shader-controls-container');
-    const skillsPanel = document.getElementById('panel-skills');
-
-    if (!viewToggleBtns.length || !graphView || !listView) return;
-
-    // Hide shader controls by default (list view is default)
-    if (shaderControls) {
-        shaderControls.style.display = 'none';
-    }
-
-    // View toggle (graph/list)
-    viewToggleBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const view = btn.dataset.view;
-
-            // Update button states
-            viewToggleBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            // Toggle views
-            if (view === 'graph') {
-                graphView.classList.add('active');
-                listView.classList.remove('active');
-                // Enable fullscreen mode for graph
-                if (skillsPanel) {
-                    skillsPanel.classList.add('graph-active');
-                }
-                // Show shader controls
-                if (shaderControls) {
-                    shaderControls.style.display = '';
-                }
-                // Trigger resize for canvas
-                window.dispatchEvent(new Event('resize'));
-            } else {
-                graphView.classList.remove('active');
-                listView.classList.add('active');
-                // Disable fullscreen mode for list
-                if (skillsPanel) {
-                    skillsPanel.classList.remove('graph-active');
-                }
-                // Hide shader controls
-                if (shaderControls) {
-                    shaderControls.style.display = 'none';
-                }
-            }
-        });
-    });
-})();
-
-// ============================================
-// STATIC FAVICON - STYLIZED "CG" MONOGRAM
-// ============================================
-(function initFavicon() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 32; canvas.height = 32;
-    const ctx = canvas.getContext('2d');
-    const link = document.getElementById('favicon');
-    const gold = '#e8b923';
-    const darkBg = '#0a0f14';
-
-    // Draw background
-    ctx.fillStyle = darkBg;
-    ctx.fillRect(0, 0, 32, 32);
-
-    // Draw outer glow
-    const glowGradient = ctx.createRadialGradient(16, 16, 8, 16, 16, 16);
-    glowGradient.addColorStop(0, 'rgba(232, 185, 35, 0.3)');
-    glowGradient.addColorStop(1, 'transparent');
-    ctx.fillStyle = glowGradient;
-    ctx.fillRect(0, 0, 32, 32);
-
-    // Draw hexagon shape
-    ctx.beginPath();
-    const sides = 6;
-    const radius = 12;
-    const centerX = 16, centerY = 16;
-    for (let i = 0; i < sides; i++) {
-        const angle = (Math.PI / 3) * i - Math.PI / 2;
-        const x = centerX + radius * Math.cos(angle);
-        const y = centerY + radius * Math.sin(angle);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.strokeStyle = gold;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Draw "C" letter stylized
-    ctx.font = 'bold 14px JetBrains Mono, monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = gold;
-    ctx.fillText('C', 16, 17);
-
-    // Set favicon
-    link.href = canvas.toDataURL('image/png');
-})();
-
-// ============================================
-// FPS PERFORMANCE COUNTER
-// ============================================
-(function initFPS() {
-    const fpsBadge = document.getElementById('fps-badge');
-    const fpsValue = document.getElementById('fps-value');
-    if (!fpsBadge || !fpsValue) return;
-
-    let frameCount = 0, lastTime = performance.now(), fps = 60;
-
-    function updateFPS() {
-        frameCount++;
-        const currentTime = performance.now();
-        const elapsed = currentTime - lastTime;
-        if (elapsed >= 500) {
-            fps = Math.round((frameCount * 1000) / elapsed);
-            frameCount = 0; lastTime = currentTime;
-            fpsValue.textContent = fps;
-            fpsBadge.classList.remove('good', 'warn', 'bad');
-            if (fps >= 50) fpsBadge.classList.add('good');
-            else if (fps >= 30) fpsBadge.classList.add('warn');
-            else fpsBadge.classList.add('bad');
-        }
-        requestAnimationFrame(updateFPS);
-    }
-
-    requestAnimationFrame(updateFPS);
-})();
-
-// ============================================
-// SHADER PLAYGROUND WITH TRANSFORM FEEDBACK PARTICLES
-// ============================================
-(function initPlayground() {
-    const canvas = document.getElementById('playground-canvas');
-    const fpsDisplay = document.getElementById('playground-fps');
-    const particleDisplay = document.getElementById('playground-particles');
-    const particleControls = document.getElementById('particle-controls');
-    const shaderControls = document.querySelector('.shader-only-controls');
-    if (!canvas) return;
-
-    // Try WebGL 2 first for transform feedback
-    let gl = canvas.getContext('webgl2', { antialias: false, alpha: false });
-    const isWebGL2 = !!gl;
-
-    if (!gl) {
-        gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    }
-
-    if (!gl) {
-        console.warn('WebGL not supported for playground');
-        return;
-    }
-
-    console.log('Playground initialized with', isWebGL2 ? 'WebGL 2' : 'WebGL 1');
-
-    // ============================================
-    // TRANSFORM FEEDBACK PARTICLE SYSTEM (WebGL 2)
-    // ============================================
-    const PARTICLE_COUNT = 524288; // 500k particles (2^19) - reduced for faster init
-
-    // Simulation vertex shader - SDF Shape Morphing Particle System
-    // Simplified version with 4 shapes for better GPU compatibility
-    const simulationVS = `#version 300 es
-        precision highp float;
-
-        in vec4 aPosition;
-        in float aLife;
-
-        out vec4 vPosition;
-        out float vLife;
-
-        uniform float uTime;
-        uniform float uDeltaTime;
-        uniform vec2 uMouse;
-        uniform vec2 uMouseVel;
-        uniform float uAttraction;
-        uniform float uTurbulence;
-        uniform float uSpeed;
-        uniform vec2 uResolution;
-        uniform float uBurst;
-        uniform vec2 uBurstPos;
-        uniform int uMode;
-        uniform float uMouseDown;
-
-        #define PI 3.14159265359
-        #define TAU 6.28318530718
-
-        float hash(vec2 p) {
-            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-        }
-
-        // Simple noise
-        float noise(vec2 p) {
-            vec2 i = floor(p);
-            vec2 f = fract(p);
-            f = f * f * (3.0 - 2.0 * f);
-            float a = hash(i);
-            float b = hash(i + vec2(1.0, 0.0));
-            float c = hash(i + vec2(0.0, 1.0));
-            float d = hash(i + vec2(1.0, 1.0));
-            return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-        }
-
-        vec2 curlNoise(vec2 p, float t) {
-            float eps = 0.1;
-            float n1 = noise(vec2(p.x, p.y + eps) + t);
-            float n2 = noise(vec2(p.x, p.y - eps) + t);
-            float n3 = noise(vec2(p.x + eps, p.y) + t);
-            float n4 = noise(vec2(p.x - eps, p.y) + t);
-            return vec2(n1 - n2, -(n3 - n4));
-        }
-
-        // SDF Primitives
-        float sdCircle(vec2 p, float r) {
-            return length(p) - r;
-        }
-
-        float sdBox(vec2 p, vec2 b) {
-            vec2 d = abs(p) - b;
-            return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
-        }
-
-        float sdStar(vec2 p, float r) {
-            float an = PI / 5.0;
-            float en = PI / 2.4;
-            vec2 acs = vec2(cos(an), sin(an));
-            vec2 ecs = vec2(cos(en), sin(en));
-            float bn = mod(atan(p.x, p.y), 2.0 * an) - an;
-            p = length(p) * vec2(cos(bn), abs(sin(bn)));
-            p -= r * acs;
-            p += ecs * clamp(-dot(p, ecs), 0.0, r * acs.y / ecs.y);
-            return length(p) * sign(p.x);
-        }
-
-        float sdHeart(vec2 p) {
-            p.x = abs(p.x);
-            if (p.y + p.x > 1.0)
-                return length(p - vec2(0.25, 0.75)) - 0.35;
-            return length(p - vec2(0.0, 1.0)) * 0.5 - 0.5 + p.y * 0.5;
-        }
-
-        vec2 rotate(vec2 p, float a) {
-            float c = cos(a), s = sin(a);
-            return vec2(c * p.x - s * p.y, s * p.x + c * p.y);
-        }
-
-        // Get animated SDF - cycles through 4 shapes
-        float getSDF(vec2 p, float t) {
-            float scale = 0.5 + sin(t * 0.5) * 0.1;
-            vec2 rp = rotate(p, t * 0.2);
-
-            float cycleDuration = 6.0;
-            float phase = mod(t, cycleDuration * 4.0) / cycleDuration;
-            int shape = int(floor(phase));
-            float morph = smoothstep(0.7, 1.0, fract(phase));
-
-            float d1, d2;
-
-            if (shape == 0) {
-                d1 = sdCircle(p, scale * 0.5);
-                d2 = sdStar(rp, scale * 0.5);
-            } else if (shape == 1) {
-                d1 = sdStar(rp, scale * 0.5);
-                d2 = sdHeart(p * 2.0 + vec2(0.0, 0.5)) * 0.3;
-            } else if (shape == 2) {
-                d1 = sdHeart(p * 2.0 + vec2(0.0, 0.5)) * 0.3;
-                d2 = sdBox(rp, vec2(scale * 0.4, scale * 0.4));
-            } else {
-                d1 = sdBox(rp, vec2(scale * 0.4, scale * 0.4));
-                d2 = sdCircle(p, scale * 0.5);
-            }
-
-            return mix(d1, d2, morph);
-        }
-
-        // Gradient of SDF
-        vec2 sdfGradient(vec2 p, float t) {
-            float eps = 0.01;
-            float d = getSDF(p, t);
-            return normalize(vec2(
-                getSDF(p + vec2(eps, 0.0), t) - d,
-                getSDF(p + vec2(0.0, eps), t) - d
-            ) + 0.0001);
-        }
-
-        void main() {
-            vec2 pos = aPosition.xy;
-            vec2 vel = aPosition.zw;
-            float life = aLife;
-
-            float dt = uDeltaTime * uSpeed;
-            vec2 mousePos = uMouse * 2.0 - 1.0;
-            vec2 force = vec2(0.0);
-
-            float particleHash = hash(pos + vec2(life));
-
-            // SDF attraction
-            float sdf = getSDF(pos, uTime);
-            vec2 grad = sdfGradient(pos, uTime);
-
-            // Attract to surface
-            force -= grad * sdf * uAttraction * 1.5;
-
-            // Flow along surface
-            vec2 tangent = vec2(-grad.y, grad.x);
-            float flowDir = particleHash > 0.5 ? 1.0 : -1.0;
-            force += tangent * (0.15 + particleHash * 0.1) * flowDir;
-
-            // Noise
-            force += curlNoise(pos * 3.0, uTime * 0.3) * uTurbulence * 0.1;
-
-            // Prevent collapse
-            if (abs(sdf) < 0.03) {
-                force += grad * 0.1 * sign(sdf);
-            }
-
-            // Mouse repulsion
-            vec2 toMouse = pos - mousePos;
-            float mouseDist = length(toMouse);
-            float repelRadius = 0.4 + uMouseDown * 0.3;
-
-            if (mouseDist < repelRadius) {
-                float str = (1.0 - mouseDist / repelRadius);
-                str = str * str * 2.0;
-                force += normalize(toMouse + 0.001) * str * (1.0 + uMouseDown * 2.0);
-                force += vec2(-toMouse.y, toMouse.x) * str * 0.5;
-            }
-
-            // Burst effect
-            if (uBurst > 0.0) {
-                vec2 burstCenter = uBurstPos * 2.0 - 1.0;
-                vec2 fromBurst = pos - burstCenter;
-                float burstDist = length(fromBurst);
-                if (burstDist < 0.3) {
-                    force += normalize(fromBurst + 0.001) * uBurst * (0.3 - burstDist) * 5.0;
-                }
-            }
-
-            // Physics
-            vel += force * dt;
-            vel *= 0.96;
-
-            float speed = length(vel);
-            if (speed > 0.6) vel = vel / speed * 0.6;
-
-            pos += vel * dt;
-
-            // Boundary
-            if (abs(pos.x) > 1.3 || abs(pos.y) > 1.3) {
-                float angle = hash(pos + uTime) * TAU;
-                pos = vec2(cos(angle), sin(angle)) * (0.3 + hash(pos.yx) * 0.4);
-                vel *= 0.1;
-            }
-
-            life = mod(life + dt * 0.1 + speed * 0.1, 1.0);
-
-            vPosition = vec4(pos, vel);
-            vLife = life;
-        }
-    `;
-
-    const simulationFS = `#version 300 es
-        precision highp float;
-        out vec4 fragColor;
-        void main() {
-            fragColor = vec4(0.0);
-        }
-    `;
-
-    // Render vertex shader - displays particles with enhanced visuals
-    const renderVS = `#version 300 es
-        precision highp float;
-        precision highp int;
-
-        in vec4 aPosition;
-        in float aLife;
-
-        out float vLife;
-        out float vSpeed;
-        out vec2 vVelocity;
-        out vec2 vPosition;
-
-        uniform vec2 uResolution;
-        uniform float uHue;
-        uniform int uMode;
-
-        void main() {
-            vec2 pos = aPosition.xy;
-            vec2 vel = aPosition.zw;
-
-            vLife = aLife;
-            vSpeed = length(vel);
-            vVelocity = vel;
-            vPosition = pos;
-
-            // Adjust for aspect ratio
-            float aspect = uResolution.x / uResolution.y;
-            vec2 adjusted = pos;
-            adjusted.x /= aspect;
-
-            gl_Position = vec4(adjusted, 0.0, 1.0);
-
-            // Size based on velocity - particles on surface are slightly larger
-            gl_PointSize = 1.2 + vSpeed * 3.5;
-        }
-    `;
-
-    const renderFS = `#version 300 es
-        precision highp float;
-        precision highp int;
-
-        in float vLife;
-        in float vSpeed;
-        in vec2 vVelocity;
-        in vec2 vPosition;
-
-        uniform float uHue;
-        uniform float uTime;
-        uniform int uMode;
-
-        out vec4 fragColor;
-
-        #define PI 3.14159265359
-        #define TAU 6.28318530718
-
-        vec3 hsv2rgb(vec3 c) {
-            vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
-            vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-            return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
-        }
-
-        // Beautiful gradient palettes
-        vec3 palette1(float t) {
-            // Sunset/fire palette
-            vec3 a = vec3(0.5, 0.5, 0.5);
-            vec3 b = vec3(0.5, 0.5, 0.5);
-            vec3 c = vec3(1.0, 0.7, 0.4);
-            vec3 d = vec3(0.0, 0.15, 0.2);
-            return a + b * cos(TAU * (c * t + d));
-        }
-
-        vec3 palette2(float t) {
-            // Ocean/aurora palette
-            vec3 a = vec3(0.5, 0.5, 0.5);
-            vec3 b = vec3(0.5, 0.5, 0.5);
-            vec3 c = vec3(1.0, 1.0, 1.0);
-            vec3 d = vec3(0.3, 0.2, 0.2);
-            return a + b * cos(TAU * (c * t + d));
-        }
-
-        vec3 palette3(float t) {
-            // Neon cyberpunk palette
-            vec3 a = vec3(0.5, 0.5, 0.5);
-            vec3 b = vec3(0.5, 0.5, 0.5);
-            vec3 c = vec3(2.0, 1.0, 0.0);
-            vec3 d = vec3(0.5, 0.2, 0.25);
-            return a + b * cos(TAU * (c * t + d));
-        }
-
-        void main() {
-            vec2 coord = gl_PointCoord * 2.0 - 1.0;
-            float r = length(coord);
-            if (r > 1.0) discard;
-
-            // Soft glowing particle
-            float core = 1.0 - smoothstep(0.0, 0.3, r);
-            float glow = 1.0 - smoothstep(0.2, 1.0, r);
-            float alpha = mix(glow * 0.5, 1.0, core);
-
-            // Position-based coloring
-            float posAngle = atan(vPosition.y, vPosition.x) / TAU + 0.5;
-            float distFromCenter = length(vPosition);
-            float velAngle = atan(vVelocity.y, vVelocity.x) / TAU + 0.5;
-
-            // Time-varying palette cycling
-            float cycleDuration = 64.0; // Match shape cycle
-            float palettePhase = mod(uTime / cycleDuration, 1.0);
-
-            // Base color from position angle for rainbow flow along shapes
-            float baseHue = uHue / 360.0;
-            float colorPhase = posAngle + vLife * 0.3 + uTime * 0.05 + baseHue;
-
-            // Mix between palettes based on time
-            vec3 col1 = palette1(colorPhase);
-            vec3 col2 = palette2(colorPhase + 0.1);
-            vec3 col3 = palette3(colorPhase + 0.2);
-
-            float paletteMix = sin(uTime * 0.2) * 0.5 + 0.5;
-            float paletteMix2 = sin(uTime * 0.15 + 1.0) * 0.5 + 0.5;
-
-            vec3 col = mix(mix(col1, col2, paletteMix), col3, paletteMix2 * 0.5);
-
-            // Add speed-based brightness and hue shift
-            col *= 0.6 + vSpeed * 1.2;
-
-            // Fast particles get white-hot core
-            if (vSpeed > 0.2) {
-                float heat = (vSpeed - 0.2) * 2.0;
-                col = mix(col, vec3(1.0, 0.95, 0.85), heat * core);
-            }
-
-            // Subtle shimmer based on velocity direction
-            float shimmer = sin(velAngle * TAU * 4.0 + uTime * 5.0) * 0.15 + 0.85;
-            col *= shimmer;
-
-            // Distance-based saturation - particles near center are brighter
-            col *= 0.8 + (1.0 - min(distFromCenter, 1.0)) * 0.4;
-
-            // Pulsing glow synchronized with shape breathing
-            float breathe = sin(uTime * 0.5) * 0.1 + 0.9;
-            col *= breathe;
-
-            // Core highlight
-            col += vec3(1.0, 0.98, 0.95) * core * 0.3;
-
-            // Alpha based on speed and life
-            alpha *= 0.5 + vSpeed * 0.4 + vLife * 0.1;
-
-            fragColor = vec4(col, alpha);
-        }
-    `;
-
-    // ============================================
-    // FULLSCREEN SHADER EFFECTS (WebGL 1/2)
-    // ============================================
-    const shaderSources = {
-        voronoi: `
-            precision highp float;
-            uniform float uTime;
-            uniform vec2 uResolution;
-            uniform vec2 uMouse;
-            uniform float uSpeed;
-            uniform float uScale;
-            uniform float uIntensity;
-            uniform float uHue;
-
-            vec2 hash2(vec2 p) {
-                return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
-            }
-
-            vec3 hsv2rgb(vec3 c) {
-                vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
-                vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-                return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
-            }
-
-            void main() {
-                vec2 uv = gl_FragCoord.xy / uResolution;
-                vec2 p = uv * 8.0 * uScale;
-                float t = uTime * uSpeed;
-
-                vec2 n = floor(p);
-                vec2 f = fract(p);
-
-                float md = 8.0;
-                vec2 mg;
-
-                for (int j = -1; j <= 1; j++) {
-                    for (int i = -1; i <= 1; i++) {
-                        vec2 g = vec2(float(i), float(j));
-                        vec2 o = hash2(n + g);
-                        o = 0.5 + 0.5 * sin(t + 6.2831 * o);
-                        vec2 r = g + o - f;
-                        float d = dot(r, r);
-                        if (d < md) {
-                            md = d;
-                            mg = r;
-                        }
-                    }
-                }
-
-                float cellDist = sqrt(md);
-
-                vec2 m = uMouse;
-                float mouseDist = length(uv - m);
-                float mouseInfluence = smoothstep(0.3, 0.0, mouseDist);
-
-                float hue = fract(cellDist * uIntensity + t * 0.1 + uHue / 360.0);
-                float sat = 0.7 + mouseInfluence * 0.3;
-                float val = 0.3 + cellDist * 0.7;
-
-                vec3 col = hsv2rgb(vec3(hue, sat, val));
-                col += vec3(0.9, 0.7, 0.1) * mouseInfluence * 0.3;
-
-                gl_FragColor = vec4(col, 1.0);
-            }
-        `,
-        raymarching: `
-            precision highp float;
-            uniform float uTime;
-            uniform vec2 uResolution;
-            uniform vec2 uMouse;
-            uniform float uSpeed;
-            uniform float uScale;
-            uniform float uIntensity;
-            uniform float uHue;
-
-            float sdSphere(vec3 p, float r) { return length(p) - r; }
-            float sdBox(vec3 p, vec3 b) { vec3 d = abs(p) - b; return min(max(d.x, max(d.y, d.z)), 0.0) + length(max(d, 0.0)); }
-
-            mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
-
-            float scene(vec3 p) {
-                float t = uTime * uSpeed;
-                p.xz *= rot(t * 0.3);
-                p.xy *= rot(t * 0.2);
-
-                vec3 q = p;
-                q = mod(q + 2.0, 4.0) - 2.0;
-
-                float sphere = sdSphere(q, 0.8 * uScale);
-                float box = sdBox(q, vec3(0.5 * uScale));
-
-                return mix(sphere, box, sin(t) * 0.5 + 0.5);
-            }
-
-            vec3 getNormal(vec3 p) {
-                vec2 e = vec2(0.001, 0.0);
-                return normalize(vec3(
-                    scene(p + e.xyy) - scene(p - e.xyy),
-                    scene(p + e.yxy) - scene(p - e.yxy),
-                    scene(p + e.yyx) - scene(p - e.yyx)
-                ));
-            }
-
-            vec3 hsv2rgb(vec3 c) {
-                vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
-                vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-                return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
-            }
-
-            void main() {
-                vec2 uv = (gl_FragCoord.xy - 0.5 * uResolution) / uResolution.y;
-
-                vec2 m = (uMouse - 0.5) * 2.0;
-
-                vec3 ro = vec3(0.0, 0.0, -5.0);
-                vec3 rd = normalize(vec3(uv + m * 0.3, 1.0));
-
-                float t = 0.0;
-                float d;
-                vec3 p;
-
-                for (int i = 0; i < 64; i++) {
-                    p = ro + rd * t;
-                    d = scene(p);
-                    if (d < 0.001 || t > 20.0) break;
-                    t += d;
-                }
-
-                vec3 col = vec3(0.02, 0.04, 0.06);
-
-                if (d < 0.001) {
-                    vec3 n = getNormal(p);
-                    vec3 light = normalize(vec3(1.0, 1.0, -1.0));
-                    float diff = max(dot(n, light), 0.0);
-                    float spec = pow(max(dot(reflect(-light, n), -rd), 0.0), 32.0);
-
-                    float hue = fract(t * 0.05 + uHue / 360.0);
-                    vec3 baseCol = hsv2rgb(vec3(hue, 0.7, 0.9));
-
-                    col = baseCol * (diff * uIntensity + 0.2) + vec3(1.0) * spec * 0.5;
-                    col *= exp(-t * 0.08);
-                }
-
-                gl_FragColor = vec4(col, 1.0);
-            }
-        `,
-        fractal: `
-            precision highp float;
-            uniform float uTime;
-            uniform vec2 uResolution;
-            uniform vec2 uMouse;
-            uniform float uSpeed;
-            uniform float uScale;
-            uniform float uIntensity;
-            uniform float uHue;
-
-            vec3 hsv2rgb(vec3 c) {
-                vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
-                vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-                return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
-            }
-
-            void main() {
-                vec2 uv = (gl_FragCoord.xy - 0.5 * uResolution) / uResolution.y;
-                float t = uTime * uSpeed * 0.5;
-
-                vec2 m = (uMouse - 0.5) * 0.5;
-                vec2 c = vec2(-0.8 + m.x, 0.156 + m.y + sin(t * 0.3) * 0.1);
-
-                vec2 z = uv * 2.5 / uScale;
-
-                float iter = 0.0;
-                const float maxIter = 100.0;
-
-                for (float i = 0.0; i < maxIter; i++) {
-                    z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
-                    if (dot(z, z) > 4.0) break;
-                    iter++;
-                }
-
-                float smoothIter = iter - log2(log2(dot(z, z)));
-                float normalized = smoothIter / maxIter;
-
-                float hue = fract(normalized * uIntensity + t * 0.1 + uHue / 360.0);
-                float sat = 0.8;
-                float val = iter < maxIter ? 0.9 : 0.0;
-
-                vec3 col = hsv2rgb(vec3(hue, sat, val));
-
-                float glow = exp(-normalized * 3.0) * 0.5;
-                col += vec3(0.9, 0.7, 0.1) * glow;
-
-                gl_FragColor = vec4(col, 1.0);
-            }
-        `
-    };
-
-    const fullscreenVS = isWebGL2 ? `#version 300 es
-        in vec2 aPosition;
-        void main() {
-            gl_Position = vec4(aPosition, 0.0, 1.0);
-        }
-    ` : `
-        attribute vec2 aPosition;
-        void main() {
-            gl_Position = vec4(aPosition, 0.0, 1.0);
-        }
-    `;
-
-    // State
-    let currentShader = 'particles';
-    let currentMode = 0; // Unused - kept for shader uniform compatibility
-    let mouse = { x: 0.5, y: 0.5 };
-    let prevMouse = { x: 0.5, y: 0.5 };
-    let mouseVel = { x: 0, y: 0 };
-    let mouseDown = 0;
-    let particleParams = { attraction: 1.0, turbulence: 0.6, speed: 1.0, hue: 0 };
-    let shaderParams = { speed: 1.0, scale: 1.0, intensity: 1.0, hue: 0 };
-    let isActive = false;
-    let animationId = null;
-    let burstStrength = 0;
-    let burstPos = { x: 0.5, y: 0.5 };
-    let lastTime = performance.now();
-
-    // Particle system state (WebGL 2 only)
-    let particleSystem = null;
-
-    // Shader programs for fullscreen effects
-    let shaderPrograms = {};
-    let shaderUniforms = {};
-    let fullscreenBuffer = null;
-
-    // Helper functions
-    function checkGLError(label) {
-        const err = gl.getError();
-        if (err !== gl.NO_ERROR) {
-            console.error(`WebGL Error at ${label}:`, err);
-            return true;
-        }
-        return false;
-    }
-
-    function compileShader(source, type) {
-        const shader = gl.createShader(type);
-        gl.shaderSource(shader, source);
-        gl.compileShader(shader);
-        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-            console.error('Shader compile error:', gl.getShaderInfoLog(shader));
-            console.error('Shader source:', source);
-            gl.deleteShader(shader);
-            return null;
-        }
-        return shader;
-    }
-
-    function createProgramWithTransformFeedback(vsSource, fsSource, varyings) {
-        const vs = compileShader(vsSource, gl.VERTEX_SHADER);
-        const fs = compileShader(fsSource, gl.FRAGMENT_SHADER);
-        if (!vs || !fs) return null;
-
-        const program = gl.createProgram();
-        gl.attachShader(program, vs);
-        gl.attachShader(program, fs);
-
-        if (varyings) {
-            gl.transformFeedbackVaryings(program, varyings, gl.SEPARATE_ATTRIBS);
-        }
-
-        gl.linkProgram(program);
-
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-            console.error('Program link error:', gl.getProgramInfoLog(program));
-            return null;
-        }
-
-        return program;
-    }
-
-    function createProgram(vsSource, fsSource) {
-        const vs = compileShader(vsSource, gl.VERTEX_SHADER);
-        const fs = compileShader(fsSource, gl.FRAGMENT_SHADER);
-        if (!vs || !fs) return null;
-
-        const program = gl.createProgram();
-        gl.attachShader(program, vs);
-        gl.attachShader(program, fs);
-        gl.linkProgram(program);
-
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-            console.error('Program link error:', gl.getProgramInfoLog(program));
-            return null;
-        }
-
-        return program;
-    }
-
-    // Initialize particle system (WebGL 2 only)
-    function initParticleSystem() {
-        if (!isWebGL2) {
-            console.log('WebGL 2 not available - particle system disabled');
-            return;
-        }
-
-        try {
-            // Create simulation program with transform feedback
-            console.log('Creating simulation program...');
-            const simProgram = createProgramWithTransformFeedback(
-                simulationVS, simulationFS, ['vPosition', 'vLife']
-            );
-
-            // Create render program
-            console.log('Creating render program...');
-            const renderProgram = createProgram(renderVS, renderFS);
-
-            if (!simProgram || !renderProgram) {
-                console.error('Failed to create particle programs - particle system disabled');
-                console.error('simProgram:', simProgram, 'renderProgram:', renderProgram);
-                return;
-            }
-
-            console.log('Particle programs created successfully');
-
-        // Initialize particle data
-        const positions = new Float32Array(PARTICLE_COUNT * 4); // xy = pos, zw = vel
-        const lives = new Float32Array(PARTICLE_COUNT);
-
-        for (let i = 0; i < PARTICLE_COUNT; i++) {
-            // Random position in a circular pattern
-            const angle = Math.random() * Math.PI * 2;
-            const radius = Math.random() * 0.8;
-            positions[i * 4] = Math.cos(angle) * radius;     // x
-            positions[i * 4 + 1] = Math.sin(angle) * radius; // y
-            positions[i * 4 + 2] = (Math.random() - 0.5) * 0.1; // vx
-            positions[i * 4 + 3] = (Math.random() - 0.5) * 0.1; // vy
-            lives[i] = Math.random();
-        }
-
-        // Create double buffers for ping-pong
-        const posBuffers = [gl.createBuffer(), gl.createBuffer()];
-        const lifeBuffers = [gl.createBuffer(), gl.createBuffer()];
-
-        for (let i = 0; i < 2; i++) {
-            gl.bindBuffer(gl.ARRAY_BUFFER, posBuffers[i]);
-            gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_COPY);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, lifeBuffers[i]);
-            gl.bufferData(gl.ARRAY_BUFFER, lives, gl.DYNAMIC_COPY);
-        }
-
-        // Create VAOs for simulation
-        const simVAOs = [gl.createVertexArray(), gl.createVertexArray()];
-        const simLocations = {
-            aPosition: gl.getAttribLocation(simProgram, 'aPosition'),
-            aLife: gl.getAttribLocation(simProgram, 'aLife')
-        };
-
-        for (let i = 0; i < 2; i++) {
-            gl.bindVertexArray(simVAOs[i]);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, posBuffers[i]);
-            gl.enableVertexAttribArray(simLocations.aPosition);
-            gl.vertexAttribPointer(simLocations.aPosition, 4, gl.FLOAT, false, 0, 0);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, lifeBuffers[i]);
-            gl.enableVertexAttribArray(simLocations.aLife);
-            gl.vertexAttribPointer(simLocations.aLife, 1, gl.FLOAT, false, 0, 0);
-        }
-
-        // Create VAOs for rendering
-        const renderVAOs = [gl.createVertexArray(), gl.createVertexArray()];
-        const renderLocations = {
-            aPosition: gl.getAttribLocation(renderProgram, 'aPosition'),
-            aLife: gl.getAttribLocation(renderProgram, 'aLife')
-        };
-
-        for (let i = 0; i < 2; i++) {
-            gl.bindVertexArray(renderVAOs[i]);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, posBuffers[i]);
-            gl.enableVertexAttribArray(renderLocations.aPosition);
-            gl.vertexAttribPointer(renderLocations.aPosition, 4, gl.FLOAT, false, 0, 0);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, lifeBuffers[i]);
-            gl.enableVertexAttribArray(renderLocations.aLife);
-            gl.vertexAttribPointer(renderLocations.aLife, 1, gl.FLOAT, false, 0, 0);
-        }
-
-        // Create transform feedbacks
-        const transformFeedbacks = [gl.createTransformFeedback(), gl.createTransformFeedback()];
-        for (let i = 0; i < 2; i++) {
-            gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, transformFeedbacks[i]);
-            gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, posBuffers[1 - i]);
-            gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 1, lifeBuffers[1 - i]);
-        }
-        gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, null);
-
-        particleSystem = {
-            simProgram,
-            renderProgram,
-            posBuffers,
-            lifeBuffers,
-            simVAOs,
-            renderVAOs,
-            transformFeedbacks,
-            simUniforms: {
-                uTime: gl.getUniformLocation(simProgram, 'uTime'),
-                uDeltaTime: gl.getUniformLocation(simProgram, 'uDeltaTime'),
-                uMouse: gl.getUniformLocation(simProgram, 'uMouse'),
-                uMouseVel: gl.getUniformLocation(simProgram, 'uMouseVel'),
-                uMouseDown: gl.getUniformLocation(simProgram, 'uMouseDown'),
-                uAttraction: gl.getUniformLocation(simProgram, 'uAttraction'),
-                uTurbulence: gl.getUniformLocation(simProgram, 'uTurbulence'),
-                uSpeed: gl.getUniformLocation(simProgram, 'uSpeed'),
-                uResolution: gl.getUniformLocation(simProgram, 'uResolution'),
-                uBurst: gl.getUniformLocation(simProgram, 'uBurst'),
-                uBurstPos: gl.getUniformLocation(simProgram, 'uBurstPos'),
-                uMode: gl.getUniformLocation(simProgram, 'uMode')
-            },
-            renderUniforms: {
-                uResolution: gl.getUniformLocation(renderProgram, 'uResolution'),
-                uHue: gl.getUniformLocation(renderProgram, 'uHue'),
-                uTime: gl.getUniformLocation(renderProgram, 'uTime'),
-                uMode: gl.getUniformLocation(renderProgram, 'uMode')
-            },
-            currentBuffer: 0
-        };
-
-            // Update particle display
-            if (particleDisplay) {
-                particleDisplay.textContent = (PARTICLE_COUNT / 1000000).toFixed(1) + 'M Particles';
-            }
-
-            console.log('Particle system initialized successfully with ' + PARTICLE_COUNT + ' particles');
-        } catch (error) {
-            console.error('Error initializing particle system:', error);
-            particleSystem = null;
-            if (particleDisplay) {
-                particleDisplay.textContent = 'Particle system error';
-            }
-        }
-    }
-
-    // Initialize fullscreen shader programs
-    function initShaderPrograms() {
-        fullscreenBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, fullscreenBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-            -1, -1, 1, -1, -1, 1,
-            -1, 1, 1, -1, 1, 1
-        ]), gl.STATIC_DRAW);
-
-        for (const [name, fragSource] of Object.entries(shaderSources)) {
-            // Wrap fragment shader for WebGL 2
-            let fs;
-            if (isWebGL2) {
-                // Convert WebGL 1 shader to WebGL 2
-                // Replace gl_FragColor with fragColor globally, then add out declaration
-                const converted = fragSource.replace(/gl_FragColor/g, 'fragColor');
-                // Find void main() and insert out declaration before it
-                const mainIndex = converted.indexOf('void main()');
-                if (mainIndex !== -1) {
-                    fs = `#version 300 es
-${converted.substring(0, mainIndex)}out vec4 fragColor;
-${converted.substring(mainIndex)}`;
-                } else {
-                    fs = `#version 300 es\nout vec4 fragColor;\n${converted}`;
-                }
-            } else {
-                fs = fragSource;
-            }
-
-            const program = createProgram(fullscreenVS, fs);
-            if (program) {
-                shaderPrograms[name] = program;
-                shaderUniforms[name] = {
-                    uTime: gl.getUniformLocation(program, 'uTime'),
-                    uResolution: gl.getUniformLocation(program, 'uResolution'),
-                    uMouse: gl.getUniformLocation(program, 'uMouse'),
-                    uSpeed: gl.getUniformLocation(program, 'uSpeed'),
-                    uScale: gl.getUniformLocation(program, 'uScale'),
-                    uIntensity: gl.getUniformLocation(program, 'uIntensity'),
-                    uHue: gl.getUniformLocation(program, 'uHue'),
-                    aPosition: gl.getAttribLocation(program, 'aPosition')
-                };
-            } else {
-                console.error(`Failed to create shader program: ${name}`);
-            }
-        }
-    }
-
-    // Resize canvas
-    function resize() {
-        const rect = canvas.parentElement.getBoundingClientRect();
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        canvas.width = rect.width * dpr;
-        canvas.height = rect.height * dpr;
-        gl.viewport(0, 0, canvas.width, canvas.height);
-    }
-
-    // FPS tracking
-    let frameCount = 0;
-    let lastFpsTime = performance.now();
-    let startTime = performance.now();
-
-    // Render particles
-    function renderParticles(time, deltaTime) {
-        if (!particleSystem) return;
-
-        const ps = particleSystem;
-        const current = ps.currentBuffer;
-        const next = 1 - current;
-
-        // Update mouse velocity (smoothed)
-        const mvx = (mouse.x - prevMouse.x) / Math.max(deltaTime, 0.016);
-        const mvy = (mouse.y - prevMouse.y) / Math.max(deltaTime, 0.016);
-        mouseVel.x = mouseVel.x * 0.8 + mvx * 0.2;
-        mouseVel.y = mouseVel.y * 0.8 + mvy * 0.2;
-        prevMouse.x = mouse.x;
-        prevMouse.y = mouse.y;
-
-        // Decay mouse down effect
-        if (mouseDown > 0 && !isMouseHeld) {
-            mouseDown *= 0.95;
-            if (mouseDown < 0.01) mouseDown = 0;
-        }
-
-        // === SIMULATION PASS ===
-        gl.useProgram(ps.simProgram);
-        gl.bindVertexArray(ps.simVAOs[current]);
-
-        // Set simulation uniforms
-        gl.uniform1f(ps.simUniforms.uTime, time);
-        gl.uniform1f(ps.simUniforms.uDeltaTime, Math.min(deltaTime, 0.033)); // Cap at ~30fps equivalent
-        gl.uniform2f(ps.simUniforms.uMouse, mouse.x, mouse.y);
-        gl.uniform2f(ps.simUniforms.uMouseVel, mouseVel.x, mouseVel.y);
-        gl.uniform1f(ps.simUniforms.uMouseDown, mouseDown);
-        gl.uniform1f(ps.simUniforms.uAttraction, particleParams.attraction);
-        gl.uniform1f(ps.simUniforms.uTurbulence, particleParams.turbulence);
-        gl.uniform1f(ps.simUniforms.uSpeed, particleParams.speed);
-        gl.uniform2f(ps.simUniforms.uResolution, canvas.width, canvas.height);
-        gl.uniform1f(ps.simUniforms.uBurst, burstStrength);
-        gl.uniform2f(ps.simUniforms.uBurstPos, burstPos.x, burstPos.y);
-        gl.uniform1i(ps.simUniforms.uMode, currentMode);
-
-        // Decay burst
-        burstStrength *= 0.9;
-        if (burstStrength < 0.01) burstStrength = 0;
-
-        // Enable rasterizer discard for simulation (we don't need fragments)
-        gl.enable(gl.RASTERIZER_DISCARD);
-
-        // Begin transform feedback
-        gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, ps.transformFeedbacks[current]);
-        gl.beginTransformFeedback(gl.POINTS);
-
-        gl.drawArrays(gl.POINTS, 0, PARTICLE_COUNT);
-        checkGLError('simulation draw');
-
-        gl.endTransformFeedback();
-        gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, null);
-        checkGLError('end transform feedback');
-
-        gl.disable(gl.RASTERIZER_DISCARD);
-        gl.bindVertexArray(null);
-
-        // === RENDER PASS ===
-        gl.useProgram(ps.renderProgram);
-        gl.bindVertexArray(ps.renderVAOs[next]);
-
-        // Set render uniforms
-        gl.uniform2f(ps.renderUniforms.uResolution, canvas.width, canvas.height);
-        gl.uniform1f(ps.renderUniforms.uHue, particleParams.hue);
-        gl.uniform1f(ps.renderUniforms.uTime, time);
-        gl.uniform1i(ps.renderUniforms.uMode, currentMode);
-
-        // Clear canvas
-        gl.clearColor(0.01, 0.02, 0.04, 1.0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-
-        // Enable additive blending for particles
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-
-        gl.drawArrays(gl.POINTS, 0, PARTICLE_COUNT);
-        checkGLError('render draw');
-
-        gl.disable(gl.BLEND);
-        gl.bindVertexArray(null);
-
-        // Swap buffers
-        ps.currentBuffer = next;
-    }
-
-    // Render fullscreen shader
-    function renderShader(time) {
-        const program = shaderPrograms[currentShader];
-        const u = shaderUniforms[currentShader];
-        if (!program || !u) return;
-
-        gl.useProgram(program);
-
-        gl.uniform1f(u.uTime, time);
-        gl.uniform2f(u.uResolution, canvas.width, canvas.height);
-        gl.uniform2f(u.uMouse, mouse.x, 1.0 - mouse.y);
-        gl.uniform1f(u.uSpeed, shaderParams.speed);
-        gl.uniform1f(u.uScale, shaderParams.scale);
-        gl.uniform1f(u.uIntensity, shaderParams.intensity);
-        gl.uniform1f(u.uHue, shaderParams.hue);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, fullscreenBuffer);
-        gl.enableVertexAttribArray(u.aPosition);
-        gl.vertexAttribPointer(u.aPosition, 2, gl.FLOAT, false, 0, 0);
-
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
-    }
-
-    // Main render loop
-    function render() {
-        if (!isActive) return;
-
-        const now = performance.now();
-        const time = (now - startTime) / 1000;
-        const deltaTime = (now - lastTime) / 1000;
-        lastTime = now;
-
-        if (currentShader === 'particles') {
-            if (particleSystem) {
-                renderParticles(time, deltaTime);
-            } else {
-                // Particle system not available, fallback to shader
-                if (shaderPrograms['voronoi']) {
-                    currentShader = 'voronoi';
-                    renderShader(time);
-                }
-            }
-        } else {
-            renderShader(time);
-        }
-
-        // Update FPS
-        frameCount++;
-        if (now - lastFpsTime >= 500) {
-            const fps = Math.round((frameCount * 1000) / (now - lastFpsTime));
-            if (fpsDisplay) fpsDisplay.textContent = fps + ' FPS';
-            frameCount = 0;
-            lastFpsTime = now;
-        }
-
-        animationId = requestAnimationFrame(render);
-    }
-
-    function start() {
-        if (isActive) return;
-        isActive = true;
-        resize();
-        startTime = performance.now();
-        lastTime = performance.now();
-        render();
-    }
-
-    function stop() {
-        isActive = false;
-        if (animationId) {
-            cancelAnimationFrame(animationId);
-            animationId = null;
-        }
-    }
-
-    // Update UI based on current shader
-    function updateControlsVisibility() {
-        if (currentShader === 'particles') {
-            if (particleControls) particleControls.style.display = 'flex';
-            if (shaderControls) shaderControls.style.display = 'none';
-            if (particleDisplay) particleDisplay.style.display = 'block';
-        } else {
-            if (particleControls) particleControls.style.display = 'none';
-            if (shaderControls) shaderControls.style.display = 'flex';
-            if (particleDisplay) particleDisplay.style.display = 'none';
-        }
-    }
-
-    // Event listeners
-    canvas.addEventListener('mousemove', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        mouse.x = (e.clientX - rect.left) / rect.width;
-        mouse.y = (e.clientY - rect.top) / rect.height;
-    });
-
-    // Mouse hold for black hole effect
-    let isMouseHeld = false;
-    let holdTimer = null;
-
-    canvas.addEventListener('mouseleave', () => {
-        mouse.x = 0.5;
-        mouse.y = 0.5;
-        isMouseHeld = false;
-        mouseDown = 0;
-    });
-
-    canvas.addEventListener('mousedown', (e) => {
-        if (currentShader === 'particles') {
-            isMouseHeld = true;
-            // Ramp up black hole strength while held
-            const rampUp = () => {
-                if (isMouseHeld && mouseDown < 1.0) {
-                    mouseDown = Math.min(mouseDown + 0.05, 1.0);
-                    holdTimer = requestAnimationFrame(rampUp);
-                }
-            };
-            rampUp();
-        }
-    });
-
-    canvas.addEventListener('mouseup', (e) => {
-        if (currentShader === 'particles') {
-            const rect = canvas.getBoundingClientRect();
-            burstPos.x = (e.clientX - rect.left) / rect.width;
-            burstPos.y = (e.clientY - rect.top) / rect.height;
-
-            // Burst strength based on how long held
-            burstStrength = 2.0 + mouseDown * 4.0;
-
-            isMouseHeld = false;
-            if (holdTimer) {
-                cancelAnimationFrame(holdTimer);
-                holdTimer = null;
-            }
-        }
-    });
-
-    canvas.addEventListener('click', (e) => {
-        // Click handled by mouseup for particles
-    });
-
-    window.addEventListener('resize', () => {
-        if (isActive) resize();
-    });
-
-    // Shader selector buttons
-    document.querySelectorAll('.shader-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const shaderType = btn.dataset.shader;
-
-            // Prevent switching to particles if not available
-            if (shaderType === 'particles' && !particleSystem) {
-                console.warn('Particle system not available - cannot switch to particles mode');
-                return;
-            }
-
-            document.querySelectorAll('.shader-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentShader = shaderType;
-            updateControlsVisibility();
-        });
-    });
-
-    // Particle control sliders
-    const particleSliders = {
-        attraction: { element: document.getElementById('ctrl-attraction'), display: document.getElementById('val-attraction'), format: v => (v / 100).toFixed(1) + 'x' },
-        turbulence: { element: document.getElementById('ctrl-turbulence'), display: document.getElementById('val-turbulence'), format: v => (v / 100).toFixed(1) + 'x' },
-        speed: { element: document.getElementById('ctrl-speed'), display: document.getElementById('val-speed'), format: v => (v / 100).toFixed(1) + 'x' },
-        hue: { element: document.getElementById('ctrl-hue'), display: document.getElementById('val-hue'), format: v => v + '°' }
-    };
-
-    for (const [key, slider] of Object.entries(particleSliders)) {
-        if (slider.element) {
-            slider.element.addEventListener('input', () => {
-                const value = parseFloat(slider.element.value);
-                if (key === 'hue') {
-                    particleParams[key] = value;
-                } else {
-                    particleParams[key] = value / 100;
-                }
-                if (slider.display) {
-                    slider.display.textContent = slider.format(value);
-                }
-            });
-        }
-    }
-
-    // Shader control sliders
-    const shaderSliderConfigs = {
-        'shader-speed': { param: 'speed', element: document.getElementById('ctrl-shader-speed'), display: document.getElementById('val-shader-speed'), format: v => (v / 100).toFixed(1) + 'x' },
-        scale: { param: 'scale', element: document.getElementById('ctrl-scale'), display: document.getElementById('val-scale'), format: v => (v / 100).toFixed(1) + 'x' },
-        intensity: { param: 'intensity', element: document.getElementById('ctrl-intensity'), display: document.getElementById('val-intensity'), format: v => (v / 100).toFixed(1) + 'x' },
-        'shader-hue': { param: 'hue', element: document.getElementById('ctrl-shader-hue'), display: document.getElementById('val-shader-hue'), format: v => v + '°' }
-    };
-
-    for (const [key, slider] of Object.entries(shaderSliderConfigs)) {
-        if (slider.element) {
-            slider.element.addEventListener('input', () => {
-                const value = parseFloat(slider.element.value);
-                if (slider.param === 'hue') {
-                    shaderParams[slider.param] = value;
-                } else {
-                    shaderParams[slider.param] = value / 100;
-                }
-                if (slider.display) {
-                    slider.display.textContent = slider.format(value);
-                }
-            });
-        }
-    }
-
-    // Tab activation handling - DEFER heavy initialization until first activation
-    let hasInitialized = false;
-    const playgroundPanel = document.getElementById('panel-playground');
-
-    function initializePlayground() {
-        if (hasInitialized) return;
-        hasInitialized = true;
-        console.log('Initializing playground on first activation...');
-        resize();
-        initParticleSystem();
-        initShaderPrograms();
-        updateControlsVisibility();
-    }
-
-    if (playgroundPanel) {
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.attributeName === 'class') {
-                    if (playgroundPanel.classList.contains('active')) {
-                        initializePlayground();
-                        start();
-                    } else {
-                        stop();
-                    }
-                }
-            });
-        });
-        observer.observe(playgroundPanel, { attributes: true });
-
-        // Only initialize immediately if already active (unlikely on page load)
-        if (playgroundPanel.classList.contains('active')) {
-            initializePlayground();
-            start();
-        }
-    }
-
-    // If WebGL 2 not available, set fallback UI immediately
-    if (!isWebGL2) {
-        currentShader = 'voronoi';
-        const particlesBtn = document.querySelector('.shader-btn[data-shader="particles"]');
-        const voronoiBtn = document.querySelector('.shader-btn[data-shader="voronoi"]');
-
-        if (particlesBtn) {
-            particlesBtn.classList.remove('active');
-            particlesBtn.disabled = true;
-            particlesBtn.title = 'Requires WebGL 2';
-        }
-        if (voronoiBtn) {
-            voronoiBtn.classList.add('active');
-        }
-
-        if (particleDisplay) {
-            particleDisplay.textContent = 'WebGL 2 not available';
-        }
-    }
 })();

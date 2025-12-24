@@ -207,6 +207,33 @@ body {
     letter-spacing: 0.05em;
 }
 
+.fps-badge .fps-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.fps-badge .gpu-row,
+.fps-badge .fps-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.fps-badge .gpu-value {
+    font-weight: 600;
+    color: var(--accent-gold);
+    min-width: 3ch;
+    text-align: right;
+}
+
+.fps-badge .gpu-label {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.6rem;
+    opacity: 0.7;
+}
+
 @media (max-width: 900px) {
     .fps-badge {
         bottom: 1rem;
