@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charles Grassi - Graphics Programmer CV</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0f14;
+            --bg-secondary: #111921;
+            --bg-card: #151d26;
+            --accent-gold: #e8b923;
+            --accent-teal: #2dd4bf;
+            --text-primary: #e8eaed;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --border-color: #1f2937;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 9pt;
+            line-height: 1.4;
+            color: var(--text-primary);
+            background: var(--bg-primary);
+            max-width: 210mm;
+            min-height: 297mm;
+            max-height: 297mm;
+            margin: 0 auto;
+            padding: 10mm;
+            overflow: hidden;
+            /* Force background to print */
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+
+        /* Solid background layer that prints */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-primary);
+            z-index: -1;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        @media print {
+            @page {
+                size: A4;
+                margin: 0;
+            }
+            html, body {
+                width: 210mm;
+                height: 297mm;
+                margin: 0;
+                padding: 10mm;
+                background: var(--bg-primary) !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+            body::before {
+                position: absolute;
+            }
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding-bottom: 8pt;
+            border-bottom: 1pt solid var(--border-color);
+            margin-bottom: 8pt;
+            position: relative;
+        }
+
+        header::after {
+            content: '';
+            position: absolute;
+            bottom: -1pt;
+            left: 0;
+            width: 100pt;
+            height: 2pt;
+            background: linear-gradient(90deg, var(--accent-gold), transparent);
+        }
+
+        .name-section h1 {
+            font-size: 22pt;
+            font-weight: 700;
+            color: var(--accent-gold);
+            margin-bottom: 2pt;
+        }
+
+        .title {
+            font-size: 10pt;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        .contact-info {
+            text-align: right;
+            font-size: 7.5pt;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .contact-info a {
+            color: var(--accent-teal);
+            text-decoration: none;
+        }
+
+        .contact-info div {
+            margin-bottom: 1pt;
+        }
+
+        .contact-info .company {
+            color: var(--accent-gold);
+            font-weight: 500;
+        }
+
+        .section {
+            margin-bottom: 8pt;
+        }
+
+        .section-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8pt;
+            font-weight: 600;
+            color: var(--accent-gold);
+            text-transform: uppercase;
+            letter-spacing: 0.8pt;
+            margin-bottom: 5pt;
+            padding-bottom: 2pt;
+            border-bottom: 1pt solid var(--border-color);
+        }
+
+        .summary {
+            font-size: 8.5pt;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .highlight {
+            color: var(--accent-gold);
+            font-weight: 500;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 8pt;
+            margin-top: 6pt;
+            padding: 6pt 10pt;
+            background: var(--bg-card);
+            border: 1pt solid var(--border-color);
+            border-radius: 4pt;
+        }
+
+        .stat {
+            text-align: center;
+            flex: 1;
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13pt;
+            font-weight: 700;
+            color: var(--accent-gold);
+        }
+
+        .stat-label {
+            font-size: 5.5pt;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.2pt;
+        }
+
+        .experience-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6pt;
+        }
+
+        .experience-item {
+            padding: 5pt 7pt;
+            background: var(--bg-secondary);
+            border-left: 2pt solid var(--border-color);
+            border-radius: 0 3pt 3pt 0;
+        }
+
+        .experience-item.featured {
+            border-left-color: var(--accent-gold);
+        }
+
+        .experience-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 2pt;
+        }
+
+        .experience-title {
+            font-weight: 600;
+            font-size: 8.5pt;
+            color: var(--text-primary);
+        }
+
+        .experience-company {
+            color: var(--accent-teal);
+            font-weight: 500;
+            font-size: 8pt;
+        }
+
+        .experience-date {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 6.5pt;
+            color: var(--text-muted);
+        }
+
+        .experience-desc {
+            font-size: 7pt;
+            color: var(--text-secondary);
+            margin-bottom: 3pt;
+            line-height: 1.4;
+        }
+
+        .experience-desc strong {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2pt;
+        }
+
+        .tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 5.5pt;
+            padding: 1pt 4pt;
+            background: transparent;
+            border: 0.5pt solid var(--accent-teal);
+            border-radius: 2pt;
+            color: var(--accent-teal);
+        }
+
+        .experience-item.featured .tag {
+            border-color: var(--accent-gold);
+            color: var(--accent-gold);
+        }
+
+        .bottom-section {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 12pt;
+            margin-top: 8pt;
+        }
+
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5pt;
+        }
+
+        .skill-category {
+            padding: 4pt 6pt;
+            background: var(--bg-secondary);
+            border-radius: 3pt;
+            border: 1pt solid var(--border-color);
+        }
+
+        .skill-category h4 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 6pt;
+            font-weight: 600;
+            color: var(--accent-teal);
+            margin-bottom: 2pt;
+            text-transform: uppercase;
+            letter-spacing: 0.3pt;
+        }
+
+        .skill-list {
+            font-size: 7pt;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .clients-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3pt;
+        }
+
+        .client {
+            font-size: 6.5pt;
+            padding: 2pt 5pt;
+            background: var(--bg-card);
+            border: 1pt solid var(--border-color);
+            border-radius: 2pt;
+            color: var(--text-secondary);
+        }
+
+        .portfolio-note {
+            font-size: 7pt;
+            color: var(--text-secondary);
+            margin-top: 8pt;
+            padding: 5pt 8pt;
+            background: rgba(232, 185, 35, 0.08);
+            border: 1pt solid rgba(232, 185, 35, 0.2);
+            border-left: 2pt solid var(--accent-gold);
+            border-radius: 0 3pt 3pt 0;
+        }
+
+        .portfolio-note strong {
+            color: var(--accent-gold);
+        }
+
+        .portfolio-note a {
+            color: var(--accent-teal);
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="name-section">
+            <h1>Charles Grassi</h1>
+            <div class="title">Graphics Programmer & Technical Artist</div>
+        </div>
+        <div class="contact-info">
+            <div class="company">Zylaris Ltd - Cyprus</div>
+            <div><a href="mailto:contact.charles.grassi@gmail.com">contact.charles.grassi@gmail.com</a></div>
+            <div>(+33) 6 46 11 82 14</div>
+            <div><a href="https://linkedin.com/in/charles-grassi">linkedin.com/in/charles-grassi</a></div>
+            <div><a href="https://charlesgrs.github.io">charlesgrs.github.io</a></div>
+        </div>
+    </header>
+
+    <section class="section">
+        <h2 class="section-title">Professional Summary</h2>
+        <p class="summary">
+            Graphics programmer with <span class="highlight">7+ years of experience</span> specializing in real-time rendering, shader development, and GPU optimization.
+            Expert in Unity, Unreal Engine, and low-level graphics APIs. Shipped <span class="highlight">100+ production shaders</span> and optimized rendering pipelines reaching <span class="highlight">2M+ end users</span>.
+        </p>
+        <div class="stats-row">
+            <div class="stat">
+                <div class="stat-value">70%</div>
+                <div class="stat-label">Avg Perf Gain</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">100+</div>
+                <div class="stat-label">Shaders</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">2M+</div>
+                <div class="stat-label">End Users</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">15x</div>
+                <div class="stat-label">Faster Bake</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">12+</div>
+                <div class="stat-label">Studios</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Professional Experience</h2>
+        <div class="experience-grid">
+            <div class="experience-item">
+                <div class="experience-header">
+                    <div>
+                        <span class="experience-title">Technical Artist & Graphics Programmer</span><br>
+                        <span class="experience-company">Nexus Studios</span>
+                    </div>
+                    <span class="experience-date">2025</span>
+                </div>
+                <p class="experience-desc">
+                    Built real-time GI system using SDF for VR, achieving <strong>90 FPS on Quest 2</strong> with <strong>20+ lights</strong>. Reduced baking from <strong>45min to 3min (15x)</strong>.
+                </p>
+                <div class="tags">
+                    <span class="tag">Compute</span>
+                    <span class="tag">SDF</span>
+                    <span class="tag">VR</span>
+                    <span class="tag">GI</span>
+                </div>
+            </div>
+
+            <div class="experience-item featured">
+                <div class="experience-header">
+                    <div>
+                        <span class="experience-title">Chief Technology Officer</span><br>
+                        <span class="experience-company">SABDA</span>
+                    </div>
+                    <span class="experience-date">2023-24</span>
+                </div>
+                <p class="experience-desc">
+                    Led <strong>16K 360° immersive installation</strong> across <strong>6 servers at 90 FPS</strong>. Managed <strong>64-ch spatial audio</strong>, <strong>2.5GB/s throughput</strong>. Led <strong>team of 8</strong>.
+                </p>
+                <div class="tags">
+                    <span class="tag">Projection</span>
+                    <span class="tag">Audio</span>
+                    <span class="tag">Leadership</span>
+                </div>
+            </div>
+
+            <div class="experience-item">
+                <div class="experience-header">
+                    <div>
+                        <span class="experience-title">Lead Graphics Programmer</span><br>
+                        <span class="experience-company">Little Red Dog Games</span>
+                    </div>
+                    <span class="experience-date">2023</span>
+                </div>
+                <p class="experience-desc">
+                    Led <strong>4 engineers</strong> developing VFX with compute shaders. <strong>70% CPU improvement</strong> (12ms→3.6ms). Shipped <strong>15+ effects</strong>.
+                </p>
+                <div class="tags">
+                    <span class="tag">Compute</span>
+                    <span class="tag">Burst</span>
+                    <span class="tag">VFX</span>
+                </div>
+            </div>
+
+            <div class="experience-item">
+                <div class="experience-header">
+                    <div>
+                        <span class="experience-title">Senior Graphics Programmer</span><br>
+                        <span class="experience-company">22cans</span>
+                    </div>
+                    <span class="experience-date">2023</span>
+                </div>
+                <p class="experience-desc">
+                    Created <strong>25+ material shader library</strong>. Grass system with <strong>1M+ blades at 60 FPS mobile</strong>. Volumetrics with <strong>sub-5ms GPU</strong>.
+                </p>
+                <div class="tags">
+                    <span class="tag">HLSL</span>
+                    <span class="tag">Mobile</span>
+                    <span class="tag">Volumetrics</span>
+                </div>
+            </div>
+
+            <div class="experience-item">
+                <div class="experience-header">
+                    <div>
+                        <span class="experience-title">Graphics Programmer</span><br>
+                        <span class="experience-company">Scapin' / The Sandbox</span>
+                    </div>
+                    <span class="experience-date">2021-22</span>
+                </div>
+                <p class="experience-desc">
+                    Custom lighting for <strong>30+ lights</strong> reaching <strong>2M+ users</strong>. Optimized blur <strong>18ms→4ms</strong>. Built 8-layer parallax clouds.
+                </p>
+                <div class="tags">
+                    <span class="tag">Lighting</span>
+                    <span class="tag">Mobile</span>
+                    <span class="tag">Web3</span>
+                </div>
+            </div>
+
+            <div class="experience-item">
+                <div class="experience-header">
+                    <div>
+                        <span class="experience-title">Graphics Programmer</span><br>
+                        <span class="experience-company">Ubisoft</span>
+                    </div>
+                    <span class="experience-date">2020-21</span>
+                </div>
+                <p class="experience-desc">
+                    AAA development: <strong>20+ shaders</strong> for PC/PS5/Xbox. <strong>50% GPU reduction</strong> while <strong>2x particle count to 100K+</strong> at <strong>4K 60 FPS</strong>.
+                </p>
+                <div class="tags">
+                    <span class="tag">AAA</span>
+                    <span class="tag">VFX</span>
+                    <span class="tag">Console</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="bottom-section">
+        <section class="section">
+            <h2 class="section-title">Technical Skills</h2>
+            <div class="skills-grid">
+                <div class="skill-category">
+                    <h4>Core</h4>
+                    <div class="skill-list">Unity, Unreal, C#, C++, HLSL, GLSL</div>
+                </div>
+                <div class="skill-category">
+                    <h4>Graphics APIs</h4>
+                    <div class="skill-list">DX11/12, OpenGL, Vulkan, WebGL, Metal</div>
+                </div>
+                <div class="skill-category">
+                    <h4>Unity</h4>
+                    <div class="skill-list">URP, HDRP, VFX Graph, Shader Graph</div>
+                </div>
+                <div class="skill-category">
+                    <h4>Specializations</h4>
+                    <div class="skill-list">AR/VR, Compute, Niagara, GI, PBR</div>
+                </div>
+                <div class="skill-category">
+                    <h4>Tools</h4>
+                    <div class="skill-list">RenderDoc, NSight, PIX, Frame Debugger</div>
+                </div>
+                <div class="skill-category">
+                    <h4>Languages</h4>
+                    <div class="skill-list">English (Fluent), French (Native)</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">Clients</h2>
+            <div class="clients-grid">
+                <span class="client">Nexus Studios</span>
+                <span class="client">Ubisoft</span>
+                <span class="client">22cans</span>
+                <span class="client">The Sandbox</span>
+                <span class="client">DREST</span>
+                <span class="client">H3 Space</span>
+                <span class="client">Little Red Dog</span>
+                <span class="client">SABDA</span>
+                <span class="client">GN3RA</span>
+                <span class="client">Lunchbox Ent.</span>
+            </div>
+        </section>
+    </div>
+
+    <div class="portfolio-note">
+        <strong>Portfolio:</strong> Interactive demos & shader breakdowns at
+        <a href="https://charlesgrs.github.io">charlesgrs.github.io</a> |
+        <a href="https://www.artstation.com/charlesgrs">artstation.com/charlesgrs</a>
+    </div>
+</body>
+</html>

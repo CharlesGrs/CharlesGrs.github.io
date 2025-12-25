@@ -228,7 +228,7 @@
     let isFocusing = false;           // True while camera is transitioning to focus target
     let focusTarget = null;           // The node being focused on
     let focusProgress = 0;            // 0 to 1 progress of the focus transition
-    const focusDuration = 3.0;        // Seconds to complete focus transition (slower)
+    const focusDuration = 1.5;        // Seconds to complete focus transition
     const focusDistance = 0.35;       // How close to get to the target (in world units, further away)
 
     // Solar system navigation - smooth travel to a sun
@@ -237,8 +237,8 @@
     let navTargetId = null;           // The sun ID for getting orbital tilt
     let navPhase = 'look';            // 'look' = turning to face, 'wait' = pause, 'travel' = moving
     let navPhaseTime = 0;             // Time spent in current phase
-    const navLookDuration = 1.5;      // Seconds to turn and look at target
-    const navWaitDuration = 0.8;      // Seconds to pause before traveling
+    const navLookDuration = 1.0;      // Seconds to turn and look at target
+    const navWaitDuration = 0.2;      // Seconds to pause before traveling
     const navTravelDuration = 10.0;   // Seconds to travel to target
     const navDistance = 0.6;          // How far to stop from the sun (further)
     let navStartPosX = 0, navStartPosY = 0, navStartPosZ = 0;  // Starting position for travel
@@ -536,6 +536,7 @@
         sphereProgram.aDepth = gl.getAttribLocation(sphereProgram, 'aDepth');
         sphereProgram.aZ = gl.getAttribLocation(sphereProgram, 'aZ');
         sphereProgram.uRes = gl.getUniformLocation(sphereProgram, 'uRes');
+        sphereProgram.uMinDim = gl.getUniformLocation(sphereProgram, 'uMinDim');
         sphereProgram.uFBORes = gl.getUniformLocation(sphereProgram, 'uFBORes');
         sphereProgram.uMouse = gl.getUniformLocation(sphereProgram, 'uMouse');
         sphereProgram.uTime = gl.getUniformLocation(sphereProgram, 'uTime');
@@ -640,6 +641,7 @@
 
         // Sun program uniforms
         sunProgram.uRes = gl.getUniformLocation(sunProgram, 'uRes');
+        sunProgram.uMinDim = gl.getUniformLocation(sunProgram, 'uMinDim');
         sunProgram.uTime = gl.getUniformLocation(sunProgram, 'uTime');
         sunProgram.uCameraRotX = gl.getUniformLocation(sunProgram, 'uCameraRotX');
         sunProgram.uCameraRotY = gl.getUniformLocation(sunProgram, 'uCameraRotY');
@@ -1047,6 +1049,19 @@
         });
 
         glReady = true;
+
+        // Hide the loading indicator now that shaders are compiled
+        var loader = document.getElementById('canvas-loader');
+        if (loader) {
+            loader.classList.add('hidden');
+            // Remove from DOM after fade animation
+            setTimeout(function() {
+                if (loader.parentNode) {
+                    loader.style.display = 'none';
+                }
+            }, 500);
+        }
+
         return true;
     }
 
@@ -1070,6 +1085,11 @@
         if (!h || typeof h !== 'string') return [1, 1, 1]; // Default to white if invalid
         return [parseInt(h.slice(1,3),16)/255, parseInt(h.slice(3,5),16)/255, parseInt(h.slice(5,7),16)/255];
     }
+
+    // Smoothed screen light positions for nebula god rays
+    let smoothedLight0 = null;
+    let smoothedLight1 = null;
+    let smoothedLight2 = null;
 
     function renderSpheresGL(nodes, hovered, connected) {
         if (!glReady) return false;
@@ -1095,29 +1115,96 @@
         // Use WebGL canvas dimensions (CSS pixels, not device pixels)
         const glWidth = glCanvas ? (glCanvas.width / (window.devicePixelRatio || 1)) : width;
         const glHeight = glCanvas ? (glCanvas.height / (window.devicePixelRatio || 1)) : height;
-        const computeLightScreenPosEarly = (lx, ly, lz) => {
+        const computeLightScreenPosFromWorld = (lightNode) => {
+            // Use world coordinates if available, otherwise fall back to screen conversion
+            const wx = lightNode.worldX !== undefined ? lightNode.worldX : 0;
+            const wy = lightNode.worldY !== undefined ? lightNode.worldY : 0;
+            const wz = lightNode.worldZ !== undefined ? lightNode.worldZ : 0;
+
             const crx = Math.cos(cameraRotX), srx = Math.sin(cameraRotX);
             const cry = Math.cos(cameraRotY), sry = Math.sin(cameraRotY);
-            // Free camera: direct position and rotation-based forward
             const cpx = cameraPosX, cpy = cameraPosY, cpz = cameraPosZ;
             const fx = sry * crx, fy = -srx, fz = cry * crx;
             const rx = cry, rz = -sry;
             const ux = fy * rz, uy = fz * rx - fx * rz, uz = -fy * rx;
-            const ws = 1.0 / glWidth;
             const scx = glWidth * 0.5;
             const scy = glHeight * 0.5;
-            const wx = (lx - scx) * ws, wy = -(ly - scy) * ws, wz = lz || 0;
+
+            // Vector from camera to light
             const tx = wx - cpx, ty = wy - cpy, tz = wz - cpz;
             const zd = tx * fx + ty * fy + tz * fz;
-            if (zd < 0.01) return { x: scx, y: scy };
+
+            // Track visibility - smooth fade when behind camera
+            const visible = zd >= 0.01 ? 1.0 : Math.max(0.0, zd / 0.01);
+
+            // If light is behind or very close to camera, clamp to screen edge
+            // This prevents wild off-screen projections during navigation
+            if (zd < 0.1) {
+                // Project at a minimum distance to keep on/near screen
+                const ps = 1.0 / 0.1;
+                const px = (tx * rx + tz * rz) * ps;
+                const py = (tx * ux + ty * uy + tz * uz) * ps;
+
+                // Clamp to screen bounds with margin
+                const margin = Math.min(glWidth, glHeight) * 0.4;
+                const clampedX = Math.max(-margin, Math.min(glWidth + margin, scx + px * glWidth));
+                const clampedY = Math.max(-margin, Math.min(glHeight + margin, scy - py * glHeight));
+
+                return { x: clampedX, y: clampedY, visible: visible };
+            }
+
+            // Normal projection for lights in front of camera
             const ps = 1.0 / zd;
             const px = (tx * rx + tz * rz) * ps;
             const py = (tx * ux + ty * uy + tz * uz) * ps;
-            return { x: scx + px * glWidth, y: scy - py * glWidth };
+
+            return {
+                x: scx + px * glWidth,
+                y: scy - py * glHeight,
+                visible: visible
+            };
         };
-        const screenLight0 = computeLightScreenPosEarly(light0.x, light0.y, light0.z);
-        const screenLight1 = computeLightScreenPosEarly(light1.x, light1.y, light1.z);
-        const screenLight2 = computeLightScreenPosEarly(light2.x, light2.y, light2.z);
+        const targetLight0 = computeLightScreenPosFromWorld(light0);
+        const targetLight1 = computeLightScreenPosFromWorld(light1);
+        const targetLight2 = computeLightScreenPosFromWorld(light2);
+
+        // Smooth interpolation for stable god rays (prevents flickering during camera movement)
+        const smoothFactor = 0.15; // Higher = faster response, lower = smoother
+        const jumpThreshold = glWidth * 0.5; // Reset if position jumps more than 50% of screen width
+
+        // Helper to detect large jumps and reset smoothing if needed
+        const smoothLight = (smoothed, target) => {
+            if (!smoothed) return target;
+
+            const dx = target.x - smoothed.x;
+            const dy = target.y - smoothed.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // If position jumped too much (e.g., light went behind camera or sun clicked)
+            // Use a faster smooth factor for quick catch-up instead of instant reset
+            if (distance > jumpThreshold) {
+                const fastSmoothFactor = 0.5; // Faster catch-up when jumping
+                return {
+                    x: smoothed.x + (target.x - smoothed.x) * fastSmoothFactor,
+                    y: smoothed.y + (target.y - smoothed.y) * fastSmoothFactor,
+                    visible: smoothed.visible + (target.visible - smoothed.visible) * fastSmoothFactor
+                };
+            }
+
+            return {
+                x: smoothed.x + (target.x - smoothed.x) * smoothFactor,
+                y: smoothed.y + (target.y - smoothed.y) * smoothFactor,
+                visible: smoothed.visible + (target.visible - smoothed.visible) * smoothFactor
+            };
+        };
+
+        smoothedLight0 = smoothLight(smoothedLight0, targetLight0);
+        smoothedLight1 = smoothLight(smoothedLight1, targetLight1);
+        smoothedLight2 = smoothLight(smoothedLight2, targetLight2);
+
+        const screenLight0 = smoothedLight0;
+        const screenLight1 = smoothedLight1;
+        const screenLight2 = smoothedLight2;
 
         // ========================================
         // RENDER NEBULA BACKGROUND TO FBO
@@ -1182,6 +1269,7 @@
             gl.uniform3f(nebulaProgram.uLightColor0, lc0[0], lc0[1], lc0[2]);
             gl.uniform3f(nebulaProgram.uLightColor1, lc1[0], lc1[1], lc1[2]);
             gl.uniform3f(nebulaProgram.uLightColor2, lc2[0], lc2[1], lc2[2]);
+            // Use full intensity - smoothing handles transitions
             gl.uniform1f(nebulaProgram.uLight0Intensity, lightParams.light0Intensity);
             gl.uniform1f(nebulaProgram.uLight1Intensity, lightParams.light1Intensity);
             gl.uniform1f(nebulaProgram.uLight2Intensity, lightParams.light2Intensity);
@@ -1495,27 +1583,29 @@
 
             // Build orbit line vertices for all moons
             const segments = 96;
-            const minDim = Math.min(width, height);
-            const worldToProjectScale = minDim / width;
             const dpr = window.devicePixelRatio || 1;
 
-            // Helper to project world coords to screen
+            // Helper to project world coords to screen (matches planet vertex shader logic)
             const projectToScreen = (wx, wy, wz) => {
                 const crx = Math.cos(cameraRotX), srx = Math.sin(cameraRotX);
                 const cry = Math.cos(cameraRotY), sry = Math.sin(cameraRotY);
                 const cpx = cameraPosX, cpy = cameraPosY, cpz = cameraPosZ;
-                const fx = sry * crx, fy = -srx, fz = cry * crx;
-                const rx = cry, rz = -sry;
-                const ux = fy * rz, uy = fz * rx - fx * rz, uz = -fy * rx;
+                // Camera basis vectors (same as shader)
+                const fx = sry * crx, fy = -srx, fz = cry * crx;  // forward
+                const rx = cry, rz = -sry;  // right (ry = 0)
+                const ux = fy * rz, uy = fz * rx - fx * rz, uz = -fy * rx;  // up = cross(forward, right)
                 const screenCenterX = width * 0.5;
                 const screenCenterY = height * 0.5;
+                // Vector from camera to point (world coords already scaled)
                 const tx = wx - cpx, ty = wy - cpy, tz = wz - cpz;
                 const zd = tx * fx + ty * fy + tz * fz;
                 if (zd < 0.01) return null;
                 const ps = 1.0 / zd;
-                const px = (tx * rx + tz * rz) * ps;
-                const py = (tx * ux + ty * uy + tz * uz) * ps;
-                return { x: (screenCenterX + px * width) * dpr, y: (screenCenterY - py * width) * dpr };
+                // Project onto camera plane
+                const projX = (tx * rx + tz * rz) * ps;
+                const projY = (tx * ux + ty * uy + tz * uz) * ps;
+                // Convert to screen coords (matching shader: projX * uRes.x, -projY * uRes.y)
+                return { x: (screenCenterX + projX * width) * dpr, y: (screenCenterY - projY * height) * dpr };
             };
 
             // Group orbits by parent color for batched rendering
@@ -1532,9 +1622,10 @@
                     orbitsByColor[hexColor] = [];
                 }
 
-                const radius = node.orbitRadiusWorld * worldToProjectScale;
-                const centerWX = (parent.worldX || 0) * worldToProjectScale;
-                const centerWY = (parent.worldY || 0) * worldToProjectScale;
+                // Use world coordinates directly (same coordinate system as planets)
+                const radius = node.orbitRadiusWorld;
+                const centerWX = parent.worldX || 0;
+                const centerWY = parent.worldY || 0;
                 const centerWZ = parent.worldZ || 0;
 
                 const tiltX = node.orbitTiltX || 0;
@@ -1637,7 +1728,9 @@
         // Render spheres (planets and suns)
         gl.useProgram(sphereProgram);
         // uRes in CSS pixels (for vertex calculations), uFBORes in actual pixels (for texture sampling)
+        const minDim = Math.min(width, height);
         gl.uniform2f(sphereProgram.uRes, width, height);
+        gl.uniform1f(sphereProgram.uMinDim, minDim);
         gl.uniform2f(sphereProgram.uFBORes, glCanvas.width, glCanvas.height);
         gl.uniform2f(sphereProgram.uMouse, mouseScreenX, mouseScreenY);
         gl.uniform1f(sphereProgram.uTime, time);
@@ -1886,6 +1979,7 @@
                 if (currentIsSun !== true) {
                     gl.useProgram(sunProgram);
                     gl.uniform2f(sunProgram.uRes, width, height);
+                    gl.uniform1f(sunProgram.uMinDim, minDim);
                     gl.uniform1f(sunProgram.uTime, time);
                     gl.uniform1f(sunProgram.uCameraRotX, cameraRotX);
                     gl.uniform1f(sunProgram.uCameraRotY, cameraRotY);
@@ -2718,12 +2812,11 @@
         // Nodes now have actual Z positions in world space
         const worldScale = 1.0 / width;
         nodes.forEach(node => {
-            // Node position in world space (now with actual Z from node.z)
-            const offsetX = node.x - screenCenterX;
-            const offsetY = node.y - screenCenterY;
-            const nodePosX = offsetX * worldScale;
-            const nodePosY = -offsetY * worldScale;  // Flip Y
-            const nodePosZ = node.z || 0.0;
+            // Node position in world space - use worldX/Y/Z if available (more accurate)
+            // Otherwise fall back to converting from screen space
+            const nodePosX = node.worldX !== undefined ? node.worldX : (node.x - screenCenterX) * worldScale;
+            const nodePosY = node.worldY !== undefined ? node.worldY : -(node.y - screenCenterY) * worldScale;
+            const nodePosZ = node.worldZ !== undefined ? node.worldZ : (node.z || 0.0);
 
             // Vector from camera to node
             const toNodeX = nodePosX - camPosX;
@@ -2753,8 +2846,9 @@
             const projY = (toNodeX * camUpX + toNodeY * camUpY + toNodeZ * camUpZ) * nodeScale;
 
             // Convert back to screen coordinates
+            // Use width for X (as in shader), but use height for Y to match screen space
             node.renderX = screenCenterX + projX * width;
-            node.renderY = screenCenterY - projY * width;  // Flip Y back
+            node.renderY = screenCenterY - projY * height;  // Use height for proper aspect ratio
             node.renderScale = nodeScale;
 
             // Fade when very close to camera
@@ -2769,7 +2863,7 @@
             const ps = 1.0 / zd;
             const px = (tx * camRightX + ty * camRightY + tz * camRightZ) * ps;
             const py = (tx * camUpX + ty * camUpY + tz * camUpZ) * ps;
-            return { x: screenCenterX + px * width, y: screenCenterY - py * width };
+            return { x: screenCenterX + px * width, y: screenCenterY - py * height };
         }
 
         // Draw orbit circles for moons (3D tilted circles, projected with camera)

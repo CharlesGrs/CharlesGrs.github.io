@@ -184,11 +184,21 @@
     const fullText = [
         { text: 'I run ', highlight: false },
         { text: 'Zylaris Ltd', highlight: true },
-        { text: ', a specialized consultancy delivering high-performance graphics solutions for games, VR, and immersive installations. From ', highlight: false },
+        { text: ', a specialized consultancy that has delivered ', highlight: false },
+        { text: '100+ graphics solutions', highlight: true },
+        { text: ' to ', highlight: false },
+        { text: '12+ studios', highlight: true },
+        { text: '. From ', highlight: false },
         { text: 'GPU-based light baking', highlight: true },
+        { text: ' achieving ', highlight: false },
+        { text: '15x faster bake times', highlight: true },
         { text: ' using SDFs to ', highlight: false },
         { text: '16K projection-mapped environments', highlight: true },
-        { text: ', I help studios push the boundaries of real-time rendering across mobile, desktop, VR, and web platforms. I\'ve shipped graphics systems for studios including ', highlight: false },
+        { text: ' running at ', highlight: false },
+        { text: '90 FPS', highlight: true },
+        { text: ', I help studios push the boundaries of real-time rendering. I\'ve optimized shaders achieving ', highlight: false },
+        { text: '70% avg performance gains', highlight: true },
+        { text: ' across mobile, desktop, VR, and web platforms for studios including ', highlight: false },
         { text: 'Nexus', highlight: true },
         { text: ', ', highlight: false },
         { text: 'Ubisoft', highlight: true },
@@ -316,12 +326,28 @@
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             const panelId = tab.dataset.panel;
+            const container = document.querySelector('.container');
+
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
-            panels.forEach(panel => {
-                if (panel.id === `panel-${panelId}`) { panel.classList.add('active'); triggerPanelAnimations(panel); }
-                else panel.classList.remove('active');
-            });
+
+            // Handle "About" tab - show hero sections, hide all panels
+            if (panelId === 'about') {
+                if (container) {
+                    container.classList.remove('hero-hidden');
+                }
+                panels.forEach(panel => panel.classList.remove('active'));
+            } else {
+                // Hide hero sections and show the selected panel
+                if (container) {
+                    container.classList.add('hero-hidden');
+                }
+                panels.forEach(panel => {
+                    if (panel.id === `panel-${panelId}`) { panel.classList.add('active'); triggerPanelAnimations(panel); }
+                    else panel.classList.remove('active');
+                });
+            }
+
             if (panelId === 'skills') {
                 window.dispatchEvent(new Event('skillsTabActivated'));
                 window.dispatchEvent(new Event('resize'));
@@ -332,7 +358,18 @@
                 if (portfolioPanel) {
                     portfolioPanel.querySelectorAll('video[data-src]').forEach(video => {
                         if (!video.src || video.src === window.location.href) {
-                            video.src = video.dataset.src;
+                            // Prefer WebM format if browser supports it
+                            var mp4Src = video.dataset.src;
+                            var webmSrc = mp4Src.replace('.mp4', '.webm');
+
+                            // Check if browser supports WebM
+                            var canPlayWebm = video.canPlayType('video/webm; codecs="vp9"');
+                            if (canPlayWebm === 'probably' || canPlayWebm === 'maybe') {
+                                video.src = webmSrc;
+                            } else {
+                                video.src = mp4Src;
+                            }
+
                             video.preload = 'auto';
                             video.load();
                             // Only auto-play muted videos; videos with audio require user interaction
@@ -568,6 +605,164 @@
             canvasSection.classList.remove('fullscreen');
             document.body.classList.remove('canvas-fullscreen');
             window.dispatchEvent(new Event('resize'));
+        }
+    });
+})();
+
+// ============================================
+// CONTACT MODAL
+// ============================================
+(function initContactModal() {
+    const modal = document.getElementById('contact-modal');
+    const closeBtn = document.getElementById('contact-modal-close');
+    const contactBtn = document.querySelector('.contact-btn');
+    const form = document.getElementById('contact-form');
+
+    if (!modal) return;
+
+    function openModal() {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        // Focus first input for accessibility
+        const firstInput = modal.querySelector('input');
+        if (firstInput) firstInput.focus();
+    }
+
+    function closeModal() {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    // Open modal when contact button is clicked
+    if (contactBtn) {
+        contactBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            openModal();
+        });
+    }
+
+    // Close modal
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeModal);
+    }
+
+    // Close on backdrop click
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeModal();
+    });
+
+    // Close on ESC key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeModal();
+        }
+    });
+
+    // Handle form submission via Formspree
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Sending...';
+            submitBtn.disabled = true;
+
+            fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(function(response) {
+                if (response.ok) {
+                    submitBtn.textContent = 'Sent!';
+                    form.reset();
+                    setTimeout(function() {
+                        closeModal();
+                        submitBtn.textContent = originalText;
+                        submitBtn.disabled = false;
+                    }, 1500);
+                } else {
+                    throw new Error('Form submission failed');
+                }
+            })
+            .catch(function() {
+                submitBtn.textContent = 'Error - Try Again';
+                submitBtn.disabled = false;
+                setTimeout(function() {
+                    submitBtn.textContent = originalText;
+                }, 2000);
+            });
+        });
+    }
+})();
+
+// ============================================
+// KEYBOARD NAVIGATION FOR SKILL GRAPH
+// ============================================
+(function initKeyboardNav() {
+    document.addEventListener('keydown', function(e) {
+        // Only handle when skills panel is active
+        const skillsPanel = document.getElementById('panel-skills');
+        if (!skillsPanel || !skillsPanel.classList.contains('active')) return;
+
+        // Check if canvas section is active (graph view)
+        const canvasSection = document.getElementById('canvas-section');
+        if (!canvasSection || !canvasSection.classList.contains('active')) return;
+
+        // Camera rotation with arrow keys
+        const rotSpeed = 0.05;
+        const zoomSpeed = 0.1;
+
+        switch(e.key) {
+            case 'ArrowLeft':
+                if (typeof window.globalCameraRotY !== 'undefined') {
+                    window.globalCameraRotY -= rotSpeed;
+                }
+                e.preventDefault();
+                break;
+            case 'ArrowRight':
+                if (typeof window.globalCameraRotY !== 'undefined') {
+                    window.globalCameraRotY += rotSpeed;
+                }
+                e.preventDefault();
+                break;
+            case 'ArrowUp':
+                if (typeof window.globalCameraRotX !== 'undefined') {
+                    window.globalCameraRotX = Math.max(-Math.PI / 2, window.globalCameraRotX - rotSpeed);
+                }
+                e.preventDefault();
+                break;
+            case 'ArrowDown':
+                if (typeof window.globalCameraRotX !== 'undefined') {
+                    window.globalCameraRotX = Math.min(Math.PI / 2, window.globalCameraRotX + rotSpeed);
+                }
+                e.preventDefault();
+                break;
+            case '+':
+            case '=':
+                if (typeof window.globalZoom !== 'undefined') {
+                    window.globalZoom = Math.min(3, window.globalZoom + zoomSpeed);
+                }
+                e.preventDefault();
+                break;
+            case '-':
+            case '_':
+                if (typeof window.globalZoom !== 'undefined') {
+                    window.globalZoom = Math.max(0.5, window.globalZoom - zoomSpeed);
+                }
+                e.preventDefault();
+                break;
+            case 'r':
+            case 'R':
+                // Reset camera
+                if (typeof window.globalCameraRotX !== 'undefined') {
+                    window.globalCameraRotX = 0;
+                    window.globalCameraRotY = 0;
+                    window.globalZoom = 1.0;
+                }
+                e.preventDefault();
+                break;
         }
     });
 })();

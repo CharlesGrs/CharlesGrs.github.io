@@ -26,6 +26,7 @@ varying float vIsLight;
 varying float vWorldZ;  // Pass world Z to fragment shader
 
 uniform vec2 uRes;
+uniform float uMinDim;      // Minimum dimension for consistent world scale
 uniform float uCameraRotX;  // Camera rotation around X axis (pitch)
 uniform float uCameraRotY;  // Camera rotation around Y axis (yaw)
 uniform vec3 uCameraPos;    // Camera position XYZ (free camera)
@@ -58,7 +59,8 @@ void main() {
     vec2 offsetFromCenter = aCenter - screenCenter;
 
     // Scale factor to convert screen pixels to world units
-    float worldScale = 1.0 / uRes.x;
+    // Use uMinDim for consistent scaling (nodes are placed using minDim)
+    float worldScale = 1.0 / uMinDim;
 
     // Node position in world space (now with actual Z position from aZ)
     vec3 nodePos = vec3(offsetFromCenter.x * worldScale, -offsetFromCenter.y * worldScale, aZ);
@@ -88,7 +90,7 @@ void main() {
     float projY = dot(toNode, cameraUp) * perspectiveScale;
 
     // Convert back to screen coordinates
-    vec2 projectedCenter = screenCenter + vec2(projX, -projY) * uRes.x;
+    vec2 projectedCenter = screenCenter + vec2(projX * uRes.x, -projY * uRes.y);
 
     // Scale the radius by perspective
     float scaledRadius = aRadius * perspectiveScale;
