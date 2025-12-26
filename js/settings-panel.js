@@ -783,6 +783,15 @@
         document.body.appendChild(panel);
         bindEvents();
 
+        // Hide settings panel by default - only show in Skills tab with graph view
+        var skillsTab = document.querySelector('.carousel-tab[data-panel="skills"]');
+        var graphBtn = document.querySelector('.view-toggle-btn[data-view="graph"]');
+        var isSkillsActive = skillsTab && skillsTab.classList.contains('active');
+        var isGraphView = graphBtn && graphBtn.classList.contains('active');
+        if (!isSkillsActive || !isGraphView) {
+            panel.style.display = 'none';
+        }
+
         // Initialize all sections as expanded
         Object.keys(CONTROLS).forEach(function(tabId) {
             CONTROLS[tabId].sections.forEach(function(section) {

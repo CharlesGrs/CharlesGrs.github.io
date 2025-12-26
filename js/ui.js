@@ -341,6 +341,19 @@
                 else panel.classList.remove('active');
             });
 
+            // Show/hide settings panel based on whether skills tab with graph view is active
+            const settingsPanel = document.getElementById('settings-panel');
+            if (settingsPanel) {
+                if (panelId === 'skills') {
+                    // Only show if graph view is active
+                    const graphBtn = document.querySelector('.view-toggle-btn[data-view="graph"]');
+                    const isGraphView = graphBtn && graphBtn.classList.contains('active');
+                    settingsPanel.style.display = isGraphView ? '' : 'none';
+                } else {
+                    settingsPanel.style.display = 'none';
+                }
+            }
+
             if (panelId === 'skills') {
                 window.dispatchEvent(new Event('skillsTabActivated'));
                 window.dispatchEvent(new Event('resize'));
@@ -456,6 +469,11 @@
                 if (shaderControls) {
                     shaderControls.style.display = '';
                 }
+                // Show settings panel
+                const settingsPanel = document.getElementById('settings-panel');
+                if (settingsPanel) {
+                    settingsPanel.style.display = '';
+                }
                 // Trigger multiple resizes to ensure canvas gets proper dimensions
                 // Double RAF ensures CSS transitions have fully applied
                 requestAnimationFrame(() => {
@@ -482,6 +500,11 @@
                 // Hide shader controls
                 if (shaderControls) {
                     shaderControls.style.display = 'none';
+                }
+                // Hide settings panel
+                const settingsPanel = document.getElementById('settings-panel');
+                if (settingsPanel) {
+                    settingsPanel.style.display = 'none';
                 }
             }
         });

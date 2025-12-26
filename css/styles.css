@@ -3562,10 +3562,70 @@ header.collapsed .header-expand-btn {
         grid-template-columns: 1fr;
     }
 
+    /* Icon-only contact links on small screens */
     .contact-links {
-        flex-direction: column;
-        align-items: center;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.35rem;
+    }
+
+    .contact-link,
+    .cv-download {
+        padding: 0.6rem;
+        min-width: 44px;
+        min-height: 44px;
+        justify-content: center;
+    }
+
+    .contact-link span,
+    .cv-download span {
+        display: none;
+    }
+
+    .contact-link svg,
+    .cv-download svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* About section - tighter on small screens */
+    .about-panel {
+        padding: 0.75rem 1rem;
+    }
+
+    .about-hero {
         gap: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .about-stats {
+        padding: 0.5rem 1rem;
+        gap: 1rem;
+    }
+
+    .about-stats .stat-number {
+        font-size: 1.5rem;
+    }
+
+    .about-impact .impact-grid {
+        gap: 0.5rem;
+    }
+
+    .about-impact .impact-card {
+        padding: 0.6rem 0.5rem;
+    }
+
+    .about-impact .impact-number {
+        font-size: 1.25rem;
+    }
+
+    .about-impact .impact-label {
+        font-size: 0.7rem;
+    }
+
+    .about-impact .impact-detail {
+        display: none;
     }
 }
 
@@ -4164,33 +4224,62 @@ footer {
     }
 
     header {
-        gap: 0.75rem;
+        gap: 0.5rem;
+        padding-bottom: 0.5rem;
     }
 
     .header-top {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
         gap: 0.5rem;
     }
 
     .header-right {
-        align-items: flex-start;
-        text-align: left;
+        align-items: center;
+        text-align: right;
+    }
+
+    /* Hide non-essential elements on mobile */
+    .languages,
+    .header-right .company,
+    .titles {
+        display: none;
     }
 
     .header-middle {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.75rem;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
     }
 
     .contact-links {
         flex-wrap: wrap;
-        gap: 0.35rem;
+        justify-content: center;
+        gap: 0.25rem;
     }
 
     .name-row h1 {
-        font-size: 1.75rem;
+        font-size: 1.4rem;
+    }
+
+    .availability-badge {
+        font-size: 0.55rem;
+        padding: 0.2rem 0.5rem;
+    }
+
+    /* Touch target compliance - 44px minimum */
+    .contact-link,
+    .cv-download {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .header-expand-btn {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 0.5rem;
     }
 
     .summary-row {
@@ -4228,23 +4317,19 @@ footer {
 
     .carousel-tabs {
         gap: 0.35rem;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-        padding-bottom: 0.5rem;
-        justify-content: flex-start;
-    }
-
-    .carousel-tabs::-webkit-scrollbar {
-        display: none;
+        flex-wrap: wrap;
+        overflow-x: visible;
+        justify-content: center;
+        padding-bottom: 0.25rem;
     }
 
     .carousel-tab {
-        padding: 0.5rem 0.8rem;
+        padding: 0.5rem 0.7rem;
         font-size: 0.65rem;
-        flex-shrink: 0;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .clients-panel {
@@ -4365,8 +4450,13 @@ footer {
 /* Extra small screens */
 @media (max-width: 480px) {
     .carousel-tab {
-        padding: 0.4rem 0.6rem;
-        font-size: 0.6rem;
+        padding: 0.4rem 0.5rem;
+        font-size: 0.55rem;
+        min-height: 44px;
+    }
+
+    .name-row h1 {
+        font-size: 1.2rem;
     }
 }
 
