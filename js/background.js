@@ -6,7 +6,6 @@
 (function initBackground() {
     // Nebula is now rendered in skill-graph.js for unified WebGL context
     // This allows planets to sample the background texture for fog/atmosphere
-    console.log('Three.js background disabled - using WebGL nebula in skill-graph.js');
     return;
 
     var canvas = document.getElementById('gpu-canvas');

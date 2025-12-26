@@ -231,7 +231,7 @@
         dotIndex = (dotIndex + 1) % 4;
     }, 300);
 
-    function getBaseDelay() { return 12 + Math.random() * 18; }
+    function getBaseDelay() { return 5 + Math.random() * 8; }
 
     function finishTyping() {
         cursor.classList.add('hidden');
@@ -256,7 +256,7 @@
             typoChar.textContent = currentTypo.wrong;
             currentSpan.appendChild(typoChar);
             globalPos++; charIndex++;
-            setTimeout(() => { isDeleting = true; deleteCount = 1; setTimeout(type, 80 + Math.random() * 50); }, 120 + Math.random() * 80);
+            setTimeout(() => { isDeleting = true; deleteCount = 1; setTimeout(type, 40 + Math.random() * 30); }, 60 + Math.random() * 40);
             return;
         }
 
@@ -273,8 +273,8 @@
             charIndex++; globalPos++;
             let delay = getBaseDelay();
             const char = segment.text[charIndex - 1];
-            if (['.', ',', '!', '?'].includes(char)) delay += 80 + Math.random() * 60;
-            else if (char === ' ') delay += Math.random() * 15;
+            if (['.', ',', '!', '?'].includes(char)) delay += 30 + Math.random() * 30;
+            else if (char === ' ') delay += Math.random() * 5;
             setTimeout(type, delay);
         } else {
             segmentIndex++; charIndex = 0; currentSpan = null;
@@ -331,22 +331,14 @@
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
 
-            // Handle "About" tab - show hero sections, hide all panels
-            if (panelId === 'about') {
-                if (container) {
-                    container.classList.remove('hero-hidden');
-                }
-                panels.forEach(panel => panel.classList.remove('active'));
-            } else {
-                // Hide hero sections and show the selected panel
-                if (container) {
-                    container.classList.add('hero-hidden');
-                }
-                panels.forEach(panel => {
-                    if (panel.id === `panel-${panelId}`) { panel.classList.add('active'); triggerPanelAnimations(panel); }
-                    else panel.classList.remove('active');
-                });
+            // Hide hero sections and show the selected panel
+            if (container) {
+                container.classList.add('hero-hidden');
             }
+            panels.forEach(panel => {
+                if (panel.id === `panel-${panelId}`) { panel.classList.add('active'); triggerPanelAnimations(panel); }
+                else panel.classList.remove('active');
+            });
 
             if (panelId === 'skills') {
                 window.dispatchEvent(new Event('skillsTabActivated'));
@@ -698,6 +690,48 @@
 })();
 
 // ============================================
+// CONTACT PANEL FORM HANDLER
+// ============================================
+(function initContactPanelForm() {
+    const form = document.getElementById('contact-form-panel');
+    if (!form) return;
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalHTML = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" class="spin"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Sending...';
+        submitBtn.disabled = true;
+
+        fetch(form.action, {
+            method: 'POST',
+            body: new FormData(form),
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(function(response) {
+            if (response.ok) {
+                submitBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="20 6 9 17 4 12"/></svg> Message Sent!';
+                form.reset();
+                setTimeout(function() {
+                    submitBtn.innerHTML = originalHTML;
+                    submitBtn.disabled = false;
+                }, 3000);
+            } else {
+                throw new Error('Form submission failed');
+            }
+        })
+        .catch(function() {
+            submitBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> Error - Try Again';
+            submitBtn.disabled = false;
+            setTimeout(function() {
+                submitBtn.innerHTML = originalHTML;
+            }, 3000);
+        });
+    });
+})();
+
+// ============================================
 // KEYBOARD NAVIGATION FOR SKILL GRAPH
 // ============================================
 (function initKeyboardNav() {
@@ -764,5 +798,74 @@
                 e.preventDefault();
                 break;
         }
+    });
+})();
+
+// ============================================
+// HEADER COLLAPSE ON SCROLL
+// ============================================
+(function initHeaderCollapse() {
+    const header = document.getElementById('main-header');
+    const expandBtn = document.getElementById('header-expand-btn');
+
+    if (!header) return;
+
+    const SCROLL_THRESHOLD = 50;
+    let isManuallyExpanded = false;
+
+    function setHeaderCollapsed(collapsed) {
+        if (collapsed && !isManuallyExpanded) {
+            header.classList.add('collapsed');
+        } else {
+            header.classList.remove('collapsed');
+        }
+    }
+
+    function handleScroll(scrollY) {
+        if (isManuallyExpanded) return;
+        setHeaderCollapsed(scrollY > SCROLL_THRESHOLD);
+    }
+
+    // Listen to window scroll (mobile)
+    window.addEventListener('scroll', () => handleScroll(window.scrollY), { passive: true });
+
+    // Find and attach to all scrollable containers
+    function attachPanelScrollListeners() {
+        // Career panel's project list
+        const projectList = document.querySelector('.project-list');
+        if (projectList) {
+            projectList.addEventListener('scroll', () => handleScroll(projectList.scrollTop), { passive: true });
+        }
+
+        // All carousel panels
+        document.querySelectorAll('.carousel-panel').forEach(panel => {
+            panel.addEventListener('scroll', () => handleScroll(panel.scrollTop), { passive: true });
+        });
+
+        // Skills content area
+        const skillsContent = document.querySelector('.skills-content');
+        if (skillsContent) {
+            skillsContent.addEventListener('scroll', () => handleScroll(skillsContent.scrollTop), { passive: true });
+        }
+    }
+
+    setTimeout(attachPanelScrollListeners, 200);
+
+    // Expand button
+    if (expandBtn) {
+        expandBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isManuallyExpanded = true;
+            setHeaderCollapsed(false);
+            setTimeout(() => { isManuallyExpanded = false; }, 3000);
+        });
+    }
+
+    // When switching tabs, expand the header (new context)
+    document.querySelectorAll('.carousel-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            isManuallyExpanded = false;
+            setHeaderCollapsed(false);
+        });
     });
 })();

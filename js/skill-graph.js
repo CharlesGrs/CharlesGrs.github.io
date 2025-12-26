@@ -3028,15 +3028,98 @@
         ctx.restore();
     }
 
+    // Track animation state for visibility-based pausing
+    var isAnimating = false;
+    var animationFrameId = null;
+
+    function isCanvasVisible() {
+        // Check if page is hidden (tab in background)
+        if (document.hidden) return false;
+
+        // Check if skills panel is active
+        var skillsPanel = document.getElementById('panel-skills');
+        if (!skillsPanel || !skillsPanel.classList.contains('active')) return false;
+
+        // Check if canvas section is active (graph view, not list view)
+        var canvasSection = document.getElementById('canvas-section');
+        if (!canvasSection || !canvasSection.classList.contains('active')) return false;
+
+        return true;
+    }
+
     function animate() {
+        if (!isCanvasVisible()) {
+            // Canvas not visible - pause animation loop
+            isAnimating = false;
+            animationFrameId = null;
+            return;
+        }
+
         simulate();
         var t0 = window.renderTiming.start();
         draw();
         window.renderTiming.end('planets', t0);
         // Update timing aggregation (this is the "main" loop)
         window.renderTiming.update();
-        requestAnimationFrame(animate);
+        animationFrameId = requestAnimationFrame(animate);
     }
+
+    function startAnimation() {
+        if (isAnimating) return;
+        isAnimating = true;
+        animationFrameId = requestAnimationFrame(animate);
+    }
+
+    function stopAnimation() {
+        isAnimating = false;
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
+    }
+
+    // Listen for visibility changes
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            stopAnimation();
+        } else if (isCanvasVisible()) {
+            startAnimation();
+        }
+    });
+
+    // Listen for skills tab activation
+    window.addEventListener('skillsTabActivated', function() {
+        if (isCanvasVisible()) {
+            startAnimation();
+        }
+    });
+
+    // Listen for view toggle (graph/list)
+    var viewToggleBtns = document.querySelectorAll('.view-toggle-btn[data-view]');
+    viewToggleBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            // Small delay to let DOM update
+            setTimeout(function() {
+                if (isCanvasVisible()) {
+                    startAnimation();
+                } else {
+                    stopAnimation();
+                }
+            }, 50);
+        });
+    });
+
+    // Listen for tab changes (when leaving skills tab)
+    var allTabs = document.querySelectorAll('.carousel-tab');
+    allTabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            setTimeout(function() {
+                if (!isCanvasVisible()) {
+                    stopAnimation();
+                }
+            }, 50);
+        });
+    });
 
     // Convert screen coords to world coords (accounting for 3D perspective camera)
     function screenToWorld(sx, sy) {
@@ -4668,5 +4751,9 @@ window.renderToggles = ${JSON.stringify(settings.renderToggles, null, 4)};
     loadFromLocalStorage();
     createSettingsButtons();
 
-    animate();
+    // Only start animation if skills graph is visible (battery optimization)
+    // Otherwise, event listeners will start it when user navigates to Skills tab
+    if (isCanvasVisible()) {
+        startAnimation();
+    }
 })();

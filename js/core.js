@@ -291,12 +291,8 @@ var spaceParticleFragmentShader = window.SPACE_PARTICLE_FRAGMENT_SHADER;
 // Verify shaders loaded
 if (!sphereVertexShader || !sphereFragmentShader || !sunFragmentShader) {
     console.error('Shaders not loaded! Make sure shader script tags are before main.js');
-} else {
-    console.log('Planet and Sun shaders loaded');
 }
 
 if (!window.NEBULA_BACKGROUND_FRAGMENT_SHADER) {
     console.error('Nebula background shader not loaded!');
-} else {
-    console.log('Nebula background shader loaded');
 }
