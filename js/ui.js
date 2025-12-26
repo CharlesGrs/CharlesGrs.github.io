@@ -183,38 +183,28 @@
     if (!container) return;
 
     const fullText = [
-        { text: 'I run ', highlight: false },
+        { text: 'Running ', highlight: false },
         { text: 'Zylaris Ltd', highlight: true },
-        { text: ', a specialized consultancy that has delivered ', highlight: false },
-        { text: '100+ graphics solutions', highlight: true },
-        { text: ' to ', highlight: false },
-        { text: '12+ studios', highlight: true },
-        { text: '. From ', highlight: false },
-        { text: 'GPU-based light baking', highlight: true },
-        { text: ' achieving ', highlight: false },
-        { text: '15x faster bake times', highlight: true },
-        { text: ' using SDFs to ', highlight: false },
-        { text: '16K projection-mapped environments', highlight: true },
-        { text: ' running at ', highlight: false },
-        { text: '90 FPS', highlight: true },
-        { text: ', I help studios push the boundaries of real-time rendering. I\'ve optimized shaders achieving ', highlight: false },
-        { text: '70% avg performance gains', highlight: true },
-        { text: ' across mobile, desktop, VR, and web platforms for studios including ', highlight: false },
-        { text: 'Nexus', highlight: true },
+        { text: ', specializing in real-time graphics and shader development. 8+ years delivering for ', highlight: false },
+        { text: 'Meta', highlight: true },
         { text: ', ', highlight: false },
         { text: 'Ubisoft', highlight: true },
         { text: ', ', highlight: false },
-        { text: '22cans', highlight: true },
-        { text: ', and ', highlight: false },
-        { text: 'The Sandbox', highlight: true },
-        { text: '.', highlight: false }
+        { text: 'Nexus Studios', highlight: true },
+        { text: ', and 12+ studios worldwide.', highlight: false, pauseAfter: 600 },
+        { text: ' Video games, VR, ', highlight: false },
+        { text: 'Web3', highlight: true },
+        { text: ', ', highlight: false },
+        { text: '16K immersive installations', highlight: true },
+        { text: '.', highlight: false, pauseAfter: 600 },
+        { text: ' Latest project: ', highlight: false },
+        { text: 'Blumhouse Enhanced Cinema', highlight: true },
+        { text: ' on Meta Quest 3.', highlight: false }
     ];
 
     const typos = [
-        { pos: 15, wrong: 'x', correct: 'c' },
-        { pos: 78, wrong: 'f', correct: 'g' },
-        { pos: 142, wrong: 'b', correct: 'p' },
-        { pos: 245, wrong: 'r', correct: 't' },
+        { pos: 35, wrong: 'z', correct: 's' },
+        { pos: 120, wrong: 'n', correct: 'm' },
     ];
 
     let cursor = document.createElement('span');
@@ -232,7 +222,10 @@
         dotIndex = (dotIndex + 1) % 4;
     }, 300);
 
-    function getBaseDelay() { return 5 + Math.random() * 8; }
+    // Fast typing
+    function getBaseDelay() {
+        return 8 + Math.random() * 12; // 8-20ms per character
+    }
 
     function finishTyping() {
         cursor.classList.add('hidden');
@@ -274,12 +267,13 @@
             charIndex++; globalPos++;
             let delay = getBaseDelay();
             const char = segment.text[charIndex - 1];
-            if (['.', ',', '!', '?'].includes(char)) delay += 30 + Math.random() * 30;
-            else if (char === ' ') delay += Math.random() * 5;
+            if (['.', ',', '!', '?'].includes(char)) delay += 30 + Math.random() * 20;
             setTimeout(type, delay);
         } else {
+            // Check for explicit pause after segment
+            const pauseTime = segment.pauseAfter || getBaseDelay();
             segmentIndex++; charIndex = 0; currentSpan = null;
-            setTimeout(type, getBaseDelay());
+            setTimeout(type, pauseTime);
         }
     }
 
