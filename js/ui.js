@@ -2,14 +2,15 @@
 // COUNTING ANIMATION FOR STATS
 // ============================================
 (function initStats() {
-    const stats = document.querySelectorAll('.stat-number[data-target]');
+    // Animate both stat-number and impact-number elements
+    const stats = document.querySelectorAll('.stat-number[data-target], .impact-number[data-target]');
     stats.forEach((stat, index) => {
         const target = parseInt(stat.dataset.target);
         const suffix = stat.dataset.suffix || '';
         let current = 0;
-        const duration = 1500;
-        const startDelay = 600 + index * 200;
-        const stepTime = duration / target;
+        const duration = 1200;
+        const startDelay = 400 + index * 150;
+        const stepTime = Math.max(duration / target, 20);
 
         setTimeout(() => {
             const interval = setInterval(() => {
@@ -802,7 +803,7 @@
 })();
 
 // ============================================
-// HEADER COLLAPSE ON SCROLL
+// HEADER COLLAPSE (CLICK ONLY)
 // ============================================
 (function initHeaderCollapse() {
     const header = document.getElementById('main-header');
@@ -810,62 +811,30 @@
 
     if (!header) return;
 
-    const SCROLL_THRESHOLD = 50;
-    let isManuallyExpanded = false;
-
-    function setHeaderCollapsed(collapsed) {
-        if (collapsed && !isManuallyExpanded) {
-            header.classList.add('collapsed');
-        } else {
-            header.classList.remove('collapsed');
-        }
+    function collapseHeader() {
+        header.classList.add('collapsed');
     }
 
-    function handleScroll(scrollY) {
-        if (isManuallyExpanded) return;
-        setHeaderCollapsed(scrollY > SCROLL_THRESHOLD);
+    function expandHeader() {
+        header.classList.remove('collapsed');
     }
 
-    // Listen to window scroll (mobile)
-    window.addEventListener('scroll', () => handleScroll(window.scrollY), { passive: true });
-
-    // Find and attach to all scrollable containers
-    function attachPanelScrollListeners() {
-        // Career panel's project list
-        const projectList = document.querySelector('.project-list');
-        if (projectList) {
-            projectList.addEventListener('scroll', () => handleScroll(projectList.scrollTop), { passive: true });
-        }
-
-        // All carousel panels
-        document.querySelectorAll('.carousel-panel').forEach(panel => {
-            panel.addEventListener('scroll', () => handleScroll(panel.scrollTop), { passive: true });
-        });
-
-        // Skills content area
-        const skillsContent = document.querySelector('.skills-content');
-        if (skillsContent) {
-            skillsContent.addEventListener('scroll', () => handleScroll(skillsContent.scrollTop), { passive: true });
-        }
-    }
-
-    setTimeout(attachPanelScrollListeners, 200);
-
-    // Expand button
+    // Expand button click
     if (expandBtn) {
         expandBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            isManuallyExpanded = true;
-            setHeaderCollapsed(false);
-            setTimeout(() => { isManuallyExpanded = false; }, 3000);
+            expandHeader();
         });
     }
 
-    // When switching tabs, expand the header (new context)
+    // Tab click - About keeps header expanded, others collapse
     document.querySelectorAll('.carousel-tab').forEach(tab => {
         tab.addEventListener('click', () => {
-            isManuallyExpanded = false;
-            setHeaderCollapsed(false);
+            if (tab.dataset.panel === 'about') {
+                expandHeader();
+            } else {
+                collapseHeader();
+            }
         });
     });
 })();
