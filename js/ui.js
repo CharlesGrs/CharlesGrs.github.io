@@ -831,10 +831,17 @@
 (function initHeaderCollapse() {
     const header = document.getElementById('main-header');
     const expandBtn = document.getElementById('header-expand-btn');
+    const MOBILE_BREAKPOINT = 900;
 
     if (!header) return;
 
+    function isMobile() {
+        return window.innerWidth <= MOBILE_BREAKPOINT;
+    }
+
     function collapseHeader() {
+        // Don't collapse on mobile
+        if (isMobile()) return;
         header.classList.add('collapsed');
     }
 
@@ -850,7 +857,7 @@
         });
     }
 
-    // Tab click - About keeps header expanded, others collapse
+    // Tab click - About keeps header expanded, others collapse (desktop only)
     document.querySelectorAll('.carousel-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             if (tab.dataset.panel === 'about') {
@@ -859,5 +866,12 @@
                 collapseHeader();
             }
         });
+    });
+
+    // On resize, remove collapsed state if switching to mobile
+    window.addEventListener('resize', () => {
+        if (isMobile() && header.classList.contains('collapsed')) {
+            header.classList.remove('collapsed');
+        }
     });
 })();

@@ -4280,6 +4280,26 @@ footer {
         min-height: 44px;
         min-width: 44px;
         padding: 0.5rem;
+        display: none; /* Hide expand button on mobile - header doesn't collapse */
+    }
+
+    /* Prevent header collapse on mobile */
+    header.collapsed {
+        flex-direction: column;
+    }
+
+    header.collapsed .header-top,
+    header.collapsed .header-middle,
+    header.collapsed .header-right,
+    header.collapsed .titles,
+    header.collapsed .availability-badge {
+        display: flex;
+    }
+
+    header.collapsed .contact-links {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
     }
 
     .summary-row {
