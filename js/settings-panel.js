@@ -337,6 +337,15 @@
                     ]
                 },
                 {
+                    id: 'display',
+                    label: 'Display',
+                    icon: 'eye',
+                    color: '#22d3ee',
+                    controls: [
+                        { type: 'checkbox', id: 'show-labels', label: 'Show Labels', global: 'showPlanetLabels' }
+                    ]
+                },
+                {
                     id: 'solar-unity',
                     label: 'Unity System',
                     icon: 'orbit',
@@ -406,7 +415,8 @@
         orbit: '<ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-30 12 12)"/><circle cx="12" cy="12" r="3"/>',
         chevron: '<polyline points="6,9 12,15 18,9"/>',
         settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
-        camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>'
+        camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+        eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
     };
 
     function icon(name) {
@@ -485,6 +495,20 @@
         '</div>';
     }
 
+    function createCheckbox(ctrl) {
+        const value = ctrl.global ? window[ctrl.global] : getParamValue(ctrl.param);
+        const isChecked = value === true || value === 1;
+        return '<div class="sp-control-row sp-checkbox-row">' +
+            '<span class="sp-control-label">' + ctrl.label + '</span>' +
+            '<label class="sp-checkbox-switch">' +
+                '<input type="checkbox" class="sp-checkbox-input" id="sp-' + ctrl.id + '"' +
+                    (ctrl.global ? ' data-global="' + ctrl.global + '"' : ' data-param="' + ctrl.param + '"') +
+                    (isChecked ? ' checked' : '') + '>' +
+                '<span class="sp-checkbox-slider"></span>' +
+            '</label>' +
+        '</div>';
+    }
+
     function createLightControl(ctrl) {
         const kelvinVal = getParamValue('lightParams.light' + ctrl.id + 'Kelvin');
         const intensityVal = getParamValue('lightParams.light' + ctrl.id + 'Intensity');
@@ -542,6 +566,8 @@
                 controlsHtml += createLightControl(ctrl);
             } else if (ctrl.type === 'button') {
                 controlsHtml += createButton(ctrl);
+            } else if (ctrl.type === 'checkbox') {
+                controlsHtml += createCheckbox(ctrl);
             }
         });
 
@@ -781,6 +807,24 @@
                     setParamValue(param, hexToRgb(this.value));
                 } else {
                     setParamValue(param, this.value);
+                }
+                triggerSave();
+            });
+        });
+
+        // Checkboxes
+        panel.querySelectorAll('.sp-checkbox-input').forEach(function(checkbox) {
+            checkbox.addEventListener('change', function() {
+                const isChecked = this.checked;
+                if (this.dataset.global) {
+                    window[this.dataset.global] = isChecked;
+                    // Update the label toggle button if it exists
+                    const labelToggle = document.getElementById('label-toggle');
+                    if (this.dataset.global === 'showPlanetLabels' && labelToggle) {
+                        labelToggle.classList.toggle('active', isChecked);
+                    }
+                } else if (this.dataset.param) {
+                    setParamValue(this.dataset.param, isChecked);
                 }
                 triggerSave();
             });

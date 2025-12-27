@@ -228,6 +228,15 @@ vec3 volumetricLight(vec2 uv, vec2 lightScreenPos, vec3 lightColor, float lightI
     vec2 lightUV = lightScreenPos / uResolution;
     lightUV.y = 1.0 - lightUV.y;
 
+    // Edge fade - smoothly reduce intensity when light is far off-screen
+    // This prevents harsh transitions when looking away from the light
+    float edgeFadeX = 1.0 - smoothstep(0.0, 1.5, abs(lightUV.x - 0.5) - 0.5);
+    float edgeFadeY = 1.0 - smoothstep(0.0, 1.5, abs(lightUV.y - 0.5) - 0.5);
+    float edgeFade = edgeFadeX * edgeFadeY;
+
+    // Early out if light is too far off-screen
+    if (edgeFade < 0.01) return vec3(0.0);
+
     // Aspect-corrected distance in screen space
     vec2 delta = uv - lightUV;
     delta.x *= uResolution.x / uResolution.y;
@@ -248,8 +257,10 @@ vec3 volumetricLight(vec2 uv, vec2 lightScreenPos, vec3 lightColor, float lightI
     // Closer: perspectiveScale < 1.0, grows apparent radius
     float dist = screenDist * perspectiveScale;
 
-    // Early out for distant pixels (adjusted for perspective)
-    if (screenDist > 2.0) return vec3(0.0);
+    // Smooth distance fade instead of hard cutoff
+    // Starts fading at 1.5 screen units, fully faded at 2.5
+    float distFade = 1.0 - smoothstep(1.5, 2.5, screenDist);
+    if (distFade < 0.001) return vec3(0.0);
 
     // Sample fog density at current position
     float density = sampleNoiseAt(skyDir, lightIndex);
@@ -267,8 +278,8 @@ vec3 volumetricLight(vec2 uv, vec2 lightScreenPos, vec3 lightColor, float lightI
     float luma = dot(lightColor, vec3(0.299, 0.587, 0.114));
     vec3 saturatedColor = mix(vec3(luma), lightColor, uVolumetricSaturation);
 
-    // Apply visibility
-    return saturatedColor * light * lightVisible;
+    // Apply visibility, edge fade, and distance fade
+    return saturatedColor * light * lightVisible * edgeFade * distFade;
 }
 
 // Combined volumetric light from all sources

@@ -331,6 +331,68 @@
     filter: brightness(1.1);
 }
 
+/* Checkbox Switch (for control rows) */
+.sp-checkbox-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.sp-checkbox-switch {
+    position: relative;
+    width: 32px;
+    height: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.sp-checkbox-input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.sp-checkbox-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(80, 80, 80, 0.6);
+    border-radius: 16px;
+    transition: all 0.2s ease;
+}
+
+.sp-checkbox-slider::before {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    left: 2px;
+    bottom: 2px;
+    background: #888;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.sp-checkbox-input:checked + .sp-checkbox-slider {
+    background: #22d3ee;
+}
+
+.sp-checkbox-input:checked + .sp-checkbox-slider::before {
+    transform: translateX(16px);
+    background: #fff;
+}
+
+.sp-checkbox-switch:hover .sp-checkbox-slider {
+    background: rgba(100, 100, 100, 0.8);
+}
+
+.sp-checkbox-input:checked + .sp-checkbox-slider:hover {
+    filter: brightness(1.1);
+}
+
 /* Disabled Section */
 .sp-section.disabled .sp-section-header {
     opacity: 0.5;

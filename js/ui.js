@@ -2,14 +2,16 @@
 // COUNTING ANIMATION FOR STATS
 // ============================================
 (function initStats() {
-    // Animate both stat-number and impact-number elements
-    const stats = document.querySelectorAll('.stat-number[data-target], .impact-number[data-target]');
+    // Animate stat-number, impact-number, and hero-stat-number elements
+    const stats = document.querySelectorAll('.stat-number[data-target], .impact-number[data-target], .hero-stat-number[data-target]');
     stats.forEach((stat, index) => {
         const target = parseInt(stat.dataset.target);
         const suffix = stat.dataset.suffix || '';
         let current = 0;
         const duration = 1200;
-        const startDelay = 400 + index * 150;
+        // Hero stats animate slightly later to sync with CSS animation
+        const isHeroStat = stat.classList.contains('hero-stat-number');
+        const startDelay = isHeroStat ? 1000 + index * 100 : 400 + index * 150;
         const stepTime = Math.max(duration / target, 20);
 
         setTimeout(() => {

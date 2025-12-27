@@ -201,7 +201,7 @@
     let hoveredNode = null;
     let mouseX = 0, mouseY = 0;  // World coordinates
     let mouseScreenX = 0, mouseScreenY = 0;  // Screen coordinates (for hit testing)
-    let globalFadeIn = 0;
+    let globalFadeIn = 1;
     let mouseLightEnabled = false; // Toggle with spacebar
 
     // Free camera system - position + rotation (FPS-style)
@@ -217,11 +217,16 @@
     let orbitStartRotX = 0, orbitStartRotY = 0;  // Camera rotation when drag started
     const keysPressed = {};  // Track which keys are currently held
 
-    // Camera parameters (exposed for settings panel)
+    // Delta time for frame-rate independent movement
+    let lastFrameTime = performance.now();
+    let deltaTime = 16.67;  // Default to 60fps (in milliseconds)
+
+    // Camera parameters (exposed for settings panel) - speeds are per second
     window.cameraParams = {
-        moveSpeed: 0.005,        // Movement speed per frame (WASD)
+        moveSpeed: 50.0,         // Movement speed per second (WASD)
+        orbitSpeed: 0.4,         // Orbit speed per second (E key) in radians
         rotationSpeed: 0.003,    // Mouse rotation sensitivity
-        smoothing: 0.08          // Camera movement smoothing (0-1)
+        smoothing: 12.0          // Camera movement smoothing per second
     };
 
     // Camera focus system - smooth transition to look at and approach a node
@@ -1488,8 +1493,18 @@
             const tx = wx - cpx, ty = wy - cpy, tz = wz - cpz;
             const zd = tx * fx + ty * fy + tz * fz;
 
-            // Track visibility - smooth fade when behind camera
-            const visible = zd >= 0.01 ? 1.0 : Math.max(0.0, zd / 0.01);
+            // Track visibility - smooth fade when approaching/behind camera
+            // Use smoothstep-like curve for gradual transition from zd=0.0 to zd=0.5
+            let visible;
+            if (zd <= 0.0) {
+                visible = 0.0;
+            } else if (zd >= 0.5) {
+                visible = 1.0;
+            } else {
+                // Smoothstep: 3t² - 2t³ where t = zd / 0.5
+                const t = zd / 0.5;
+                visible = t * t * (3.0 - 2.0 * t);
+            }
 
             // If light is behind or very close to camera, clamp to screen edge
             // This prevents wild off-screen projections during navigation
@@ -2644,13 +2659,14 @@
     });
 
     function simulate() {
-        if (globalFadeIn < 1 && time > 1.5) globalFadeIn = Math.min(1, (time - 1.5) / 2);
-
         const minDim = Math.min(width, height);
+
+        // Delta time multiplier for frame-rate independent orbits (normalize to 60fps)
+        const dtMult = deltaTime / 16.67;
 
         // ====== SIMPLE SOLAR SYSTEM ======
         // Get orbital parameters from UI controls
-        const speedMult = orbitParams.orbitSpeed;
+        const speedMult = orbitParams.orbitSpeed * dtMult;
         // sunSpread, sunSpawnMin/Max are used inside getSunPosition()
         const moonRadiusMult = orbitParams.moonOrbitRadius;
         const moonSpacingMult = orbitParams.moonOrbitSpacing;
@@ -3036,57 +3052,76 @@
         } else {
             // Normal camera controls (only when not focusing or navigating)
 
+            // Delta time multiplier (normalize to 60fps baseline)
+            var dtMultiplier = deltaTime / 16.67;
+
             // Smooth camera rotation interpolation
-            cameraRotX += (targetCameraRotX - cameraRotX) * 0.08;
-            cameraRotY += (targetCameraRotY - cameraRotY) * 0.08;
+            var rotLerp = 1 - Math.pow(0.85, dtMultiplier);
+            cameraRotX += (targetCameraRotX - cameraRotX) * rotLerp;
+            cameraRotY += (targetCameraRotY - cameraRotY) * rotLerp;
 
             // Process WASD/ZQSD keyboard input for free camera movement
-            // Movement is in the direction the camera is facing
-            // Can move while rotating (FPS-style controls)
-            let moveForward = 0, moveRight = 0, moveUp = 0;
-            // Forward/backward: W or Z (French AZERTY)
+            var moveForward = 0, moveRight = 0, moveUp = 0;
             if (keysPressed['keyw'] || keysPressed['keyz']) moveForward = 1;
-            // Backward: S
             if (keysPressed['keys']) moveForward = -1;
-            // Left: A or Q (French AZERTY)
             if (keysPressed['keya'] || keysPressed['keyq']) moveRight = -1;
-            // Right: D
             if (keysPressed['keyd']) moveRight = 1;
-            // Up: Space / Down: Shift (optional vertical movement)
             if (keysPressed['space']) moveUp = 1;
             if (keysPressed['shiftleft'] || keysPressed['shiftright']) moveUp = -1;
 
-            // Apply movement in camera's local coordinate system (FPS-style)
-            if (moveForward !== 0 || moveRight !== 0 || moveUp !== 0) {
-                // Clear current solar system when user manually moves
+            // E key: Orbit mode - rotate around center (0,0,0) while looking at it
+            if (keysPressed['keye']) {
                 currentSolarSystem = null;
+                var orbitAngle = 0.008 * dtMultiplier;
 
-                const cosRotX = Math.cos(cameraRotX);
-                const sinRotX = Math.sin(cameraRotX);
-                const sinRotY = Math.sin(cameraRotY);
-                const cosRotY = Math.cos(cameraRotY);
+                var cosOrbit = Math.cos(orbitAngle);
+                var sinOrbit = Math.sin(orbitAngle);
+                var newX = cameraPosX * cosOrbit - cameraPosZ * sinOrbit;
+                var newZ = cameraPosX * sinOrbit + cameraPosZ * cosOrbit;
 
-                // Forward vector (direction camera is looking)
-                const fwdX = sinRotY * cosRotX;
-                const fwdY = -sinRotX;
-                const fwdZ = cosRotY * cosRotX;
+                cameraPosX = newX;
+                cameraPosZ = newZ;
+                targetCameraPosX = newX;
+                targetCameraPosZ = newZ;
 
-                // Right vector (perpendicular to forward, in XZ plane)
-                const rightX = cosRotY;
-                const rightZ = -sinRotY;
+                var newRotY = Math.atan2(-cameraPosX, -cameraPosZ);
+                var newRotX = Math.atan2(cameraPosY, Math.sqrt(cameraPosX * cameraPosX + cameraPosZ * cameraPosZ));
 
-                // Combine movement vectors
-                const speed = window.cameraParams.moveSpeed;
-                targetCameraPosX += (fwdX * moveForward + rightX * moveRight) * speed;
-                targetCameraPosY += (fwdY * moveForward + moveUp) * speed;
-                targetCameraPosZ += (fwdZ * moveForward + rightZ * moveRight) * speed;
+                cameraRotY = newRotY;
+                targetCameraRotY = newRotY;
+                cameraRotX = Math.max(-Math.PI * 0.4, Math.min(Math.PI * 0.4, newRotX));
+                targetCameraRotX = cameraRotX;
             }
 
-            // Smooth camera position interpolation (always runs for FPS-style movement)
-            const smooth = window.cameraParams.smoothing;
-            cameraPosX += (targetCameraPosX - cameraPosX) * smooth;
-            cameraPosY += (targetCameraPosY - cameraPosY) * smooth;
-            cameraPosZ += (targetCameraPosZ - cameraPosZ) * smooth;
+            // Apply movement in camera's local coordinate system
+            if (moveForward !== 0 || moveRight !== 0 || moveUp !== 0) {
+                currentSolarSystem = null;
+
+                var mcx = Math.cos(cameraRotX);
+                var msx = Math.sin(cameraRotX);
+                var msy = Math.sin(cameraRotY);
+                var mcy = Math.cos(cameraRotY);
+
+                var fwdX = msy * mcx;
+                var fwdY = -msx;
+                var fwdZ = mcy * mcx;
+
+                var rightX = mcy;
+                var rightZ = -msy;
+
+                // Frame-rate independent speed
+                var speed = 0.02 * dtMultiplier;
+                var dx = (fwdX * moveForward + rightX * moveRight) * speed;
+                var dy = (fwdY * moveForward + moveUp) * speed;
+                var dz = (fwdZ * moveForward + rightZ * moveRight) * speed;
+
+                cameraPosX += dx;
+                cameraPosY += dy;
+                cameraPosZ += dz;
+                targetCameraPosX += dx;
+                targetCameraPosY += dy;
+                targetCameraPosZ += dz;
+            }
         }
 
         // Update global camera state for shaders
@@ -3404,6 +3439,11 @@
             return;
         }
 
+        // Calculate delta time for frame-rate independent movement
+        var currentTime = performance.now();
+        deltaTime = Math.min(currentTime - lastFrameTime, 100);  // Cap at 100ms to prevent huge jumps
+        lastFrameTime = currentTime;
+
         simulate();
         var t0 = window.renderTiming.start();
         draw();
@@ -3645,16 +3685,9 @@
     document.addEventListener('keydown', (e) => {
         if (e.target.matches('input, textarea')) return;
 
-        // Spacebar toggles mouse light on planets
-        if (e.code === 'Space') {
-            e.preventDefault();
-            mouseLightEnabled = !mouseLightEnabled;
-            return;
-        }
-
-        // Track WASD/ZQSD keys for camera movement
+        // Track movement keys
         const key = e.code.toLowerCase();
-        if (['keyw', 'keyz', 'keys', 'keya', 'keyd', 'keyq'].includes(key)) {
+        if (['keyw', 'keyz', 'keys', 'keya', 'keyd', 'keyq', 'keye', 'space', 'shiftleft', 'shiftright'].includes(key)) {
             keysPressed[key] = true;
             e.preventDefault();
         }
@@ -3662,7 +3695,7 @@
 
     document.addEventListener('keyup', (e) => {
         const key = e.code.toLowerCase();
-        if (['keyw', 'keyz', 'keys', 'keya', 'keyd', 'keyq'].includes(key)) {
+        if (['keyw', 'keyz', 'keys', 'keya', 'keyd', 'keyq', 'keye', 'space', 'shiftleft', 'shiftright'].includes(key)) {
             keysPressed[key] = false;
         }
     });
@@ -3673,14 +3706,14 @@
 
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
-            time = 0; globalFadeIn = 0;
+            time = 0;
             tooltip.classList.remove('visible');
             tooltipTarget = null;
         }
     });
 
     window.addEventListener('skillsTabActivated', () => {
-        time = 0; globalFadeIn = 0;
+        time = 0;
         tooltip.classList.remove('visible');
         tooltipTarget = null;
     });
@@ -3821,6 +3854,9 @@
             e.stopPropagation();
             showPlanetLabels = !showPlanetLabels;
             labelToggle.classList.toggle('active', showPlanetLabels);
+            // Sync with settings panel checkbox
+            const spCheckbox = document.getElementById('sp-show-labels');
+            if (spCheckbox) spCheckbox.checked = showPlanetLabels;
         });
     }
 
