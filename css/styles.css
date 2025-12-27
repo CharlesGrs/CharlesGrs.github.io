@@ -4257,6 +4257,48 @@ footer {
         min-height: 100vh;
     }
 
+    /* Skills panel graph view - full width on mobile */
+    .skills-panel.graph-active {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100vw;
+        height: 100vh;
+        margin: 0;
+        z-index: 1000;
+        background: var(--bg-primary);
+    }
+
+    .skills-panel.graph-active .canvas-section {
+        border-radius: 0;
+    }
+
+    .skills-panel.graph-active .skill-graph-container {
+        border-radius: 0;
+        border: none;
+    }
+
+    .skills-panel.graph-active .skills-view-toggle {
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        z-index: 1001;
+    }
+
+    .skills-panel.graph-active .fullscreen-btn {
+        display: none;
+    }
+
+    .skills-panel.graph-active .solar-nav-container {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 1001;
+    }
+
     header {
         gap: 0.5rem;
         padding-bottom: 0.5rem;

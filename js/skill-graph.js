@@ -4538,8 +4538,15 @@
         updateLightFromKelvin(2, lightParams.light2Kelvin);
     }
 
-    // Save to localStorage
+    // Check if running on dev machine (localhost or file://)
+    function isDevMachine() {
+        const host = window.location.hostname;
+        return host === 'localhost' || host === '127.0.0.1' || window.location.protocol === 'file:';
+    }
+
+    // Save to localStorage (only on dev machine)
     function saveToLocalStorage() {
+        if (!isDevMachine()) return;
         try {
             const settings = getAllSettings();
             localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
@@ -4548,8 +4555,9 @@
         }
     }
 
-    // Load from localStorage
+    // Load from localStorage (only on dev machine)
     function loadFromLocalStorage() {
+        if (!isDevMachine()) return false;
         try {
             const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
             if (stored) {
