@@ -94,9 +94,6 @@
     <link rel="dns-prefetch" href="https://cdnb.artstation.com">
     <link rel="dns-prefetch" href="https://cdn.artstation.com">
 
-    <!-- Preload critical fonts for faster rendering -->
-    <link rel="preload" href="https://fonts.gstatic.com/s/outfit/v11/QGYyz_MVcBeNP4NjuGObqx1XmO1I4TC1O4a0EwItq6fNIg.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="https://fonts.gstatic.com/s/jetbrainsmono/v18/tDbY2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKxjPVmUsaaDhw.woff2" as="font" type="font/woff2" crossorigin>
     <!-- Load fonts -->
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
@@ -126,8 +123,14 @@
         </div>
     </div>
 
+    <!-- Camera Position Label -->
+    <div class="camera-label" id="camera-label" title="Camera position">
+        <span class="camera-icon">&#x25CE;</span>
+        <span class="camera-coords" id="camera-coords">0.00, 0.00, 1.00</span>
+    </div>
+
     <!-- Version Badge -->
-    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.29</span></div>
+    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.30</span></div>
 
     <div class="container" id="main-content" role="main">
         <header id="main-header">
@@ -613,97 +616,6 @@
                         </div>
                     </div>
 
-                    <!-- God Rays Controls Panel -->
-                    <div class="planet-controls godrays-controls" id="godrays-controls">
-                        <button class="planet-controls-toggle godrays-toggle" id="godrays-toggle" aria-label="Toggle god rays controls">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="4"/>
-                                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
-                                <path d="M12 8v8M8 12h8" opacity="0.5"/>
-                            </svg>
-                            <span class="planet-label">R</span>
-                        </button>
-                        <div class="planet-controls-panel godrays-panel" id="godrays-panel">
-                            <div class="planet-control-header godrays">God Rays</div>
-                            <div class="planet-control-subheader">Light Rays</div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="godrays-ray-intensity">
-                                    <span class="render-name">Ray Intensity</span>
-                                    <span class="render-value" id="godrays-ray-intensity-value">0.50</span>
-                                </label>
-                                <input type="range" id="godrays-ray-intensity" class="render-slider" min="0" max="5" step="0.05" value="0.5">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="godrays-ray-falloff">
-                                    <span class="render-name">Ray Falloff</span>
-                                    <span class="render-value" id="godrays-ray-falloff-value">4.00</span>
-                                </label>
-                                <input type="range" id="godrays-ray-falloff" class="render-slider" min="0.1" max="20" step="0.1" value="4">
-                            </div>
-                            <div class="planet-control-subheader">Glow</div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="godrays-glow-intensity">
-                                    <span class="render-name">Glow Intensity</span>
-                                    <span class="render-value" id="godrays-glow-intensity-value">0.50</span>
-                                </label>
-                                <input type="range" id="godrays-glow-intensity" class="render-slider" min="0" max="5" step="0.05" value="0.5">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="godrays-glow-size">
-                                    <span class="render-name">Glow Size</span>
-                                    <span class="render-value" id="godrays-glow-size-value">4.00</span>
-                                </label>
-                                <input type="range" id="godrays-glow-size" class="render-slider" min="0.5" max="30" step="0.5" value="4">
-                            </div>
-                            <div class="planet-control-subheader">Fog</div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="godrays-fog-density">
-                                    <span class="render-name">Fog Density</span>
-                                    <span class="render-value" id="godrays-fog-density-value">6.00</span>
-                                </label>
-                                <input type="range" id="godrays-fog-density" class="render-slider" min="0.5" max="30" step="0.5" value="6">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="godrays-ambient-fog">
-                                    <span class="render-name">Ambient Fog</span>
-                                    <span class="render-value" id="godrays-ambient-fog-value">0.08</span>
-                                </label>
-                                <input type="range" id="godrays-ambient-fog" class="render-slider" min="0" max="1" step="0.01" value="0.08">
-                            </div>
-                            <div class="planet-control-subheader">Noise</div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="godrays-noise-scale">
-                                    <span class="render-name">Noise Scale</span>
-                                    <span class="render-value" id="godrays-noise-scale-value">1.00</span>
-                                </label>
-                                <input type="range" id="godrays-noise-scale" class="render-slider" min="0.05" max="10" step="0.05" value="1">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="godrays-noise-octaves">
-                                    <span class="render-name">Noise Detail</span>
-                                    <span class="render-value" id="godrays-noise-octaves-value">1.00</span>
-                                </label>
-                                <input type="range" id="godrays-noise-octaves" class="render-slider" min="0" max="5" step="0.1" value="1">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="godrays-noise-contrast">
-                                    <span class="render-name">Noise Contrast</span>
-                                    <span class="render-value" id="godrays-noise-contrast-value">1.00</span>
-                                </label>
-                                <input type="range" id="godrays-noise-contrast" class="render-slider" min="0.1" max="5" step="0.1" value="1">
-                            </div>
-                            <div class="planet-control-subheader">Animation</div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="godrays-anim-speed">
-                                    <span class="render-name">Animation Speed</span>
-                                    <span class="render-value" id="godrays-anim-speed-value">1.00</span>
-                                </label>
-                                <input type="range" id="godrays-anim-speed" class="render-slider" min="0" max="10" step="0.1" value="1">
-                            </div>
-                            <button class="render-reset-btn" id="godrays-reset-btn">Reset</button>
-                        </div>
-                    </div>
-
                     <!-- Space Particles Controls Panel -->
                     <div class="planet-controls particles-controls" id="particles-controls">
                         <button class="planet-controls-toggle particles-toggle" id="particles-toggle" aria-label="Toggle space particles controls">
@@ -857,152 +769,6 @@
                             </div>
 
                             <button class="render-reset-btn" id="particles-reset-btn">Reset</button>
-                        </div>
-                    </div>
-
-                    <!-- Nebula Background Controls Panel -->
-                    <div class="planet-controls nebula-controls" id="nebula-controls">
-                        <button class="planet-controls-toggle nebula-toggle" id="nebula-toggle" aria-label="Toggle nebula background controls">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10" opacity="0.3"/>
-                                <circle cx="8" cy="10" r="3" opacity="0.5"/>
-                                <circle cx="15" cy="14" r="4" opacity="0.4"/>
-                                <circle cx="12" cy="8" r="2" opacity="0.6"/>
-                                <path d="M6 16c2-1 4 1 6 0s4 1 6 0" opacity="0.5"/>
-                            </svg>
-                            <span class="planet-label">N</span>
-                        </button>
-                        <div class="planet-controls-panel nebula-panel" id="nebula-panel">
-                            <div class="planet-control-header nebula">Nebula Background</div>
-                            <div class="planet-control-subheader">Nebula</div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="nebula-intensity">
-                                    <span class="render-name">Intensity</span>
-                                    <span class="render-value" id="nebula-intensity-value">0.25</span>
-                                </label>
-                                <input type="range" id="nebula-intensity" class="render-slider" min="0" max="1" step="0.01" value="0.25">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="nebula-scale">
-                                    <span class="render-name">Scale</span>
-                                    <span class="render-value" id="nebula-scale-value">2.00</span>
-                                </label>
-                                <input type="range" id="nebula-scale" class="render-slider" min="0.5" max="10" step="0.1" value="2.0">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="nebula-detail">
-                                    <span class="render-name">Detail</span>
-                                    <span class="render-value" id="nebula-detail-value">2.00</span>
-                                </label>
-                                <input type="range" id="nebula-detail" class="render-slider" min="0" max="4" step="0.1" value="2.0">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="nebula-speed">
-                                    <span class="render-name">Animation Speed</span>
-                                    <span class="render-value" id="nebula-speed-value">0.08</span>
-                                </label>
-                                <input type="range" id="nebula-speed" class="render-slider" min="0" max="0.5" step="0.01" value="0.08">
-                            </div>
-                            <div class="planet-control-subheader">Colors</div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="nebula-color-variation">
-                                    <span class="render-name">Color Variation</span>
-                                    <span class="render-value" id="nebula-color-variation-value">0.80</span>
-                                </label>
-                                <input type="range" id="nebula-color-variation" class="render-slider" min="0" max="2" step="0.05" value="0.8">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="nebula-dust-density">
-                                    <span class="render-name">Dust Density</span>
-                                    <span class="render-value" id="nebula-dust-density-value">0.40</span>
-                                </label>
-                                <input type="range" id="nebula-dust-density" class="render-slider" min="0" max="1" step="0.05" value="0.4">
-                            </div>
-                            <div class="planet-control-subheader">Stars</div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="nebula-star-density">
-                                    <span class="render-name">Star Density</span>
-                                    <span class="render-value" id="nebula-star-density-value">0.25</span>
-                                </label>
-                                <input type="range" id="nebula-star-density" class="render-slider" min="0" max="1" step="0.01" value="0.25">
-                            </div>
-                            <div class="planet-control-subheader">Lighting</div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="nebula-light-influence">
-                                    <span class="render-name">Light Influence</span>
-                                    <span class="render-value" id="nebula-light-influence-value">0.40</span>
-                                </label>
-                                <input type="range" id="nebula-light-influence" class="render-slider" min="0" max="2" step="0.05" value="0.4">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="nebula-fractal-intensity">
-                                    <span class="render-name">Fractal Intensity</span>
-                                    <span class="render-value" id="nebula-fractal-intensity-value">0.15</span>
-                                </label>
-                                <input type="range" id="nebula-fractal-intensity" class="render-slider" min="0" max="1" step="0.01" value="0.15">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="nebula-fractal-scale">
-                                    <span class="render-name">Fractal Scale</span>
-                                    <span class="render-value" id="nebula-fractal-scale-value">8.0</span>
-                                </label>
-                                <input type="range" id="nebula-fractal-scale" class="render-slider" min="1" max="20" step="0.5" value="8.0">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="nebula-fractal-speed">
-                                    <span class="render-name">Fractal Speed</span>
-                                    <span class="render-value" id="nebula-fractal-speed-value">0.030</span>
-                                </label>
-                                <input type="range" id="nebula-fractal-speed" class="render-slider" min="0" max="0.1" step="0.005" value="0.03">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="nebula-fractal-saturation">
-                                    <span class="render-name">Fractal Saturation</span>
-                                    <span class="render-value" id="nebula-fractal-saturation-value">3.0</span>
-                                </label>
-                                <input type="range" id="nebula-fractal-saturation" class="render-slider" min="1" max="5" step="0.1" value="3.0">
-                            </div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="nebula-fractal-falloff">
-                                    <span class="render-name">Fractal Falloff</span>
-                                    <span class="render-value" id="nebula-fractal-falloff-value">3.0</span>
-                                </label>
-                                <input type="range" id="nebula-fractal-falloff" class="render-slider" min="1" max="10" step="0.5" value="3.0">
-                            </div>
-                            <div class="planet-control-subheader">Post-Processing</div>
-                            <div class="render-control-item">
-                                <label class="render-label" for="nebula-vignette">
-                                    <span class="render-name">Vignette</span>
-                                    <span class="render-value" id="nebula-vignette-value">0.30</span>
-                                </label>
-                                <input type="range" id="nebula-vignette" class="render-slider" min="0" max="1" step="0.01" value="0.3">
-                            </div>
-                            <div class="planet-control-subheader">Nebula Colors</div>
-                            <div class="render-control-item color-picker-row">
-                                <label class="render-label" for="nebula-color-purple">
-                                    <span class="render-name">Purple</span>
-                                </label>
-                                <input type="color" id="nebula-color-purple" class="render-color-picker" value="#1f0a2e">
-                            </div>
-                            <div class="render-control-item color-picker-row">
-                                <label class="render-label" for="nebula-color-cyan">
-                                    <span class="render-name">Cyan</span>
-                                </label>
-                                <input type="color" id="nebula-color-cyan" class="render-color-picker" value="#0a1f33">
-                            </div>
-                            <div class="render-control-item color-picker-row">
-                                <label class="render-label" for="nebula-color-blue">
-                                    <span class="render-name">Blue</span>
-                                </label>
-                                <input type="color" id="nebula-color-blue" class="render-color-picker" value="#080f26">
-                            </div>
-                            <div class="render-control-item color-picker-row">
-                                <label class="render-label" for="nebula-color-gold">
-                                    <span class="render-name">Gold</span>
-                                </label>
-                                <input type="color" id="nebula-color-gold" class="render-color-picker" value="#261a08">
-                            </div>
-                            <button class="render-reset-btn" id="nebula-reset-btn">Reset</button>
                         </div>
                     </div>
 
@@ -1827,13 +1593,13 @@
     <script src="shaders/planet.vert.glsl.js"></script>
     <script src="shaders/planet.frag.glsl.js"></script>
     <script src="shaders/sun.frag.glsl.js"></script>
-    <script src="shaders/godrays.glsl.js"></script>
     <script src="shaders/debug-quad.glsl.js"></script>
-    <script src="shaders/nebula-background.glsl.js"></script>
+    <script src="shaders/screen-space-volumetric-light.glsl.js"></script>
     <script src="shaders/space-particles.glsl.js"></script>
     <script src="shaders/background-threejs.glsl.js"></script>
     <script src="shaders/playground-particles.glsl.js"></script>
     <script src="shaders/playground-effects.glsl.js"></script>
+    <script src="shaders/post-process.glsl.js"></script>
 
     <!-- JavaScript modules (order matters) -->
     <script defer src="js/core.js"></script>

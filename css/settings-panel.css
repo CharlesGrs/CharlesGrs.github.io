@@ -542,6 +542,34 @@
     width: 70px;
 }
 
+/* Action Buttons */
+.sp-button-row {
+    padding: 6px 12px;
+}
+
+.sp-button {
+    width: 100%;
+    padding: 6px 12px;
+    background: rgba(232, 185, 35, 0.15);
+    border: 1px solid rgba(232, 185, 35, 0.3);
+    border-radius: 4px;
+    color: #e8b923;
+    font-family: inherit;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.sp-button:hover {
+    background: rgba(232, 185, 35, 0.25);
+    border-color: rgba(232, 185, 35, 0.5);
+}
+
+.sp-button:active {
+    background: rgba(232, 185, 35, 0.35);
+    transform: scale(0.98);
+}
+
 /* Responsive */
 @media (max-width: 900px) {
     .settings-panel {
@@ -555,9 +583,7 @@
 #planet-a-controls,
 #planet-b-controls,
 #sun-controls,
-#godrays-controls,
 #particles-controls,
-#nebula-controls,
 #debug-controls {
     display: none !important;
 }

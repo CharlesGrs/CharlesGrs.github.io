@@ -581,7 +581,7 @@
             else fpsBadge.classList.add('bad');
 
             // Update render time display from global timing system
-            if (gpuValue && window.renderTiming) {
+            if (gpuValue && window.renderTiming && typeof window.renderTiming.average === 'number') {
                 gpuValue.textContent = window.renderTiming.average.toFixed(2);
             }
         }

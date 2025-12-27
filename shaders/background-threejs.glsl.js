@@ -1,6 +1,6 @@
 // ============================================
 // THREE.JS BACKGROUND SHADERS
-// Used by the Three.js nebula background effect
+// Provides fallback vertex shader for volumetric light
 // ============================================
 
 // Simple vertex shader for fullscreen quad
