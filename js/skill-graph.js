@@ -1372,6 +1372,41 @@
             }
         });
 
+        // Touch support for camera rotation on mobile
+        var touchStartX = 0, touchStartY = 0;
+        var touchStartRotX = 0, touchStartRotY = 0;
+        var isTouchOrbiting = false;
+
+        glCanvas.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 1) {
+                e.preventDefault();
+                isTouchOrbiting = true;
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                touchStartRotX = targetCameraRotX;
+                touchStartRotY = targetCameraRotY;
+            }
+        }, { passive: false });
+
+        glCanvas.addEventListener('touchmove', function(e) {
+            if (!isTouchOrbiting || e.touches.length !== 1) return;
+            e.preventDefault();
+            var deltaX = e.touches[0].clientX - touchStartX;
+            var deltaY = e.touches[0].clientY - touchStartY;
+            var sensitivity = window.cameraParams ? window.cameraParams.rotationSpeed : 0.005;
+            targetCameraRotY = touchStartRotY + deltaX * sensitivity;
+            targetCameraRotX = touchStartRotX + deltaY * sensitivity;
+            targetCameraRotX = Math.max(-Math.PI * 0.4, Math.min(Math.PI * 0.4, targetCameraRotX));
+        }, { passive: false });
+
+        glCanvas.addEventListener('touchend', function() {
+            isTouchOrbiting = false;
+        });
+
+        glCanvas.addEventListener('touchcancel', function() {
+            isTouchOrbiting = false;
+        });
+
         glReady = true;
 
         // Hide the loading indicator now that shaders are compiled
