@@ -33,145 +33,224 @@
 })();
 
 // ============================================
-// 3D CURVED PORTFOLIO CAROUSEL
+// GPU PIPELINE PORTFOLIO VISUALIZATION
 // ============================================
-(function initPortfolio() {
-    const items = document.querySelectorAll('.portfolio-item');
-    const prevBtn = document.querySelector('.portfolio-nav.prev');
-    const nextBtn = document.querySelector('.portfolio-nav.next');
-    const titleEl = document.getElementById('portfolio-title');
-    const linkEl = document.getElementById('portfolio-link');
-    const dotsContainer = document.getElementById('portfolio-dots');
-    const scene = document.querySelector('.portfolio-scene');
+(function initPipelinePortfolio() {
+    const passes = document.querySelectorAll('.render-pass');
+    const viewport = document.getElementById('main-viewport');
+    const titleEl = document.getElementById('pipeline-title');
+    const tagEl = document.getElementById('project-tag');
+    const linkEl = document.getElementById('project-link');
+    const track = document.getElementById('pipeline-track');
+    const prevBtn = document.querySelector('.strip-nav.prev');
+    const nextBtn = document.querySelector('.strip-nav.next');
 
-    if (!items.length) return;
+    if (!passes.length || !viewport) return;
 
     let currentIndex = 0;
-    const totalItems = items.length;
-    const visibleItems = 5;
+    const totalItems = passes.length;
+    let activeVideo = null;
 
-    items.forEach((_, i) => {
-        const dot = document.createElement('div');
-        dot.className = 'portfolio-dot' + (i === 0 ? ' active' : '');
-        dot.addEventListener('click', () => goToSlide(i));
-        dotsContainer.appendChild(dot);
-    });
-    const dots = dotsContainer.querySelectorAll('.portfolio-dot');
+    // Clone media from pass to viewport
+    function updateViewport(pass) {
+        const media = pass.querySelector('img, video');
+        if (!media) return;
 
-    function updateCarousel() {
-        const isMobile = cachedWindowWidth <= 900;
-        if (isMobile) {
-            items.forEach((item) => { item.style.transform = ''; item.style.opacity = ''; item.style.zIndex = ''; item.style.pointerEvents = ''; });
-            return;
+        // Add loading state
+        viewport.classList.add('loading');
+
+        // Clear current viewport
+        viewport.innerHTML = '';
+
+        // Clone the media element
+        const clone = media.cloneNode(true);
+
+        // For videos, set up proper attributes
+        if (clone.tagName === 'VIDEO') {
+            clone.muted = pass.dataset.hasAudio !== 'true';
+            clone.loop = true;
+            clone.playsInline = true;
+
+            // Load the video if it has data-src
+            if (clone.dataset.src && !clone.src) {
+                var mp4Src = clone.dataset.src;
+                var webmSrc = mp4Src.replace('.mp4', '.webm');
+                var canPlayWebm = clone.canPlayType('video/webm; codecs="vp9"');
+                clone.src = (canPlayWebm === 'probably' || canPlayWebm === 'maybe') ? webmSrc : mp4Src;
+            }
+
+            clone.addEventListener('loadeddata', function() {
+                viewport.classList.remove('loading');
+            });
+
+            clone.addEventListener('canplay', function() {
+                clone.play().catch(function() {});
+            });
+
+            activeVideo = clone;
+        } else {
+            clone.addEventListener('load', function() {
+                viewport.classList.remove('loading');
+            });
+            activeVideo = null;
         }
 
-        items.forEach((item, i) => {
-            let offset = i - currentIndex;
-            if (offset > totalItems / 2) offset -= totalItems;
-            if (offset < -totalItems / 2) offset += totalItems;
-            const absOffset = Math.abs(offset);
+        viewport.appendChild(clone);
 
-            if (absOffset > Math.floor(visibleItems / 2)) {
-                item.style.opacity = '0';
-                item.style.pointerEvents = 'none';
-                item.style.transform = `translate(-50%, -50%) translateX(${offset * 300}px) translateZ(-500px) scale(0.5)`;
-                return;
-            }
-
-            const angle = offset * 25;
-            const translateX = offset * 180;
-            const translateZ = -absOffset * 150;
-            const scale = 1 - absOffset * 0.15;
-            const opacity = 1 - absOffset * 0.3;
-
-            item.style.transform = `translate(-50%, -50%) translateX(${translateX}px) translateZ(${translateZ}px) rotateY(${-angle}deg) scale(${scale})`;
-            item.style.opacity = opacity;
-            item.style.zIndex = visibleItems - absOffset;
-            item.style.pointerEvents = offset === 0 ? 'auto' : 'none';
-            item.classList.toggle('active', offset === 0);
-        });
-
-        const activeItem = items[currentIndex];
-        if (titleEl) titleEl.textContent = activeItem.dataset.title;
-        if (linkEl) { linkEl.href = activeItem.dataset.url; linkEl.style.display = activeItem.dataset.url ? '' : 'none'; }
-        dots.forEach((dot, i) => dot.classList.toggle('active', i === currentIndex));
-
-        // Handle video playback - pause non-active videos, play active ones
-        items.forEach((item, i) => {
-            const video = item.querySelector('video');
-            if (!video) return;
-            if (i === currentIndex) {
-                // Unmute videos with audio when they become active
-                if (item.dataset.hasAudio === 'true') {
-                    video.muted = false;
-                }
-                video.play().catch(() => {});
-            } else {
-                video.pause();
-                // Re-mute audio videos when not active
-                if (item.dataset.hasAudio === 'true') {
-                    video.muted = true;
-                }
-            }
-        });
+        // Remove loading state after timeout as fallback
+        setTimeout(function() {
+            viewport.classList.remove('loading');
+        }, 1000);
     }
 
-    function goToSlide(index) {
+    // Update the active pass and viewport
+    function goToPass(index) {
         if (index < 0) index = totalItems - 1;
         if (index >= totalItems) index = 0;
+
+        // Pause previous video
+        if (activeVideo) {
+            activeVideo.pause();
+        }
+
         currentIndex = index;
-        updateCarousel();
+        const pass = passes[currentIndex];
+
+        // Update active states
+        passes.forEach(function(p, i) {
+            p.classList.toggle('active', i === currentIndex);
+        });
+
+        // Update viewport
+        updateViewport(pass);
+
+        // Update info
+        if (titleEl) titleEl.textContent = pass.dataset.title || '';
+        if (tagEl) tagEl.textContent = pass.dataset.tag || '';
+        if (linkEl) {
+            linkEl.href = pass.dataset.url || '';
+            linkEl.style.display = pass.dataset.url ? '' : 'none';
+        }
+
+        // Scroll to center the active pass
+        scrollToPass(currentIndex);
     }
 
-    if (prevBtn) prevBtn.addEventListener('click', () => goToSlide(currentIndex - 1));
-    if (nextBtn) nextBtn.addEventListener('click', () => goToSlide(currentIndex + 1));
+    // Scroll the strip to center the active pass
+    function scrollToPass(index) {
+        if (!track) return;
+        var pass = passes[index];
+        if (!pass) return;
 
-    items.forEach((item, i) => {
-        item.addEventListener('click', () => {
+        var trackRect = track.getBoundingClientRect();
+        var passRect = pass.getBoundingClientRect();
+        var scrollLeft = track.scrollLeft;
+        var passCenter = passRect.left - trackRect.left + scrollLeft + passRect.width / 2;
+        var targetScroll = passCenter - trackRect.width / 2;
+
+        track.scrollTo({
+            left: targetScroll,
+            behavior: 'smooth'
+        });
+    }
+
+    // Navigation
+    if (prevBtn) prevBtn.addEventListener('click', function() { goToPass(currentIndex - 1); });
+    if (nextBtn) nextBtn.addEventListener('click', function() { goToPass(currentIndex + 1); });
+
+    // Click on pass nodes
+    passes.forEach(function(pass, i) {
+        pass.addEventListener('click', function() {
             if (i === currentIndex) {
-                // Check if this item has audio that can be toggled
-                if (item.dataset.hasAudio === 'true') {
-                    const video = item.querySelector('video');
-                    if (video) {
-                        video.muted = !video.muted;
-                        if (!video.muted) video.play().catch(() => {});
-                    }
-                } else if (item.dataset.url) {
-                    window.open(item.dataset.url, '_blank');
+                // If clicking active pass, open URL or toggle audio
+                if (pass.dataset.hasAudio === 'true' && activeVideo) {
+                    activeVideo.muted = !activeVideo.muted;
+                    if (!activeVideo.muted) activeVideo.play().catch(function() {});
+                } else if (pass.dataset.url) {
+                    window.open(pass.dataset.url, '_blank');
                 }
             } else {
-                goToSlide(i);
+                goToPass(i);
             }
         });
     });
 
-    document.addEventListener('keydown', (e) => {
-        const portfolioPanel = document.getElementById('panel-portfolio');
-        if (!portfolioPanel || !portfolioPanel.classList.contains('active')) return;
-        if (e.key === 'ArrowLeft') goToSlide(currentIndex - 1);
-        if (e.key === 'ArrowRight') goToSlide(currentIndex + 1);
+    // Click on main viewport to open URL
+    viewport.addEventListener('click', function() {
+        var pass = passes[currentIndex];
+        if (pass && pass.dataset.url) {
+            window.open(pass.dataset.url, '_blank');
+        }
     });
 
-    let touchStartX = 0;
-    if (scene) {
-        scene.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
-        scene.addEventListener('touchend', (e) => {
-            const diff = touchStartX - e.changedTouches[0].screenX;
-            if (Math.abs(diff) > 50) goToSlide(currentIndex + (diff > 0 ? 1 : -1));
-        }, { passive: true });
-        let wheelThrottled = false;
-        scene.addEventListener('wheel', (e) => {
-            e.preventDefault();
+    // Keyboard navigation
+    document.addEventListener('keydown', function(e) {
+        var portfolioPanel = document.getElementById('panel-portfolio');
+        if (!portfolioPanel || !portfolioPanel.classList.contains('active')) return;
+
+        switch (e.key) {
+            case 'ArrowLeft':
+                goToPass(currentIndex - 1);
+                e.preventDefault();
+                break;
+            case 'ArrowRight':
+                goToPass(currentIndex + 1);
+                e.preventDefault();
+                break;
+            case 'Enter':
+                var pass = passes[currentIndex];
+                if (pass && pass.dataset.url) {
+                    window.open(pass.dataset.url, '_blank');
+                }
+                e.preventDefault();
+                break;
+            case ' ':
+                if (activeVideo) {
+                    if (activeVideo.paused) {
+                        activeVideo.play().catch(function() {});
+                    } else {
+                        activeVideo.pause();
+                    }
+                    e.preventDefault();
+                }
+                break;
+        }
+    });
+
+    // Touch swipe on viewport
+    var touchStartX = 0;
+    viewport.addEventListener('touchstart', function(e) {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+
+    viewport.addEventListener('touchend', function(e) {
+        var diff = touchStartX - e.changedTouches[0].screenX;
+        if (Math.abs(diff) > 50) {
+            goToPass(currentIndex + (diff > 0 ? 1 : -1));
+        }
+    }, { passive: true });
+
+    // Mouse wheel on strip
+    if (track) {
+        var wheelThrottled = false;
+        track.addEventListener('wheel', function(e) {
             if (wheelThrottled) return;
             wheelThrottled = true;
-            goToSlide(currentIndex + (e.deltaY > 0 ? 1 : -1));
-            setTimeout(() => { wheelThrottled = false; }, 400);
+
+            if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+                // Horizontal scroll - let it scroll naturally
+            } else {
+                // Vertical scroll - navigate
+                e.preventDefault();
+                goToPass(currentIndex + (e.deltaY > 0 ? 1 : -1));
+            }
+
+            setTimeout(function() { wheelThrottled = false; }, 300);
         }, { passive: false });
     }
 
-    let resizeTimeout;
-    window.addEventListener('resize', () => { clearTimeout(resizeTimeout); resizeTimeout = setTimeout(updateCarousel, 100); });
-    updateCarousel();
+    // Initialize first pass
+    goToPass(0);
 })();
 
 // ============================================

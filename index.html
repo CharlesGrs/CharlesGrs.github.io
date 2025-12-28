@@ -130,7 +130,7 @@
     </div>
 
     <!-- Version Badge -->
-    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.42</span></div>
+    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.43</span></div>
 
     <div class="container" id="main-content" role="main">
         <!-- Tabbed Carousel -->
@@ -1338,76 +1338,185 @@
 
                 <!-- Portfolio Panel - 3D Curved Carousel -->
                 <div class="carousel-panel portfolio-panel" id="panel-portfolio" role="tabpanel" aria-labelledby="tab-portfolio">
-                    <div class="portfolio-carousel">
-                        <div class="portfolio-header">
-                            <div class="portfolio-title" id="portfolio-title">Blumhouse Enhanced Cinema - Nexus Studio</div>
-                            <a href="" target="_blank" class="portfolio-link" id="portfolio-link" style="display: none;">View on ArtStation</a>
-                        </div>
-                        <div class="portfolio-scene">
-                            <button class="portfolio-nav prev" aria-label="Previous">
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                            </button>
-                            <button class="portfolio-nav next" aria-label="Next">
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                            </button>
-                            <div class="portfolio-track" id="portfolio-track">
-                                <div class="portfolio-item" data-index="0" data-title="Blumhouse Enhanced Cinema - Nexus Studio" data-url="">
-                                    <img src="images/02-blumhouse-1.webp" alt="Blumhouse Enhanced Cinema - Nexus Studio" loading="lazy">
+                    <!-- GPU Pipeline Portfolio Visualization -->
+                    <div class="render-pipeline">
+                        <!-- Scanline overlay for CRT effect -->
+                        <div class="pipeline-scanlines"></div>
+
+                        <!-- Main output buffer - Featured project -->
+                        <div class="output-buffer">
+                            <div class="buffer-frame">
+                                <div class="frame-corner tl"></div>
+                                <div class="frame-corner tr"></div>
+                                <div class="frame-corner bl"></div>
+                                <div class="frame-corner br"></div>
+                                <div class="buffer-header">
+                                    <span class="buffer-label">OUTPUT_BUFFER</span>
+                                    <span class="buffer-resolution">1920x1080</span>
+                                    <span class="buffer-format">RGBA16F</span>
                                 </div>
-                                <div class="portfolio-item" data-index="1" data-title="Blumhouse Enhanced Cinema - Nexus Studio" data-url="">
-                                    <img src="images/03-blumhouse-2.webp" alt="Blumhouse Enhanced Cinema - Nexus Studio" loading="lazy">
+                                <div class="buffer-viewport" id="main-viewport">
+                                    <!-- Active project renders here -->
                                 </div>
-                                <div class="portfolio-item" data-index="2" data-title="Cave 360° Scene Composition" data-url="https://www.artstation.com/artwork/V216yN">
-                                    <img src="images/04-cave-360.jpg" alt="Cave 360° Scene Composition" loading="lazy">
-                                </div>
-                                <div class="portfolio-item" data-index="3" data-title="Audio Reactive Particle System" data-url="" data-has-audio="true">
-                                    <video data-src="videos/audio-reactive.mp4" muted loop playsinline preload="none"></video>
-                                </div>
-                                <div class="portfolio-item" data-index="4" data-title="Maelstrom - Unreal Engine" data-url="https://www.artstation.com/artwork/WXKB2E">
-                                    <video data-src="videos/maelstrom.mp4" poster="images/06-maelstrom-poster.jpg" muted loop playsinline preload="none"></video>
-                                </div>
-                                <div class="portfolio-item" data-index="5" data-title="Cartoon Ocean Shader & Breakdown" data-url="https://www.artstation.com/artwork/x3AvG2">
-                                    <video data-src="videos/cartoon-ocean.mp4" poster="images/07-cartoon-ocean-poster.jpg" muted loop playsinline preload="none"></video>
-                                </div>
-                                <div class="portfolio-item" data-index="6" data-title="Raytraced Mountain Scene in a Single Shader" data-url="https://www.artstation.com/artwork/EzqE08">
-                                    <img src="images/08-raytraced-mountain.jpg" alt="Raytraced Mountain Scene" loading="lazy">
-                                </div>
-                                <div class="portfolio-item" data-index="7" data-title="SABDA - Projection Mapping Immersive 360° Scenes" data-url="https://www.artstation.com/artwork/6LnRor">
-                                    <img src="images/09-sabda-1.jpg" alt="SABDA Projection Mapping" loading="lazy">
-                                </div>
-                                <div class="portfolio-item" data-index="8" data-title="SABDA - Projection Mapping Immersive 360° Scenes" data-url="https://www.artstation.com/artwork/6LnRor">
-                                    <img src="images/10-sabda-2.jpg" alt="SABDA Projection Mapping" loading="lazy">
-                                </div>
-                                <div class="portfolio-item" data-index="9" data-title="SABDA - Projection Mapping Immersive 360° Scenes" data-url="https://www.artstation.com/artwork/6LnRor">
-                                    <img src="images/11-sabda-3.jpg" alt="SABDA Projection Mapping" loading="lazy">
-                                </div>
-                                <div class="portfolio-item" data-index="10" data-title="Alien Egg Shader" data-url="https://www.artstation.com/artwork/K36Por">
-                                    <video data-src="videos/alien-egg.mp4" poster="images/12-alien-egg-poster.jpg" muted loop playsinline preload="none"></video>
-                                </div>
-                                <div class="portfolio-item" data-index="11" data-title="Volumetric Fog | Cloud With Rain & Thunder" data-url="https://www.artstation.com/artwork/V216JZ">
-                                    <img src="images/05-volumetric-fog.jpg" alt="Volumetric Fog | Cloud With Rain & Thunder" loading="lazy">
-                                </div>
-                                <div class="portfolio-item" data-index="12" data-title="Sandbox Stylized Cloud & God Rays Shader" data-url="https://www.artstation.com/artwork/nJwNLO">
-                                    <img src="images/13-sandbox-cloud.jpg" alt="Sandbox Stylized Cloud Shaders" loading="lazy">
-                                </div>
-                                <div class="portfolio-item" data-index="13" data-title="Oily Ocean Surface Shader" data-url="https://www.artstation.com/artwork/gRgVEK">
-                                    <video data-src="videos/oily-ocean.mp4" poster="images/14-oily-ocean-poster.jpg" muted loop playsinline preload="none"></video>
-                                </div>
-                                <div class="portfolio-item" data-index="14" data-title="Baked Volumetric Colored Fog" data-url="https://www.artstation.com/artwork/JraPGz">
-                                    <img src="images/15-baked-volumetric-fog.jpg" alt="Baked Volumetric Colored Fog" loading="lazy">
-                                </div>
-                                <div class="portfolio-item" data-index="15" data-title="Single Draw Call Grass Shader" data-url="https://www.artstation.com/artwork/V2oaP4">
-                                    <video data-src="videos/grass-shader.mp4" poster="images/16-grass-shader.jpg" muted loop playsinline preload="none"></video>
-                                </div>
-                                <div class="portfolio-item" data-index="16" data-title="CPU Multi-Threaded Burst Marching Cube Terrain" data-url="https://www.artstation.com/artwork/Ovqgby">
-                                    <video data-src="videos/marching-cube.mp4" poster="images/17-marching-cube-poster.jpg" muted loop playsinline preload="none"></video>
-                                </div>
-                                <div class="portfolio-item" data-index="17" data-title="Orthographic Water Surface" data-url="https://www.artstation.com/artwork/wrAvRL">
-                                    <video data-src="videos/orthographic-water.mp4" poster="images/18-orthographic-water.jpg" muted loop playsinline preload="none"></video>
+                                <div class="buffer-info">
+                                    <div class="project-title" id="pipeline-title">Blumhouse Enhanced Cinema</div>
+                                    <div class="project-meta">
+                                        <span class="meta-tag" id="project-tag">VR</span>
+                                        <a href="" target="_blank" class="meta-link" id="project-link">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                            ArtStation
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="portfolio-dots" id="portfolio-dots"></div>
+
+                        <!-- Render pass thumbnails - Pipeline nodes -->
+                        <div class="pipeline-strip">
+                            <div class="strip-track" id="pipeline-track">
+                                <div class="render-pass" data-index="0" data-title="Blumhouse Enhanced Cinema" data-tag="VR" data-url="">
+                                    <div class="pass-connector"></div>
+                                    <div class="pass-node">
+                                        <img src="images/02-blumhouse-1.webp" alt="Blumhouse Enhanced Cinema" loading="lazy">
+                                        <div class="pass-index">00</div>
+                                    </div>
+                                </div>
+                                <div class="render-pass" data-index="1" data-title="Blumhouse Enhanced Cinema" data-tag="VR" data-url="">
+                                    <div class="pass-connector"></div>
+                                    <div class="pass-node">
+                                        <img src="images/03-blumhouse-2.webp" alt="Blumhouse Enhanced Cinema" loading="lazy">
+                                        <div class="pass-index">01</div>
+                                    </div>
+                                </div>
+                                <div class="render-pass" data-index="2" data-title="Cave 360° Scene Composition" data-tag="360°" data-url="https://www.artstation.com/artwork/V216yN">
+                                    <div class="pass-connector"></div>
+                                    <div class="pass-node">
+                                        <img src="images/04-cave-360.jpg" alt="Cave 360° Scene Composition" loading="lazy">
+                                        <div class="pass-index">02</div>
+                                    </div>
+                                </div>
+                                <div class="render-pass" data-index="3" data-title="Audio Reactive Particle System" data-tag="VFX" data-url="" data-has-audio="true">
+                                    <div class="pass-connector"></div>
+                                    <div class="pass-node">
+                                        <video data-src="videos/audio-reactive.mp4" muted loop playsinline preload="none" disablepictureinpicture></video>
+                                        <div class="pass-index">03</div>
+                                        <div class="audio-indicator"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg></div>
+                                    </div>
+                                </div>
+                                <div class="render-pass" data-index="4" data-title="Maelstrom - Unreal Engine" data-tag="UE5" data-url="https://www.artstation.com/artwork/WXKB2E">
+                                    <div class="pass-connector"></div>
+                                    <div class="pass-node">
+                                        <video data-src="videos/maelstrom.mp4" poster="images/06-maelstrom-poster.jpg" muted loop playsinline preload="none" disablepictureinpicture></video>
+                                        <div class="pass-index">04</div>
+                                    </div>
+                                </div>
+                                <div class="render-pass" data-index="5" data-title="Cartoon Ocean Shader" data-tag="SHADER" data-url="https://www.artstation.com/artwork/x3AvG2">
+                                    <div class="pass-connector"></div>
+                                    <div class="pass-node">
+                                        <video data-src="videos/cartoon-ocean.mp4" poster="images/07-cartoon-ocean-poster.jpg" muted loop playsinline preload="none" disablepictureinpicture></video>
+                                        <div class="pass-index">05</div>
+                                    </div>
+                                </div>
+                                <div class="render-pass" data-index="6" data-title="Raytraced Mountain Scene" data-tag="RAYTRACING" data-url="https://www.artstation.com/artwork/EzqE08">
+                                    <div class="pass-connector"></div>
+                                    <div class="pass-node">
+                                        <img src="images/08-raytraced-mountain.jpg" alt="Raytraced Mountain Scene" loading="lazy">
+                                        <div class="pass-index">06</div>
+                                    </div>
+                                </div>
+                                <div class="render-pass" data-index="7" data-title="SABDA - Projection Mapping" data-tag="INSTALLATION" data-url="https://www.artstation.com/artwork/6LnRor">
+                                    <div class="pass-connector"></div>
+                                    <div class="pass-node">
+                                        <img src="images/09-sabda-1.jpg" alt="SABDA Projection Mapping" loading="lazy">
+                                        <div class="pass-index">07</div>
+                                    </div>
+                                </div>
+                                <div class="render-pass" data-index="8" data-title="SABDA - Projection Mapping" data-tag="INSTALLATION" data-url="https://www.artstation.com/artwork/6LnRor">
+                                    <div class="pass-connector"></div>
+                                    <div class="pass-node">
+                                        <img src="images/10-sabda-2.jpg" alt="SABDA Projection Mapping" loading="lazy">
+                                        <div class="pass-index">08</div>
+                                    </div>
+                                </div>
+                                <div class="render-pass" data-index="9" data-title="SABDA - Projection Mapping" data-tag="INSTALLATION" data-url="https://www.artstation.com/artwork/6LnRor">
+                                    <div class="pass-connector"></div>
+                                    <div class="pass-node">
+                                        <img src="images/11-sabda-3.jpg" alt="SABDA Projection Mapping" loading="lazy">
+                                        <div class="pass-index">09</div>
+                                    </div>
+                                </div>
+                                <div class="render-pass" data-index="10" data-title="Alien Egg Shader" data-tag="SHADER" data-url="https://www.artstation.com/artwork/K36Por">
+                                    <div class="pass-connector"></div>
+                                    <div class="pass-node">
+                                        <video data-src="videos/alien-egg.mp4" poster="images/12-alien-egg-poster.jpg" muted loop playsinline preload="none" disablepictureinpicture></video>
+                                        <div class="pass-index">10</div>
+                                    </div>
+                                </div>
+                                <div class="render-pass" data-index="11" data-title="Volumetric Fog & Thunder" data-tag="VOLUMETRIC" data-url="https://www.artstation.com/artwork/V216JZ">
+                                    <div class="pass-connector"></div>
+                                    <div class="pass-node">
+                                        <img src="images/05-volumetric-fog.jpg" alt="Volumetric Fog" loading="lazy">
+                                        <div class="pass-index">11</div>
+                                    </div>
+                                </div>
+                                <div class="render-pass" data-index="12" data-title="Stylized Cloud & God Rays" data-tag="SHADER" data-url="https://www.artstation.com/artwork/nJwNLO">
+                                    <div class="pass-connector"></div>
+                                    <div class="pass-node">
+                                        <img src="images/13-sandbox-cloud.jpg" alt="Sandbox Stylized Cloud" loading="lazy">
+                                        <div class="pass-index">12</div>
+                                    </div>
+                                </div>
+                                <div class="render-pass" data-index="13" data-title="Oily Ocean Surface" data-tag="SHADER" data-url="https://www.artstation.com/artwork/gRgVEK">
+                                    <div class="pass-connector"></div>
+                                    <div class="pass-node">
+                                        <video data-src="videos/oily-ocean.mp4" poster="images/14-oily-ocean-poster.jpg" muted loop playsinline preload="none" disablepictureinpicture></video>
+                                        <div class="pass-index">13</div>
+                                    </div>
+                                </div>
+                                <div class="render-pass" data-index="14" data-title="Baked Volumetric Fog" data-tag="VOLUMETRIC" data-url="https://www.artstation.com/artwork/JraPGz">
+                                    <div class="pass-connector"></div>
+                                    <div class="pass-node">
+                                        <img src="images/15-baked-volumetric-fog.jpg" alt="Baked Volumetric Fog" loading="lazy">
+                                        <div class="pass-index">14</div>
+                                    </div>
+                                </div>
+                                <div class="render-pass" data-index="15" data-title="Single Draw Call Grass" data-tag="GPU" data-url="https://www.artstation.com/artwork/V2oaP4">
+                                    <div class="pass-connector"></div>
+                                    <div class="pass-node">
+                                        <video data-src="videos/grass-shader.mp4" poster="images/16-grass-shader.jpg" muted loop playsinline preload="none" disablepictureinpicture></video>
+                                        <div class="pass-index">15</div>
+                                    </div>
+                                </div>
+                                <div class="render-pass" data-index="16" data-title="Marching Cube Terrain" data-tag="COMPUTE" data-url="https://www.artstation.com/artwork/Ovqgby">
+                                    <div class="pass-connector"></div>
+                                    <div class="pass-node">
+                                        <video data-src="videos/marching-cube.mp4" poster="images/17-marching-cube-poster.jpg" muted loop playsinline preload="none" disablepictureinpicture></video>
+                                        <div class="pass-index">16</div>
+                                    </div>
+                                </div>
+                                <div class="render-pass" data-index="17" data-title="Orthographic Water" data-tag="SHADER" data-url="https://www.artstation.com/artwork/wrAvRL">
+                                    <div class="pass-connector"></div>
+                                    <div class="pass-node">
+                                        <video data-src="videos/orthographic-water.mp4" poster="images/18-orthographic-water.jpg" muted loop playsinline preload="none" disablepictureinpicture></video>
+                                        <div class="pass-index">17</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Navigation arrows -->
+                            <button class="strip-nav prev" aria-label="Previous">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                            </button>
+                            <button class="strip-nav next" aria-label="Next">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+                        </div>
+
+                        <!-- Keyboard shortcuts hint -->
+                        <div class="pipeline-hints">
+                            <span class="hint-key">←→</span> Navigate
+                            <span class="hint-key">Enter</span> Open
+                            <span class="hint-key">Space</span> Play/Pause
+                        </div>
                     </div>
                 </div>
 

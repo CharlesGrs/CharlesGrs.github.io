@@ -3690,29 +3690,10 @@ header.collapsed .cv-download svg {
     background: linear-gradient(135deg, rgba(10, 15, 20, 0.95) 0%, rgba(15, 22, 30, 0.95) 100%);
     border: none;
     border-radius: 12px;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden;
     height: 100%;
+    min-height: 0;
     position: relative;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(232, 185, 35, 0.3) transparent;
-}
-
-.about-panel::-webkit-scrollbar {
-    width: 6px;
-}
-
-.about-panel::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.about-panel::-webkit-scrollbar-thumb {
-    background: rgba(232, 185, 35, 0.3);
-    border-radius: 3px;
-}
-
-.about-panel::-webkit-scrollbar-thumb:hover {
-    background: rgba(232, 185, 35, 0.5);
 }
 
 .about-panel.active {
@@ -3769,13 +3750,14 @@ header.collapsed .cv-download svg {
     z-index: 1;
     display: grid;
     grid-template-columns: 1fr 280px;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto 1fr;
     gap: 1rem;
     padding: 1.5rem;
-    min-height: 100%;
+    height: 100%;
     max-width: 1200px;
     margin: 0 auto;
-    overflow: hidden;
+    overflow: visible;
+    box-sizing: border-box;
 }
 
 /* ======== HERO SECTION ======== */
@@ -3785,7 +3767,7 @@ header.collapsed .cv-download svg {
     flex-direction: column;
     gap: 1rem;
     min-width: 0; /* Prevent flex item from overflowing grid */
-    overflow: hidden;
+    overflow: visible;
 }
 
 .hero-status-bar {
@@ -4303,9 +4285,8 @@ header.collapsed .cv-download svg {
 }
 
 .terminal-output {
-    padding: 1rem 1.25rem;
-    min-height: 180px;
-    overflow: hidden;
+    padding: 0.75rem 1rem;
+    overflow: visible;
 }
 
 .terminal-output .typewriter-text {
@@ -4316,11 +4297,18 @@ header.collapsed .cv-download svg {
     word-wrap: break-word;
     overflow-wrap: break-word;
     position: relative;
+    white-space: normal;
+    display: block;
+    width: 100%;
+    margin: 0;
 }
 
 /* Invisible placeholder to reserve space for full text */
 .terminal-output .typewriter-text .typewriter-placeholder {
     visibility: hidden;
+    display: block;
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
 
 /* Typed content overlays the placeholder */
@@ -4359,7 +4347,7 @@ header.collapsed .cv-download svg {
 
 /* Terminal prompt line after typewriter */
 .terminal-prompt-line {
-    margin-top: 1rem;
+    margin-top: 0;
     font-size: 0.85rem;
     line-height: 1.7;
     font-weight: 300;
@@ -4660,6 +4648,8 @@ header.collapsed .cv-download svg {
     padding: 1rem;
     opacity: 0;
     animation: fadeSlideUp 0.6s ease 1.2s forwards;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .dependencies-header {
@@ -4700,6 +4690,9 @@ header.collapsed .cv-download svg {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 0.5rem;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .dep-card {
@@ -4779,7 +4772,7 @@ header.collapsed .cv-download svg {
 
 .dep-name {
     font-family: 'Outfit', sans-serif;
-    font-size: 0.75rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--text-primary);
     transition: color 0.2s ease;
@@ -4831,6 +4824,148 @@ header.collapsed .cv-download svg {
 
     .dep-name {
         font-size: 0.6rem;
+    }
+}
+
+/* ======== HD SCREENS RESPONSIVE (1200px - 1920px) ======== */
+@media (min-width: 1201px) and (max-width: 1920px) {
+    .gpu-inspector {
+        max-width: 100%;
+        grid-template-columns: 1fr 260px;
+        grid-template-rows: auto auto 1fr;
+        gap: 0.75rem;
+        padding: 1rem 1.25rem;
+        height: 100%;
+        box-sizing: border-box;
+    }
+
+    .inspector-hero {
+        overflow: visible;
+        gap: 0.6rem;
+    }
+
+    .inspector-terminal {
+        width: 100%;
+    }
+
+    .terminal-output {
+        min-height: auto;
+        padding: 0.75rem 1rem;
+        overflow: visible;
+    }
+
+    .terminal-output .typewriter-text {
+        font-size: 0.875rem;
+        line-height: 1.65;
+    }
+
+    .hero-tags {
+        gap: 0.4rem;
+        margin-top: 0.25rem;
+    }
+
+    .shader-tag {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.65rem;
+    }
+
+    .title-word {
+        font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+    }
+
+    .inspector-metrics,
+    .inspector-properties {
+        padding: 0.6rem;
+    }
+
+    .inspector-dependencies {
+        padding: 0.6rem;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .metrics-grid {
+        gap: 0.4rem;
+    }
+
+    .metric-cell {
+        padding: 0.4rem;
+    }
+
+    .metric-bar {
+        height: 3px;
+    }
+
+    .value-number {
+        font-size: 1.4rem;
+    }
+
+    .metric-name {
+        font-size: 0.55rem;
+    }
+
+    .properties-list {
+        gap: 0.4rem;
+    }
+
+    .property-item {
+        padding: 0.4rem 0.5rem;
+    }
+
+    .prop-key {
+        font-size: 0.6rem;
+    }
+
+    .gauge-value {
+        font-size: 0.55rem;
+    }
+
+    .dependencies-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.35rem;
+    }
+
+    .dep-card {
+        padding: 0.4rem 0.5rem;
+    }
+
+    .dep-name {
+        font-size: 0.85rem;
+    }
+
+    .dep-type {
+        font-size: 0.5rem;
+    }
+
+    .dependencies-header,
+    .metrics-header,
+    .properties-header {
+        padding-bottom: 0.4rem;
+        margin-bottom: 0.4rem;
+    }
+}
+
+/* ======== FULL HD+ SCREENS (1920px+) ======== */
+@media (min-width: 1921px) {
+    .gpu-inspector {
+        max-width: 1600px;
+        grid-template-columns: 1fr 320px;
+        gap: 1.5rem;
+        padding: 2rem;
+    }
+
+    .terminal-output {
+        min-height: 220px;
+        padding: 1.5rem 1.75rem;
+    }
+
+    .terminal-output .typewriter-text {
+        font-size: 0.95rem;
+        line-height: 1.85;
+    }
+
+    .title-word {
+        font-size: clamp(2.5rem, 4vw, 4rem);
     }
 }
 
@@ -5156,13 +5291,17 @@ header.collapsed .cv-download svg {
     color: var(--accent-gold);
 }
 
-/* Portfolio Panel */
+/* ============================================
+   GPU PIPELINE PORTFOLIO VISUALIZATION
+   A render-pipeline inspired portfolio layout
+   ============================================ */
+
 .portfolio-panel {
-    padding: 0.5rem 1rem;
+    padding: 0;
     background: transparent;
     border: none;
-    border-radius: 16px;
     overflow: hidden;
+    position: relative;
 }
 
 .portfolio-panel.active {
@@ -5170,179 +5309,444 @@ header.collapsed .cv-download svg {
     flex-direction: column;
 }
 
-.portfolio-carousel {
+/* Main Pipeline Container */
+.render-pipeline {
     flex: 1;
     display: flex;
     flex-direction: column;
     min-height: 0;
-    overflow: hidden;
-    padding: 0;
-    animation: portfolioFadeIn 0.8s ease-out;
+    position: relative;
+    padding: 0.25rem 0.5rem 0.5rem;
+    animation: pipelineFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes portfolioFadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+@keyframes pipelineFadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.portfolio-header {
-    text-align: center;
-    margin-bottom: 0;
-    flex-shrink: 0;
-}
-
-.portfolio-title {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--accent-gold);
-    margin-bottom: 0;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-}
-
-.portfolio-link {
+/* Scanline Overlay - disabled */
+.pipeline-scanlines {
     display: none;
 }
 
-.portfolio-scene {
+/* ============================================
+   OUTPUT BUFFER - Main Featured Project
+   ============================================ */
+.output-buffer {
     flex: 1;
-    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    perspective: 1200px;
-    overflow: visible;
+    min-height: 0;
+    padding: 0 1rem;
 }
 
-.portfolio-track {
+.buffer-frame {
     position: relative;
     width: 100%;
-    height: 100%;
-    transform-style: preserve-3d;
-    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.portfolio-item {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 75%;
-    max-width: 800px;
-    aspect-ratio: 16/10;
-    transform-style: preserve-3d;
-    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: pointer;
-    border-radius: 10px;
+    max-width: 1100px;
+    aspect-ratio: 16/9;
+    max-height: 100%;
+    background: #050809;
+    border: 1px solid rgba(232, 185, 35, 0.3);
+    border-radius: 4px;
     overflow: hidden;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.5),
+        0 4px 30px rgba(0, 0, 0, 0.4),
+        inset 0 0 60px rgba(0, 0, 0, 0.3),
+        0 0 100px rgba(232, 185, 35, 0.05);
 }
 
-.portfolio-item img,
-.portfolio-item video {
+/* Corner brackets - technical frame look */
+.frame-corner {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    z-index: 10;
+}
+.frame-corner::before,
+.frame-corner::after {
+    content: '';
+    position: absolute;
+    background: var(--accent-gold);
+}
+.frame-corner.tl { top: 8px; left: 8px; }
+.frame-corner.tl::before { width: 12px; height: 2px; top: 0; left: 0; }
+.frame-corner.tl::after { width: 2px; height: 12px; top: 0; left: 0; }
+
+.frame-corner.tr { top: 8px; right: 8px; }
+.frame-corner.tr::before { width: 12px; height: 2px; top: 0; right: 0; }
+.frame-corner.tr::after { width: 2px; height: 12px; top: 0; right: 0; }
+
+.frame-corner.bl { bottom: 8px; left: 8px; }
+.frame-corner.bl::before { width: 12px; height: 2px; bottom: 0; left: 0; }
+.frame-corner.bl::after { width: 2px; height: 12px; bottom: 0; left: 0; }
+
+.frame-corner.br { bottom: 8px; right: 8px; }
+.frame-corner.br::before { width: 12px; height: 2px; bottom: 0; right: 0; }
+.frame-corner.br::after { width: 2px; height: 12px; bottom: 0; right: 0; }
+
+/* Buffer header - technical labels */
+.buffer-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    z-index: 5;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.buffer-label {
+    color: var(--accent-gold);
+    font-weight: 600;
+}
+
+.buffer-resolution,
+.buffer-format {
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+.buffer-resolution::before {
+    content: '//';
+    margin-right: 0.3rem;
+    opacity: 0.5;
+}
+
+/* Main viewport for media */
+.buffer-viewport {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.buffer-viewport img,
+.buffer-viewport video {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: 10px;
-    transition: transform 0.3s ease;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
 }
 
-.portfolio-item.active {
-    z-index: 10;
-    cursor: pointer;
-}
-
-.portfolio-item.active:hover img,
-.portfolio-item.active:hover video {
+.buffer-viewport:hover img,
+.buffer-viewport:hover video {
     transform: scale(1.02);
 }
 
-.portfolio-item::after {
-    content: '';
+/* Project info overlay */
+.buffer-info {
     position: absolute;
-    inset: 0;
-    background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.4) 100%);
-    border-radius: 10px;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.3s ease;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 2rem 1.5rem 1rem;
+    background: linear-gradient(to top, rgba(5, 8, 9, 0.95) 0%, rgba(5, 8, 9, 0.7) 60%, transparent 100%);
+    z-index: 5;
 }
 
-.portfolio-item:not(.active)::after {
-    opacity: 1;
-    background: rgba(0, 0, 0, 0.4);
+.project-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.02em;
 }
 
-.portfolio-nav {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 44px;
-    height: 44px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    background: rgba(21, 29, 38, 0.7);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border-radius: 50%;
+.project-meta {
     display: flex;
     align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    color: var(--text-secondary);
-    z-index: 20;
+    gap: 1rem;
 }
 
-.portfolio-nav:hover {
-    border-color: var(--accent-gold);
-    color: var(--accent-gold);
+.meta-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.6rem;
     background: rgba(232, 185, 35, 0.15);
-    transform: translateY(-50%) scale(1.1);
+    border: 1px solid rgba(232, 185, 35, 0.3);
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: var(--accent-gold);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
 }
 
-.portfolio-nav.prev {
-    left: 1rem;
+.meta-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    text-decoration: none;
+    transition: color 0.2s ease;
 }
 
-.portfolio-nav.next {
-    right: 1rem;
+.meta-link:hover {
+    color: var(--accent-teal);
 }
 
-.portfolio-nav svg {
-    width: 20px;
-    height: 20px;
+.meta-link svg {
+    width: 14px;
+    height: 14px;
 }
 
-.portfolio-dots {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
+/* ============================================
+   PIPELINE STRIP - Render Pass Thumbnails
+   ============================================ */
+.pipeline-strip {
+    position: relative;
+    height: 85px;
     margin-top: 0.5rem;
     flex-shrink: 0;
 }
 
-.portfolio-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--border-color);
+.strip-track {
+    display: flex;
+    gap: 0;
+    height: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+    padding: 0 3rem;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.strip-track::-webkit-scrollbar {
+    display: none;
+}
+
+/* Individual render pass node */
+.render-pass {
+    position: relative;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: transform 0.2s ease;
 }
 
-.portfolio-dot:hover {
-    background: var(--text-muted);
+.render-pass:hover {
+    transform: translateY(-2px);
 }
 
-.portfolio-dot.active {
+/* Connector line between passes */
+.pass-connector {
+    width: 20px;
+    height: 2px;
+    background: linear-gradient(to right, rgba(232, 185, 35, 0.1), rgba(232, 185, 35, 0.3));
+    position: relative;
+}
+
+.pass-connector::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 6px;
+    background: rgba(232, 185, 35, 0.3);
+    border-radius: 50%;
+}
+
+.render-pass:first-child .pass-connector {
+    opacity: 0;
+    width: 0;
+}
+
+.render-pass.active .pass-connector::after {
     background: var(--accent-gold);
-    box-shadow: 0 0 10px rgba(232, 185, 35, 0.5);
+    box-shadow: 0 0 10px var(--accent-gold);
+}
+
+/* Pass node (thumbnail container) */
+.pass-node {
+    position: relative;
+    width: 100px;
+    height: 60px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    background: #0a0f14;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.render-pass:hover .pass-node {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.render-pass.active .pass-node {
+    border-color: var(--accent-gold);
+    box-shadow:
+        0 0 20px rgba(232, 185, 35, 0.3),
+        inset 0 0 20px rgba(232, 185, 35, 0.1);
+    transform: scale(1.05);
+}
+
+.pass-node img,
+.pass-node video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.render-pass:hover .pass-node img,
+.render-pass:hover .pass-node video,
+.render-pass.active .pass-node img,
+.render-pass.active .pass-node video {
+    opacity: 1;
+}
+
+/* Pass index number */
+.pass-index {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.55rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: rgba(0, 0, 0, 0.7);
+    padding: 0.1rem 0.3rem;
+    border-radius: 2px;
+    letter-spacing: 0.05em;
+}
+
+.render-pass.active .pass-index {
+    color: var(--accent-gold);
+    background: rgba(232, 185, 35, 0.2);
+}
+
+/* Audio indicator */
+.audio-indicator {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 18px;
+    height: 18px;
+    background: rgba(45, 212, 191, 0.2);
+    border: 1px solid rgba(45, 212, 191, 0.4);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.audio-indicator svg {
+    width: 10px;
+    height: 10px;
+    color: var(--accent-teal);
+}
+
+/* Strip navigation arrows */
+.strip-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
+    background: rgba(10, 15, 20, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.strip-nav:hover {
+    background: rgba(232, 185, 35, 0.1);
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
+}
+
+.strip-nav.prev { left: 0; }
+.strip-nav.next { right: 0; }
+
+.strip-nav svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* ============================================
+   KEYBOARD HINTS
+   ============================================ */
+.pipeline-hints {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5rem;
+    margin-top: 0.4rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--text-muted);
+    opacity: 0.5;
+}
+
+.hint-key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    padding: 0.15rem 0.4rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    margin-right: 0.4rem;
+    font-size: 0.55rem;
+}
+
+/* ============================================
+   GLITCH/LOADING EFFECTS
+   ============================================ */
+@keyframes bufferGlitch {
+    0%, 100% { clip-path: inset(0 0 0 0); }
+    10% { clip-path: inset(20% 0 60% 0); }
+    20% { clip-path: inset(80% 0 5% 0); }
+    30% { clip-path: inset(10% 0 70% 0); }
+    40% { clip-path: inset(50% 0 30% 0); }
+    50% { clip-path: inset(0 0 0 0); }
+}
+
+.buffer-viewport.loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(232, 185, 35, 0.1),
+        transparent
+    );
+    animation: bufferScan 1.5s ease-in-out infinite;
+}
+
+@keyframes bufferScan {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
 }
 
 /* Contact Panel */
@@ -6516,70 +6920,93 @@ footer {
         display: none !important;
     }
 
-    /* Portfolio mobile - vertical scroll layout */
+    /* Portfolio mobile - GPU Pipeline vertical layout */
     .portfolio-panel {
-        padding: 0.75rem;
+        padding: 0.5rem;
         overflow: hidden;
     }
 
-    .portfolio-carousel {
-        padding: 0;
+    .render-pipeline {
+        padding: 0.25rem;
     }
 
-    .portfolio-header {
+    .pipeline-scanlines {
         display: none;
     }
 
-    .portfolio-scene {
-        perspective: none;
-        overflow-y: auto;
-        overflow-x: hidden;
-        align-items: flex-start;
-        justify-content: flex-start;
-        padding: 0.5rem;
+    /* Output buffer - smaller on mobile */
+    .output-buffer {
+        padding: 0 0.5rem;
     }
 
-    .portfolio-track {
-        position: relative;
-        width: 100%;
-        height: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        transform-style: flat;
+    .buffer-frame {
+        max-width: 100%;
+        border-radius: 6px;
     }
 
-    .portfolio-item {
-        position: relative !important;
-        left: auto !important;
-        top: auto !important;
-        width: 100% !important;
-        max-width: none !important;
-        transform: none !important;
-        opacity: 1 !important;
-        pointer-events: auto !important;
-        z-index: 1 !important;
-        aspect-ratio: 16/10;
-        border-radius: 8px;
-        flex-shrink: 0;
-    }
-
-    .portfolio-item::after {
+    .frame-corner {
         display: none;
     }
 
-    .portfolio-item img,
-    .portfolio-item video {
-        border-radius: 8px;
+    .buffer-header {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.55rem;
+        gap: 0.5rem;
     }
 
-    /* Hide carousel nav and dots on mobile */
-    .portfolio-nav {
-        display: none !important;
+    .buffer-info {
+        padding: 1.5rem 1rem 0.75rem;
     }
 
-    .portfolio-dots {
-        display: none !important;
+    .project-title {
+        font-size: 0.85rem;
+    }
+
+    .meta-tag {
+        font-size: 0.5rem;
+        padding: 0.15rem 0.4rem;
+    }
+
+    .meta-link {
+        font-size: 0.6rem;
+    }
+
+    /* Pipeline strip - horizontal scroll on mobile */
+    .pipeline-strip {
+        height: 80px;
+        margin-top: 0.75rem;
+    }
+
+    .strip-track {
+        padding: 0 2.5rem;
+    }
+
+    .pass-node {
+        width: 90px;
+        height: 58px;
+    }
+
+    .pass-connector {
+        width: 12px;
+    }
+
+    .pass-index {
+        font-size: 0.5rem;
+    }
+
+    .strip-nav {
+        width: 28px;
+        height: 28px;
+    }
+
+    .strip-nav svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    /* Hide keyboard hints on mobile */
+    .pipeline-hints {
+        display: none;
     }
 
 }
