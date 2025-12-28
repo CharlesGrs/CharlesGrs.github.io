@@ -728,7 +728,15 @@
 
     if (!canvasSection || !fullscreenBtn) return;
 
+    // Check if mobile (screen width <= 600px)
+    function isMobile() {
+        return window.innerWidth <= 600;
+    }
+
     fullscreenBtn.addEventListener('click', function() {
+        // Disable fullscreen on mobile
+        if (isMobile()) return;
+
         canvasSection.classList.toggle('fullscreen');
         document.body.classList.toggle('canvas-fullscreen');
 
@@ -742,6 +750,14 @@
             canvasSection.classList.remove('fullscreen');
             document.body.classList.remove('canvas-fullscreen');
             window.dispatchEvent(new Event('resize'));
+        }
+    });
+
+    // Exit fullscreen if window is resized to mobile size
+    window.addEventListener('resize', function() {
+        if (isMobile() && canvasSection.classList.contains('fullscreen')) {
+            canvasSection.classList.remove('fullscreen');
+            document.body.classList.remove('canvas-fullscreen');
         }
     });
 })();

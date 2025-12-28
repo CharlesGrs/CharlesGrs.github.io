@@ -6200,64 +6200,15 @@ body.canvas-fullscreen .reset-camera-btn {
     white-space: nowrap;
 }
 
-/* Mobile adjustments for solar nav - full width at bottom */
+/* Mobile adjustments for solar nav - hide on mobile for cleaner look */
 @media (max-width: 900px) {
     .solar-nav-container {
-        display: flex !important;
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        gap: 0;
-        z-index: 100;
-        pointer-events: auto !important;
-        justify-content: stretch;
-    }
-
-    .solar-nav-btn {
-        display: flex !important;
-        flex: 1;
-        justify-content: center;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.75rem 0.5rem;
-        font-size: 0.8rem;
-        pointer-events: auto !important;
-        border-radius: 0;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        border-left: none;
-        border-right: none;
-        border-bottom: none;
-        background: rgba(21, 29, 38, 0.95);
-    }
-
-    .solar-nav-btn:not(:last-child) {
-        border-right: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .solar-nav-btn .nav-label {
-        display: inline !important;
-    }
-
-    .solar-nav-btn .nav-icon {
-        width: 12px;
-        height: 12px;
+        display: none !important;
     }
 
     /* Hide version on mobile */
     .version-info {
         display: none !important;
-    }
-
-    .skills-panel.graph-active .solar-nav-container {
-        display: flex !important;
-        z-index: 100;
-        pointer-events: auto !important;
-    }
-
-    .skills-panel.graph-active .solar-nav-btn {
-        display: flex !important;
-        pointer-events: auto !important;
     }
 }
 
@@ -6654,86 +6605,61 @@ footer {
     }
 
     .container {
-        padding: 1rem;
+        padding: 0;
         height: auto;
         min-height: 100vh;
     }
 
-    /* Skills panel graph view - full width on mobile */
+    /* Skills panel graph view - stay within panel on mobile (no fullscreen) */
     .skills-panel.graph-active {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        width: 100vw;
-        height: 100vh;
-        margin: 0;
-        z-index: 1000;
-        background: var(--bg-primary);
-    }
-
-    .skills-panel.graph-active .skill-graph-container {
-        border-radius: 0;
-        border: none;
-        pointer-events: none;
-    }
-
-    .skills-panel.graph-active .skills-view-toggle {
-        position: fixed;
-        top: 1rem;
-        left: 1rem;
-        z-index: 1002;
-        pointer-events: auto !important;
-    }
-
-    .skills-panel.graph-active .skills-view-toggle .view-toggle-btn {
-        pointer-events: auto !important;
+        position: relative;
+        height: 100%;
+        min-height: 400px;
     }
 
     .skills-panel.graph-active .fullscreen-btn {
         display: none;
     }
 
+    /* Hide the solar nav buttons on mobile - already hidden globally */
     .skills-panel.graph-active .solar-nav-container {
-        position: fixed;
-        top: 1rem;
-        left: auto;
-        right: 1rem;
-        bottom: auto;
-        flex-direction: row;
-        gap: 0.25rem;
-        z-index: 1002;
-        background: transparent;
-        pointer-events: auto !important;
+        display: none !important;
     }
 
-    .skills-panel.graph-active .solar-nav-btn {
-        padding: 0.5rem 0.6rem;
-        font-size: 0.7rem;
-        border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        background: rgba(21, 29, 38, 0.85);
-        pointer-events: auto !important;
-    }
-
-    .skills-panel.graph-active .solar-nav-btn .nav-label {
+    /* Hide reset camera button on mobile */
+    .skills-panel.graph-active .reset-camera-btn {
         display: none;
     }
 
-    /* Ensure canvas-section fills screen and receives touch events */
+    /* Ensure canvas fills the panel completely */
     .skills-panel.graph-active .canvas-section {
-        position: fixed;
+        position: absolute;
         top: 0;
         left: 0;
-        width: 100vw;
-        height: 100vh;
-        z-index: 1000;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
     }
 
-    .skills-panel.graph-active #gpu-canvas {
-        pointer-events: auto !important;
-        touch-action: none;
+    .skills-panel.graph-active .skill-graph-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+        border: none;
+    }
+
+    /* Keep view toggle visible and positioned */
+    .skills-panel.graph-active .skills-view-toggle {
+        position: absolute;
+        top: 0.5rem;
+        left: 0.5rem;
+        z-index: 10;
     }
 
     header {
@@ -8223,5 +8149,460 @@ footer {
         border-top: 1px solid #ccc;
         margin-top: 2rem;
         padding-top: 1rem;
+    }
+}
+
+/* ============================================
+   ENHANCED MOBILE RESPONSIVENESS
+   ============================================ */
+
+/* Tab Menu - Better mobile layout */
+@media (max-width: 600px) {
+    /* Remove all margins/padding around content - full width */
+    .container {
+        width: 100%;
+        max-width: 100%;
+        padding: 0;
+        margin: 0;
+    }
+
+    .main-window {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+
+    .main-window-content {
+        border-radius: 0;
+    }
+
+    /* Hide version badge on mobile */
+    .version-badge {
+        display: none !important;
+    }
+
+    /* Fix carousel panels - allow natural height for scrolling */
+    .carousel-panels {
+        overflow: visible;
+    }
+
+    .carousel-panel {
+        height: auto;
+    }
+
+    .carousel-panel.active {
+        display: block;
+    }
+
+    /* Skills panel needs full height for 3D canvas */
+    .skills-panel {
+        height: 100% !important;
+    }
+
+    .skills-panel.active {
+        display: flex !important;
+        flex-direction: column;
+        height: 100% !important;
+        min-height: 70vh;
+    }
+
+    .main-window-chrome {
+        padding: 0.5rem;
+        gap: 0.4rem;
+        border-radius: 0;
+    }
+
+    .chrome-tabs {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.35rem;
+        width: 100%;
+        padding: 0.35rem 0 0;
+    }
+
+    /* First row: 3 tabs, second row: 2 tabs centered */
+    .chrome-tab:nth-child(4),
+    .chrome-tab:nth-child(5) {
+        grid-column: span 1;
+    }
+
+    /* Center the last two tabs */
+    .chrome-tabs::after {
+        content: '';
+        grid-column: span 1;
+        display: none;
+    }
+
+    .chrome-tab {
+        padding: 0;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .tab-label {
+        font-size: 0.6rem;
+        padding: 0.4rem 0.5rem;
+        letter-spacing: 0.03em;
+        width: 100%;
+        text-align: center;
+        border-radius: 4px;
+    }
+
+    /* Hide connectors on mobile */
+    .tab-connector {
+        display: none;
+    }
+
+    /* Active tab glow - smaller on mobile */
+    .chrome-tab.active::before {
+        width: 50px;
+        height: 40px;
+    }
+
+    .chrome-identity {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+
+    .chrome-channels {
+        width: 100%;
+        justify-content: center;
+        gap: 0.35rem;
+    }
+
+    .chrome-channels .channel-port {
+        width: 28px;
+        height: 28px;
+    }
+
+    /* Hide fullscreen button on mobile */
+    .fullscreen-btn {
+        display: none !important;
+    }
+
+    /* Prevent fullscreen mode on mobile */
+    .canvas-section.fullscreen {
+        position: absolute !important;
+        width: 100% !important;
+        height: 100% !important;
+    }
+}
+
+/* 5 tabs in a row for wider phones */
+@media (min-width: 380px) and (max-width: 600px) {
+    .chrome-tabs {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+@media (max-width: 379px) {
+    .tab-label {
+        font-size: 0.5rem;
+        padding: 0.35rem 0.3rem;
+    }
+
+    .chrome-name {
+        font-size: 0.7rem;
+    }
+
+    .chrome-dot {
+        width: 8px;
+        height: 8px;
+    }
+
+    .chrome-channels .channel-port {
+        width: 26px;
+        height: 26px;
+    }
+}
+
+/* Experience/Career Panel - Mobile */
+@media (max-width: 600px) {
+    .career-panel {
+        padding: 0;
+    }
+
+    .mission-timeline {
+        padding: 1rem 0.5rem 1.5rem 1.5rem;
+    }
+
+    .timeline-spine {
+        left: 0.5rem;
+    }
+
+    .mission-node {
+        padding-left: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .node-connector {
+        left: -1.25rem;
+    }
+
+    .mission-card {
+        padding: 0.75rem;
+    }
+
+    .card-header {
+        flex-wrap: wrap;
+        gap: 0.35rem;
+    }
+
+    .mission-year {
+        font-size: 0.65rem;
+    }
+
+    .mission-status {
+        font-size: 0.5rem;
+        padding: 0.1rem 0.3rem;
+    }
+
+    .mission-role {
+        font-size: 0.8rem;
+        line-height: 1.25;
+    }
+
+    .mission-org {
+        font-size: 0.7rem;
+    }
+
+    .mission-brief {
+        font-size: 0.65rem;
+        line-height: 1.45;
+    }
+
+    .mission-metrics {
+        gap: 0.5rem;
+        padding: 0.5rem 0;
+        flex-wrap: wrap;
+    }
+
+    .metric {
+        min-width: 50px;
+    }
+
+    .metric-value {
+        font-size: 0.9rem;
+    }
+
+    .metric-unit,
+    .metric-label {
+        font-size: 0.5rem;
+    }
+
+    .mission-tech {
+        gap: 0.25rem;
+    }
+
+    .tech-chip {
+        font-size: 0.5rem;
+        padding: 0.15rem 0.35rem;
+    }
+}
+
+/* Portfolio Panel - Stacked scrollable layout on mobile */
+@media (max-width: 600px) {
+    .portfolio-panel {
+        padding: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    .portfolio-panel.active {
+        display: block;
+    }
+
+    .render-pipeline {
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+        height: auto;
+        min-height: auto;
+    }
+
+    /* Hide the main output buffer on mobile */
+    .output-buffer {
+        display: none;
+    }
+
+    /* Convert pipeline strip to vertical stacked layout */
+    .pipeline-strip {
+        height: auto;
+        margin-top: 0;
+        flex-shrink: 0;
+    }
+
+    .strip-track {
+        flex-direction: column;
+        padding: 0.5rem;
+        gap: 0.75rem;
+        overflow-x: hidden;
+        overflow-y: visible;
+    }
+
+    /* Hide strip navigation arrows */
+    .strip-nav {
+        display: none;
+    }
+
+    /* Make each render pass a full-width card */
+    .render-pass {
+        width: 100%;
+        flex-direction: column;
+        transform: none !important;
+    }
+
+    .render-pass:hover {
+        transform: none;
+    }
+
+    /* Hide connectors in stacked layout */
+    .pass-connector {
+        display: none;
+    }
+
+    /* Make pass node full width with proper aspect ratio */
+    .pass-node {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16/9;
+        border-radius: 8px;
+        border: 1px solid rgba(232, 185, 35, 0.2);
+    }
+
+    .pass-node img,
+    .pass-node video {
+        opacity: 1;
+    }
+
+    .render-pass.active .pass-node {
+        transform: none;
+        border-color: var(--accent-gold);
+    }
+
+    /* Larger index badge */
+    .pass-index {
+        font-size: 0.6rem;
+        padding: 0.2rem 0.4rem;
+        bottom: 8px;
+        right: 8px;
+    }
+
+    /* Audio indicator styling for mobile */
+    .audio-indicator {
+        top: 8px;
+        right: 8px;
+        width: 24px;
+        height: 24px;
+    }
+
+    .audio-indicator svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    /* Add project title overlay on each card */
+    .render-pass::after {
+        content: attr(data-title);
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 1.5rem 0.75rem 0.5rem;
+        background: linear-gradient(to top, rgba(5, 8, 9, 0.95) 0%, rgba(5, 8, 9, 0.6) 60%, transparent 100%);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-primary);
+        pointer-events: none;
+        border-radius: 0 0 8px 8px;
+    }
+
+    /* Project tag badge */
+    .render-pass::before {
+        content: attr(data-tag);
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        padding: 0.2rem 0.5rem;
+        background: rgba(232, 185, 35, 0.15);
+        border: 1px solid rgba(232, 185, 35, 0.3);
+        border-radius: 3px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.55rem;
+        font-weight: 600;
+        color: var(--accent-gold);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        z-index: 5;
+    }
+
+    /* Hide keyboard hints completely */
+    .pipeline-hints {
+        display: none !important;
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 400px) {
+    .mission-timeline {
+        padding: 0.75rem 0.35rem 1rem 1.25rem;
+    }
+
+    .timeline-spine {
+        left: 0.35rem;
+    }
+
+    .mission-node {
+        padding-left: 1.25rem;
+    }
+
+    .node-connector {
+        left: -1rem;
+        width: 18px;
+        height: 18px;
+    }
+
+    .node-dot {
+        width: 8px;
+        height: 8px;
+    }
+
+    .mission-card {
+        padding: 0.6rem;
+    }
+
+    .mission-role {
+        font-size: 0.75rem;
+    }
+
+    .mission-metrics {
+        gap: 0.35rem;
+    }
+
+    .metric-value {
+        font-size: 0.8rem;
+    }
+
+    /* Portfolio extra small */
+    .strip-track {
+        padding: 0.35rem;
+        gap: 0.5rem;
+    }
+
+    .pass-node {
+        border-radius: 6px;
+    }
+
+    .render-pass::after {
+        font-size: 0.65rem;
+        padding: 1rem 0.5rem 0.4rem;
+    }
+
+    .render-pass::before {
+        font-size: 0.5rem;
+        padding: 0.15rem 0.4rem;
     }
 }
