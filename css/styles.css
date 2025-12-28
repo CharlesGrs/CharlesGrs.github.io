@@ -181,6 +181,11 @@ body.canvas-fullscreen .skill-graph-container .solar-nav-container * {
     pointer-events: auto !important;
 }
 
+/* Exception: reset camera button must remain clickable in fullscreen */
+body.canvas-fullscreen .skill-graph-container .reset-camera-btn {
+    pointer-events: auto !important;
+}
+
 .canvas-section.fullscreen .fullscreen-btn {
     position: fixed;
     top: 1rem;
@@ -1597,6 +1602,7 @@ header.collapsed .header-expand-btn {
     flex-shrink: 0;
     position: relative;
     padding: 0.75rem 1.5rem;
+    isolation: isolate;
 }
 
 /* Connecting line running through all nodes */
@@ -1614,7 +1620,7 @@ header.collapsed .header-expand-btn {
         transparent 100%
     );
     transform: translateY(-50%);
-    z-index: 0;
+    z-index: -1;
 }
 
 /* Animated data flow pulse traveling along the line */
@@ -1633,7 +1639,7 @@ header.collapsed .header-expand-btn {
         transparent
     );
     transform: translateY(-50%);
-    z-index: 0;
+    z-index: -1;
     border-radius: 2px;
     box-shadow: 0 0 6px var(--accent-teal), 0 0 12px rgba(45, 212, 191, 0.4);
     animation: dataFlowPulse 3s ease-in-out infinite;
@@ -1662,7 +1668,7 @@ header.collapsed .header-expand-btn {
     width: 100%;
     height: 100%;
     pointer-events: none;
-    z-index: 0;
+    z-index: -1;
 }
 
 /* Pipeline Node - Base State */
@@ -1700,6 +1706,7 @@ header.collapsed .header-expand-btn {
     letter-spacing: 0.12em;
     transition: all 0.3s ease;
     position: relative;
+    z-index: 2;
     padding: 0.4rem 1rem;
     background: #0d1318;
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1714,7 +1721,7 @@ header.collapsed .header-expand-btn {
 /* Pipeline Node - Hover State */
 .pipeline-node:hover .node-label {
     color: var(--accent-teal);
-    background: rgba(45, 212, 191, 0.1);
+    background: #0f1d1c;
     border-color: rgba(45, 212, 191, 0.3);
     box-shadow:
         0 0 20px rgba(45, 212, 191, 0.15),
@@ -1742,7 +1749,7 @@ header.collapsed .header-expand-btn {
 /* Pipeline Node - Active State */
 .pipeline-node.active .node-label {
     color: var(--accent-gold);
-    background: linear-gradient(135deg, rgba(232, 185, 35, 0.2) 0%, rgba(232, 185, 35, 0.1) 100%);
+    background: linear-gradient(135deg, #1f1c10 0%, #161410 100%);
     border-color: rgba(232, 185, 35, 0.5);
     box-shadow:
         0 0 25px rgba(232, 185, 35, 0.25),
@@ -1918,6 +1925,12 @@ header.collapsed .header-expand-btn {
 }
 
 .skills-panel.graph-active .solar-nav-btn {
+    pointer-events: auto !important;
+}
+
+/* Reset camera button must be clickable */
+.skills-panel.graph-active .reset-camera-btn {
+    z-index: 100;
     pointer-events: auto !important;
 }
 
@@ -3705,9 +3718,29 @@ header.collapsed .header-expand-btn {
     background: linear-gradient(135deg, rgba(10, 15, 20, 0.95) 0%, rgba(15, 22, 30, 0.95) 100%);
     border: none;
     border-radius: 12px;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     height: 100%;
     position: relative;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(232, 185, 35, 0.3) transparent;
+}
+
+.about-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.about-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.about-panel::-webkit-scrollbar-thumb {
+    background: rgba(232, 185, 35, 0.3);
+    border-radius: 3px;
+}
+
+.about-panel::-webkit-scrollbar-thumb:hover {
+    background: rgba(232, 185, 35, 0.5);
 }
 
 .about-panel.active {
@@ -3767,7 +3800,7 @@ header.collapsed .header-expand-btn {
     grid-template-rows: auto auto auto;
     gap: 1rem;
     padding: 1.5rem;
-    height: 100%;
+    min-height: 100%;
     max-width: 1200px;
     margin: 0 auto;
 }
@@ -3881,10 +3914,9 @@ header.collapsed .header-expand-btn {
 
 .title-cursor {
     font-family: 'JetBrains Mono', monospace;
-    font-size: clamp(1.5rem, 4vw, 2.5rem);
+    font-size: inherit;
     font-weight: 700;
     color: var(--accent-teal);
-    animation: cursorBlink 1s step-end infinite;
     opacity: 0;
     animation: blinkIn 0.3s ease 0.6s forwards, cursorBlink 1s step-end 0.9s infinite;
 }
@@ -3985,7 +4017,8 @@ header.collapsed .header-expand-btn {
     font-weight: 300;
 }
 
-.terminal-output .typewriter-text strong {
+.terminal-output .typewriter-text strong,
+.terminal-output .typewriter-text .highlight-text {
     color: var(--accent-gold);
     font-weight: 500;
 }
@@ -4418,6 +4451,159 @@ header.collapsed .header-expand-btn {
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
+}
+
+/* ======== MEDIUM SCREENS RESPONSIVE (901px - 1200px) ======== */
+@media (min-width: 901px) and (max-width: 1200px) {
+    .gpu-inspector {
+        grid-template-columns: 1fr 240px;
+        gap: 0.75rem;
+        padding: 1rem;
+    }
+
+    .inspector-properties {
+        grid-row: 2 / 4;
+    }
+
+    .title-word {
+        font-size: clamp(2rem, 4vw, 2.8rem);
+    }
+
+    .terminal-output .typewriter-text {
+        font-size: 0.8rem;
+    }
+
+    .value-number {
+        font-size: 1.6rem;
+    }
+
+    .dependencies-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .dep-card {
+        padding: 0.5rem;
+    }
+
+    .dep-name {
+        font-size: 0.6rem;
+    }
+}
+
+/* ======== SHORT VIEWPORT HEIGHT RESPONSIVE ======== */
+@media (max-height: 800px) and (min-width: 901px) {
+    .gpu-inspector {
+        gap: 0.6rem;
+        padding: 1rem;
+    }
+
+    .inspector-hero {
+        gap: 0.6rem;
+    }
+
+    .hero-title-block {
+        margin-bottom: 0;
+    }
+
+    .title-word {
+        font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+    }
+
+    .hero-tags {
+        gap: 0.4rem;
+        margin-top: 0.3rem;
+    }
+
+    .shader-tag {
+        padding: 0.35rem 0.7rem;
+        font-size: 0.65rem;
+    }
+
+    .inspector-terminal {
+        padding: 0.6rem;
+    }
+
+    .terminal-output {
+        padding: 0.6rem;
+    }
+
+    .terminal-output .typewriter-text {
+        font-size: 0.75rem;
+        line-height: 1.4;
+    }
+
+    .inspector-metrics,
+    .inspector-properties,
+    .inspector-dependencies {
+        padding: 0.75rem;
+    }
+
+    .metrics-header,
+    .properties-header,
+    .dependencies-header {
+        padding-bottom: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .value-number {
+        font-size: 1.5rem;
+    }
+
+    .metric-cell {
+        padding: 0.6rem;
+    }
+
+    .property-item {
+        padding: 0.4rem 0;
+    }
+
+    .dependencies-grid {
+        gap: 0.4rem;
+    }
+
+    .dep-card {
+        padding: 0.5rem;
+    }
+}
+
+/* ======== VERY SHORT VIEWPORT HEIGHT ======== */
+@media (max-height: 700px) and (min-width: 901px) {
+    .gpu-inspector {
+        grid-template-columns: 1fr 200px;
+        gap: 0.5rem;
+        padding: 0.75rem;
+    }
+
+    .title-word {
+        font-size: clamp(1.5rem, 3vw, 2rem);
+    }
+
+    .hero-status-bar {
+        font-size: 0.55rem;
+    }
+
+    .shader-tag {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.55rem;
+    }
+
+    .terminal-output .typewriter-text {
+        font-size: 0.7rem;
+    }
+
+    .value-number {
+        font-size: 1.3rem;
+    }
+
+    .metric-name,
+    .prop-key,
+    .dep-name {
+        font-size: 0.55rem;
+    }
+
+    .dependencies-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
 }
 
 /* ======== MOBILE RESPONSIVE ======== */
@@ -5212,6 +5398,96 @@ header.collapsed .header-expand-btn {
     font-size: 0.65rem;
     color: var(--text-muted);
     opacity: 0.7;
+}
+
+/* Reset Camera Button */
+.reset-camera-btn {
+    position: absolute;
+    bottom: 1rem;
+    left: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.8rem;
+    background: rgba(10, 15, 20, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.5);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    z-index: 100;
+    pointer-events: auto;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.reset-camera-btn .reset-icon {
+    width: 14px;
+    height: 14px;
+    opacity: 0.6;
+    transition: all 0.3s ease;
+}
+
+.reset-camera-btn .reset-label {
+    text-transform: uppercase;
+    opacity: 0.7;
+}
+
+.reset-camera-btn:hover {
+    background: rgba(10, 15, 20, 0.85);
+    border-color: rgba(45, 212, 191, 0.4);
+    color: var(--accent-teal);
+    transform: translateY(-1px);
+    box-shadow:
+        0 4px 20px rgba(45, 212, 191, 0.15),
+        0 0 30px rgba(45, 212, 191, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.reset-camera-btn:hover .reset-icon {
+    opacity: 1;
+    transform: rotate(45deg);
+}
+
+.reset-camera-btn:hover .reset-label {
+    opacity: 1;
+}
+
+.reset-camera-btn:active {
+    transform: translateY(0);
+    background: rgba(10, 15, 20, 0.95);
+}
+
+/* Mobile adjustments for reset button */
+@media (max-width: 900px) {
+    .reset-camera-btn {
+        bottom: auto;
+        top: 1rem;
+        left: 1rem;
+        padding: 0.6rem;
+        border-radius: 8px;
+    }
+
+    .reset-camera-btn .reset-label {
+        display: none;
+    }
+
+    .reset-camera-btn .reset-icon {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+/* Fullscreen mode adjustments */
+body.canvas-fullscreen .reset-camera-btn {
+    position: fixed !important;
+    bottom: 1rem;
+    left: 1rem;
+    z-index: 10002;
+    pointer-events: auto !important;
 }
 
 /* Solar System Navigation Buttons */

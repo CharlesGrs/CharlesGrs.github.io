@@ -187,7 +187,9 @@
     const fullText = [
         { text: 'Running ', highlight: false },
         { text: 'Zylaris Ltd', highlight: true },
-        { text: ', specializing in real-time graphics and shader development. 8+ years delivering for ', highlight: false },
+        { text: ', specializing in ', highlight: false },
+        { text: 'real-time graphics', highlight: true },
+        { text: ' and shader development. 8+ years delivering for ', highlight: false },
         { text: 'Meta', highlight: true },
         { text: ', ', highlight: false },
         { text: 'Ubisoft', highlight: true },

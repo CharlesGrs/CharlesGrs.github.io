@@ -130,7 +130,7 @@
     </div>
 
     <!-- Version Badge -->
-    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.35</span></div>
+    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.36</span></div>
 
     <div class="container" id="main-content" role="main">
         <header id="main-header" class="viewport-header">
@@ -254,9 +254,8 @@
                                 <span class="title-prefix">&gt;</span>
                                 <h2 class="hero-main-title">
                                     <span class="title-word word-1">GRAPHICS</span>
-                                    <span class="title-word word-2">PROGRAMMER</span>
+                                    <span class="title-word word-2">PROGRAMMER<span class="title-cursor">_</span></span>
                                 </h2>
-                                <span class="title-cursor">_</span>
                             </div>
 
                             <div class="hero-tags">
@@ -1036,13 +1035,6 @@
                                 <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
                             </svg>
                         </button>
-                        <button class="label-toggle-btn active" id="label-toggle" aria-label="Toggle planet labels" title="Toggle labels">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M4 7V4h16v3"/>
-                                <path d="M9 20h6"/>
-                                <path d="M12 4v16"/>
-                            </svg>
-                        </button>
                         <button class="label-toggle-btn active" id="links-toggle" aria-label="Toggle connection links" title="Toggle connection links">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="5" cy="12" r="3"/>
@@ -1276,6 +1268,15 @@
                     <!-- Graph View -->
                     <div class="skill-graph-container skill-view" id="skills-graph-view">
                         <canvas id="skill-graph-canvas"></canvas>
+                        <!-- Reset Camera Button -->
+                        <button class="reset-camera-btn" id="reset-camera-btn" onclick="window.resetCameraToDefault && window.resetCameraToDefault()" title="Reset View">
+                            <svg class="reset-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
+                                <path d="M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                            </svg>
+                            <span class="reset-label">Reset View</span>
+                        </button>
                         <!-- Solar System Navigation Buttons -->
                         <div class="solar-nav-container" id="solar-nav">
                             <button class="solar-nav-btn" data-sun="unity" onclick="window.navigateToSolarSystem && window.navigateToSolarSystem('unity')" ontouchend="event.preventDefault(); window.navigateToSolarSystem && window.navigateToSolarSystem('unity')" title="Navigate to Unity">

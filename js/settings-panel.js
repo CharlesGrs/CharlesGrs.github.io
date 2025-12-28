@@ -337,15 +337,6 @@
                     ]
                 },
                 {
-                    id: 'display',
-                    label: 'Display',
-                    icon: 'eye',
-                    color: '#22d3ee',
-                    controls: [
-                        { type: 'checkbox', id: 'show-labels', label: 'Show Labels', global: 'showPlanetLabels' }
-                    ]
-                },
-                {
                     id: 'solar-unity',
                     label: 'Unity System',
                     icon: 'orbit',
@@ -818,11 +809,6 @@
                 const isChecked = this.checked;
                 if (this.dataset.global) {
                     window[this.dataset.global] = isChecked;
-                    // Update the label toggle button if it exists
-                    const labelToggle = document.getElementById('label-toggle');
-                    if (this.dataset.global === 'showPlanetLabels' && labelToggle) {
-                        labelToggle.classList.toggle('active', isChecked);
-                    }
                 } else if (this.dataset.param) {
                     setParamValue(this.dataset.param, isChecked);
                 }

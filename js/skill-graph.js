@@ -204,6 +204,13 @@
     let globalFadeIn = 1;
     let mouseLightEnabled = false; // Toggle with spacebar
 
+    // Gaze-based hover detection (screen-space proximity to planet)
+    let gazedNode = null;           // Node the mouse is currently pointing at
+    let gazedNodeProximity = 0;     // How close mouse is to the gazed node (0-1, 1=on top)
+    let gazeRadius = 150;           // Screen pixels - detection radius around planet center
+    let gazeSmoothProximity = 0;    // Smoothed proximity for UI fade
+    let gazeTransitionSpeed = 0.3;  // Speed of hover UI transitions (faster)
+
     // Free camera system - position + rotation (FPS-style)
     // Camera position in world space
     let cameraPosX = -2, cameraPosY = 0, cameraPosZ = 3.5;  // Start at (-2, 0, 3.5)
@@ -235,6 +242,11 @@
     let focusProgress = 0;            // 0 to 1 progress of the focus transition
     const focusDuration = 1.5;        // Seconds to complete focus transition
     const focusDistance = 0.35;       // How close to get to the target (in world units, further away)
+
+    // Camera follow system - continuously track a selected planet
+    let isFollowing = false;          // True while camera is following a planet
+    let followTarget = null;          // The node being followed
+    const followDistance = 0.4;       // Distance to maintain from followed planet
 
     // Solar system navigation - smooth travel to a sun
     let isNavigating = false;         // True while camera is traveling to a solar system
@@ -305,6 +317,58 @@
 
     // Expose navigation function globally
     window.navigateToSolarSystem = navigateToSolarSystem;
+
+    // Reset camera to default position and rotation
+    function resetCameraToDefault() {
+        // Default values from initialization
+        const defaultPosX = -2;
+        const defaultPosY = 0;
+        const defaultPosZ = 3.5;
+        const defaultRotX = 0;
+        const defaultRotY = Math.atan2(2, -3.5);
+
+        // Set targets for smooth transition
+        targetCameraPosX = defaultPosX;
+        targetCameraPosY = defaultPosY;
+        targetCameraPosZ = defaultPosZ;
+        targetCameraRotX = defaultRotX;
+        targetCameraRotY = defaultRotY;
+
+        // Cancel any ongoing focus, navigation, or following
+        isFocusing = false;
+        focusTarget = null;
+        isNavigating = false;
+        navTarget = null;
+        isFollowing = false;
+        followTarget = null;
+    }
+
+    // Expose reset function globally
+    window.resetCameraToDefault = resetCameraToDefault;
+
+    // Select and follow a planet (called when clicking on gazedNode)
+    function selectAndFollowPlanet(node) {
+        if (!node) return;
+
+        // Start focusing on the planet (will transition to following when complete)
+        isFocusing = true;
+        focusTarget = node;
+        focusProgress = 0;
+
+        // Mark that we want to follow after focus completes
+        isFollowing = true;
+        followTarget = node;
+
+        // Cancel any solar system navigation
+        isNavigating = false;
+        navTarget = null;
+    }
+
+    // Cancel following (called when user interacts)
+    function cancelFollow() {
+        isFollowing = false;
+        followTarget = null;
+    }
 
     const tooltip = document.getElementById('skill-tooltip');
     const tooltipTitle = tooltip.querySelector('.skill-tooltip-title');
@@ -1174,6 +1238,7 @@
                     debugQuadProgram.uCameraRotY = gl.getUniformLocation(debugQuadProgram, 'uCameraRotY');
                     debugQuadProgram.uCameraPos = gl.getUniformLocation(debugQuadProgram, 'uCameraPos');
                     debugQuadProgram.uWorldZ = gl.getUniformLocation(debugQuadProgram, 'uWorldZ');
+                    debugQuadProgram.uMinDim = gl.getUniformLocation(debugQuadProgram, 'uMinDim');
 
                     // Quad buffer (2 triangles)
                     debugQuadBuffer = gl.createBuffer();
@@ -2218,22 +2283,32 @@
         // Restore normal alpha blending after rendering all nodes
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-        // Render debug quads if enabled
-        if (showDebugQuads && debugQuadProgram) {
+        // Render debug quads - show for gazedNode (hovered planet) or all if toggle enabled
+        if (debugQuadProgram && (showDebugQuads || gazedNode)) {
             gl.useProgram(debugQuadProgram);
             gl.uniform2f(debugQuadProgram.uResolution, width, height);
             gl.uniform1f(debugQuadProgram.uCameraRotX, cameraRotX);
             gl.uniform1f(debugQuadProgram.uCameraRotY, cameraRotY);
             gl.uniform3f(debugQuadProgram.uCameraPos, cameraPosX, cameraPosY, cameraPosZ);
+            gl.uniform1f(debugQuadProgram.uMinDim, minDim);
 
             gl.bindBuffer(gl.ARRAY_BUFFER, debugQuadBuffer);
             gl.enableVertexAttribArray(debugQuadProgram.aPosition);
             gl.vertexAttribPointer(debugQuadProgram.aPosition, 2, gl.FLOAT, false, 0, 0);
 
-            for (const n of nodes) {
-                gl.uniform2f(debugQuadProgram.uCenter, n.x, n.y);
-                gl.uniform1f(debugQuadProgram.uSize, n.size);
-                gl.uniform1f(debugQuadProgram.uWorldZ, n.z || 0.0);
+            if (showDebugQuads) {
+                // Show all debug quads when toggle is enabled
+                for (const n of nodes) {
+                    gl.uniform2f(debugQuadProgram.uCenter, n.x, n.y);
+                    gl.uniform1f(debugQuadProgram.uSize, n.size);
+                    gl.uniform1f(debugQuadProgram.uWorldZ, n.z || 0.0);
+                    gl.drawArrays(gl.TRIANGLES, 0, 6);
+                }
+            } else if (gazedNode) {
+                // Only show debug quad for hovered planet
+                gl.uniform2f(debugQuadProgram.uCenter, gazedNode.x, gazedNode.y);
+                gl.uniform1f(debugQuadProgram.uSize, gazedNode.size);
+                gl.uniform1f(debugQuadProgram.uWorldZ, gazedNode.z || 0.0);
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
             }
 
@@ -2923,7 +2998,58 @@
                 focusTarget = null;
                 focusProgress = 0;
                 container.style.cursor = 'grab';
+                // Note: if isFollowing is true, follow logic will take over
             }
+        } else if (isFollowing && followTarget && !isFocusing) {
+            // Camera follow system - continuously track the selected planet
+            const targetWorldX = followTarget.worldX || 0;
+            const targetWorldY = followTarget.worldY || 0;
+            const targetWorldZ = followTarget.worldZ || 0;
+
+            // Calculate direction from camera to target
+            const dx = targetWorldX - cameraPosX;
+            const dy = targetWorldY - cameraPosY;
+            const dz = targetWorldZ - cameraPosZ;
+            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+            // Calculate target rotation to look at the node
+            const targetYaw = Math.atan2(dx, dz);
+            const horizontalDist = Math.sqrt(dx * dx + dz * dz);
+            const targetPitch = -Math.atan2(dy, horizontalDist);
+
+            // Smoothly rotate to look at target
+            let yawDiff = targetYaw - cameraRotY;
+            while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
+            while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
+            cameraRotY += yawDiff * 0.08;
+            cameraRotX += (targetPitch - cameraRotX) * 0.08;
+
+            // Maintain follow distance - move toward/away from target as needed
+            const nodeSize = (followTarget.size || followTarget.baseSize || 20) * 0.0003;
+            const desiredDist = followDistance + nodeSize;
+
+            if (dist > 0.01) {
+                const dirX = dx / dist;
+                const dirY = dy / dist;
+                const dirZ = dz / dist;
+
+                // Calculate target position at desired distance
+                const targetPosX = targetWorldX - dirX * desiredDist;
+                const targetPosY = targetWorldY - dirY * desiredDist;
+                const targetPosZ = targetWorldZ - dirZ * desiredDist;
+
+                // Smoothly move toward target position
+                cameraPosX += (targetPosX - cameraPosX) * 0.05;
+                cameraPosY += (targetPosY - cameraPosY) * 0.05;
+                cameraPosZ += (targetPosZ - cameraPosZ) * 0.05;
+            }
+
+            // Update targets to match current
+            targetCameraPosX = cameraPosX;
+            targetCameraPosY = cameraPosY;
+            targetCameraPosZ = cameraPosZ;
+            targetCameraRotX = cameraRotX;
+            targetCameraRotY = cameraRotY;
         } else if (isNavigating && navTarget) {
             // Solar system navigation - phased: look, wait, then travel
             const targetWorldX = navTarget.worldX || 0;
@@ -3060,6 +3186,12 @@
             cameraRotX += (targetCameraRotX - cameraRotX) * rotLerp;
             cameraRotY += (targetCameraRotY - cameraRotY) * rotLerp;
 
+            // Smooth camera position interpolation (for reset and other transitions)
+            var posLerp = 1 - Math.pow(0.92, dtMultiplier);
+            cameraPosX += (targetCameraPosX - cameraPosX) * posLerp;
+            cameraPosY += (targetCameraPosY - cameraPosY) * posLerp;
+            cameraPosZ += (targetCameraPosZ - cameraPosZ) * posLerp;
+
             // Process WASD/ZQSD keyboard input for free camera movement
             var moveForward = 0, moveRight = 0, moveUp = 0;
             if (keysPressed['keyw'] || keysPressed['keyz']) moveForward = 1;
@@ -3072,6 +3204,8 @@
             // E key: Orbit mode - rotate around center (0,0,0) while looking at it
             if (keysPressed['keye']) {
                 currentSolarSystem = null;
+                // Cancel following when using orbit mode
+                cancelFollow();
                 var orbitAngle = 0.008 * dtMultiplier;
 
                 var cosOrbit = Math.cos(orbitAngle);
@@ -3096,6 +3230,8 @@
             // Apply movement in camera's local coordinate system
             if (moveForward !== 0 || moveRight !== 0 || moveUp !== 0) {
                 currentSolarSystem = null;
+                // Cancel following when user moves with WASD
+                cancelFollow();
 
                 var mcx = Math.cos(cameraRotX);
                 var msx = Math.sin(cameraRotX);
@@ -3239,6 +3375,57 @@
             node.renderAlpha = zDist < 0.2 ? zDist / 0.2 : 1.0;
         });
 
+        // ========================================
+        // MOUSE HOVER DETECTION: Find node mouse is pointing at (screen-space)
+        // ========================================
+        let bestGazeNode = null;
+        let bestGazeProximity = 0;
+        let bestGazeDist = Infinity;  // World distance for tie-breaking
+
+        nodes.forEach(node => {
+            // Skip nodes not rendered (behind camera)
+            if (node.renderX < -1000) return;
+
+            // Screen-space distance from mouse to node center
+            const dx = mouseScreenX - node.renderX;
+            const dy = mouseScreenY - node.renderY;
+            const screenDist = Math.sqrt(dx * dx + dy * dy);
+
+            // Scale detection radius based on node's rendered size
+            const nodeVisualRadius = (node.size || 10) * (node.renderScale || 1) * 2;
+            const effectiveRadius = Math.max(gazeRadius, nodeVisualRadius + 30);
+
+            // Skip if mouse is too far from this node
+            if (screenDist > effectiveRadius) return;
+
+            // Calculate proximity (1 = directly on node, 0 = at edge of radius)
+            const proximity = 1 - (screenDist / effectiveRadius);
+
+            // Store world distance for the overlay (use cameraDistance or fallback)
+            const worldDist = node.cameraDistance || 1;
+            node.gazeDistance = worldDist;
+
+            // Check if this is the best candidate (within radius, prefer nearest screen distance)
+            if (proximity > 0 && screenDist < bestGazeDist) {
+                bestGazeNode = node;
+                bestGazeProximity = proximity;
+                bestGazeDist = screenDist;
+            }
+        });
+
+        // Update gazed node - always track current best, update proximity each frame
+        gazedNode = bestGazeNode;
+        gazedNodeProximity = bestGazeProximity;
+
+        // Smooth the proximity for UI fade effects
+        // When we have a node, jump to at least 0.5 immediately for responsiveness
+        const targetProximity = gazedNode ? Math.max(0.5, gazedNodeProximity) : 0;
+        if (gazedNode && gazeSmoothProximity < 0.3) {
+            // Quick fade-in when hovering a new node
+            gazeSmoothProximity = 0.5;
+        }
+        gazeSmoothProximity += (targetProximity - gazeSmoothProximity) * gazeTransitionSpeed;
+
         // Helper to project 3D world point to screen
         function projectToScreen(wx, wy, wz) {
             const tx = wx - camPosX, ty = wy - camPosY, tz = wz - camPosZ;
@@ -3372,38 +3559,122 @@
             });
         }
 
-        // Draw labels only if enabled
-        if (showPlanetLabels) {
-            nodes.forEach(node => {
+        // Draw label only for gazedNode (hovered planet)
+        if (showPlanetLabels && gazedNode && gazeSmoothProximity > 0.1) {
+            const node = gazedNode;
+
+            if (node.renderX > -1000 && globalFadeIn >= 0.5) {
                 const fadeAmount = node.shrinkProgress !== undefined ? node.shrinkProgress : 1;
-                if (globalFadeIn < 0.5) return;
-                if (node.renderX < -1000) return; // Skip nodes behind camera
                 const minAlpha = 0.3;
                 const alphaMultiplier = minAlpha + fadeAmount * (1 - minAlpha);
                 const perspectiveAlpha = node.renderAlpha !== undefined ? node.renderAlpha : 1.0;
-                const labelAlpha = Math.min(1, (globalFadeIn - 0.5) * 2) * alphaMultiplier * perspectiveAlpha;
+
+                // Use gaze proximity for smooth fade
+                const labelAlpha = Math.min(1, (globalFadeIn - 0.5) * 2) * alphaMultiplier * perspectiveAlpha * gazeSmoothProximity;
+
                 const pulse = Math.sin(time * node.pulseSpeed + node.pulsePhase);
                 const displaySize = (node.size + pulse * 0.5 + node.glowIntensity * 3) * (node.renderScale || 1);
-                // Use perspective-adjusted positions for labels
+
+                // Position label below the planet (use perspective scale for offset only)
                 const labelX = node.renderX;
-                const labelY = node.renderY + displaySize + (12 * sizeScale + 6) * (node.renderScale || 1);
-                const fontWeight = node.glowIntensity > 0.5 ? '600' : '500';
-                const fontSize = (9.5 + 2.5 * sizeScale + node.glowIntensity) * (node.renderScale || 1);
+                const labelY = node.renderY + displaySize + 20;  // Fixed offset
+
+                // Constant screen-space font size (no perspective scaling)
+                const fontWeight = '500';
+                const fontSize = 11;  // Fixed font size in pixels
                 ctx.font = `${fontWeight} ${fontSize}px "JetBrains Mono", monospace`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
+
                 const textWidth = ctx.measureText(node.label).width;
-                const paddingX = (3 * sizeScale + 1) * (node.renderScale || 1);
-                const paddingY = (5 * sizeScale + 2) * (node.renderScale || 1);
+                const paddingX = 6;  // Fixed padding
+                const paddingY = 4;  // Fixed padding
+
                 ctx.globalAlpha = labelAlpha;
-                ctx.fillStyle = `rgba(21, 29, 38, ${0.8 * alphaMultiplier * perspectiveAlpha})`;
+                ctx.fillStyle = `rgba(21, 29, 38, ${0.85 * alphaMultiplier * perspectiveAlpha})`;
                 ctx.beginPath();
                 ctx.roundRect(labelX - textWidth / 2 - paddingX, labelY - paddingY, textWidth + paddingX * 2, paddingY * 2, 3);
                 ctx.fill();
                 ctx.fillStyle = colors.textPrimary;
                 ctx.fillText(node.label, labelX, labelY);
                 ctx.globalAlpha = 1;
-            });
+            }
+        }
+
+        // ========================================
+        // CINEMATIC GAZE LABEL: Show planet info when mouse is near it
+        // ========================================
+        if (gazedNode && gazeSmoothProximity > 0.1) {
+            const node = gazedNode;
+
+            // Calculate UI alpha based on proximity (fades in/out smoothly)
+            const gazeAlpha = Math.min(1, gazeSmoothProximity * 2) * globalFadeIn;
+
+            // Convert world distance to fictional "light years" (1 world unit = 2.5 light years)
+            const distanceLY = (node.gazeDistance * 2.5).toFixed(2);
+
+            // Position: top center of canvas
+            const labelX = width * 0.5;
+            const labelY = 60;
+
+            ctx.save();
+            ctx.globalAlpha = gazeAlpha;
+
+            // Planet name - large, cinematic font
+            ctx.font = '300 42px "Inter", "Segoe UI", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.letterSpacing = '0.15em';
+
+            // Subtle text shadow for depth
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+            ctx.shadowBlur = 20;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 4;
+
+            // Get node color for accent
+            const nodeColor = node.lightColor || node.color || colors.teal;
+
+            // Draw planet name
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(node.label.toUpperCase(), labelX, labelY);
+
+            // Distance subtitle - smaller, with color accent
+            ctx.font = '400 14px "JetBrains Mono", monospace';
+            ctx.shadowBlur = 10;
+
+            // Draw distance with light year unit
+            const distText = distanceLY + ' ly';
+            ctx.fillStyle = nodeColor;
+            ctx.fillText(distText, labelX, labelY + 45);
+
+            // Decorative horizontal lines
+            const lineWidth = 60;
+            const lineY = labelY + 20;
+            ctx.strokeStyle = nodeColor;
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = gazeAlpha * 0.6;
+
+            // Left line
+            ctx.beginPath();
+            ctx.moveTo(labelX - 80 - lineWidth, lineY);
+            ctx.lineTo(labelX - 80, lineY);
+            ctx.stroke();
+
+            // Right line
+            ctx.beginPath();
+            ctx.moveTo(labelX + 80, lineY);
+            ctx.lineTo(labelX + 80 + lineWidth, lineY);
+            ctx.stroke();
+
+            // Small diamond/dot in center below name
+            ctx.globalAlpha = gazeAlpha * 0.8;
+            ctx.fillStyle = nodeColor;
+            ctx.beginPath();
+            ctx.arc(labelX, lineY, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
         }
 
         drawTooltipConnector();
@@ -3535,7 +3806,30 @@
         mouseX = world.x;
         mouseY = world.y;
 
-        // Check if clicking on a node
+        // Check if clicking while a planet label is shown (gazedNode)
+        // This allows clicking anywhere to select the gazed planet
+        if (gazedNode && gazeSmoothProximity > 0.3) {
+            // Clicking while looking at a planet: select and follow it
+            if (gazedNode.isSun) {
+                navigateToSolarSystem(gazedNode.id);
+                return;
+            }
+
+            // Don't re-select if already following this node
+            if (isFollowing && followTarget === gazedNode) return;
+
+            selectAndFollowPlanet(gazedNode);
+            container.style.cursor = 'default';
+
+            // Show tooltip for the selected node
+            if (!tooltipTarget || tooltipTarget !== gazedNode) {
+                tooltipTarget = gazedNode;
+                generateTooltipPosition(gazedNode);
+            }
+            return;
+        }
+
+        // Check if clicking on a node directly
         const clickedNode = getNodeAt(screenX, screenY);
 
         if (clickedNode) {
@@ -3545,13 +3839,11 @@
                 return;
             }
 
-            // Clicking on a planet/moon: start camera focus transition
-            // Don't start if already focusing on this node
-            if (isFocusing && focusTarget === clickedNode) return;
+            // Clicking on a planet/moon: select and follow it
+            // Don't start if already following this node
+            if (isFollowing && followTarget === clickedNode) return;
 
-            isFocusing = true;
-            focusTarget = clickedNode;
-            focusProgress = 0;
+            selectAndFollowPlanet(clickedNode);
             container.style.cursor = 'default';
 
             // Show tooltip for the focused node
@@ -3560,7 +3852,11 @@
                 generateTooltipPosition(clickedNode);
             }
         } else if (!isFocusing) {
-            // Clicking on empty space: start camera rotation (only if not focusing)
+            // Clicking on empty space: start camera rotation
+            // Cancel following if active
+            if (isFollowing) {
+                cancelFollow();
+            }
             isOrbiting = true;
             orbitStartX = e.clientX;
             orbitStartY = e.clientY;
@@ -3844,19 +4140,6 @@
         lightControlsToggle.addEventListener('click', (e) => {
             e.stopPropagation();
             lightControls.classList.toggle('active');
-        });
-    }
-
-    // Label toggle button
-    const labelToggle = document.getElementById('label-toggle');
-    if (labelToggle) {
-        labelToggle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            showPlanetLabels = !showPlanetLabels;
-            labelToggle.classList.toggle('active', showPlanetLabels);
-            // Sync with settings panel checkbox
-            const spCheckbox = document.getElementById('sp-show-labels');
-            if (spCheckbox) spCheckbox.checked = showPlanetLabels;
         });
     }
 
