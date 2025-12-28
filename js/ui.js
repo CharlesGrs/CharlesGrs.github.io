@@ -184,25 +184,40 @@
     if (!container) return;
 
     const fullText = [
-        { text: 'Running ', highlight: false },
+        { text: 'Founder of ', highlight: false },
         { text: 'Zylaris Ltd', highlight: true },
-        { text: ', specializing in ', highlight: false },
-        { text: 'real-time graphics', highlight: true },
-        { text: ' and shader development. 8+ years delivering for ', highlight: false },
+        { text: ' — the studio AAA teams call when ', highlight: false },
+        { text: 'performance is non-negotiable', highlight: true },
+        { text: '.', highlight: false, pauseAfter: 500 },
+        { text: ' 8+ years pushing pixels for ', highlight: false },
         { text: 'Meta', highlight: true },
         { text: ', ', highlight: false },
         { text: 'Ubisoft', highlight: true },
         { text: ', ', highlight: false },
         { text: 'Nexus Studios', highlight: true },
-        { text: ', and 12+ studios worldwide.', highlight: false, pauseAfter: 600 },
+        { text: ', and ', highlight: false },
+        { text: '12+ studios worldwide', highlight: true },
+        { text: '.', highlight: false, pauseAfter: 600 },
+        { text: ' From ', highlight: false },
+        { text: '90 FPS VR', highlight: true },
+        { text: ' on Quest to ', highlight: false },
+        { text: '16K immersive installations', highlight: true },
+        { text: ' — I build rendering systems that ship.', highlight: false, pauseAfter: 500 },
+        { text: ' ', highlight: false },
+        { text: '100+ shaders', highlight: true },
+        { text: ' delivered. ', highlight: false },
+        { text: '70% average performance gains', highlight: true },
+        { text: '. ', highlight: false },
+        { text: '15× faster light baking', highlight: true },
+        { text: '.', highlight: false, pauseAfter: 600 },
         { text: ' Video games, VR, ', highlight: false },
         { text: 'Web3', highlight: true },
-        { text: ', ', highlight: false },
-        { text: '16K immersive installations', highlight: true },
-        { text: '.', highlight: false, pauseAfter: 600 },
-        { text: ' Latest project: ', highlight: false },
+        { text: ', projection mapping — if it runs on a GPU, I optimize it.', highlight: false, pauseAfter: 500 },
+        { text: ' Latest: ', highlight: false },
         { text: 'Blumhouse Enhanced Cinema', highlight: true },
-        { text: ' on Meta Quest 3.', highlight: false }
+        { text: ' on ', highlight: false },
+        { text: 'Meta Quest 3', highlight: true },
+        { text: '.', highlight: false }
     ];
 
     const typos = [
@@ -210,9 +225,21 @@
         { pos: 120, wrong: 'n', correct: 'm' },
     ];
 
+    // Create invisible placeholder to reserve space for full text
+    const placeholder = document.createElement('span');
+    placeholder.className = 'typewriter-placeholder';
+    placeholder.textContent = fullText.map(s => s.text).join('');
+    placeholder.setAttribute('aria-hidden', 'true');
+    container.appendChild(placeholder);
+
+    // Create content wrapper for typed text (positioned over placeholder)
+    const contentWrapper = document.createElement('span');
+    contentWrapper.className = 'typewriter-content';
+    container.appendChild(contentWrapper);
+
     let cursor = document.createElement('span');
     cursor.className = 'typewriter-cursor';
-    container.appendChild(cursor);
+    contentWrapper.appendChild(cursor);
 
     let globalPos = 0, segmentIndex = 0, charIndex = 0, currentSpan = null;
     let typoQueue = [...typos].sort((a, b) => a.pos - b.pos);
@@ -234,6 +261,12 @@
         cursor.classList.add('hidden');
         if (typingIndicator) typingIndicator.classList.add('hidden');
         clearInterval(dotInterval);
+
+        // Add terminal prompt line with blinking cursor
+        const promptLine = document.createElement('div');
+        promptLine.className = 'terminal-prompt-line';
+        promptLine.innerHTML = '<span class="prompt-path">~/charles/gpu_profile</span><span class="prompt-arrow">&gt;</span><span class="prompt-cursor">_</span>';
+        container.parentNode.appendChild(promptLine);
     }
 
     function type() {
@@ -243,7 +276,7 @@
         if (!currentSpan) {
             currentSpan = document.createElement('span');
             if (segment.highlight) currentSpan.className = 'highlight-text';
-            container.insertBefore(currentSpan, cursor);
+            contentWrapper.insertBefore(currentSpan, cursor);
         }
 
         const currentTypo = typoQueue[0];
@@ -311,17 +344,7 @@
 (function initTabs() {
     const tabs = document.querySelectorAll('.chrome-tab, .pipeline-node, .carousel-tab');
     const panels = document.querySelectorAll('.carousel-panel');
-    const chromePath = document.getElementById('chrome-path');
     if (!tabs.length || !panels.length) return;
-
-    // Map panel IDs to paths
-    const panelPaths = {
-        'about': '~/charles/about',
-        'career': '~/charles/experience',
-        'skills': '~/charles/skills',
-        'portfolio': '~/charles/portfolio',
-        'contact': '~/charles/contact'
-    };
 
     function triggerPanelAnimations(panel) {
         panel.querySelectorAll('.client-card').forEach((card, i) => { card.style.animation = 'none'; card.offsetHeight; card.style.animation = ''; card.style.animationDelay = `${i * 0.08}s`; });
@@ -333,14 +356,22 @@
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             const panelId = tab.dataset.panel;
-
-            // Update chrome path
-            if (chromePath && panelPaths[panelId]) {
-                chromePath.textContent = panelPaths[panelId];
-            }
             const container = document.querySelector('.container');
 
-            tabs.forEach(t => t.classList.remove('active'));
+            // Get the index of clicked tab
+            const activeIndex = parseInt(tab.dataset.index) || 0;
+
+            // Update active and loaded states
+            tabs.forEach(t => {
+                t.classList.remove('active');
+                const tabIndex = parseInt(t.dataset.index) || 0;
+                // Add 'loaded' class to all tabs up to and including active
+                if (tabIndex <= activeIndex) {
+                    t.classList.add('loaded');
+                } else {
+                    t.classList.remove('loaded');
+                }
+            });
             tab.classList.add('active');
 
             // Hide hero sections and show the selected panel
@@ -836,31 +867,3 @@
     });
 })();
 
-// ============================================
-// HEADER COLLAPSE (MOBILE ONLY)
-// ============================================
-(function initHeaderCollapse() {
-    const header = document.getElementById('main-header');
-    const MOBILE_BREAKPOINT = 900;
-
-    if (!header) return;
-
-    function isMobile() {
-        return window.innerWidth <= MOBILE_BREAKPOINT;
-    }
-
-    // On mobile, use expanded layout; on desktop, stay collapsed
-    function updateHeaderState() {
-        if (isMobile()) {
-            header.classList.remove('collapsed');
-        } else {
-            header.classList.add('collapsed');
-        }
-    }
-
-    // Set initial state
-    updateHeaderState();
-
-    // Update on resize
-    window.addEventListener('resize', updateHeaderState);
-})();
