@@ -1105,36 +1105,6 @@ header.collapsed .cv-download svg {
     height: 12px;
 }
 
-header.collapsed .header-expand-btn {
-    display: inline-flex;
-    flex-shrink: 0;
-}
-
-/* Header expand button (shown when collapsed) */
-.header-expand-btn {
-    display: none;
-    background: transparent;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 0.3rem 0.5rem;
-    cursor: pointer;
-    color: var(--text-secondary);
-    font-size: 0.65rem;
-    font-family: 'JetBrains Mono', monospace;
-    transition: all 0.2s ease;
-}
-
-.header-expand-btn:hover {
-    border-color: var(--accent-gold);
-    color: var(--accent-gold);
-}
-
-header.collapsed .header-expand-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-}
-
 /* Reveal Animations */
 @keyframes skillReveal {
     0% {
@@ -5001,115 +4971,6 @@ header.collapsed .header-expand-btn {
     box-shadow: 0 0 10px rgba(232, 185, 35, 0.5);
 }
 
-/* Testimonials Panel */
-.testimonials-panel {
-    padding: 1.5rem;
-    background: radial-gradient(ellipse at center, rgba(21, 29, 38, 0.4) 0%, rgba(21, 29, 38, 0.15) 60%, transparent 100%);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: none;
-    border-radius: 16px;
-    overflow-y: auto;
-    gap: 1rem;
-}
-
-.testimonials-panel.active {
-    display: flex;
-    flex-direction: column;
-}
-
-.testimonial-card {
-    padding: 1.5rem;
-    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(232, 185, 35, 0.03) 100%);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    position: relative;
-    opacity: 0;
-    transform: translateX(-10px);
-    animation: projectReveal 0.5s ease forwards;
-}
-
-.testimonial-card::before {
-    content: '"';
-    position: absolute;
-    top: 0.5rem;
-    left: 1rem;
-    font-size: 3rem;
-    font-family: Georgia, serif;
-    color: var(--accent-gold);
-    opacity: 0.3;
-    line-height: 1;
-}
-
-.testimonial-quote {
-    font-size: 0.95rem;
-    color: var(--text-secondary);
-    line-height: 1.7;
-    font-style: italic;
-    margin-bottom: 1rem;
-    padding-left: 1.5rem;
-}
-
-.testimonial-author {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding-left: 1.5rem;
-}
-
-.testimonial-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-teal) 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    font-size: 0.8rem;
-    color: var(--bg-primary);
-}
-
-.testimonial-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.testimonial-name {
-    font-weight: 600;
-    font-size: 0.85rem;
-    color: var(--text-primary);
-}
-
-.testimonial-role {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--text-muted);
-}
-
-/* Testimonials CTA */
-.testimonials-cta {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-    padding: 2rem 1rem;
-    margin-top: 1rem;
-    border-top: 1px solid var(--border-color);
-    text-align: center;
-}
-
-.testimonials-cta .cta-text {
-    font-size: 1.1rem;
-    color: var(--text-secondary);
-    margin: 0;
-}
-
-.testimonials-cta .contact-btn {
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
-}
-
 /* Contact Panel */
 .contact-panel {
     padding: 1rem 2rem;
@@ -6347,28 +6208,6 @@ footer {
         display: none !important;
     }
 
-    /* Testimonials mobile */
-    .testimonials-panel {
-        padding: 1rem;
-    }
-
-    .testimonial-card {
-        padding: 1rem;
-    }
-
-    .testimonial-quote {
-        font-size: 0.85rem;
-        padding-left: 1rem;
-    }
-
-    .testimonial-author {
-        padding-left: 1rem;
-    }
-
-    .testimonial-card::before {
-        font-size: 2rem;
-        left: 0.5rem;
-    }
 }
 
 /* Extra small screens */
@@ -7565,21 +7404,6 @@ footer {
 
     .client-name {
         color: #1a1a1a;
-    }
-
-    /* Testimonials */
-    .testimonial-card {
-        background: #f8f8f8;
-        border: 1px solid #ddd;
-        page-break-inside: avoid;
-    }
-
-    .testimonial-quote {
-        color: #333;
-    }
-
-    .testimonial-name {
-        color: #8b6914;
     }
 
     /* Links */

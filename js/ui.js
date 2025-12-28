@@ -29,7 +29,6 @@
 // ============================================
 (function initAnimations() {
     document.querySelectorAll('.client-card').forEach((card, i) => { card.style.animationDelay = `${0.6 + i * 0.08}s`; });
-    document.querySelectorAll('.testimonial-card').forEach((card, i) => { card.style.animationDelay = `${0.6 + i * 0.15}s`; });
     document.querySelectorAll('.project-card').forEach((card, i) => { card.style.animationDelay = `${0.6 + i * 0.12}s`; });
 })();
 
@@ -316,7 +315,6 @@
 
     function triggerPanelAnimations(panel) {
         panel.querySelectorAll('.client-card').forEach((card, i) => { card.style.animation = 'none'; card.offsetHeight; card.style.animation = ''; card.style.animationDelay = `${i * 0.08}s`; });
-        panel.querySelectorAll('.testimonial-card').forEach((card, i) => { card.style.animation = 'none'; card.offsetHeight; card.style.animation = ''; card.style.animationDelay = `${i * 0.15}s`; });
         panel.querySelectorAll('.project-card').forEach((card, i) => { card.style.animation = 'none'; card.offsetHeight; card.style.animation = ''; card.style.animationDelay = `${i * 0.12}s`; });
         const portfolioCarousel = panel.querySelector('.portfolio-carousel');
         if (portfolioCarousel) { portfolioCarousel.style.animation = 'none'; portfolioCarousel.offsetHeight; portfolioCarousel.style.animation = ''; }
@@ -824,11 +822,10 @@
 })();
 
 // ============================================
-// HEADER COLLAPSE (CLICK ONLY)
+// HEADER COLLAPSE (MOBILE ONLY)
 // ============================================
 (function initHeaderCollapse() {
     const header = document.getElementById('main-header');
-    const expandBtn = document.getElementById('header-expand-btn');
     const MOBILE_BREAKPOINT = 900;
 
     if (!header) return;
@@ -837,39 +834,18 @@
         return window.innerWidth <= MOBILE_BREAKPOINT;
     }
 
-    function collapseHeader() {
-        // Don't collapse on mobile
-        if (isMobile()) return;
-        header.classList.add('collapsed');
-    }
-
-    function expandHeader() {
-        header.classList.remove('collapsed');
-    }
-
-    // Expand button click
-    if (expandBtn) {
-        expandBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            expandHeader();
-        });
-    }
-
-    // Tab click - About keeps header expanded, others collapse (desktop only)
-    document.querySelectorAll('.pipeline-node, .carousel-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-            if (tab.dataset.panel === 'about') {
-                expandHeader();
-            } else {
-                collapseHeader();
-            }
-        });
-    });
-
-    // On resize, remove collapsed state if switching to mobile
-    window.addEventListener('resize', () => {
-        if (isMobile() && header.classList.contains('collapsed')) {
+    // On mobile, use expanded layout; on desktop, stay collapsed
+    function updateHeaderState() {
+        if (isMobile()) {
             header.classList.remove('collapsed');
+        } else {
+            header.classList.add('collapsed');
         }
-    });
+    }
+
+    // Set initial state
+    updateHeaderState();
+
+    // Update on resize
+    window.addEventListener('resize', updateHeaderState);
 })();
