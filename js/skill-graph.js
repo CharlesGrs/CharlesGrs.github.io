@@ -3499,7 +3499,7 @@
     });
 
     // Listen for tab changes (when leaving skills tab)
-    var allTabs = document.querySelectorAll('.carousel-tab');
+    var allTabs = document.querySelectorAll('.pipeline-node, .carousel-tab');
     allTabs.forEach(function(tab) {
         tab.addEventListener('click', function() {
             setTimeout(function() {

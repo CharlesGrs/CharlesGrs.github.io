@@ -130,30 +130,45 @@
     </div>
 
     <!-- Version Badge -->
-    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.34</span></div>
+    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.35</span></div>
 
     <div class="container" id="main-content" role="main">
-        <header id="main-header" class="header-compact">
-            <div class="header-left">
-                <h1>Charles Grassi</h1>
+        <header id="main-header" class="viewport-header">
+            <!-- Left: Viewport Label -->
+            <div class="viewport-label">
+                <div class="viewport-tag">
+                    <span class="tag-bracket">[</span>
+                    <span class="tag-index">RT_0</span>
+                    <span class="tag-bracket">]</span>
+                </div>
+                <h1 class="viewport-title">Charles Grassi</h1>
+                <div class="viewport-meta">
+                    <span class="meta-dot active"></span>
+                    <span class="meta-label">AVAILABLE</span>
+                    <span class="meta-separator">//</span>
+                    <span class="meta-value">CY</span>
+                </div>
             </div>
-            <div class="header-right">
-                <a href="mailto:contact.charles.grassi@gmail.com" class="header-icon" title="Email">
+
+            <!-- Right: Output Channels -->
+            <div class="output-channels">
+                <span class="channel-label">OUT</span>
+                <a href="mailto:contact.charles.grassi@gmail.com" class="channel-port" title="Email">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                 </a>
-                <a href="tel:+33646118214" class="header-icon" title="Phone">
+                <a href="tel:+33646118214" class="channel-port" title="Phone">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                 </a>
-                <a href="https://www.linkedin.com/in/charles-grassi/" target="_blank" rel="noopener noreferrer" class="header-icon" title="LinkedIn">
+                <a href="https://www.linkedin.com/in/charles-grassi/" target="_blank" rel="noopener noreferrer" class="channel-port" title="LinkedIn">
                     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
                 </a>
-                <a href="https://www.artstation.com/charlesgrassi" target="_blank" rel="noopener noreferrer" class="header-icon" title="ArtStation">
+                <a href="https://www.artstation.com/charlesgrassi" target="_blank" rel="noopener noreferrer" class="channel-port" title="ArtStation">
                     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M0 17.723l2.027 3.505h.001a2.424 2.424 0 0 0 2.164 1.333h13.457l-2.792-4.838H0zm24-2.219a2.424 2.424 0 0 0-.357-1.262L15.593 1.56a2.42 2.42 0 0 0-2.107-1.22h-4.06L21.96 18.298h-7.193l-2.793 4.838h10.269A2.42 2.42 0 0 0 24 20.893v-.002l-4.073-7.055L24 15.504zM4.114 14.927L9.533 3.063l5.42 9.397-2.36 4.088-8.48-1.62z"/></svg>
                 </a>
-                <a href="https://twitter.com/charles_grassi" target="_blank" rel="noopener noreferrer" class="header-icon" title="X">
+                <a href="https://twitter.com/charles_grassi" target="_blank" rel="noopener noreferrer" class="channel-port" title="X">
                     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
                 </a>
-                <a href="Charles_Grassi_CV.pdf" class="header-icon" download title="Download CV">
+                <a href="Charles_Grassi_CV.pdf" class="channel-port highlight" download title="Download CV">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 </a>
             </div>
@@ -161,76 +176,285 @@
 
         <!-- Tabbed Carousel -->
         <section class="tabbed-carousel" aria-label="Portfolio sections">
-            <div class="carousel-tabs" role="tablist" aria-label="Content sections">
-                <button class="carousel-tab active" data-panel="about" role="tab" aria-selected="true" aria-controls="panel-about">About</button>
-                <button class="carousel-tab" data-panel="career" role="tab" aria-selected="false" aria-controls="panel-career">Career</button>
-                <button class="carousel-tab" data-panel="skills" role="tab" aria-selected="false" aria-controls="panel-skills">Skills</button>
-                <button class="carousel-tab" data-panel="portfolio" role="tab" aria-selected="false" aria-controls="panel-portfolio">Portfolio</button>
-                <button class="carousel-tab" data-panel="testimonials" role="tab" aria-selected="false" aria-controls="panel-testimonials">Testimonials</button>
-                <button class="carousel-tab" data-panel="contact" role="tab" aria-selected="false" aria-controls="panel-contact">Contact</button>
-            </div>
+            <nav class="pipeline-nav" role="tablist" aria-label="Content sections">
+                <!-- SVG for connection lines -->
+                <svg class="pipeline-connections" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="dataFlowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="var(--accent-teal)" stop-opacity="0"/>
+                            <stop offset="50%" stop-color="var(--accent-teal)" stop-opacity="1"/>
+                            <stop offset="100%" stop-color="var(--accent-teal)" stop-opacity="0"/>
+                        </linearGradient>
+                        <linearGradient id="dataFlowGradientGold" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="var(--accent-gold)" stop-opacity="0"/>
+                            <stop offset="50%" stop-color="var(--accent-gold)" stop-opacity="1"/>
+                            <stop offset="100%" stop-color="var(--accent-gold)" stop-opacity="0"/>
+                        </linearGradient>
+                        <filter id="pipelineGlow">
+                            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+                </svg>
+
+                <!-- Pipeline Nodes -->
+                <button class="pipeline-node active" data-panel="about" data-stage="0" role="tab" aria-selected="true" aria-controls="panel-about">
+                    <span class="node-index">00</span>
+                    <span class="node-label">About</span>
+                    <span class="node-connector"></span>
+                </button>
+                <button class="pipeline-node" data-panel="career" data-stage="1" role="tab" aria-selected="false" aria-controls="panel-career">
+                    <span class="node-index">01</span>
+                    <span class="node-label">Career</span>
+                    <span class="node-connector"></span>
+                </button>
+                <button class="pipeline-node" data-panel="skills" data-stage="2" role="tab" aria-selected="false" aria-controls="panel-skills">
+                    <span class="node-index">02</span>
+                    <span class="node-label">Skills</span>
+                    <span class="node-connector"></span>
+                </button>
+                <button class="pipeline-node" data-panel="portfolio" data-stage="3" role="tab" aria-selected="false" aria-controls="panel-portfolio">
+                    <span class="node-index">03</span>
+                    <span class="node-label">Portfolio</span>
+                    <span class="node-connector"></span>
+                </button>
+                <button class="pipeline-node" data-panel="testimonials" data-stage="4" role="tab" aria-selected="false" aria-controls="panel-testimonials">
+                    <span class="node-index">04</span>
+                    <span class="node-label">Testimonials</span>
+                    <span class="node-connector"></span>
+                </button>
+                <button class="pipeline-node" data-panel="contact" data-stage="5" role="tab" aria-selected="false" aria-controls="panel-contact">
+                    <span class="node-index">05</span>
+                    <span class="node-label">Contact</span>
+                </button>
+            </nav>
 
             <div class="carousel-panels">
-                <!-- About Panel -->
+                <!-- About Panel - GPU Resource Inspector -->
                 <div class="carousel-panel about-panel active" id="panel-about" role="tabpanel" aria-labelledby="tab-about">
-                    <!-- Hero Tagline Section -->
-                    <div class="hero-tagline">
-                        <h2 class="hero-title">
-                            <span class="hero-line hero-line-1">Crafting Real-Time</span>
-                            <span class="hero-line hero-line-2">Visual Experiences</span>
-                        </h2>
-                        <p class="hero-subtitle">From shader code to stunning visuals</p>
-                        <!-- Title Tags -->
-                        <div class="hero-titles">
-                            <span class="hero-title-tag">Shader Specialist</span>
-                            <span class="hero-title-tag">Technical Artist</span>
-                            <span class="hero-title-tag">Graphics Engineer</span>
-                            <span class="hero-title-tag">Unity Expert</span>
-                        </div>
-                        <!-- Stats integrated into hero -->
-                        <div class="hero-stats">
-                            <div class="hero-stat">
-                                <span class="hero-stat-number" data-target="12" data-suffix="+">0+</span>
-                                <span class="hero-stat-label">Studios</span>
-                            </div>
-                            <div class="hero-stat-divider"></div>
-                            <div class="hero-stat">
-                                <span class="hero-stat-number" data-target="4" data-suffix="">0</span>
-                                <span class="hero-stat-label">Platforms</span>
-                            </div>
-                            <div class="hero-stat-divider"></div>
-                            <div class="hero-stat">
-                                <span class="hero-stat-number" data-target="8" data-suffix="+">0+</span>
-                                <span class="hero-stat-label">Years</span>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Animated background effects -->
+                    <div class="gpu-inspector-grid" aria-hidden="true"></div>
+                    <div class="gpu-scan-line" aria-hidden="true"></div>
 
-                    <div class="about-content">
-                        <!-- Summary -->
-                        <div class="about-hero">
-                            <div class="about-summary">
-                                <p class="typewriter-text" id="typewriter-container"></p>
-                                <div class="typing-indicator" id="typing-indicator">Charles is typing<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span></div>
+                    <!-- Main GPU Inspector Layout -->
+                    <div class="gpu-inspector">
+                        <!-- Hero Section - Large Impact Title -->
+                        <div class="inspector-hero">
+                            <div class="hero-status-bar">
+                                <span class="status-led active"></span>
+                                <span class="status-text">SHADER_PROFILE.LOADED</span>
+                                <span class="status-separator">//</span>
+                                <span class="status-coords">BUFFER_0x7F</span>
+                            </div>
+
+                            <div class="hero-title-block">
+                                <span class="title-prefix">&gt;</span>
+                                <h2 class="hero-main-title">
+                                    <span class="title-word word-1">GRAPHICS</span>
+                                    <span class="title-word word-2">PROGRAMMER</span>
+                                </h2>
+                                <span class="title-cursor">_</span>
+                            </div>
+
+                            <div class="hero-tags">
+                                <span class="shader-tag" data-delay="0">HLSL</span>
+                                <span class="shader-tag" data-delay="1">GLSL</span>
+                                <span class="shader-tag" data-delay="2">Unity</span>
+                                <span class="shader-tag" data-delay="3">Unreal</span>
+                                <span class="shader-tag" data-delay="4">WebGL</span>
+                            </div>
+
+                            <!-- Terminal Bio -->
+                            <div class="inspector-terminal">
+                                <div class="terminal-chrome">
+                                    <span class="chrome-dot red"></span>
+                                    <span class="chrome-dot yellow"></span>
+                                    <span class="chrome-dot green"></span>
+                                    <span class="chrome-path">~/charles/gpu_profile</span>
+                                </div>
+                                <div class="terminal-output">
+                                    <p class="typewriter-text" id="typewriter-container"></p>
+                                    <div class="typing-indicator" id="typing-indicator">
+                                        <span class="cursor-blink">_</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Clients -->
-                        <div class="about-clients">
-                            <span class="about-clients-label">Trusted by</span>
-                            <div class="about-clients-grid">
-                                <a href="https://nexusstudios.com/" target="_blank" rel="noopener noreferrer" class="about-client">Nexus Studios</a>
-                                <a href="https://www.ubisoft.com/" target="_blank" rel="noopener noreferrer" class="about-client">Ubisoft</a>
-                                <a href="https://www.22cans.com/" target="_blank" rel="noopener noreferrer" class="about-client">22cans</a>
-                                <a href="https://www.sandbox.game/" target="_blank" rel="noopener noreferrer" class="about-client">The Sandbox</a>
-                                <a href="https://www.nexile.se/" target="_blank" rel="noopener noreferrer" class="about-client">Nexile AB</a>
-                                <a href="https://www.drest.com/" target="_blank" rel="noopener noreferrer" class="about-client">DREST</a>
-                                <a href="https://www.linkedin.com/company/h3investments/posts/" target="_blank" rel="noopener noreferrer" class="about-client">H3 Space</a>
-                                <a href="https://store.steampowered.com/developer/lrdg" target="_blank" rel="noopener noreferrer" class="about-client">Little Red Dog</a>
-                                <a href="https://scapin.io/" target="_blank" rel="noopener noreferrer" class="about-client">Scapin'</a>
-                                <a href="https://sabda.es/" target="_blank" rel="noopener noreferrer" class="about-client">SABDA</a>
-                                <a href="https://www.genera.so/" target="_blank" rel="noopener noreferrer" class="about-client">GN3RA</a>
-                                <a href="https://lunchboxentertainment.com/" target="_blank" rel="noopener noreferrer" class="about-client">Lunchbox Ent.</a>
+                        <!-- GPU Metrics Panel -->
+                        <div class="inspector-metrics">
+                            <div class="metrics-header">
+                                <svg class="metrics-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
+                                    <path d="M12 20V10M18 20V4M6 20v-4"/>
+                                </svg>
+                                <span class="metrics-label">PERF_COUNTERS</span>
+                                <span class="metrics-status">LIVE</span>
+                            </div>
+                            <div class="metrics-grid">
+                                <div class="metric-cell featured">
+                                    <div class="metric-value">
+                                        <span class="value-number hero-stat-number" data-target="100" data-suffix="+">0</span>
+                                        <span class="value-suffix">+</span>
+                                    </div>
+                                    <div class="metric-bar">
+                                        <div class="bar-fill" style="--fill: 100%"></div>
+                                    </div>
+                                    <span class="metric-name">SHADERS_SHIPPED</span>
+                                </div>
+                                <div class="metric-cell accent">
+                                    <div class="metric-value">
+                                        <span class="value-number hero-stat-number" data-target="70" data-suffix="%">0</span>
+                                        <span class="value-suffix">%</span>
+                                    </div>
+                                    <div class="metric-bar">
+                                        <div class="bar-fill" style="--fill: 70%"></div>
+                                    </div>
+                                    <span class="metric-name">AVG_PERF_GAIN</span>
+                                </div>
+                                <div class="metric-cell">
+                                    <div class="metric-value">
+                                        <span class="value-number hero-stat-number" data-target="12" data-suffix="+">0</span>
+                                        <span class="value-suffix">+</span>
+                                    </div>
+                                    <div class="metric-bar">
+                                        <div class="bar-fill" style="--fill: 85%"></div>
+                                    </div>
+                                    <span class="metric-name">STUDIOS</span>
+                                </div>
+                                <div class="metric-cell">
+                                    <div class="metric-value">
+                                        <span class="value-number hero-stat-number" data-target="8" data-suffix="+">0</span>
+                                        <span class="value-suffix">+</span>
+                                    </div>
+                                    <div class="metric-bar">
+                                        <div class="bar-fill" style="--fill: 80%"></div>
+                                    </div>
+                                    <span class="metric-name">YEARS_XP</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Skills Properties Panel -->
+                        <div class="inspector-properties">
+                            <div class="properties-header">
+                                <svg class="properties-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
+                                    <circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v10M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24M1 12h6m6 0h10M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24"/>
+                                </svg>
+                                <span class="properties-label">SHADER_PROPERTIES</span>
+                            </div>
+                            <div class="properties-list">
+                                <div class="property-item">
+                                    <span class="prop-key">_Shaders</span>
+                                    <div class="prop-gauge">
+                                        <div class="gauge-track">
+                                            <div class="gauge-fill" style="--level: 100%"></div>
+                                        </div>
+                                        <span class="gauge-value">5/5</span>
+                                    </div>
+                                </div>
+                                <div class="property-item">
+                                    <span class="prop-key">_VFX</span>
+                                    <div class="prop-gauge">
+                                        <div class="gauge-track">
+                                            <div class="gauge-fill" style="--level: 90%"></div>
+                                        </div>
+                                        <span class="gauge-value">4.5/5</span>
+                                    </div>
+                                </div>
+                                <div class="property-item">
+                                    <span class="prop-key">_Optimization</span>
+                                    <div class="prop-gauge">
+                                        <div class="gauge-track">
+                                            <div class="gauge-fill" style="--level: 90%"></div>
+                                        </div>
+                                        <span class="gauge-value">4.5/5</span>
+                                    </div>
+                                </div>
+                                <div class="property-item">
+                                    <span class="prop-key">_TechArt</span>
+                                    <div class="prop-gauge">
+                                        <div class="gauge-track">
+                                            <div class="gauge-fill" style="--level: 80%"></div>
+                                        </div>
+                                        <span class="gauge-value">4/5</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dependencies / Clients Grid -->
+                        <div class="inspector-dependencies">
+                            <div class="dependencies-header">
+                                <svg class="dependencies-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
+                                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                                </svg>
+                                <span class="dependencies-label">RENDER_TARGETS</span>
+                                <span class="dependencies-count">12</span>
+                            </div>
+                            <div class="dependencies-grid">
+                                <a href="https://www.ubisoft.com/" target="_blank" rel="noopener noreferrer" class="dep-card tier-aaa">
+                                    <span class="dep-index">RT_0</span>
+                                    <span class="dep-name">Ubisoft</span>
+                                    <span class="dep-type">AAA Games</span>
+                                </a>
+                                <a href="https://nexusstudios.com/" target="_blank" rel="noopener noreferrer" class="dep-card tier-aaa">
+                                    <span class="dep-index">RT_1</span>
+                                    <span class="dep-name">Nexus Studios</span>
+                                    <span class="dep-type">VFX / Animation</span>
+                                </a>
+                                <a href="https://www.sandbox.game/" target="_blank" rel="noopener noreferrer" class="dep-card tier-aaa">
+                                    <span class="dep-index">RT_2</span>
+                                    <span class="dep-name">The Sandbox</span>
+                                    <span class="dep-type">Web3 / Metaverse</span>
+                                </a>
+                                <a href="https://www.22cans.com/" target="_blank" rel="noopener noreferrer" class="dep-card">
+                                    <span class="dep-index">RT_3</span>
+                                    <span class="dep-name">22cans</span>
+                                    <span class="dep-type">Game Studio</span>
+                                </a>
+                                <a href="https://www.nexile.se/" target="_blank" rel="noopener noreferrer" class="dep-card">
+                                    <span class="dep-index">RT_4</span>
+                                    <span class="dep-name">Nexile AB</span>
+                                    <span class="dep-type">Game Studio</span>
+                                </a>
+                                <a href="https://www.drest.com/" target="_blank" rel="noopener noreferrer" class="dep-card">
+                                    <span class="dep-index">RT_5</span>
+                                    <span class="dep-name">DREST</span>
+                                    <span class="dep-type">Fashion Tech</span>
+                                </a>
+                                <a href="https://www.linkedin.com/company/h3investments/posts/" target="_blank" rel="noopener noreferrer" class="dep-card">
+                                    <span class="dep-index">RT_6</span>
+                                    <span class="dep-name">H3 Space</span>
+                                    <span class="dep-type">Space Tech</span>
+                                </a>
+                                <a href="https://store.steampowered.com/developer/lrdg" target="_blank" rel="noopener noreferrer" class="dep-card">
+                                    <span class="dep-index">RT_7</span>
+                                    <span class="dep-name">Little Red Dog</span>
+                                    <span class="dep-type">Indie Games</span>
+                                </a>
+                                <a href="https://scapin.io/" target="_blank" rel="noopener noreferrer" class="dep-card">
+                                    <span class="dep-index">RT_8</span>
+                                    <span class="dep-name">Scapin'</span>
+                                    <span class="dep-type">Mobile</span>
+                                </a>
+                                <a href="https://sabda.es/" target="_blank" rel="noopener noreferrer" class="dep-card">
+                                    <span class="dep-index">RT_9</span>
+                                    <span class="dep-name">SABDA</span>
+                                    <span class="dep-type">Interactive</span>
+                                </a>
+                                <a href="https://www.genera.so/" target="_blank" rel="noopener noreferrer" class="dep-card">
+                                    <span class="dep-index">RT_A</span>
+                                    <span class="dep-name">GN3RA</span>
+                                    <span class="dep-type">AI / Creative</span>
+                                </a>
+                                <a href="https://lunchboxentertainment.com/" target="_blank" rel="noopener noreferrer" class="dep-card">
+                                    <span class="dep-index">RT_B</span>
+                                    <span class="dep-name">Lunchbox Ent.</span>
+                                    <span class="dep-type">Entertainment</span>
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -1225,209 +1449,425 @@
                     </div>
                 </div>
 
-                <!-- Career Panel - Timeline -->
+                <!-- Career Panel - Mission Timeline -->
                 <div class="carousel-panel career-panel" id="panel-career" role="tabpanel" aria-labelledby="tab-career">
-                    <div class="project-list-wrapper" id="project-list-wrapper">
-                        <div class="project-list" id="project-list">
-                            <article class="project-card">
-                                <div class="project-header">
-                                    <div>
-                                        <div class="project-title">Technical Artist & Graphics Programmer</div>
-                                        <div class="project-client">Nexus Studios</div>
+                    <div class="mission-timeline-container">
+                        <!-- Decorative grid background -->
+                        <div class="timeline-grid-bg"></div>
+
+                        <div class="mission-timeline" id="mission-timeline">
+                            <!-- Timeline spine -->
+                            <div class="timeline-spine">
+                                <div class="spine-glow"></div>
+                            </div>
+
+                            <!-- 2025 -->
+                            <article class="mission-node" data-year="2025" style="--delay: 0">
+                                <div class="node-connector">
+                                    <div class="node-dot"></div>
+                                    <div class="node-ring"></div>
+                                </div>
+                                <div class="mission-card">
+                                    <div class="card-header">
+                                        <span class="mission-year">2025</span>
+                                        <span class="mission-status">ACTIVE</span>
                                     </div>
-                                    <div class="project-year">2025</div>
-                                </div>
-                                <div class="project-desc">
-                                    Built a real-time global illumination system using SDF representations of scanned VR environments, achieving <strong>90 FPS on Quest 2</strong> with <strong>20+ dynamic lights</strong>.
-                                    Implemented GPU compute pipelines that reduced light baking time from <strong>45 minutes to 3 minutes (15x faster)</strong> while maintaining visual fidelity.
-                                </div>
-                                <div class="project-tags">
-                                    <span class="tech-tag">Compute Shaders</span>
-                                    <span class="tech-tag">SDF</span>
-                                    <span class="tech-tag">VR</span>
-                                    <span class="tech-tag">Global Illumination</span>
+                                    <h3 class="mission-role">Technical Artist & Graphics Programmer</h3>
+                                    <div class="mission-org">Nexus Studios</div>
+                                    <p class="mission-brief">
+                                        Built real-time global illumination using SDF representations for VR environments. Implemented GPU compute pipelines for light baking optimization.
+                                    </p>
+                                    <div class="mission-metrics">
+                                        <div class="metric">
+                                            <span class="metric-value">90</span>
+                                            <span class="metric-unit">FPS</span>
+                                            <span class="metric-label">Quest 2</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-value">15×</span>
+                                            <span class="metric-unit">faster</span>
+                                            <span class="metric-label">Bake Time</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-value">20+</span>
+                                            <span class="metric-unit">lights</span>
+                                            <span class="metric-label">Dynamic</span>
+                                        </div>
+                                    </div>
+                                    <div class="mission-tech">
+                                        <span class="tech-chip">Compute Shaders</span>
+                                        <span class="tech-chip">SDF</span>
+                                        <span class="tech-chip">VR</span>
+                                        <span class="tech-chip">Global Illumination</span>
+                                    </div>
                                 </div>
                             </article>
 
-                            <article class="project-card leadership-card">
-                                <div class="project-header">
-                                    <div>
-                                        <div class="project-title">Chief Technology Officer</div>
-                                        <div class="project-client">SABDA</div>
+                            <!-- 2023-2024 - CTO Leadership -->
+                            <article class="mission-node mission-leadership" data-year="2023" style="--delay: 1">
+                                <div class="node-connector">
+                                    <div class="node-dot"></div>
+                                    <div class="node-ring"></div>
+                                    <div class="node-orbit"></div>
+                                </div>
+                                <div class="mission-card">
+                                    <div class="card-header">
+                                        <span class="mission-year">2023–2024</span>
+                                        <span class="mission-status leadership-badge">LEADERSHIP</span>
                                     </div>
-                                    <div class="project-year">2023–2024</div>
-                                </div>
-                                <div class="project-desc">
-                                    Led technical direction for a <strong>16K (15360×1080px) immersive installation</strong> spanning <strong>360° projection</strong>.
-                                    Developed real-time 3D content running at <strong>90 FPS</strong> across <strong>6 synchronized servers</strong>,
-                                    managed <strong>64-channel spatial audio</strong> system, and architected projection mapping pipelines handling <strong>2.5GB/s video throughput</strong>.
-                                    Built and led a <strong>team of 8 engineers</strong> across 4 countries, delivering the installation in 18 months.
-                                </div>
-                                <div class="project-tags">
-                                    <span class="tech-tag">Projection Mapping</span>
-                                    <span class="tech-tag">Spatial Audio</span>
-                                    <span class="tech-tag">Real-time 3D</span>
-                                    <span class="tech-tag">Team Leadership</span>
+                                    <h3 class="mission-role">Chief Technology Officer</h3>
+                                    <div class="mission-org">SABDA</div>
+                                    <p class="mission-brief">
+                                        Led technical direction for 16K immersive installation with 360° projection. Architected projection mapping pipelines and managed 64-channel spatial audio.
+                                    </p>
+                                    <div class="mission-metrics">
+                                        <div class="metric featured">
+                                            <span class="metric-value">16K</span>
+                                            <span class="metric-unit">resolution</span>
+                                            <span class="metric-label">15360×1080px</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-value">8</span>
+                                            <span class="metric-unit">engineers</span>
+                                            <span class="metric-label">Team Size</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-value">2.5</span>
+                                            <span class="metric-unit">GB/s</span>
+                                            <span class="metric-label">Throughput</span>
+                                        </div>
+                                    </div>
+                                    <div class="mission-tech">
+                                        <span class="tech-chip">Projection Mapping</span>
+                                        <span class="tech-chip">Spatial Audio</span>
+                                        <span class="tech-chip">Real-time 3D</span>
+                                        <span class="tech-chip">Team Leadership</span>
+                                    </div>
                                 </div>
                             </article>
 
-                            <article class="project-card">
-                                <div class="project-header">
-                                    <div>
-                                        <div class="project-title">Lead Graphics Programmer</div>
-                                        <div class="project-client">Little Red Dog Games</div>
+                            <!-- 2023 - Lead -->
+                            <article class="mission-node mission-leadership" data-year="2023" style="--delay: 2">
+                                <div class="node-connector">
+                                    <div class="node-dot"></div>
+                                    <div class="node-ring"></div>
+                                </div>
+                                <div class="mission-card">
+                                    <div class="card-header">
+                                        <span class="mission-year">2023</span>
+                                        <span class="mission-status leadership-badge">LEAD</span>
                                     </div>
-                                    <div class="project-year">2023</div>
-                                </div>
-                                <div class="project-desc">
-                                    Directed <strong>team of 4 graphics engineers</strong> to develop high-performance VFX using compute shaders and Burst-compiled code.
-                                    Achieved <strong>70% CPU performance improvement</strong> (from 12ms to 3.6ms per frame) while maintaining visual fidelity, shipping <strong>15+ custom shader effects</strong> and <strong>mentoring 2 junior developers</strong>.
-                                </div>
-                                <div class="project-tags">
-                                    <span class="tech-tag">Compute Shaders</span>
-                                    <span class="tech-tag">Burst</span>
-                                    <span class="tech-tag">VFX</span>
-                                    <span class="tech-tag">Team Lead</span>
+                                    <h3 class="mission-role">Lead Graphics Programmer</h3>
+                                    <div class="mission-org">Little Red Dog Games</div>
+                                    <p class="mission-brief">
+                                        Directed team of graphics engineers developing high-performance VFX with compute shaders and Burst-compiled code.
+                                    </p>
+                                    <div class="mission-metrics">
+                                        <div class="metric featured">
+                                            <span class="metric-value">70%</span>
+                                            <span class="metric-unit">faster</span>
+                                            <span class="metric-label">CPU Time</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-value">15+</span>
+                                            <span class="metric-unit">shaders</span>
+                                            <span class="metric-label">Shipped</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-value">4</span>
+                                            <span class="metric-unit">engineers</span>
+                                            <span class="metric-label">Directed</span>
+                                        </div>
+                                    </div>
+                                    <div class="mission-tech">
+                                        <span class="tech-chip">Compute Shaders</span>
+                                        <span class="tech-chip">Burst</span>
+                                        <span class="tech-chip">VFX</span>
+                                        <span class="tech-chip">Team Lead</span>
+                                    </div>
                                 </div>
                             </article>
 
-                            <article class="project-card">
-                                <div class="project-header">
-                                    <div>
-                                        <div class="project-title">Senior Graphics Programmer</div>
-                                        <div class="project-client">22cans</div>
+                            <!-- 2023 - Senior -->
+                            <article class="mission-node" data-year="2023" style="--delay: 3">
+                                <div class="node-connector">
+                                    <div class="node-dot"></div>
+                                    <div class="node-ring"></div>
+                                </div>
+                                <div class="mission-card">
+                                    <div class="card-header">
+                                        <span class="mission-year">2023</span>
+                                        <span class="mission-status">SENIOR</span>
                                     </div>
-                                    <div class="project-year">2023</div>
-                                </div>
-                                <div class="project-desc">
-                                    Created <strong>shader library with 25+ reusable materials</strong> targeting mobile (iOS/Android) and desktop simultaneously.
-                                    Developed grass rendering system supporting <strong>1M+ blades at 60 FPS on mid-tier mobile</strong> and volumetric lighting
-                                    that maintained <strong>sub-5ms GPU time</strong> across hardware tiers from iPhone 12 to RTX 4090.
-                                </div>
-                                <div class="project-tags">
-                                    <span class="tech-tag">HLSL</span>
-                                    <span class="tech-tag">Mobile</span>
-                                    <span class="tech-tag">Volumetrics</span>
-                                    <span class="tech-tag">Grass</span>
+                                    <h3 class="mission-role">Senior Graphics Programmer</h3>
+                                    <div class="mission-org">22cans</div>
+                                    <p class="mission-brief">
+                                        Created shader library targeting mobile and desktop. Developed grass rendering system with volumetric lighting across hardware tiers.
+                                    </p>
+                                    <div class="mission-metrics">
+                                        <div class="metric">
+                                            <span class="metric-value">1M+</span>
+                                            <span class="metric-unit">blades</span>
+                                            <span class="metric-label">Grass</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-value">25+</span>
+                                            <span class="metric-unit">materials</span>
+                                            <span class="metric-label">Library</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-value">&lt;5ms</span>
+                                            <span class="metric-unit">GPU</span>
+                                            <span class="metric-label">Volumetrics</span>
+                                        </div>
+                                    </div>
+                                    <div class="mission-tech">
+                                        <span class="tech-chip">HLSL</span>
+                                        <span class="tech-chip">Mobile</span>
+                                        <span class="tech-chip">Volumetrics</span>
+                                        <span class="tech-chip">Grass</span>
+                                    </div>
                                 </div>
                             </article>
 
-                            <article class="project-card">
-                                <div class="project-header">
-                                    <div>
-                                        <div class="project-title">Shader Expert</div>
-                                        <div class="project-client">GN3RA</div>
+                            <!-- 2023 - GN3RA -->
+                            <article class="mission-node" data-year="2023" style="--delay: 4">
+                                <div class="node-connector">
+                                    <div class="node-dot"></div>
+                                    <div class="node-ring"></div>
+                                </div>
+                                <div class="mission-card">
+                                    <div class="card-header">
+                                        <span class="mission-year">2023</span>
+                                        <span class="mission-status">EXPERT</span>
                                     </div>
-                                    <div class="project-year">2023</div>
-                                </div>
-                                <div class="project-desc">
-                                    Developed <strong>customizable HDRP cloth shader system with 12+ fabric types</strong> (silk, denim, leather, velvet) for fashion and character rendering.
-                                    Optimized VFX to run at <strong>4K 60 FPS</strong>, reducing GPU time by <strong>35%</strong> (from 11ms to 7ms) while adding physically-based subsurface scattering.
-                                </div>
-                                <div class="project-tags">
-                                    <span class="tech-tag">HDRP</span>
-                                    <span class="tech-tag">Cloth Simulation</span>
-                                    <span class="tech-tag">VFX</span>
+                                    <h3 class="mission-role">Shader Expert</h3>
+                                    <div class="mission-org">GN3RA</div>
+                                    <p class="mission-brief">
+                                        Developed HDRP cloth shader system with 12+ fabric types. Optimized VFX with physically-based subsurface scattering.
+                                    </p>
+                                    <div class="mission-metrics">
+                                        <div class="metric">
+                                            <span class="metric-value">12+</span>
+                                            <span class="metric-unit">fabrics</span>
+                                            <span class="metric-label">Types</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-value">35%</span>
+                                            <span class="metric-unit">reduction</span>
+                                            <span class="metric-label">GPU Time</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-value">4K</span>
+                                            <span class="metric-unit">60 FPS</span>
+                                            <span class="metric-label">Target</span>
+                                        </div>
+                                    </div>
+                                    <div class="mission-tech">
+                                        <span class="tech-chip">HDRP</span>
+                                        <span class="tech-chip">Cloth Simulation</span>
+                                        <span class="tech-chip">VFX</span>
+                                    </div>
                                 </div>
                             </article>
 
-                            <article class="project-card">
-                                <div class="project-header">
-                                    <div>
-                                        <div class="project-title">Graphics Programmer</div>
-                                        <div class="project-client">Scapin' · The Sandbox</div>
+                            <!-- 2022 - DREST -->
+                            <article class="mission-node" data-year="2022" style="--delay: 5">
+                                <div class="node-connector">
+                                    <div class="node-dot"></div>
+                                    <div class="node-ring"></div>
+                                </div>
+                                <div class="mission-card">
+                                    <div class="card-header">
+                                        <span class="mission-year">2022</span>
+                                        <span class="mission-status">EXPERT</span>
                                     </div>
-                                    <div class="project-year">2021–2022</div>
-                                </div>
-                                <div class="project-desc">
-                                    Engineered custom lighting system supporting <strong>30+ dynamic lights</strong> for web3 social applications reaching <strong>2M+ active users</strong>.
-                                    Built stylized cloud shader with <strong>8-layer parallax</strong> and optimized mobile blur from <strong>18ms to 4ms GPU time</strong>
-                                    on iPhone 11, improving frame rates by <strong>55%</strong>.
-                                </div>
-                                <div class="project-tags">
-                                    <span class="tech-tag">Lighting</span>
-                                    <span class="tech-tag">Mobile Optimization</span>
-                                    <span class="tech-tag">Web3</span>
+                                    <h3 class="mission-role">Shader Expert</h3>
+                                    <div class="mission-org">DREST</div>
+                                    <p class="mission-brief">
+                                        Delivered specialized shader solutions for fashion tech including realistic fabric rendering and PBR workflows.
+                                    </p>
+                                    <div class="mission-metrics">
+                                        <div class="metric">
+                                            <span class="metric-value">8</span>
+                                            <span class="metric-unit">shaders</span>
+                                            <span class="metric-label">Delivered</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-value">40%</span>
+                                            <span class="metric-unit">reduction</span>
+                                            <span class="metric-label">GPU Time</span>
+                                        </div>
+                                    </div>
+                                    <div class="mission-tech">
+                                        <span class="tech-chip">Fashion Tech</span>
+                                        <span class="tech-chip">Materials</span>
+                                        <span class="tech-chip">Optimization</span>
+                                    </div>
                                 </div>
                             </article>
 
-                            <article class="project-card">
-                                <div class="project-header">
-                                    <div>
-                                        <div class="project-title">Shader Expert</div>
-                                        <div class="project-client">DREST</div>
+                            <!-- 2021-2022 - Scapin -->
+                            <article class="mission-node" data-year="2021" style="--delay: 6">
+                                <div class="node-connector">
+                                    <div class="node-dot"></div>
+                                    <div class="node-ring"></div>
+                                </div>
+                                <div class="mission-card">
+                                    <div class="card-header">
+                                        <span class="mission-year">2021–2022</span>
+                                        <span class="mission-status">GRAPHICS</span>
                                     </div>
-                                    <div class="project-year">2022</div>
-                                </div>
-                                <div class="project-desc">
-                                    Delivered <strong>8 specialized shader solutions</strong> for fashion tech applications, including realistic fabric rendering and dynamic lighting.
-                                    Optimized material rendering achieving <strong>40% GPU time reduction</strong> while implementing <strong>PBR workflows</strong> for high-fidelity mobile experiences.
-                                </div>
-                                <div class="project-tags">
-                                    <span class="tech-tag">Fashion Tech</span>
-                                    <span class="tech-tag">Materials</span>
-                                    <span class="tech-tag">Optimization</span>
+                                    <h3 class="mission-role">Graphics Programmer</h3>
+                                    <div class="mission-org">Scapin' · The Sandbox</div>
+                                    <p class="mission-brief">
+                                        Engineered custom lighting system for web3 social applications. Built stylized cloud shader with 8-layer parallax.
+                                    </p>
+                                    <div class="mission-metrics">
+                                        <div class="metric">
+                                            <span class="metric-value">30+</span>
+                                            <span class="metric-unit">lights</span>
+                                            <span class="metric-label">Dynamic</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-value">2M+</span>
+                                            <span class="metric-unit">users</span>
+                                            <span class="metric-label">Reach</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-value">55%</span>
+                                            <span class="metric-unit">faster</span>
+                                            <span class="metric-label">Frame Rate</span>
+                                        </div>
+                                    </div>
+                                    <div class="mission-tech">
+                                        <span class="tech-chip">Lighting</span>
+                                        <span class="tech-chip">Mobile Optimization</span>
+                                        <span class="tech-chip">Web3</span>
+                                    </div>
                                 </div>
                             </article>
 
-                            <article class="project-card">
-                                <div class="project-header">
-                                    <div>
-                                        <div class="project-title">Unity Developer & Technical Artist</div>
-                                        <div class="project-client">Lunchbox Entertainment</div>
+                            <!-- 2021-2022 - Lunchbox -->
+                            <article class="mission-node" data-year="2021" style="--delay: 7">
+                                <div class="node-connector">
+                                    <div class="node-dot"></div>
+                                    <div class="node-ring"></div>
+                                </div>
+                                <div class="mission-card">
+                                    <div class="card-header">
+                                        <span class="mission-year">2021–2022</span>
+                                        <span class="mission-status">DEVELOPER</span>
                                     </div>
-                                    <div class="project-year">2021–2022</div>
-                                </div>
-                                <div class="project-desc">
-                                    Created <strong>18+ custom shaders</strong> including terrain, clouds, water with caustics, and bubble VFX for game environments.
-                                    Optimized water shader to support <strong>real-time reflections at 60 FPS on Switch</strong>, combining technical programming with artistic direction for immersive visual experiences.
-                                </div>
-                                <div class="project-tags">
-                                    <span class="tech-tag">Water Shaders</span>
-                                    <span class="tech-tag">VFX</span>
-                                    <span class="tech-tag">Environment Art</span>
+                                    <h3 class="mission-role">Unity Developer & Technical Artist</h3>
+                                    <div class="mission-org">Lunchbox Entertainment</div>
+                                    <p class="mission-brief">
+                                        Created custom shaders including terrain, clouds, water with caustics, and bubble VFX for game environments.
+                                    </p>
+                                    <div class="mission-metrics">
+                                        <div class="metric">
+                                            <span class="metric-value">18+</span>
+                                            <span class="metric-unit">shaders</span>
+                                            <span class="metric-label">Custom</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-value">60</span>
+                                            <span class="metric-unit">FPS</span>
+                                            <span class="metric-label">Switch</span>
+                                        </div>
+                                    </div>
+                                    <div class="mission-tech">
+                                        <span class="tech-chip">Water Shaders</span>
+                                        <span class="tech-chip">VFX</span>
+                                        <span class="tech-chip">Environment Art</span>
+                                    </div>
                                 </div>
                             </article>
 
-                            <article class="project-card">
-                                <div class="project-header">
-                                    <div>
-                                        <div class="project-title">Graphics Engineer</div>
-                                        <div class="project-client">H3 Space</div>
+                            <!-- 2021 - H3 Space -->
+                            <article class="mission-node" data-year="2021" style="--delay: 8">
+                                <div class="node-connector">
+                                    <div class="node-dot"></div>
+                                    <div class="node-ring"></div>
+                                </div>
+                                <div class="mission-card">
+                                    <div class="card-header">
+                                        <span class="mission-year">2021</span>
+                                        <span class="mission-status">ENGINEER</span>
                                     </div>
-                                    <div class="project-year">2021</div>
-                                </div>
-                                <div class="project-desc">
-                                    Developed <strong>10+ graphics solutions</strong> for AR/VR applications across Quest 2 and HoloLens 2.
-                                    Optimized particle systems achieving <strong>90 FPS in VR</strong> with <strong>50K+ particles</strong>, and implemented custom post-processing effects with <strong>sub-2ms latency</strong> for spatial computing experiences.
-                                </div>
-                                <div class="project-tags">
-                                    <span class="tech-tag">AR/VR</span>
-                                    <span class="tech-tag">Optimization</span>
-                                    <span class="tech-tag">3D Math</span>
+                                    <h3 class="mission-role">Graphics Engineer</h3>
+                                    <div class="mission-org">H3 Space</div>
+                                    <p class="mission-brief">
+                                        Developed graphics solutions for AR/VR across Quest 2 and HoloLens 2. Optimized particle systems and post-processing.
+                                    </p>
+                                    <div class="mission-metrics">
+                                        <div class="metric">
+                                            <span class="metric-value">90</span>
+                                            <span class="metric-unit">FPS</span>
+                                            <span class="metric-label">VR Target</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-value">50K+</span>
+                                            <span class="metric-unit">particles</span>
+                                            <span class="metric-label">Real-time</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-value">&lt;2ms</span>
+                                            <span class="metric-unit">latency</span>
+                                            <span class="metric-label">Post-FX</span>
+                                        </div>
+                                    </div>
+                                    <div class="mission-tech">
+                                        <span class="tech-chip">AR/VR</span>
+                                        <span class="tech-chip">Optimization</span>
+                                        <span class="tech-chip">3D Math</span>
+                                    </div>
                                 </div>
                             </article>
 
-                            <article class="project-card">
-                                <div class="project-header">
-                                    <div>
-                                        <div class="project-title">Unity Developer & Graphics Programmer</div>
-                                        <div class="project-client">Ubisoft</div>
+                            <!-- 2020-2021 - Ubisoft -->
+                            <article class="mission-node mission-origin" data-year="2020" style="--delay: 9">
+                                <div class="node-connector">
+                                    <div class="node-dot"></div>
+                                    <div class="node-ring"></div>
+                                    <div class="node-burst"></div>
+                                </div>
+                                <div class="mission-card">
+                                    <div class="card-header">
+                                        <span class="mission-year">2020–2021</span>
+                                        <span class="mission-status origin-badge">ORIGIN</span>
                                     </div>
-                                    <div class="project-year">2020–2021</div>
-                                </div>
-                                <div class="project-desc">
-                                    Delivered graphics programming for AAA game development, shipping <strong>20+ custom shaders</strong> across PC, PS5, and Xbox Series X.
-                                    Optimized particle systems achieving <strong>50% GPU time reduction</strong> (from 8ms to 4ms) while <strong>doubling particle count to 100K+</strong> on console hardware, maintaining <strong>60 FPS at 4K</strong>.
-                                </div>
-                                <div class="project-tags">
-                                    <span class="tech-tag">AAA</span>
-                                    <span class="tech-tag">VFX</span>
-                                    <span class="tech-tag">Performance</span>
+                                    <h3 class="mission-role">Unity Developer & Graphics Programmer</h3>
+                                    <div class="mission-org">Ubisoft</div>
+                                    <p class="mission-brief">
+                                        Delivered graphics programming for AAA game development. Shipped custom shaders across PC, PS5, and Xbox Series X.
+                                    </p>
+                                    <div class="mission-metrics">
+                                        <div class="metric featured">
+                                            <span class="metric-value">20+</span>
+                                            <span class="metric-unit">shaders</span>
+                                            <span class="metric-label">Shipped</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-value">50%</span>
+                                            <span class="metric-unit">reduction</span>
+                                            <span class="metric-label">GPU Time</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-value">100K+</span>
+                                            <span class="metric-unit">particles</span>
+                                            <span class="metric-label">Console</span>
+                                        </div>
+                                    </div>
+                                    <div class="mission-tech">
+                                        <span class="tech-chip">AAA</span>
+                                        <span class="tech-chip">VFX</span>
+                                        <span class="tech-chip">Performance</span>
+                                    </div>
                                 </div>
                             </article>
+
                         </div>
-                        <p class="scroll-hint">Scroll to see more</p>
                     </div>
                 </div>
 
@@ -1455,54 +1895,201 @@
                     </div>
                 </div>
 
-                <!-- Contact Panel -->
-                <div class="carousel-panel contact-panel" id="panel-contact" role="tabpanel" aria-labelledby="tab-contact">
-                    <div class="contact-panel-content">
-                        <div class="contact-intro">
-                            <h2>Let's Work Together</h2>
-                            <p>Have a project in mind? I'm available for consulting, contract work, and full-time opportunities. Whether you need shader optimization, custom VFX, or graphics engineering - let's discuss how I can help.</p>
-                        </div>
-                        <form class="contact-form" id="contact-form-panel" action="https://formspree.io/f/xqezrkra" method="POST">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="panel-contact-name">Name</label>
-                                    <input type="text" id="panel-contact-name" name="name" required placeholder="Your name">
+                <!-- Contact Panel - Transmission Terminal Design -->
+                <div class="carousel-panel contact-panel-v2" id="panel-contact" role="tabpanel" aria-labelledby="tab-contact">
+                    <!-- Animated background grid -->
+                    <div class="terminal-grid"></div>
+                    <div class="scan-line"></div>
+
+                    <div class="transmission-container">
+                        <!-- Header Section -->
+                        <header class="transmission-header">
+                            <div class="status-bar">
+                                <span class="status-indicator online"></span>
+                                <span class="status-text">UPLINK ACTIVE</span>
+                                <span class="coordinates">47.3769° N, 8.5417° E</span>
+                            </div>
+                            <h2 class="transmission-title">
+                                <span class="prefix">&gt;</span> ESTABLISH_CONNECTION
+                                <span class="cursor-blink">_</span>
+                            </h2>
+                            <p class="transmission-subtitle">// Ready for shader optimization, VFX development, or graphics engineering collaboration</p>
+                        </header>
+
+                        <div class="transmission-content">
+                            <!-- Form Section -->
+                            <div class="channel-primary">
+                                <div class="channel-header">
+                                    <span class="channel-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+                                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                        </svg>
+                                    </span>
+                                    <span class="channel-label">MESSAGE_CHANNEL</span>
+                                    <span class="channel-status">OPEN</span>
                                 </div>
-                                <div class="form-group">
-                                    <label for="panel-contact-email">Email</label>
-                                    <input type="email" id="panel-contact-email" name="email" required placeholder="your@email.com">
+
+                                <form class="terminal-form" id="contact-form-panel" action="https://formspree.io/f/xqezrkra" method="POST">
+                                    <div class="form-grid">
+                                        <div class="input-group">
+                                            <label for="panel-contact-name">
+                                                <span class="label-prefix">$</span> identifier
+                                            </label>
+                                            <input type="text" id="panel-contact-name" name="name" required placeholder="enter_name" autocomplete="name">
+                                            <div class="input-glow"></div>
+                                        </div>
+                                        <div class="input-group">
+                                            <label for="panel-contact-email">
+                                                <span class="label-prefix">$</span> return_address
+                                            </label>
+                                            <input type="email" id="panel-contact-email" name="email" required placeholder="your@signal.com" autocomplete="email">
+                                            <div class="input-glow"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="input-group full-width">
+                                        <label for="panel-contact-subject">
+                                            <span class="label-prefix">$</span> subject_header
+                                        </label>
+                                        <input type="text" id="panel-contact-subject" name="subject" required placeholder="project_type || consultation || collaboration">
+                                        <div class="input-glow"></div>
+                                    </div>
+
+                                    <div class="input-group full-width">
+                                        <label for="panel-contact-message">
+                                            <span class="label-prefix">$</span> payload
+                                        </label>
+                                        <textarea id="panel-contact-message" name="message" rows="4" required placeholder="// Describe your project, timeline, and requirements..."></textarea>
+                                        <div class="input-glow"></div>
+                                    </div>
+
+                                    <button type="submit" class="transmit-btn">
+                                        <span class="btn-content">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                                                <path d="M22 2L11 13"/>
+                                                <polygon points="22,2 15,22 11,13 2,9"/>
+                                            </svg>
+                                            <span>TRANSMIT</span>
+                                        </span>
+                                        <span class="btn-status">READY</span>
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- Direct Channels -->
+                            <aside class="channel-secondary">
+                                <div class="channel-header">
+                                    <span class="channel-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <line x1="2" y1="12" x2="22" y2="12"/>
+                                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                                        </svg>
+                                    </span>
+                                    <span class="channel-label">DIRECT_LINKS</span>
                                 </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="panel-contact-subject">Subject</label>
-                                <input type="text" id="panel-contact-subject" name="subject" required placeholder="Project inquiry, consultation, etc.">
-                            </div>
-                            <div class="form-group">
-                                <label for="panel-contact-message">Message</label>
-                                <textarea id="panel-contact-message" name="message" rows="5" required placeholder="Tell me about your project..."></textarea>
-                            </div>
-                            <button type="submit" class="submit-btn">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
-                                Send Message
-                            </button>
-                        </form>
-                        <div class="contact-alternatives">
-                            <p>Or reach out directly:</p>
-                            <div class="contact-links">
-                                <a href="mailto:contact.charles.grassi@gmail.com">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                                    contact.charles.grassi@gmail.com
-                                </a>
-                                <a href="https://www.linkedin.com/in/charles-grassi" target="_blank" rel="noopener noreferrer">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
-                                    LinkedIn
-                                </a>
-                                <a href="https://twitter.com/charles_grassi" target="_blank" rel="noopener noreferrer">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/></svg>
-                                    @charles_grassi
-                                </a>
-                            </div>
+
+                                <div class="direct-channels">
+                                    <a href="mailto:contact.charles.grassi@gmail.com" class="channel-link" data-protocol="SMTP">
+                                        <div class="link-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                <rect x="2" y="4" width="20" height="16" rx="2"/>
+                                                <path d="M22 6L12 13L2 6"/>
+                                            </svg>
+                                        </div>
+                                        <div class="link-info">
+                                            <span class="link-protocol">EMAIL</span>
+                                            <span class="link-value">contact.charles.grassi</span>
+                                        </div>
+                                        <div class="link-arrow">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                                <path d="M7 17L17 7M17 7H7M17 7V17"/>
+                                            </svg>
+                                        </div>
+                                    </a>
+
+                                    <a href="https://www.linkedin.com/in/charles-grassi" target="_blank" rel="noopener noreferrer" class="channel-link" data-protocol="HTTPS">
+                                        <div class="link-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/>
+                                                <rect x="2" y="9" width="4" height="12"/>
+                                                <circle cx="4" cy="4" r="2"/>
+                                            </svg>
+                                        </div>
+                                        <div class="link-info">
+                                            <span class="link-protocol">LINKEDIN</span>
+                                            <span class="link-value">/in/charles-grassi</span>
+                                        </div>
+                                        <div class="link-arrow">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                                <path d="M7 17L17 7M17 7H7M17 7V17"/>
+                                            </svg>
+                                        </div>
+                                    </a>
+
+                                    <a href="https://twitter.com/charles_grassi" target="_blank" rel="noopener noreferrer" class="channel-link" data-protocol="HTTPS">
+                                        <div class="link-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                                            </svg>
+                                        </div>
+                                        <div class="link-info">
+                                            <span class="link-protocol">X/TWITTER</span>
+                                            <span class="link-value">@charles_grassi</span>
+                                        </div>
+                                        <div class="link-arrow">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                                <path d="M7 17L17 7M17 7H7M17 7V17"/>
+                                            </svg>
+                                        </div>
+                                    </a>
+
+                                    <a href="tel:+33646118214" class="channel-link" data-protocol="TEL">
+                                        <div class="link-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                            </svg>
+                                        </div>
+                                        <div class="link-info">
+                                            <span class="link-protocol">VOICE</span>
+                                            <span class="link-value">+33 6 46 11 82 14</span>
+                                        </div>
+                                        <div class="link-arrow">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                                <path d="M7 17L17 7M17 7H7M17 7V17"/>
+                                            </svg>
+                                        </div>
+                                    </a>
+                                </div>
+
+                                <div class="availability-badge">
+                                    <div class="pulse-ring"></div>
+                                    <span class="avail-status">AVAILABLE</span>
+                                    <span class="avail-text">Remote Worldwide</span>
+                                </div>
+                            </aside>
                         </div>
+
+                        <!-- Footer -->
+                        <footer class="transmission-footer">
+                            <div class="footer-left">
+                                <span class="footer-label">RESPONSE_TIME:</span>
+                                <span class="footer-value">&lt; 24h</span>
+                            </div>
+                            <div class="footer-center">
+                                <span class="encryption-badge">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                    </svg>
+                                    SECURE TRANSMISSION
+                                </span>
+                            </div>
+                            <div class="footer-right">
+                                <span class="footer-label">TIMEZONE:</span>
+                                <span class="footer-value">CET (UTC+1)</span>
+                            </div>
+                        </footer>
                     </div>
                 </div>
 

@@ -308,7 +308,7 @@
 // TABBED CAROUSEL
 // ============================================
 (function initTabs() {
-    const tabs = document.querySelectorAll('.carousel-tab');
+    const tabs = document.querySelectorAll('.pipeline-node, .carousel-tab');
     const panels = document.querySelectorAll('.carousel-panel');
     if (!tabs.length || !panels.length) return;
 
@@ -854,7 +854,7 @@
     }
 
     // Tab click - About keeps header expanded, others collapse (desktop only)
-    document.querySelectorAll('.carousel-tab').forEach(tab => {
+    document.querySelectorAll('.pipeline-node, .carousel-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             if (tab.dataset.panel === 'about') {
                 expandHeader();
