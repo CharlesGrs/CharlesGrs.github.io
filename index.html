@@ -130,7 +130,7 @@
     </div>
 
     <!-- Version Badge -->
-    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.38</span></div>
+    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.40</span></div>
 
     <div class="container" id="main-content" role="main">
         <header id="main-header" class="viewport-header collapsed">
@@ -176,57 +176,26 @@
 
         <!-- Tabbed Carousel -->
         <section class="tabbed-carousel" aria-label="Portfolio sections">
-            <nav class="pipeline-nav" role="tablist" aria-label="Content sections">
-                <!-- SVG for connection lines -->
-                <svg class="pipeline-connections" aria-hidden="true">
-                    <defs>
-                        <linearGradient id="dataFlowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stop-color="var(--accent-teal)" stop-opacity="0"/>
-                            <stop offset="50%" stop-color="var(--accent-teal)" stop-opacity="1"/>
-                            <stop offset="100%" stop-color="var(--accent-teal)" stop-opacity="0"/>
-                        </linearGradient>
-                        <linearGradient id="dataFlowGradientGold" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stop-color="var(--accent-gold)" stop-opacity="0"/>
-                            <stop offset="50%" stop-color="var(--accent-gold)" stop-opacity="1"/>
-                            <stop offset="100%" stop-color="var(--accent-gold)" stop-opacity="0"/>
-                        </linearGradient>
-                        <filter id="pipelineGlow">
-                            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-                            <feMerge>
-                                <feMergeNode in="coloredBlur"/>
-                                <feMergeNode in="SourceGraphic"/>
-                            </feMerge>
-                        </filter>
-                    </defs>
-                </svg>
+            <div class="main-window">
+                <!-- Window Chrome with Tabs -->
+                <div class="main-window-chrome">
+                    <div class="chrome-dots-group">
+                        <span class="chrome-dot red"></span>
+                        <span class="chrome-dot yellow"></span>
+                        <span class="chrome-dot green"></span>
+                    </div>
+                    <nav class="chrome-tabs" role="tablist" aria-label="Content sections">
+                        <button class="chrome-tab active" data-panel="about" role="tab" aria-selected="true" aria-controls="panel-about">About</button>
+                        <button class="chrome-tab" data-panel="career" role="tab" aria-selected="false" aria-controls="panel-career">Experience</button>
+                        <button class="chrome-tab" data-panel="skills" role="tab" aria-selected="false" aria-controls="panel-skills">Skills</button>
+                        <button class="chrome-tab" data-panel="portfolio" role="tab" aria-selected="false" aria-controls="panel-portfolio">Portfolio</button>
+                        <button class="chrome-tab" data-panel="contact" role="tab" aria-selected="false" aria-controls="panel-contact">Contact</button>
+                    </nav>
+                    <span class="chrome-path" id="chrome-path">~/charles/about</span>
+                </div>
 
-                <!-- Pipeline Nodes -->
-                <button class="pipeline-node active" data-panel="about" data-stage="0" role="tab" aria-selected="true" aria-controls="panel-about">
-                    <span class="node-index">00</span>
-                    <span class="node-label">About</span>
-                    <span class="node-connector"></span>
-                </button>
-                <button class="pipeline-node" data-panel="career" data-stage="1" role="tab" aria-selected="false" aria-controls="panel-career">
-                    <span class="node-index">01</span>
-                    <span class="node-label">Experience</span>
-                    <span class="node-connector"></span>
-                </button>
-                <button class="pipeline-node" data-panel="skills" data-stage="2" role="tab" aria-selected="false" aria-controls="panel-skills">
-                    <span class="node-index">02</span>
-                    <span class="node-label">Skills</span>
-                    <span class="node-connector"></span>
-                </button>
-                <button class="pipeline-node" data-panel="portfolio" data-stage="3" role="tab" aria-selected="false" aria-controls="panel-portfolio">
-                    <span class="node-index">03</span>
-                    <span class="node-label">Portfolio</span>
-                    <span class="node-connector"></span>
-                </button>
-                <button class="pipeline-node" data-panel="contact" data-stage="4" role="tab" aria-selected="false" aria-controls="panel-contact">
-                    <span class="node-index">04</span>
-                    <span class="node-label">Contact</span>
-                </button>
-            </nav>
-
+                <!-- Panel Content -->
+                <div class="main-window-content">
             <div class="carousel-panels">
                 <!-- About Panel - GPU Resource Inspector -->
                 <div class="carousel-panel about-panel active" id="panel-about" role="tabpanel" aria-labelledby="tab-about">
@@ -2065,6 +2034,8 @@
                     </div>
                 </div>
 
+            </div>
+                </div>
             </div>
         </section>
 

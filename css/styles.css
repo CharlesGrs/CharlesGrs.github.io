@@ -3975,6 +3975,85 @@ header.collapsed .cv-download svg {
     margin-left: auto;
 }
 
+/* Main Window - Unified terminal window wrapper */
+.main-window {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.main-window-chrome {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+    background: rgba(21, 29, 38, 0.95);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+}
+
+.chrome-dots-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+    width: 140px;
+}
+
+.chrome-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex: 1;
+    justify-content: center;
+}
+
+.chrome-tab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 0.4rem 0.8rem;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.chrome-tab:hover {
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.chrome-tab.active {
+    color: var(--accent-gold);
+    background: rgba(232, 185, 35, 0.1);
+    border-color: rgba(232, 185, 35, 0.3);
+}
+
+.main-window-chrome .chrome-path {
+    flex-shrink: 0;
+    width: 140px;
+    text-align: right;
+}
+
+.main-window-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+.main-window-content .carousel-panels {
+    height: 100%;
+}
+
 .terminal-output {
     padding: 1rem 1.25rem;
     min-height: 70px;

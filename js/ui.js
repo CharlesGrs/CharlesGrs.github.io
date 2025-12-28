@@ -309,9 +309,19 @@
 // TABBED CAROUSEL
 // ============================================
 (function initTabs() {
-    const tabs = document.querySelectorAll('.pipeline-node, .carousel-tab');
+    const tabs = document.querySelectorAll('.chrome-tab, .pipeline-node, .carousel-tab');
     const panels = document.querySelectorAll('.carousel-panel');
+    const chromePath = document.getElementById('chrome-path');
     if (!tabs.length || !panels.length) return;
+
+    // Map panel IDs to paths
+    const panelPaths = {
+        'about': '~/charles/about',
+        'career': '~/charles/experience',
+        'skills': '~/charles/skills',
+        'portfolio': '~/charles/portfolio',
+        'contact': '~/charles/contact'
+    };
 
     function triggerPanelAnimations(panel) {
         panel.querySelectorAll('.client-card').forEach((card, i) => { card.style.animation = 'none'; card.offsetHeight; card.style.animation = ''; card.style.animationDelay = `${i * 0.08}s`; });
@@ -323,6 +333,11 @@
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             const panelId = tab.dataset.panel;
+
+            // Update chrome path
+            if (chromePath && panelPaths[panelId]) {
+                chromePath.textContent = panelPaths[panelId];
+            }
             const container = document.querySelector('.container');
 
             tabs.forEach(t => t.classList.remove('active'));
