@@ -785,6 +785,16 @@
     let bloomTempTexture = null;
     let bloomCurrentWidth = 0, bloomCurrentHeight = 0;
 
+    // Glass blur system (Apple LiquidGlass-style effect for hierarchy panel)
+    let glassBlurHProgram = null;
+    let glassBlurVProgram = null;
+    let glassKawaseProgram = null;
+    let glassPanelProgram = null;
+    let glassDownsampleProgram = null;
+    let glassBlurFBOs = [];  // Ping-pong FBOs for blur passes
+    let glassQuadBuffer = null;
+    let glassCurrentWidth = 0, glassCurrentHeight = 0;
+
     // HDR rendering configuration (set in initSphereGL)
     let hdrConfig = {
         supported: false,
@@ -1144,6 +1154,372 @@
 
         // Return the final bloom texture (mip[0])
         return bloomFBOs[0].texture;
+    }
+
+    // ========================================
+    // GLASS BLUR SYSTEM - Apple LiquidGlass-style effect
+    // ========================================
+
+    function initGlassBlurSystem(comp) {
+        if (!window.GLASS_BLUR_VERTEX_SHADER) {
+            console.log('Glass blur shaders not loaded');
+            return;
+        }
+
+        const vsSource = window.GLASS_BLUR_VERTEX_SHADER;
+
+        // Compile vertex shader once
+        const vs = comp(vsSource, gl.VERTEX_SHADER);
+        if (!vs) {
+            console.error('Glass blur vertex shader failed to compile');
+            return;
+        }
+
+        // Horizontal blur program
+        const hFs = comp(window.GLASS_BLUR_H_FRAGMENT_SHADER, gl.FRAGMENT_SHADER);
+        if (hFs) {
+            glassBlurHProgram = gl.createProgram();
+            gl.attachShader(glassBlurHProgram, vs);
+            gl.attachShader(glassBlurHProgram, hFs);
+            gl.linkProgram(glassBlurHProgram);
+            if (gl.getProgramParameter(glassBlurHProgram, gl.LINK_STATUS)) {
+                glassBlurHProgram.aPosition = gl.getAttribLocation(glassBlurHProgram, 'aPosition');
+                glassBlurHProgram.uSource = gl.getUniformLocation(glassBlurHProgram, 'uSource');
+                glassBlurHProgram.uTexelSize = gl.getUniformLocation(glassBlurHProgram, 'uTexelSize');
+                glassBlurHProgram.uBlurRadius = gl.getUniformLocation(glassBlurHProgram, 'uBlurRadius');
+            } else {
+                console.error('Glass blur H program link failed');
+                glassBlurHProgram = null;
+            }
+        }
+
+        // Vertical blur program
+        const vFs = comp(window.GLASS_BLUR_V_FRAGMENT_SHADER, gl.FRAGMENT_SHADER);
+        if (vFs) {
+            glassBlurVProgram = gl.createProgram();
+            gl.attachShader(glassBlurVProgram, vs);
+            gl.attachShader(glassBlurVProgram, vFs);
+            gl.linkProgram(glassBlurVProgram);
+            if (gl.getProgramParameter(glassBlurVProgram, gl.LINK_STATUS)) {
+                glassBlurVProgram.aPosition = gl.getAttribLocation(glassBlurVProgram, 'aPosition');
+                glassBlurVProgram.uSource = gl.getUniformLocation(glassBlurVProgram, 'uSource');
+                glassBlurVProgram.uTexelSize = gl.getUniformLocation(glassBlurVProgram, 'uTexelSize');
+                glassBlurVProgram.uBlurRadius = gl.getUniformLocation(glassBlurVProgram, 'uBlurRadius');
+            } else {
+                console.error('Glass blur V program link failed');
+                glassBlurVProgram = null;
+            }
+        }
+
+        // Kawase blur program (for extra smoothing)
+        const kFs = comp(window.GLASS_KAWASE_FRAGMENT_SHADER, gl.FRAGMENT_SHADER);
+        if (kFs) {
+            glassKawaseProgram = gl.createProgram();
+            gl.attachShader(glassKawaseProgram, vs);
+            gl.attachShader(glassKawaseProgram, kFs);
+            gl.linkProgram(glassKawaseProgram);
+            if (gl.getProgramParameter(glassKawaseProgram, gl.LINK_STATUS)) {
+                glassKawaseProgram.aPosition = gl.getAttribLocation(glassKawaseProgram, 'aPosition');
+                glassKawaseProgram.uSource = gl.getUniformLocation(glassKawaseProgram, 'uSource');
+                glassKawaseProgram.uTexelSize = gl.getUniformLocation(glassKawaseProgram, 'uTexelSize');
+                glassKawaseProgram.uOffset = gl.getUniformLocation(glassKawaseProgram, 'uOffset');
+            } else {
+                glassKawaseProgram = null;
+            }
+        }
+
+        // Downsample program
+        const dsFs = comp(window.GLASS_DOWNSAMPLE_FRAGMENT_SHADER, gl.FRAGMENT_SHADER);
+        if (dsFs) {
+            glassDownsampleProgram = gl.createProgram();
+            gl.attachShader(glassDownsampleProgram, vs);
+            gl.attachShader(glassDownsampleProgram, dsFs);
+            gl.linkProgram(glassDownsampleProgram);
+            if (gl.getProgramParameter(glassDownsampleProgram, gl.LINK_STATUS)) {
+                glassDownsampleProgram.aPosition = gl.getAttribLocation(glassDownsampleProgram, 'aPosition');
+                glassDownsampleProgram.uSource = gl.getUniformLocation(glassDownsampleProgram, 'uSource');
+                glassDownsampleProgram.uTexelSize = gl.getUniformLocation(glassDownsampleProgram, 'uTexelSize');
+            } else {
+                glassDownsampleProgram = null;
+            }
+        }
+
+        // Glass panel program (SDF-based refraction)
+        const panelVs = comp(window.GLASS_PANEL_VERTEX_SHADER, gl.VERTEX_SHADER);
+        const panelFs = comp(window.GLASS_PANEL_FRAGMENT_SHADER, gl.FRAGMENT_SHADER);
+        if (panelVs && panelFs) {
+            glassPanelProgram = gl.createProgram();
+            gl.attachShader(glassPanelProgram, panelVs);
+            gl.attachShader(glassPanelProgram, panelFs);
+            gl.linkProgram(glassPanelProgram);
+            if (gl.getProgramParameter(glassPanelProgram, gl.LINK_STATUS)) {
+                glassPanelProgram.aPosition = gl.getAttribLocation(glassPanelProgram, 'aPosition');
+                glassPanelProgram.uPanelRect = gl.getUniformLocation(glassPanelProgram, 'uPanelRect');
+                glassPanelProgram.uResolution = gl.getUniformLocation(glassPanelProgram, 'uResolution');
+                glassPanelProgram.uPanelSize = gl.getUniformLocation(glassPanelProgram, 'uPanelSize');
+                glassPanelProgram.uBlurredScene = gl.getUniformLocation(glassPanelProgram, 'uBlurredScene');
+                glassPanelProgram.uCornerRadius = gl.getUniformLocation(glassPanelProgram, 'uCornerRadius');
+                glassPanelProgram.uEdgeSoftness = gl.getUniformLocation(glassPanelProgram, 'uEdgeSoftness');
+                glassPanelProgram.uRefractStrength = gl.getUniformLocation(glassPanelProgram, 'uRefractStrength');
+                glassPanelProgram.uRefractSmoothness = gl.getUniformLocation(glassPanelProgram, 'uRefractSmoothness');
+                glassPanelProgram.uRefractFalloff = gl.getUniformLocation(glassPanelProgram, 'uRefractFalloff');
+                glassPanelProgram.uGlassOpacity = gl.getUniformLocation(glassPanelProgram, 'uGlassOpacity');
+                glassPanelProgram.uGlassTint = gl.getUniformLocation(glassPanelProgram, 'uGlassTint');
+                glassPanelProgram.uChromaticAberration = gl.getUniformLocation(glassPanelProgram, 'uChromaticAberration');
+                glassPanelProgram.uExposure = gl.getUniformLocation(glassPanelProgram, 'uExposure');
+                glassPanelProgram.uToneMapping = gl.getUniformLocation(glassPanelProgram, 'uToneMapping');
+                console.log('Glass panel program initialized');
+            } else {
+                console.error('Glass panel program link failed:', gl.getProgramInfoLog(glassPanelProgram));
+                glassPanelProgram = null;
+            }
+        }
+
+        // Create quad buffer for glass rendering
+        glassQuadBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, glassQuadBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            -1, -1,  1, -1,  1, 1,
+            -1, -1,  1, 1,  -1, 1
+        ]), gl.STATIC_DRAW);
+
+        console.log('Glass blur system initialized');
+    }
+
+    function ensureGlassBlurFBOs(w, h) {
+        const gp = window.glassParams || {};
+        const downscale = Math.max(2, Math.min(8, gp.blurDownscale || 4));
+        const blurW = Math.floor(w / downscale);
+        const blurH = Math.floor(h / downscale);
+
+        if (glassCurrentWidth === blurW && glassCurrentHeight === blurH && glassBlurFBOs.length === 2) {
+            return;
+        }
+
+        glassCurrentWidth = blurW;
+        glassCurrentHeight = blurH;
+
+        // Clean up old FBOs
+        for (let i = 0; i < glassBlurFBOs.length; i++) {
+            if (glassBlurFBOs[i]) {
+                gl.deleteFramebuffer(glassBlurFBOs[i].fbo);
+                gl.deleteTexture(glassBlurFBOs[i].texture);
+            }
+        }
+        glassBlurFBOs = [];
+
+        // Create ping-pong FBOs for blur
+        for (let i = 0; i < 2; i++) {
+            const fbo = gl.createFramebuffer();
+            const tex = gl.createTexture();
+
+            gl.bindTexture(gl.TEXTURE_2D, tex);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, blurW, blurH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+
+            glassBlurFBOs.push({ fbo, texture: tex, width: blurW, height: blurH });
+        }
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+
+    function renderGlassPanel(sourceTexture, canvasWidth, canvasHeight) {
+        const gp = window.glassParams;
+        if (!gp || !gp.enabled) return;
+        if (!glassPanelProgram || !glassBlurHProgram || !glassBlurVProgram) return;
+
+        const canvasRect = glCanvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+
+        // Collect all glass panels to render
+        const panels = [];
+
+        // 1. Hierarchy panel
+        const hierarchyPanel = document.getElementById('hierarchy-panel');
+        if (hierarchyPanel) {
+            const rect = hierarchyPanel.getBoundingClientRect();
+            if (rect.width >= 1 && rect.height >= 1) {
+                panels.push({
+                    left: rect.left - canvasRect.left - gp.paddingX,
+                    top: rect.top - canvasRect.top - gp.paddingY,
+                    width: rect.width + gp.paddingX * 2,
+                    height: rect.height + gp.paddingY * 2
+                });
+            }
+        }
+
+        // 2. Go-back button (only if visible)
+        const goBackBtn = document.getElementById('go-back-btn');
+        if (goBackBtn && goBackBtn.classList.contains('visible')) {
+            const rect = goBackBtn.getBoundingClientRect();
+            if (rect.width >= 1 && rect.height >= 1) {
+                panels.push({
+                    left: rect.left - canvasRect.left,
+                    top: rect.top - canvasRect.top,
+                    width: rect.width,
+                    height: rect.height
+                });
+            }
+        }
+
+        // Skip if no panels to render
+        if (panels.length === 0) return;
+
+        // Ensure blur FBOs exist at correct size
+        ensureGlassBlurFBOs(canvasWidth, canvasHeight);
+        if (glassBlurFBOs.length < 2) return;
+
+        const blurW = glassBlurFBOs[0].width;
+        const blurH = glassBlurFBOs[0].height;
+
+        gl.disable(gl.BLEND);
+
+        // Step 1: Downsample scene to blur FBO[0]
+        gl.bindFramebuffer(gl.FRAMEBUFFER, glassBlurFBOs[0].fbo);
+        gl.viewport(0, 0, blurW, blurH);
+
+        if (glassDownsampleProgram) {
+            gl.useProgram(glassDownsampleProgram);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, sourceTexture);
+            gl.uniform1i(glassDownsampleProgram.uSource, 0);
+            gl.uniform2f(glassDownsampleProgram.uTexelSize, 1.0 / canvasWidth, 1.0 / canvasHeight);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, glassQuadBuffer);
+            gl.enableVertexAttribArray(glassDownsampleProgram.aPosition);
+            gl.vertexAttribPointer(glassDownsampleProgram.aPosition, 2, gl.FLOAT, false, 0, 0);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+            gl.disableVertexAttribArray(glassDownsampleProgram.aPosition);
+        } else {
+            // Fallback: direct copy
+            gl.useProgram(glassBlurHProgram);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, sourceTexture);
+            gl.uniform1i(glassBlurHProgram.uSource, 0);
+            gl.uniform2f(glassBlurHProgram.uTexelSize, 0, 0);
+            gl.uniform1f(glassBlurHProgram.uBlurRadius, 0);
+            gl.bindBuffer(gl.ARRAY_BUFFER, glassQuadBuffer);
+            gl.enableVertexAttribArray(glassBlurHProgram.aPosition);
+            gl.vertexAttribPointer(glassBlurHProgram.aPosition, 2, gl.FLOAT, false, 0, 0);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+            gl.disableVertexAttribArray(glassBlurHProgram.aPosition);
+        }
+
+        // Step 2: Multi-pass blur (separable Gaussian)
+        const blurPasses = Math.max(1, Math.min(6, gp.blurPasses || 3));
+        const blurRadius = gp.blurRadius || 2.5;
+
+        for (let pass = 0; pass < blurPasses; pass++) {
+            // Horizontal blur: FBO[0] -> FBO[1]
+            gl.bindFramebuffer(gl.FRAMEBUFFER, glassBlurFBOs[1].fbo);
+            gl.useProgram(glassBlurHProgram);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, glassBlurFBOs[0].texture);
+            gl.uniform1i(glassBlurHProgram.uSource, 0);
+            gl.uniform2f(glassBlurHProgram.uTexelSize, 1.0 / blurW, 1.0 / blurH);
+            gl.uniform1f(glassBlurHProgram.uBlurRadius, blurRadius);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, glassQuadBuffer);
+            gl.enableVertexAttribArray(glassBlurHProgram.aPosition);
+            gl.vertexAttribPointer(glassBlurHProgram.aPosition, 2, gl.FLOAT, false, 0, 0);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+            // Vertical blur: FBO[1] -> FBO[0]
+            gl.bindFramebuffer(gl.FRAMEBUFFER, glassBlurFBOs[0].fbo);
+            gl.useProgram(glassBlurVProgram);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, glassBlurFBOs[1].texture);
+            gl.uniform1i(glassBlurVProgram.uSource, 0);
+            gl.uniform2f(glassBlurVProgram.uTexelSize, 1.0 / blurW, 1.0 / blurH);
+            gl.uniform1f(glassBlurVProgram.uBlurRadius, blurRadius);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, glassQuadBuffer);
+            gl.enableVertexAttribArray(glassBlurVProgram.aPosition);
+            gl.vertexAttribPointer(glassBlurVProgram.aPosition, 2, gl.FLOAT, false, 0, 0);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+        }
+
+        // Optional: Kawase blur for extra smoothness
+        if (glassKawaseProgram && blurPasses > 1) {
+            const kawaseOffsets = [0.5, 1.5, 2.5];
+            for (let i = 0; i < kawaseOffsets.length; i++) {
+                // Ping-pong between FBOs
+                const srcFBO = glassBlurFBOs[i % 2];
+                const dstFBO = glassBlurFBOs[(i + 1) % 2];
+
+                gl.bindFramebuffer(gl.FRAMEBUFFER, dstFBO.fbo);
+                gl.useProgram(glassKawaseProgram);
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, srcFBO.texture);
+                gl.uniform1i(glassKawaseProgram.uSource, 0);
+                gl.uniform2f(glassKawaseProgram.uTexelSize, 1.0 / blurW, 1.0 / blurH);
+                gl.uniform1f(glassKawaseProgram.uOffset, kawaseOffsets[i]);
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, glassQuadBuffer);
+                gl.enableVertexAttribArray(glassKawaseProgram.aPosition);
+                gl.vertexAttribPointer(glassKawaseProgram.aPosition, 2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+            }
+        }
+
+        gl.disableVertexAttribArray(glassBlurVProgram.aPosition);
+
+        // Step 3: Render all glass panels with SDF refraction
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, canvasWidth, canvasHeight);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+        gl.useProgram(glassPanelProgram);
+
+        // Bind blurred texture (same for all panels)
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, glassBlurFBOs[0].texture);
+        gl.uniform1i(glassPanelProgram.uBlurredScene, 0);
+
+        // Shared uniforms
+        gl.uniform2f(glassPanelProgram.uResolution, canvasWidth, canvasHeight);
+        gl.uniform1f(glassPanelProgram.uEdgeSoftness, gp.edgeSoftness || 1.5);
+        gl.uniform1f(glassPanelProgram.uRefractStrength, gp.refractStrength || 8.0);
+        gl.uniform1f(glassPanelProgram.uRefractSmoothness, gp.refractSmoothness || 5.0);
+        gl.uniform1f(glassPanelProgram.uRefractFalloff, gp.refractFalloff || 3.0);
+        gl.uniform1f(glassPanelProgram.uGlassOpacity, gp.glassOpacity || 0.12);
+        gl.uniform3f(glassPanelProgram.uGlassTint, gp.glassTintR || 1.0, gp.glassTintG || 1.0, gp.glassTintB || 1.0);
+        gl.uniform1f(glassPanelProgram.uChromaticAberration, gp.chromaticAberration || 2.0);
+
+        // Tone mapping uniforms (must match post-process settings)
+        const pp = window.postProcessParams || {};
+        gl.uniform1f(glassPanelProgram.uExposure, pp.exposure !== undefined ? pp.exposure : 1.0);
+        gl.uniform1i(glassPanelProgram.uToneMapping, pp.toneMapping !== undefined ? Math.floor(pp.toneMapping) : 1);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, glassQuadBuffer);
+        gl.enableVertexAttribArray(glassPanelProgram.aPosition);
+        gl.vertexAttribPointer(glassPanelProgram.aPosition, 2, gl.FLOAT, false, 0, 0);
+
+        // Shared corner radius for all panels
+        gl.uniform1f(glassPanelProgram.uCornerRadius, gp.cornerRadius || 16.0);
+
+        // Render each panel
+        for (const panel of panels) {
+            // Convert panel rect to clip space (-1 to 1)
+            const clipX = (panel.left / canvasRect.width) * 2.0 - 1.0;
+            const clipY = 1.0 - ((panel.top + panel.height) / canvasRect.height) * 2.0;  // Flip Y
+            const clipW = (panel.width / canvasRect.width) * 2.0;
+            const clipH = (panel.height / canvasRect.height) * 2.0;
+
+            gl.uniform4f(glassPanelProgram.uPanelRect, clipX, clipY, clipW, clipH);
+            gl.uniform2f(glassPanelProgram.uPanelSize, panel.width * dpr, panel.height * dpr);
+
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+        }
+
+        gl.disableVertexAttribArray(glassPanelProgram.aPosition);
     }
 
     function initSphereGL() {
@@ -1680,6 +2056,11 @@
                 spaceParticleProgram = null;
             }
         }
+
+        // ========================================
+        // GLASS BLUR SYSTEM INITIALIZATION
+        // ========================================
+        initGlassBlurSystem(comp);
 
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -2770,6 +3151,13 @@
                 // Restore normal blending
                 gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
             }
+        }
+
+        // ========================================
+        // GLASS PANEL RENDERING (Apple LiquidGlass effect)
+        // ========================================
+        if (finalTexture && glassParams && glassParams.enabled) {
+            renderGlassPanel(finalTexture, canvasWidth, canvasHeight);
         }
 
         return true;

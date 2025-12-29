@@ -188,6 +188,34 @@
                         { type: 'slider', id: 'lens-ghost-fade-start', label: 'Fade Start', param: 'lensGhostParams.edgeFadeStart', min: 0.3, max: 1, step: 0.05, decimals: 2 },
                         { type: 'slider', id: 'lens-ghost-fade-end', label: 'Fade End', param: 'lensGhostParams.edgeFadeEnd', min: 0.5, max: 1.5, step: 0.05, decimals: 2 }
                     ]
+                },
+                {
+                    id: 'glass-panel',
+                    label: 'Glass Panel (UI)',
+                    icon: 'layers',
+                    color: '#67e8f9',
+                    controls: [
+                        { type: 'checkbox', id: 'glass-enabled', label: 'Enabled', param: 'glassParams.enabled' },
+                        { type: 'subheader', label: 'Blur' },
+                        { type: 'slider', id: 'glass-blur-radius', label: 'Blur Radius', param: 'glassParams.blurRadius', min: 0.5, max: 8, step: 0.1, decimals: 1 },
+                        { type: 'slider', id: 'glass-blur-passes', label: 'Blur Passes', param: 'glassParams.blurPasses', min: 1, max: 6, step: 1, decimals: 0 },
+                        { type: 'slider', id: 'glass-blur-downscale', label: 'Downscale', param: 'glassParams.blurDownscale', min: 2, max: 8, step: 1, decimals: 0 },
+                        { type: 'subheader', label: 'Shape' },
+                        { type: 'slider', id: 'glass-corner-radius', label: 'Corner Radius', param: 'glassParams.cornerRadius', min: 0, max: 32, step: 1, decimals: 0 },
+                        { type: 'slider', id: 'glass-edge-softness', label: 'Edge Softness', param: 'glassParams.edgeSoftness', min: 0.5, max: 4, step: 0.1, decimals: 1 },
+                        { type: 'slider', id: 'glass-padding-x', label: 'Padding X', param: 'glassParams.paddingX', min: 0, max: 30, step: 1, decimals: 0 },
+                        { type: 'slider', id: 'glass-padding-y', label: 'Padding Y', param: 'glassParams.paddingY', min: 0, max: 30, step: 1, decimals: 0 },
+                        { type: 'subheader', label: 'Edge Refraction' },
+                        { type: 'slider', id: 'glass-refract-strength', label: 'Refraction', param: 'glassParams.refractStrength', min: 0, max: 20, step: 0.5, decimals: 1 },
+                        { type: 'slider', id: 'glass-refract-smoothness', label: 'Smoothness', param: 'glassParams.refractSmoothness', min: 1, max: 20, step: 0.5, decimals: 1 },
+                        { type: 'slider', id: 'glass-refract-falloff', label: 'Falloff', param: 'glassParams.refractFalloff', min: 1, max: 6, step: 0.1, decimals: 1 },
+                        { type: 'slider', id: 'glass-chromatic', label: 'Chromatic Aberration', param: 'glassParams.chromaticAberration', min: 0, max: 10, step: 0.5, decimals: 1 },
+                        { type: 'subheader', label: 'Tint' },
+                        { type: 'slider', id: 'glass-opacity', label: 'Tint Strength', param: 'glassParams.glassOpacity', min: 0, max: 0.5, step: 0.01, decimals: 2 },
+                        { type: 'slider', id: 'glass-tint-r', label: 'Tint Red', param: 'glassParams.glassTintR', min: 0, max: 2, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'glass-tint-g', label: 'Tint Green', param: 'glassParams.glassTintG', min: 0, max: 2, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'glass-tint-b', label: 'Tint Blue', param: 'glassParams.glassTintB', min: 0, max: 2, step: 0.05, decimals: 2 }
+                    ]
                 }
             ]
         },

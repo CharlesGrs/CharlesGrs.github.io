@@ -1,0 +1,193 @@
+{
+    "id": "anamorphic-bloom",
+    "title": "Anamorphic Bloom: Cinematic Light Streaks",
+    "subtitle": "Creating Film-Quality Horizontal Flares in Real-Time",
+    "date": "2024-12-29",
+    "category": "rendering",
+    "tags": ["bloom", "post-processing", "glsl", "cinematic"],
+    "readTime": "10 min",
+    "featured": true,
+    "thumbnail": null,
+    "excerpt": "Learn how to implement the iconic horizontal light streaks seen in sci-fi films using asymmetric Gaussian blur and multi-pass downsampling.",
+    "sections": [
+        {
+            "type": "intro",
+            "content": "Anamorphic bloom creates those beautiful horizontal light streaks you see in films like Blade Runner and Star Trek. Unlike standard bloom which spreads evenly in all directions, anamorphic bloom stretches dramatically along the horizontal axis, mimicking the optical artifacts from anamorphic cinema lenses."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "bloom-comparison",
+            "title": "Standard vs Anamorphic Bloom",
+            "width": 700,
+            "height": 200
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "The Multi-Pass Pipeline"
+        },
+        {
+            "type": "paragraph",
+            "content": "Real-time anamorphic bloom uses a multi-pass approach: threshold extraction, progressive downsampling with asymmetric blur, and upsampling with accumulation. Each pass operates at decreasing resolutions for efficiency."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "pipeline-flow",
+            "title": "Bloom Pipeline Architecture",
+            "width": 700,
+            "height": 280
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Step 1: Threshold Extraction"
+        },
+        {
+            "type": "paragraph",
+            "content": "First, we extract pixels above a luminance threshold. The key is using a soft knee - a smooth transition that prevents harsh cutoffs and visible banding artifacts."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Soft Threshold with Smooth Falloff",
+            "content": "// Calculate luminance\nfloat lum = dot(color, vec3(0.2126, 0.7152, 0.0722));\n\n// Soft knee - smooth transition around threshold\nfloat kneeWidth = uSoftKnee * 0.5 + 0.1;\nfloat lowerBound = uThreshold - kneeWidth;\nfloat upperBound = uThreshold + kneeWidth;\n\n// S-curve for gradual falloff\nfloat contribution = smoothstep(lowerBound, upperBound, lum);\n\n// Cubic smoothing for even softer edges\ncontribution = contribution * contribution * (3.0 - 2.0 * contribution);\n\n// Preserve HDR intensity for very bright areas\nfloat excess = max(0.0, lum - lowerBound);\nvec3 bloom = color * contribution * (0.5 + excess);"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "threshold-curve",
+            "title": "Soft Knee Threshold Response",
+            "width": 500,
+            "height": 220
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Step 2: Asymmetric Gaussian Blur"
+        },
+        {
+            "type": "paragraph",
+            "content": "The magic of anamorphic bloom is in the blur kernel. We apply different scales to horizontal and vertical passes - stretching horizontally while compressing vertically. This creates the characteristic \"streak\" look."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Anamorphic Scaling in Blur Pass",
+            "content": "// Determine pass direction\nbool isHorizontal = uDirection.x > 0.5;\n\n// Anamorphic scaling: stretch H, compress V\nfloat anamorphicScale;\nif (isHorizontal) {\n    // Horizontal pass - stretch for streaks\n    anamorphicScale = 1.0 + uAnamorphic * 3.0;  // Up to 4x stretch\n} else {\n    // Vertical pass - compress to keep thin\n    anamorphicScale = max(0.2, 1.0 - uAnamorphic * 0.8);\n}\n\n// Apply to blur kernel spread\nfloat baseSpread = 0.5 * uBloomRadius * anamorphicScale;\nvec2 step = uDirection * texelSize * baseSpread;"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "kernel-asymmetry",
+            "title": "Asymmetric Blur Kernel Visualization",
+            "width": 600,
+            "height": 250
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "The 25-Tap Gaussian Kernel"
+        },
+        {
+            "type": "paragraph",
+            "content": "We use a 25-tap (12 + center + 12) Gaussian kernel with carefully chosen weights. The weights follow a Gaussian distribution (sigma ~4) which ensures smooth falloff without visible banding."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Gaussian Blur Implementation",
+            "content": "// Gaussian weights (sigma ~4)\nconst int TAPS = 12;\nfloat weights[13];\nweights[0] = 1.0;     // Center\nweights[1] = 0.96;\nweights[2] = 0.88;\nweights[3] = 0.77;\nweights[4] = 0.64;\nweights[5] = 0.51;\nweights[6] = 0.38;\nweights[7] = 0.27;\nweights[8] = 0.18;\nweights[9] = 0.11;\nweights[10] = 0.06;\nweights[11] = 0.03;\nweights[12] = 0.01;\n\n// Center sample\nresult += texture2D(uTexture, uv).rgb * weights[0];\ntotalWeight += weights[0];\n\n// Symmetric taps - both directions from center\nfor (int i = 1; i <= TAPS; i++) {\n    float w = weights[i];\n    vec2 offset = step * float(i);\n    \n    result += texture2D(uTexture, uv + offset).rgb * w;\n    result += texture2D(uTexture, uv - offset).rgb * w;\n    totalWeight += w * 2.0;\n}\n\nresult /= totalWeight;"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "gaussian-weights",
+            "title": "Gaussian Weight Distribution",
+            "width": 600,
+            "height": 200
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Step 3: Progressive Downsampling"
+        },
+        {
+            "type": "paragraph",
+            "content": "To achieve wide blur radius without excessive samples, we downsample progressively. Each level halves the resolution, effectively doubling the blur coverage. A 4-level pyramid gives us 16x the effective blur radius."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "13-Tap Karis-Style Downsample",
+            "content": "// 13-tap pattern avoids fireflies while preserving energy\nvec3 a = texture2D(uTexture, uv + texelSize * vec2(-1.0, -1.0)).rgb;\nvec3 b = texture2D(uTexture, uv + texelSize * vec2( 0.0, -1.0)).rgb;\nvec3 c = texture2D(uTexture, uv + texelSize * vec2( 1.0, -1.0)).rgb;\nvec3 d = texture2D(uTexture, uv + texelSize * vec2(-0.5, -0.5)).rgb;\nvec3 e = texture2D(uTexture, uv + texelSize * vec2( 0.5, -0.5)).rgb;\nvec3 f = texture2D(uTexture, uv + texelSize * vec2(-1.0,  0.0)).rgb;\nvec3 g = texture2D(uTexture, uv).rgb;  // Center\nvec3 h = texture2D(uTexture, uv + texelSize * vec2( 1.0,  0.0)).rgb;\nvec3 i = texture2D(uTexture, uv + texelSize * vec2(-0.5,  0.5)).rgb;\nvec3 j = texture2D(uTexture, uv + texelSize * vec2( 0.5,  0.5)).rgb;\nvec3 k = texture2D(uTexture, uv + texelSize * vec2(-1.0,  1.0)).rgb;\nvec3 l = texture2D(uTexture, uv + texelSize * vec2( 0.0,  1.0)).rgb;\nvec3 m = texture2D(uTexture, uv + texelSize * vec2( 1.0,  1.0)).rgb;\n\n// Weighted average - center weighted more heavily\nvec3 result = g * 0.125;\nresult += (d + e + i + j) * 0.125;\nresult += (a + b + f) * 0.0625;\nresult += (b + c + h) * 0.0625;\nresult += (f + k + l) * 0.0625;\nresult += (h + l + m) * 0.0625;"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "downsample-pattern",
+            "title": "13-Tap Downsample Pattern",
+            "width": 400,
+            "height": 280
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Step 4: Upsample & Accumulate"
+        },
+        {
+            "type": "paragraph",
+            "content": "Finally, we upsample back through the pyramid, additively blending each level. Hardware bilinear filtering handles the upscale, while we accumulate bloom from all mip levels for a natural, multi-scale glow."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Additive Upsample Blend",
+            "content": "// Sample upsampled lower mip (bilinear does the upscale)\nvec3 upsampled = texture2D(uTexture, uv).rgb;\n\n// Sample existing content at this level\nvec3 existing = texture2D(uHigherMip, uv).rgb;\n\n// Additive blend: accumulate bloom across mips\nvec3 result = upsampled + existing;"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "upsample-accumulation",
+            "title": "Mip Chain Accumulation",
+            "width": 700,
+            "height": 200
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Performance Considerations"
+        },
+        {
+            "type": "list",
+            "items": [
+                "Separable blur: 2N samples instead of N\u00b2 for equivalent quality",
+                "Progressive mips: 4 levels at 1/2, 1/4, 1/8, 1/16 resolution",
+                "Linear sampling: Use GPU bilinear filtering to halve tap count",
+                "Early-out: Skip blur passes for pixels below threshold",
+                "Mobile: Reduce to 2-3 mip levels, use 9-tap kernel instead of 25"
+            ]
+        },
+        {
+            "type": "callout",
+            "variant": "tip",
+            "content": "For extreme anamorphic ratios (4x+), consider running the horizontal blur pass twice at different mip levels. This creates longer streaks without requiring a massive kernel."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "The Complete Pipeline"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "complete-pipeline",
+            "title": "Full Render Pipeline",
+            "width": 700,
+            "height": 320
+        },
+        {
+            "type": "paragraph",
+            "content": "The final composite adds the accumulated bloom to the original scene. A slight warm tint (1.1, 1.0, 0.9) can make the bloom feel more natural and filmic, simulating the warmth of actual lens flares."
+        },
+        {
+            "type": "callout",
+            "variant": "info",
+            "content": "Real anamorphic lenses create horizontal streaks because they compress the image horizontally during capture and expand it in post. Our shader simulates this by stretching the blur kernel - no actual anamorphic optics required!"
+        }
+    ],
+    "related": ["volumetric-light-scattering", "pbr-brdf-explained"]
+}

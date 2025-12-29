@@ -1,0 +1,77 @@
+{
+    "id": "volumetric-light-scattering",
+    "title": "Real-Time Volumetric Light Scattering",
+    "subtitle": "Screen-Space God Rays in WebGL",
+    "date": "2024-12-15",
+    "category": "rendering",
+    "tags": ["webgl", "glsl", "post-processing", "volumetric"],
+    "readTime": "8 min",
+    "featured": true,
+    "thumbnail": "volumetric-preview.jpg",
+    "excerpt": "Implementing efficient screen-space volumetric light scattering using radial blur post-processing, inspired by GPU Gems 3 techniques.",
+    "sections": [
+        {
+            "type": "intro",
+            "content": "Volumetric lighting, often called \"god rays\" or crepuscular rays, adds dramatic atmosphere to any scene. While true volumetric rendering via raymarching is expensive, we can achieve convincing results using a clever screen-space approximation."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "The Algorithm"
+        },
+        {
+            "type": "paragraph",
+            "content": "The technique works by performing radial blur sampling from the light source position in screen space. Each pixel samples along a ray toward the light, accumulating color and applying exponential decay."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Fragment Shader - Radial Blur Pass",
+            "content": "uniform sampler2D uOcclusionMap;\nuniform vec2 uLightPosScreen;\nuniform float uDensity;\nuniform float uDecay;\nuniform float uExposure;\nuniform int uSamples;\n\nvoid main() {\n    vec2 uv = vUv;\n    vec2 deltaUV = (uv - uLightPosScreen) * (1.0 / float(uSamples)) * uDensity;\n    \n    vec3 color = vec3(0.0);\n    float illuminationDecay = 1.0;\n    \n    for (int i = 0; i < uSamples; i++) {\n        uv -= deltaUV;\n        vec3 sampleColor = texture2D(uOcclusionMap, uv).rgb;\n        sampleColor *= illuminationDecay;\n        color += sampleColor;\n        illuminationDecay *= uDecay;\n    }\n    \n    gl_FragColor = vec4(color * uExposure, 1.0);\n}"
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Performance Considerations"
+        },
+        {
+            "type": "list",
+            "items": [
+                "Render at half or quarter resolution for mobile",
+                "Use 64-128 samples for quality vs 32 for performance",
+                "Apply bilateral upscaling to preserve edges",
+                "Cache light screen position to avoid matrix multiplications per-fragment"
+            ]
+        },
+        {
+            "type": "image",
+            "src": "volumetric-comparison.jpg",
+            "alt": "Before and after volumetric lighting comparison",
+            "caption": "Left: Scene without god rays. Right: With screen-space volumetric scattering."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Integration Pipeline"
+        },
+        {
+            "type": "paragraph",
+            "content": "The effect integrates as a post-process pass after your main scene render. First render an occlusion mask (dark silhouettes against bright sky), then apply the radial blur, finally composite additively with your scene."
+        },
+        {
+            "type": "callout",
+            "variant": "tip",
+            "content": "For multiple light sources, render each volumetric pass separately and blend. However, this scales linearly with light count - consider limiting to 1-2 key lights."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Results"
+        },
+        {
+            "type": "paragraph",
+            "content": "This technique runs at 60fps on mid-range mobile GPUs at 720p with 64 samples. The key insight is that volumetric scattering is primarily a low-frequency effect - aggressive resolution scaling has minimal visual impact while dramatically improving performance."
+        }
+    ],
+    "related": ["bloom-pipeline", "atmospheric-scattering"]
+}

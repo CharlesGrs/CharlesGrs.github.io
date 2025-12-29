@@ -1,0 +1,30 @@
+{
+    "posts": [
+        "anamorphic-bloom",
+        "volumetric-light-scattering",
+        "pbr-brdf-explained",
+        "gpu-particle-systems"
+    ],
+    "categories": [
+        {
+            "id": "rendering",
+            "label": "Rendering",
+            "icon": "cube"
+        },
+        {
+            "id": "simulation",
+            "label": "Simulation",
+            "icon": "physics"
+        },
+        {
+            "id": "optimization",
+            "label": "Optimization",
+            "icon": "bolt"
+        },
+        {
+            "id": "vfx",
+            "label": "VFX",
+            "icon": "sparkles"
+        }
+    ]
+}

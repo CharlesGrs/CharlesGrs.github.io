@@ -1,0 +1,428 @@
+// ============================================
+// BLOG MODULE - Shader Journal
+// Handles loading, filtering, and displaying blog posts
+// ============================================
+
+(function initBlog() {
+    'use strict';
+
+    // Cache DOM elements
+    var postsGrid = document.getElementById('blog-posts-grid');
+    var listView = document.getElementById('blog-list-view');
+    var postView = document.getElementById('blog-post-view');
+    var articleContainer = document.getElementById('blog-article');
+    var backBtn = document.getElementById('back-to-list');
+    var postCountEl = document.getElementById('blog-post-count');
+    var filterChips = document.querySelectorAll('.filter-chip');
+
+    // State
+    var posts = [];
+    var currentFilter = 'all';
+    var blogInitialized = false;
+
+    // ============================================
+    // FETCH & LOAD POSTS
+    // ============================================
+
+    function loadBlogIndex() {
+        return fetch('blog/index.json')
+            .then(function(response) {
+                if (!response.ok) throw new Error('Failed to load blog index');
+                return response.json();
+            })
+            .then(function(index) {
+                // Load all post details in parallel
+                var postPromises = index.posts.map(function(postId) {
+                    return fetch('blog/posts/' + postId + '.json')
+                        .then(function(response) {
+                            if (!response.ok) return null;
+                            return response.json();
+                        })
+                        .catch(function() { return null; });
+                });
+                return Promise.all(postPromises);
+            })
+            .then(function(loadedPosts) {
+                posts = loadedPosts.filter(function(p) { return p !== null; });
+                // Sort by date (newest first)
+                posts.sort(function(a, b) {
+                    return new Date(b.date) - new Date(a.date);
+                });
+                return posts;
+            });
+    }
+
+    // ============================================
+    // RENDER POSTS GRID
+    // ============================================
+
+    function renderPostsGrid(filteredPosts) {
+        if (!postsGrid) return;
+
+        postsGrid.innerHTML = '';
+
+        if (filteredPosts.length === 0) {
+            postsGrid.innerHTML = '<div class="blog-empty">No posts found in this category.</div>';
+            return;
+        }
+
+        filteredPosts.forEach(function(post, index) {
+            var card = createPostCard(post, index);
+            postsGrid.appendChild(card);
+        });
+
+        // Update post count
+        if (postCountEl) {
+            postCountEl.textContent = filteredPosts.length + ' entr' + (filteredPosts.length === 1 ? 'y' : 'ies');
+        }
+    }
+
+    function createPostCard(post, index) {
+        var card = document.createElement('article');
+        card.className = 'blog-post-card' + (post.featured ? ' featured' : '');
+        card.setAttribute('data-post-id', post.id);
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('role', 'button');
+        card.setAttribute('aria-label', 'Read article: ' + post.title);
+
+        // Format date
+        var date = new Date(post.date);
+        var formattedDate = date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+
+        // Create thumbnail HTML
+        var thumbnailContent = post.thumbnail
+            ? '<img src="blog/images/' + post.thumbnail + '" alt="" loading="lazy">'
+            : '<div class="placeholder-graphic"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>';
+
+        // Create featured badge HTML
+        var featuredBadge = post.featured
+            ? '<span class="card-featured-badge"><svg viewBox="0 0 24 24" fill="currentColor" width="10" height="10"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Featured</span>'
+            : '';
+
+        // Create tags HTML (limit to 3)
+        var tagsHtml = (post.tags || []).slice(0, 3).map(function(tag) {
+            return '<span class="card-tag">' + tag + '</span>';
+        }).join('');
+
+        card.innerHTML =
+            '<div class="card-thumbnail">' +
+                thumbnailContent +
+                '<span class="card-category">' + post.category + '</span>' +
+                featuredBadge +
+            '</div>' +
+            '<div class="card-content">' +
+                '<div class="card-meta">' +
+                    '<span class="meta-date">' +
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' +
+                        formattedDate +
+                    '</span>' +
+                    '<span class="meta-separator"></span>' +
+                    '<span class="meta-read-time">' +
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' +
+                        post.readTime +
+                    '</span>' +
+                '</div>' +
+                '<h3 class="card-title">' + post.title + '</h3>' +
+                '<p class="card-excerpt">' + post.excerpt + '</p>' +
+                '<div class="card-tags">' + tagsHtml + '</div>' +
+                '<div class="card-arrow">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>' +
+                '</div>' +
+            '</div>';
+
+        // Click handler
+        card.addEventListener('click', function() {
+            openPost(post);
+        });
+
+        // Keyboard handler
+        card.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openPost(post);
+            }
+        });
+
+        return card;
+    }
+
+    // ============================================
+    // RENDER SINGLE POST
+    // ============================================
+
+    function openPost(post) {
+        if (!articleContainer || !listView || !postView) return;
+
+        // Hide list, show article
+        listView.classList.add('hidden');
+        postView.classList.add('active');
+
+        // Scroll to top of panel
+        postView.scrollTop = 0;
+
+        // Render article
+        renderArticle(post);
+    }
+
+    function closePost() {
+        if (!listView || !postView) return;
+
+        postView.classList.remove('active');
+        listView.classList.remove('hidden');
+
+        // Scroll to top of list
+        listView.scrollTop = 0;
+    }
+
+    function renderArticle(post) {
+        if (!articleContainer) return;
+
+        // Format date
+        var date = new Date(post.date);
+        var formattedDate = date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        // Build header
+        var headerHtml =
+            '<header class="article-header">' +
+                '<div class="article-meta">' +
+                    '<span class="article-category">' + post.category + '</span>' +
+                    '<span>' + formattedDate + '</span>' +
+                    '<span>' + post.readTime + ' read</span>' +
+                '</div>' +
+                '<h1 class="article-title">' + post.title + '</h1>' +
+                (post.subtitle ? '<p class="article-subtitle">' + post.subtitle + '</p>' : '') +
+            '</header>';
+
+        // Build content sections
+        var contentHtml = '<div class="article-content">';
+        (post.sections || []).forEach(function(section) {
+            contentHtml += renderSection(section);
+        });
+        contentHtml += '</div>';
+
+        articleContainer.innerHTML = headerHtml + contentHtml;
+
+        // Apply syntax highlighting to code blocks
+        applySyntaxHighlighting();
+
+        // Initialize SVG diagrams
+        initSvgDiagrams();
+    }
+
+    function renderSection(section) {
+        switch (section.type) {
+            case 'intro':
+                return '<p class="article-section section-intro">' + section.content + '</p>';
+
+            case 'heading':
+                var tag = 'h' + (section.level || 2);
+                return '<' + tag + ' class="article-section section-heading">' + section.content + '</' + tag + '>';
+
+            case 'paragraph':
+                return '<p class="article-section section-paragraph">' + section.content + '</p>';
+
+            case 'code':
+                return '<div class="article-section section-code">' +
+                    '<div class="code-header">' +
+                        '<span class="code-title">' + (section.title || 'Code') + '</span>' +
+                        '<span class="code-language">' + (section.language || 'code') + '</span>' +
+                    '</div>' +
+                    '<div class="code-content"><pre>' + escapeHtml(section.content) + '</pre></div>' +
+                '</div>';
+
+            case 'list':
+                var itemsHtml = (section.items || []).map(function(item) {
+                    return '<li>' + item + '</li>';
+                }).join('');
+                return '<ul class="article-section section-list">' + itemsHtml + '</ul>';
+
+            case 'image':
+                return '<figure class="article-section section-image">' +
+                    '<img src="blog/images/' + section.src + '" alt="' + (section.alt || '') + '" loading="lazy">' +
+                    (section.caption ? '<figcaption>' + section.caption + '</figcaption>' : '') +
+                '</figure>';
+
+            case 'callout':
+                return '<aside class="article-section section-callout ' + (section.variant || 'info') + '">' +
+                    '<p>' + section.content + '</p>' +
+                '</aside>';
+
+            case 'svg-diagram':
+                return '<figure class="article-section section-svg-diagram" data-diagram-id="' + section.id + '">' +
+                    '<div class="svg-container" style="max-width: ' + (section.width || 600) + 'px;">' +
+                        '<div class="svg-placeholder" data-width="' + (section.width || 600) + '" data-height="' + (section.height || 200) + '"></div>' +
+                    '</div>' +
+                    (section.title ? '<figcaption>' + section.title + '</figcaption>' : '') +
+                '</figure>';
+
+            default:
+                return '';
+        }
+    }
+
+    // ============================================
+    // SYNTAX HIGHLIGHTING (BASIC)
+    // ============================================
+
+    function applySyntaxHighlighting() {
+        var codeBlocks = articleContainer.querySelectorAll('.code-content pre');
+
+        codeBlocks.forEach(function(block) {
+            var code = block.textContent;
+
+            // GLSL/C-style keywords
+            var keywords = ['uniform', 'varying', 'in', 'out', 'void', 'float', 'vec2', 'vec3', 'vec4',
+                'mat2', 'mat3', 'mat4', 'sampler2D', 'samplerCube', 'int', 'bool', 'const',
+                'if', 'else', 'for', 'while', 'return', 'discard', 'struct', 'precision',
+                'highp', 'mediump', 'lowp', 'true', 'false', 'gl_FragColor', 'gl_Position',
+                'attribute', 'layout', 'location'];
+
+            // Built-in functions
+            var functions = ['texture2D', 'texture', 'normalize', 'dot', 'cross', 'mix', 'clamp',
+                'smoothstep', 'step', 'length', 'distance', 'reflect', 'refract', 'pow', 'exp',
+                'log', 'sqrt', 'abs', 'sign', 'floor', 'ceil', 'fract', 'mod', 'min', 'max',
+                'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'radians', 'degrees', 'main'];
+
+            // Escape HTML first
+            code = escapeHtml(code);
+
+            // Apply highlighting (order matters!)
+            // Comments first
+            code = code.replace(/(\/\/.*$)/gm, '<span class="comment">$1</span>');
+            code = code.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="comment">$1</span>');
+
+            // Numbers
+            code = code.replace(/\b(\d+\.?\d*f?)\b/g, '<span class="number">$1</span>');
+
+            // Strings
+            code = code.replace(/(&quot;[^&]*&quot;|'[^']*')/g, '<span class="string">$1</span>');
+
+            // Keywords
+            keywords.forEach(function(kw) {
+                var regex = new RegExp('\\b(' + kw + ')\\b', 'g');
+                code = code.replace(regex, '<span class="keyword">$1</span>');
+            });
+
+            // Functions
+            functions.forEach(function(fn) {
+                var regex = new RegExp('\\b(' + fn + ')\\s*\\(', 'g');
+                code = code.replace(regex, '<span class="function">$1</span>(');
+            });
+
+            // User-defined functions (word followed by open paren, not already highlighted)
+            code = code.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g, function(match, name) {
+                if (match.indexOf('<span') === -1) {
+                    return '<span class="function">' + name + '</span>(';
+                }
+                return match;
+            });
+
+            block.innerHTML = code;
+        });
+    }
+
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // ============================================
+    // FILTERING
+    // ============================================
+
+    function filterPosts(category) {
+        currentFilter = category;
+
+        var filtered = category === 'all'
+            ? posts
+            : posts.filter(function(p) { return p.category === category; });
+
+        renderPostsGrid(filtered);
+
+        // Update filter chip states
+        filterChips.forEach(function(chip) {
+            var chipCategory = chip.getAttribute('data-category');
+            chip.classList.toggle('active', chipCategory === category);
+            chip.setAttribute('aria-selected', chipCategory === category);
+        });
+    }
+
+    // ============================================
+    // EVENT LISTENERS
+    // ============================================
+
+    function initFilterListeners() {
+        filterChips.forEach(function(chip) {
+            chip.addEventListener('click', function() {
+                var category = chip.getAttribute('data-category');
+                filterPosts(category);
+            });
+        });
+    }
+
+    function initBackButton() {
+        if (backBtn) {
+            backBtn.addEventListener('click', closePost);
+        }
+    }
+
+    // ============================================
+    // INITIALIZATION
+    // ============================================
+
+    function initializeBlog() {
+        if (blogInitialized) return;
+        blogInitialized = true;
+
+        loadBlogIndex()
+            .then(function() {
+                renderPostsGrid(posts);
+                initFilterListeners();
+                initBackButton();
+            })
+            .catch(function(error) {
+                console.error('Blog initialization error:', error);
+                if (postsGrid) {
+                    postsGrid.innerHTML =
+                        '<div class="blog-empty">' +
+                            '<p>Unable to load blog posts.</p>' +
+                            '<p style="font-size: 0.8em; opacity: 0.7;">Check that blog/index.json exists.</p>' +
+                        '</div>';
+                }
+            });
+    }
+
+    // Initialize when blog tab is activated (lazy loading)
+    document.addEventListener('click', function(e) {
+        var tab = e.target.closest('.chrome-tab[data-panel="blog"]');
+        if (tab) {
+            // Small delay to ensure DOM is ready
+            setTimeout(initializeBlog, 100);
+        }
+    });
+
+    // Also check if blog panel is already visible on page load
+    var blogPanel = document.getElementById('panel-blog');
+    if (blogPanel && blogPanel.classList.contains('active')) {
+        initializeBlog();
+    }
+
+    // Expose for external use if needed
+    window.blogModule = {
+        refresh: function() {
+            blogInitialized = false;
+            initializeBlog();
+        },
+        filterPosts: filterPosts
+    };
+
+})();

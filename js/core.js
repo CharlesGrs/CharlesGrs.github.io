@@ -254,6 +254,35 @@ var postProcessParams = {
     toneMapping: 1  // 0 = none, 1 = ACES, 2 = Reinhard, 3 = Filmic
 };
 
+// Glass panel parameters (Apple LiquidGlass-inspired effect)
+var glassParams = {
+    // Blur settings
+    enabled: true,
+    blurRadius: 2.5,           // Blur kernel radius multiplier
+    blurPasses: 3,             // Number of blur iterations (more = smoother)
+    blurDownscale: 4,          // Downscale factor for blur FBO (2, 4, or 8)
+
+    // Glass material
+    cornerRadius: 16.0,        // Rounded corner radius in pixels
+    edgeSoftness: 1.5,         // Edge anti-aliasing
+    refractStrength: 8.0,      // How much edges bend light
+    refractSmoothness: 5.0,    // Gradient smoothness (higher = smoother corners)
+    refractFalloff: 3.0,       // How far refraction extends inward (multiplier of corner radius)
+
+    // Glass appearance
+    glassOpacity: 0.12,        // Base glass tint opacity
+    glassTintR: 1.0,           // Glass tint color R
+    glassTintG: 1.0,           // Glass tint color G
+    glassTintB: 1.0,           // Glass tint color B
+
+    // Effects
+    chromaticAberration: 2.0,  // RGB split amount at edges
+
+    // Panel padding (pixels added around hierarchy)
+    paddingX: 12,
+    paddingY: 10
+};
+
 // Expose parameter objects globally for settings panel
 window.lightParams = lightParams;
 window.sunParams = sunParams;
@@ -261,6 +290,7 @@ window.volumetricParams = volumetricParams;
 window.lensGhostParams = lensGhostParams;
 window.postProcessParams = postProcessParams;
 window.orbitParams = orbitParams;
+window.glassParams = glassParams;
 
 // Render feature toggles (enable/disable individual renderers)
 window.renderToggles = {
@@ -298,6 +328,7 @@ window.PERSISTED_PARAM_OBJECTS = [
     'volumetricParams',
     'lensGhostParams',
     'postProcessParams',
+    'glassParams',
     'renderToggles',
     'cameraParams'
 ];

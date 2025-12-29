@@ -98,6 +98,7 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/settings-panel.css">
+    <link rel="stylesheet" href="css/blog.css">
 
     <!-- Defer Three.js to eliminate render-blocking -->
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -130,7 +131,7 @@
     </div>
 
     <!-- Version Badge -->
-    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.46</span></div>
+    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.47</span></div>
 
     <div class="container" id="main-content" role="main">
         <!-- Tabbed Carousel -->
@@ -167,7 +168,11 @@
                             <span class="tab-label">Portfolio</span>
                             <span class="tab-connector"></span>
                         </button>
-                        <button class="chrome-tab" data-panel="contact" data-index="4" role="tab" aria-selected="false" aria-controls="panel-contact">
+                        <button class="chrome-tab" data-panel="blog" data-index="4" role="tab" aria-selected="false" aria-controls="panel-blog">
+                            <span class="tab-label">Blog</span>
+                            <span class="tab-connector"></span>
+                        </button>
+                        <button class="chrome-tab" data-panel="contact" data-index="5" role="tab" aria-selected="false" aria-controls="panel-contact">
                             <span class="tab-label">Contact</span>
                         </button>
                     </nav>
@@ -1926,6 +1931,100 @@
                     </div>
                 </div>
 
+                <!-- Blog Panel - Shader Journal Design -->
+                <div class="carousel-panel blog-panel" id="panel-blog" role="tabpanel" aria-labelledby="tab-blog">
+                    <!-- Animated background elements -->
+                    <div class="blog-grid-bg"></div>
+                    <div class="blog-glow-orb orb-1"></div>
+                    <div class="blog-glow-orb orb-2"></div>
+
+                    <div class="blog-container">
+                        <!-- Blog Header -->
+                        <header class="blog-header">
+                            <div class="blog-title-section">
+                                <div class="blog-status-bar">
+                                    <span class="status-led active"></span>
+                                    <span class="status-text">RENDER_JOURNAL.ACTIVE</span>
+                                    <span class="status-divider">//</span>
+                                    <span class="post-count" id="blog-post-count">-- entries</span>
+                                </div>
+                                <h2 class="blog-main-title">
+                                    <span class="title-glyph">&lt;</span>
+                                    <span class="title-text">Rendering Techniques</span>
+                                    <span class="title-glyph">/&gt;</span>
+                                </h2>
+                                <p class="blog-subtitle">Deep dives into shaders, graphics programming, and real-time rendering</p>
+                            </div>
+
+                            <!-- Category Filter -->
+                            <nav class="blog-filters" role="tablist" aria-label="Blog categories">
+                                <button class="filter-chip active" data-category="all" role="tab" aria-selected="true">
+                                    <span class="chip-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                                            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                                            <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+                                        </svg>
+                                    </span>
+                                    <span class="chip-label">All</span>
+                                </button>
+                                <button class="filter-chip" data-category="rendering" role="tab" aria-selected="false">
+                                    <span class="chip-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+                                        </svg>
+                                    </span>
+                                    <span class="chip-label">Rendering</span>
+                                </button>
+                                <button class="filter-chip" data-category="simulation" role="tab" aria-selected="false">
+                                    <span class="chip-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                                            <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                                        </svg>
+                                    </span>
+                                    <span class="chip-label">Simulation</span>
+                                </button>
+                                <button class="filter-chip" data-category="optimization" role="tab" aria-selected="false">
+                                    <span class="chip-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                                        </svg>
+                                    </span>
+                                    <span class="chip-label">Optimization</span>
+                                </button>
+                            </nav>
+                        </header>
+
+                        <!-- Blog Content Area -->
+                        <div class="blog-content-wrapper">
+                            <!-- Post List View -->
+                            <div class="blog-list-view" id="blog-list-view">
+                                <div class="blog-posts-grid" id="blog-posts-grid">
+                                    <!-- Posts will be dynamically loaded here -->
+                                    <div class="blog-loading">
+                                        <div class="loading-spinner"></div>
+                                        <span>Loading posts...</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Single Post View (hidden by default) -->
+                            <div class="blog-post-view" id="blog-post-view">
+                                <button class="back-to-list" id="back-to-list">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                                    </svg>
+                                    <span>Back to articles</span>
+                                </button>
+
+                                <article class="blog-article" id="blog-article">
+                                    <!-- Article content will be dynamically loaded -->
+                                </article>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Contact Panel - Transmission Terminal Design -->
                 <div class="carousel-panel contact-panel-v2" id="panel-contact" role="tabpanel" aria-labelledby="tab-contact">
                     <!-- Animated background grid -->
@@ -2181,12 +2280,14 @@
     <script src="shaders/playground-particles.glsl.js"></script>
     <script src="shaders/playground-effects.glsl.js"></script>
     <script src="shaders/post-process.glsl.js"></script>
+    <script src="shaders/glass-blur.glsl.js"></script>
 
     <!-- JavaScript modules (order matters) -->
     <script defer src="js/core.js"></script>
     <script defer src="js/background.js"></script>
     <script defer src="js/skill-graph.js"></script>
     <script defer src="js/ui.js"></script>
+    <script defer src="js/blog.js"></script>
     <script defer src="js/playground.js"></script>
     <script defer src="js/settings-panel.js"></script>
 </body>

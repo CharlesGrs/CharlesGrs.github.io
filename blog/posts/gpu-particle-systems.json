@@ -1,0 +1,68 @@
+{
+    "id": "gpu-particle-systems",
+    "title": "Million-Particle Systems on the GPU",
+    "subtitle": "Transform Feedback & Compute Shaders",
+    "date": "2024-10-20",
+    "category": "simulation",
+    "tags": ["webgl2", "compute", "particles", "transform-feedback"],
+    "readTime": "10 min",
+    "featured": false,
+    "thumbnail": "particles-preview.jpg",
+    "excerpt": "Building high-performance particle systems using WebGL 2 transform feedback for physics simulation entirely on the GPU.",
+    "sections": [
+        {
+            "type": "intro",
+            "content": "Traditional CPU-based particle systems hit bottlenecks around 10-50k particles. By moving simulation to the GPU, we can render millions of particles at 60fps. This article explores WebGL 2 transform feedback - the key to stateful GPU computation in WebGL."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Architecture Overview"
+        },
+        {
+            "type": "paragraph",
+            "content": "The system uses a ping-pong buffer pattern: read particle state from buffer A, write updated state to buffer B, then swap. Transform feedback captures vertex shader outputs directly to buffers without rasterization."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Particle Simulation Vertex Shader",
+            "content": "in vec3 aPosition;\nin vec3 aVelocity;\nin float aLife;\n\nout vec3 vPosition;\nout vec3 vVelocity;\nout float vLife;\n\nuniform float uDeltaTime;\nuniform vec3 uGravity;\nuniform float uDrag;\n\nvoid main() {\n    // Euler integration\n    vec3 acceleration = uGravity;\n    vec3 newVelocity = aVelocity + acceleration * uDeltaTime;\n    newVelocity *= (1.0 - uDrag * uDeltaTime);\n    \n    vec3 newPosition = aPosition + newVelocity * uDeltaTime;\n    float newLife = aLife - uDeltaTime;\n    \n    // Respawn dead particles\n    if (newLife <= 0.0) {\n        newPosition = emitterPosition();\n        newVelocity = randomVelocity();\n        newLife = randomLife();\n    }\n    \n    vPosition = newPosition;\n    vVelocity = newVelocity;\n    vLife = newLife;\n}"
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Transform Feedback Setup"
+        },
+        {
+            "type": "code",
+            "language": "javascript",
+            "title": "WebGL 2 Transform Feedback Configuration",
+            "content": "// Specify output varyings before linking\ngl.transformFeedbackVaryings(\n    simulationProgram,\n    ['vPosition', 'vVelocity', 'vLife'],\n    gl.INTERLEAVED_ATTRIBS\n);\ngl.linkProgram(simulationProgram);\n\n// Create transform feedback object\nconst transformFeedback = gl.createTransformFeedback();\n\n// During render loop:\ngl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, transformFeedback);\ngl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, writeBuffer);\ngl.beginTransformFeedback(gl.POINTS);\ngl.enable(gl.RASTERIZER_DISCARD); // Skip fragment stage\ngl.drawArrays(gl.POINTS, 0, particleCount);\ngl.disable(gl.RASTERIZER_DISCARD);\ngl.endTransformFeedback();"
+        },
+        {
+            "type": "callout",
+            "variant": "warning",
+            "content": "Always unbind transform feedback buffers before using them as vertex attributes! WebGL enforces no simultaneous read/write to the same buffer."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Performance Results"
+        },
+        {
+            "type": "list",
+            "items": [
+                "1 million particles: 60fps on RTX 3060",
+                "500k particles: 60fps on integrated Intel UHD 630",
+                "100k particles: 60fps on mobile (Adreno 650)",
+                "Memory: ~32 bytes per particle (position, velocity, life, color)"
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": "The bottleneck shifts from simulation to rendering at high particle counts. Consider instanced billboard quads or point sprites with size attenuation for visual quality vs performance tradeoffs."
+        }
+    ],
+    "related": ["volumetric-light-scattering", "pbr-brdf-explained"]
+}
