@@ -165,7 +165,6 @@ var physicsParams = orbitParams;
 
 // Display settings
 var showPlanetLabels = true;
-var showConnectionLinks = false;
 
 // Global camera rotation
 window.globalCameraRotX = 0;
@@ -283,6 +282,25 @@ var glassParams = {
     paddingY: 10
 };
 
+// Space particle parameters
+var spaceParticleParams = {
+    // Star count
+    starCount: 97000,
+
+    // Spawning distance from center (world units)
+    startDistance: 4.1,
+    endDistance: 71,
+
+    // Appearance
+    particleSize: 5,
+    brightness: 0.5,
+
+    // Star colors (hex)
+    starColorCool: '#91f7f2',
+    starColorWarm: '#fef3e1',
+    starColorHot: '#febaa9'
+};
+
 // Expose parameter objects globally for settings panel
 window.lightParams = lightParams;
 window.sunParams = sunParams;
@@ -291,6 +309,7 @@ window.lensGhostParams = lensGhostParams;
 window.postProcessParams = postProcessParams;
 window.orbitParams = orbitParams;
 window.glassParams = glassParams;
+window.spaceParticleParams = spaceParticleParams;
 
 // Render feature toggles (enable/disable individual renderers)
 window.renderToggles = {

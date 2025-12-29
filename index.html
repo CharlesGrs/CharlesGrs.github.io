@@ -40,7 +40,7 @@
     <meta name="theme-color" content="#0a0f14">
     <meta name="msapplication-TileColor" content="#0a0f14">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Charles Grassi">
 
     <!-- Geo and Language -->
@@ -131,7 +131,7 @@
     </div>
 
     <!-- Version Badge -->
-    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.53</span></div>
+    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.54</span></div>
 
     <div class="container" id="main-content" role="main">
         <!-- Tabbed Carousel -->
@@ -991,13 +991,6 @@
                                 <line x1="21" y1="12" x2="23" y2="12"/>
                                 <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
                                 <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-                            </svg>
-                        </button>
-                        <button class="label-toggle-btn active" id="links-toggle" aria-label="Toggle connection links" title="Toggle connection links">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="5" cy="12" r="3"/>
-                                <circle cx="19" cy="12" r="3"/>
-                                <line x1="8" y1="12" x2="16" y2="12"/>
                             </svg>
                         </button>
                         <div class="light-controls-panel" id="light-controls-panel">
@@ -2285,6 +2278,9 @@
     <!-- JavaScript modules (order matters) -->
     <script defer src="js/core.js"></script>
     <script defer src="js/background.js"></script>
+    <script defer src="js/skill-graph-data.js"></script>
+    <script defer src="js/skill-graph-ui-panels.js"></script>
+    <script defer src="js/skill-graph-settings.js"></script>
     <script defer src="js/skill-graph.js"></script>
     <script defer src="js/ui.js"></script>
     <script defer src="js/blog-diagrams.js"></script>
