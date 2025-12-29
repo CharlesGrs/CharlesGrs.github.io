@@ -6320,6 +6320,7 @@ header.collapsed .cv-download svg {
     color: rgba(255, 255, 255, 0.7);
     white-space: nowrap;
     transition: color 0.15s ease;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 .hierarchy-planet:hover .hierarchy-label {
@@ -6337,7 +6338,6 @@ header.collapsed .cv-download svg {
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     border-radius: 6px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 .hierarchy-moon:hover {
@@ -6364,6 +6364,7 @@ header.collapsed .cv-download svg {
     color: rgba(255, 255, 255, 0.55);
     white-space: nowrap;
     transition: color 0.15s ease;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 .hierarchy-moon:hover .hierarchy-label {

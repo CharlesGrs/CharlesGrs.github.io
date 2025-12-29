@@ -1,0 +1,257 @@
+{
+    "id": "screen-space-atmospheric-scattering",
+    "title": "Screen-Space Atmospheric Light Scattering",
+    "subtitle": "Rendering Volumetric God Rays Without Ray Marching",
+    "date": "2024-12-29",
+    "category": "rendering",
+    "tags": ["volumetric", "atmosphere", "glsl", "post-processing", "lighting"],
+    "readTime": "12 min",
+    "featured": true,
+    "thumbnail": null,
+    "excerpt": "Implement efficient screen-space volumetric light scattering that responds to multiple dynamic light sources with perspective-correct falloff and animated noise.",
+    "sections": [
+        {
+            "type": "intro",
+            "content": "Volumetric lighting creates that ethereal quality where light seems to fill the air itself - think fog-pierced headlights or sunbeams through cathedral windows. Traditional approaches ray-march through 3D volumes, but for real-time applications with multiple dynamic lights, we need something faster. This technique renders atmospheric scattering entirely in screen-space, achieving rich volumetric effects at a fraction of the cost."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "volumetric-overview",
+            "title": "Screen-Space vs Ray-Marched Volumetric Light",
+            "width": 700,
+            "height": 220
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "The Core Concept"
+        },
+        {
+            "type": "paragraph",
+            "content": "Instead of marching rays through a 3D volume, we project each light source to screen space and compute a radial falloff function. The key insight is that atmospheric scattering from a point light approximates a radial gradient centered on the light's screen position - we just need to make it physically plausible with proper falloff, perspective correction, and noise modulation."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "radial-falloff-diagram",
+            "title": "Radial Falloff from Screen-Space Light Position",
+            "width": 600,
+            "height": 250
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "World-to-Screen Projection"
+        },
+        {
+            "type": "paragraph",
+            "content": "First, we need to transform world-space light positions to screen coordinates. This happens on the CPU and is passed as uniforms. We also compute visibility - lights behind the camera should contribute nothing, and lights near screen edges should fade smoothly to avoid harsh cutoffs."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Light Screen Position and Visibility Setup",
+            "content": "// Screen-space light positions (camera-transformed, in pixels)\nuniform vec2 uLight0Screen;\nuniform vec2 uLight1Screen;\nuniform vec2 uLight2Screen;\n\n// Light visibility (0.0 = behind camera, 1.0 = visible)\nuniform float uLight0Visible;\nuniform float uLight1Visible;\nuniform float uLight2Visible;\n\n// World positions for perspective correction\nuniform vec3 uLight0WorldPos;\nuniform vec3 uLight1WorldPos;\nuniform vec3 uLight2WorldPos;\n\n// Camera state\nuniform vec3 uCameraPos;\nuniform float uCameraRotX;  // Pitch\nuniform float uCameraRotY;  // Yaw"
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Edge Fade for Off-Screen Lights"
+        },
+        {
+            "type": "paragraph",
+            "content": "Lights near or beyond screen edges need smooth fade-out to prevent jarring transitions when rotating the camera. We compute separate X and Y fade factors that smoothly reduce intensity as the light moves off-screen."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Smooth Edge Fade Implementation",
+            "content": "// Convert screen pixels to normalized UV\nvec2 lightUV = lightScreenPos / uResolution;\nlightUV.y = 1.0 - lightUV.y;  // Flip Y for GL convention\n\n// Edge fade - smoothly reduce intensity off-screen\n// The 1.5 factor allows glow to extend slightly beyond edges\nfloat edgeFadeX = 1.0 - smoothstep(0.0, 1.5, abs(lightUV.x - 0.5) - 0.5);\nfloat edgeFadeY = 1.0 - smoothstep(0.0, 1.5, abs(lightUV.y - 0.5) - 0.5);\nfloat edgeFade = edgeFadeX * edgeFadeY;\n\n// Early out for lights too far off-screen\nif (edgeFade < 0.01) return vec3(0.0);"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "edge-fade-visualization",
+            "title": "Edge Fade Zones",
+            "width": 500,
+            "height": 280
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Perspective-Correct Distance"
+        },
+        {
+            "type": "paragraph",
+            "content": "A naive screen-space distance calculation would make lights appear to grow as you move away from them - the opposite of reality. We correct for perspective by scaling the screen distance based on the camera-to-light depth, normalized against a reference viewing distance."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Perspective Correction for Light Falloff",
+            "content": "// Aspect-corrected distance in screen space\nvec2 delta = uv - lightUV;\ndelta.x *= uResolution.x / uResolution.y;  // Correct for aspect ratio\nfloat screenDist = length(delta);\n\n// Compute camera-to-light distance for perspective correction\nfloat lightDepth = length(lightWorldPos - uCameraPos);\n\n// Normalize against reference distance (typical viewing distance)\nfloat referenceDepth = 1.0;\nfloat perspectiveScale = max(lightDepth, 0.1) / referenceDepth;\n\n// Scale screen distance by depth ratio\n// Farther away: perspectiveScale > 1.0, shrinks apparent radius\n// Closer: perspectiveScale < 1.0, grows apparent radius\nfloat dist = screenDist * perspectiveScale;"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "perspective-correction",
+            "title": "Perspective Correction Effect",
+            "width": 650,
+            "height": 240
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Physically-Based Falloff"
+        },
+        {
+            "type": "paragraph",
+            "content": "Light intensity follows an inverse-power law: I = 1 / (1 + d^n). Using n=2 gives classic inverse-square falloff. The '1 +' in the denominator prevents division by zero at the light center and controls the core brightness."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Inverse-Power Falloff",
+            "content": "// Parameters\nuniform float uVolumetricIntensity;  // Overall brightness (default 1.0)\nuniform float uVolumetricFalloff;    // Falloff exponent (default 2.0)\nuniform float uVolumetricScale;      // Distance scale (default 3.0)\n\n// Base light falloff (inverse-power law)\n// I = 1 / (1 + (d * scale)^falloff)\nfloat light = 1.0 / (1.0 + pow(dist * uVolumetricScale, uVolumetricFalloff));\n\n// Apply intensity multiplier\nlight *= uVolumetricIntensity * lightIntensity;"
+        },
+        {
+            "type": "callout",
+            "variant": "tip",
+            "content": "Falloff exponent of 2.0 matches real-world physics (inverse-square law). Values below 2.0 create softer, more diffuse glow. Values above 2.0 create tighter, more focused light cones."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Animated Volumetric Noise"
+        },
+        {
+            "type": "paragraph",
+            "content": "Real atmospheric scattering isn't uniform - dust particles, moisture, and air currents create variation. We sample 3D noise using a skybox ray direction, giving us view-dependent patterns that feel volumetric rather than screen-aligned. Time-based animation adds subtle motion."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Skybox Direction for 3D Noise Sampling",
+            "content": "vec3 getSkyboxDirection(vec2 screenPos) {\n    float fov = 0.8;\n    vec3 rayDir = normalize(vec3(screenPos.x * fov, screenPos.y * fov, 1.0));\n\n    // Apply camera rotation\n    float cosRotX = cos(uCameraRotX);\n    float sinRotX = sin(uCameraRotX);\n    float cosRotY = cos(uCameraRotY);\n    float sinRotY = sin(uCameraRotY);\n\n    // Rotate around X axis (pitch)\n    float ry = rayDir.y * cosRotX - rayDir.z * sinRotX;\n    float rz = rayDir.y * sinRotX + rayDir.z * cosRotX;\n    rayDir.y = ry;\n    rayDir.z = rz;\n\n    // Rotate around Y axis (yaw)\n    float rx = rayDir.x * cosRotY + rayDir.z * sinRotY;\n    rz = -rayDir.x * sinRotY + rayDir.z * cosRotY;\n    rayDir.x = rx;\n    rayDir.z = rz;\n\n    return rayDir;\n}"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "noise-sampling-diagram",
+            "title": "3D Noise Sampling via Skybox Direction",
+            "width": 600,
+            "height": 260
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "FBM Noise with Controllable Octaves"
+        },
+        {
+            "type": "paragraph",
+            "content": "We use Fractional Brownian Motion (FBM) to layer multiple noise frequencies. A controllable octave parameter lets us balance detail versus performance - fewer octaves for mobile, more for desktop."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "FBM with Runtime Octave Control",
+            "content": "uniform float uVolumetricNoiseOctaves;  // 0-1, blends octaves\n\nfloat volumetricFBM(vec3 p) {\n    float totalAmp = 0.5;\n    float v = volumetricNoise3D(p) * 0.5;  // Base octave\n\n    // Second octave (enabled when octaves > 0)\n    float oct2 = clamp(uVolumetricNoiseOctaves * 2.0, 0.0, 1.0);\n    v += volumetricNoise3D(p * 2.0) * 0.25 * oct2;\n    totalAmp += 0.25 * oct2;\n\n    // Third octave (enabled when octaves > 0.5)\n    float oct3 = clamp((uVolumetricNoiseOctaves - 0.5) * 2.0, 0.0, 1.0);\n    v += volumetricNoise3D(p * 4.0) * 0.125 * oct3;\n    totalAmp += 0.125 * oct3;\n\n    return v / totalAmp;  // Normalize\n}\n\nfloat sampleNoiseAt(vec3 worldPos, float lightIndex) {\n    // Offset by light index to decorrelate patterns\n    // Animate with time for subtle motion\n    vec3 pos = worldPos * uVolumetricNoiseScale \n             + vec3(0.0, 0.0, lightIndex * 50.0 + uTime * 0.02);\n    return volumetricFBM(pos);\n}"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "fbm-octaves",
+            "title": "FBM Octave Blending",
+            "width": 700,
+            "height": 200
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Wavelength-Dependent Scattering"
+        },
+        {
+            "type": "paragraph",
+            "content": "Real atmospheric scattering is wavelength-dependent - blue light scatters more than red (Rayleigh scattering). We expose per-channel scatter rates that let artists tune the color shift from warm centers to cool edges."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Per-Channel Scatter Rates",
+            "content": "// Scatter rates per channel (Rayleigh-inspired)\nuniform float uVolumetricScatterR;  // Red (default 0.3, less scatter)\nuniform float uVolumetricScatterG;  // Green (default 0.5)\nuniform float uVolumetricScatterB;  // Blue (default 1.0, more scatter)\nuniform float uVolumetricSaturation; // Color boost (default 1.8)\n\n// Saturate light color for vivid appearance\nfloat luma = dot(lightColor, vec3(0.299, 0.587, 0.114));\nvec3 saturatedColor = mix(vec3(luma), lightColor, uVolumetricSaturation);"
+        },
+        {
+            "type": "callout",
+            "variant": "info",
+            "content": "Rayleigh scattering intensity is proportional to 1/wavelength^4. Blue light (450nm) scatters about 5.5x more than red (700nm). Our simplified per-channel rates approximate this effect without the full physics simulation."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Combining Multiple Lights"
+        },
+        {
+            "type": "paragraph",
+            "content": "Each light contributes independently, with its own screen position, color, intensity, and visibility. We sum contributions additively - physically correct for light transport."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Multi-Light Accumulation",
+            "content": "vec3 volumetricLightContribution(vec2 uv, vec3 skyDir) {\n    vec3 result = vec3(0.0);\n    \n    // Each light adds independently\n    result += volumetricLight(uv, uLight0Screen, uLightColor0, 0.0, \n                              skyDir, uLight0Intensity, uLight0Visible, \n                              uLight0WorldPos);\n    \n    result += volumetricLight(uv, uLight1Screen, uLightColor1, 1.0, \n                              skyDir, uLight1Intensity, uLight1Visible, \n                              uLight1WorldPos);\n    \n    result += volumetricLight(uv, uLight2Screen, uLightColor2, 2.0, \n                              skyDir, uLight2Intensity, uLight2Visible, \n                              uLight2WorldPos);\n    \n    return result;\n}"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "multi-light-blend",
+            "title": "Additive Multi-Light Blending",
+            "width": 650,
+            "height": 220
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Final Compositing"
+        },
+        {
+            "type": "paragraph",
+            "content": "The final pass applies vignette for subtle edge darkening, soft tone mapping to prevent blowout, and ensures we never go darker than the background color."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Final Compositing Pass",
+            "content": "void main() {\n    vec2 uv = vUV;\n    vec2 screenPos = (uv - 0.5) * 2.0;\n    screenPos.x *= uResolution.x / uResolution.y;  // Aspect correction\n\n    // Get view direction for noise sampling\n    vec3 skyDir = getSkyboxDirection(screenPos);\n\n    // Accumulate volumetric contribution\n    vec3 finalColor = volumetricLightContribution(uv, skyDir);\n\n    // Vignette (subtle edge darkening)\n    float vignette = 1.0 - length(uv - 0.5) * uVignetteStrength;\n    finalColor *= vignette;\n\n    // Soft Reinhard tone mapping\n    finalColor = finalColor / (finalColor + vec3(0.6));\n\n    // Never go darker than background\n    vec3 bgColor = vec3(0.039, 0.059, 0.078);  // #0a0f14\n    finalColor = max(finalColor, bgColor);\n\n    gl_FragColor = vec4(finalColor, 1.0);\n}"
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Performance Considerations"
+        },
+        {
+            "type": "list",
+            "items": [
+                "Single full-screen pass: O(pixels) complexity, independent of light count for small N",
+                "Early-out for invisible lights: Skip entire contribution when behind camera or off-screen",
+                "Distance fade: Avoid computing noise for pixels far from any light",
+                "Octave scaling: Reduce noise octaves on mobile (0.3) vs desktop (0.5-0.7)",
+                "Resolution scaling: Can render at 1/2 or 1/4 resolution and upsample with bilinear"
+            ]
+        },
+        {
+            "type": "callout",
+            "variant": "warning",
+            "content": "The noise functions dominate performance. On mobile, consider reducing uVolumetricNoiseOctaves to 0.3 or disabling noise entirely by setting uVolumetricNoiseStrength to 0.0. The effect still looks good with just the smooth radial falloff."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Tunable Parameters"
+        },
+        {
+            "type": "paragraph",
+            "content": "The shader exposes many parameters for artistic control. Here are recommended starting values and their effects:"
+        },
+        {
+            "type": "code",
+            "language": "javascript",
+            "title": "Recommended Parameter Values",
+            "content": "volumetricParams = {\n    intensity: 1.0,        // Overall brightness\n    falloff: 2.0,          // Inverse-square (physical)\n    scale: 3.0,            // Controls spread radius\n    saturation: 1.8,       // Color vividness\n    noiseScale: 4.0,       // Noise frequency\n    noiseStrength: 0.12,   // Noise displacement amount\n    noiseOctaves: 0.5,     // Detail level (0-1)\n    scatterR: 0.3,         // Red scatter (low)\n    scatterG: 0.5,         // Green scatter (medium)\n    scatterB: 1.0,         // Blue scatter (high)\n    vignetteStrength: 0.3  // Edge darkening\n};"
+        }
+    ],
+    "related": ["anamorphic-bloom"]
+}

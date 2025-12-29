@@ -1,9 +1,7 @@
 {
     "posts": [
-        "anamorphic-bloom",
-        "volumetric-light-scattering",
-        "pbr-brdf-explained",
-        "gpu-particle-systems"
+        "screen-space-atmospheric-scattering",
+        "anamorphic-bloom"
     ],
     "categories": [
         {

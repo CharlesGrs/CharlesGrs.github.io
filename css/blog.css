@@ -86,8 +86,29 @@
 .blog-header {
     display: flex;
     flex-direction: column;
+    align-items: center;
+    text-align: center;
     gap: var(--space-md);
     flex-shrink: 0;
+    transition: opacity 0.3s ease, max-height 0.4s ease, margin 0.4s ease, padding 0.4s ease;
+}
+
+.blog-title-section {
+    align-items: center;
+}
+
+.blog-filters {
+    justify-content: center;
+}
+
+/* Hide header when viewing article */
+.blog-panel.article-view .blog-header {
+    opacity: 0;
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    pointer-events: none;
 }
 
 .blog-title-section {
@@ -265,6 +286,9 @@
     grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
     gap: var(--space-md);
     padding-bottom: var(--space-md);
+    max-width: 1100px;
+    margin: 0 auto;
+    width: 100%;
 }
 
 /* Loading State */
@@ -634,8 +658,20 @@
 
 /* === BLOG ARTICLE === */
 .blog-article {
-    max-width: 800px;
+    max-width: 100%;
+    width: 100%;
     padding-bottom: var(--space-xl);
+}
+
+/* Full width container in article view */
+.blog-panel.article-view .blog-container {
+    max-width: 100%;
+    padding: var(--space-md) var(--space-lg);
+}
+
+.blog-panel.article-view .blog-post-view {
+    max-width: 1000px;
+    margin: 0 auto;
 }
 
 /* Article Header */
@@ -935,6 +971,85 @@ h3.section-heading {
     font-size: var(--text-sm);
     color: var(--text-primary);
     line-height: 1.6;
+}
+
+/* Section: SVG Diagram */
+.section-svg-diagram {
+    margin: var(--space-md) 0;
+    border-radius: 12px;
+    overflow: hidden;
+    background: linear-gradient(145deg, rgba(15, 22, 30, 0.8) 0%, rgba(10, 16, 22, 0.9) 100%);
+    border: 1px solid rgba(45, 212, 191, 0.15);
+}
+
+.section-svg-diagram .svg-container {
+    padding: var(--space-md);
+    display: flex;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.section-svg-diagram svg {
+    display: block;
+    overflow: visible;
+}
+
+.section-svg-diagram figcaption {
+    padding: 0.75rem 1rem;
+    background: rgba(45, 212, 191, 0.05);
+    border-top: 1px solid rgba(45, 212, 191, 0.1);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--text-xs);
+    color: var(--accent-teal);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+/* SVG Text Styles */
+.section-svg-diagram .diagram-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    fill: var(--text-primary);
+}
+
+.section-svg-diagram .diagram-label {
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    fill: var(--text-primary);
+}
+
+.section-svg-diagram .diagram-label-small {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 400;
+    fill: var(--text-secondary);
+}
+
+.section-svg-diagram .diagram-label-tiny {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 400;
+    fill: rgba(255, 255, 255, 0.6);
+}
+
+.svg-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--text-sm);
+}
+
+.svg-error {
+    padding: 2rem;
+    text-align: center;
+    color: rgba(255, 100, 100, 0.8);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--text-sm);
 }
 
 /* === RESPONSIVE === */
