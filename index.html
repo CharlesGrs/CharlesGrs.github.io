@@ -130,7 +130,7 @@
     </div>
 
     <!-- Version Badge -->
-    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.44</span></div>
+    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.46</span></div>
 
     <div class="container" id="main-content" role="main">
         <!-- Tabbed Carousel -->
@@ -438,14 +438,6 @@
                             <div class="loader-text">Compiling shaders...</div>
                         </div>
                         <canvas id="gpu-canvas" aria-label="Interactive 3D skill graph"></canvas>
-                        <button class="fullscreen-btn" id="fullscreen-btn" aria-label="Toggle fullscreen">
-                            <svg class="fullscreen-icon expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
-                            </svg>
-                            <svg class="fullscreen-icon collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
-                            </svg>
-                        </button>
                     </div>
                     <!-- Shader Controls Container (Bottom Right) -->
                     <div class="shader-controls-container" id="shader-controls-container">
@@ -1229,29 +1221,21 @@
                     <!-- Graph View -->
                     <div class="skill-graph-container skill-view" id="skills-graph-view">
                         <canvas id="skill-graph-canvas"></canvas>
-                        <!-- Reset Camera Button -->
-                        <button class="reset-camera-btn" id="reset-camera-btn" onclick="window.resetCameraToDefault && window.resetCameraToDefault()" title="Reset View">
-                            <svg class="reset-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <circle cx="12" cy="12" r="3"/>
-                                <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
-                                <path d="M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                        <!-- Go Back Button - appears when locked on a target -->
+                        <button class="go-back-btn" id="go-back-btn" onclick="window.navigateBack && window.navigateBack()" title="Go Back (Escape)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 12H5M12 19l-7-7 7-7"/>
                             </svg>
-                            <span class="reset-label">Reset View</span>
+                            <span>Go Back</span>
                         </button>
-                        <!-- Solar System Navigation Buttons -->
-                        <div class="solar-nav-container" id="solar-nav">
-                            <button class="solar-nav-btn" data-sun="unity" onclick="window.navigateToSolarSystem && window.navigateToSolarSystem('unity')" ontouchend="event.preventDefault(); window.navigateToSolarSystem && window.navigateToSolarSystem('unity')" title="Navigate to Unity">
-                                <span class="nav-icon unity"></span>
-                                <span class="nav-label">Unity</span>
-                            </button>
-                            <button class="solar-nav-btn" data-sun="unreal" onclick="window.navigateToSolarSystem && window.navigateToSolarSystem('unreal')" ontouchend="event.preventDefault(); window.navigateToSolarSystem && window.navigateToSolarSystem('unreal')" title="Navigate to Unreal">
-                                <span class="nav-icon unreal"></span>
-                                <span class="nav-label">Unreal</span>
-                            </button>
-                            <button class="solar-nav-btn" data-sun="graphics" onclick="window.navigateToSolarSystem && window.navigateToSolarSystem('graphics')" ontouchend="event.preventDefault(); window.navigateToSolarSystem && window.navigateToSolarSystem('graphics')" title="Navigate to Graphics APIs">
-                                <span class="nav-icon graphics"></span>
-                                <span class="nav-label">Graphics</span>
-                            </button>
+                        <!-- Hierarchy Navigation Panel -->
+                        <div class="hierarchy-panel" id="hierarchy-panel">
+                            <div class="hierarchy-header">
+                                <span class="hierarchy-title">Navigation</span>
+                            </div>
+                            <div class="hierarchy-content" id="hierarchy-content">
+                                <!-- Dynamically populated by skill-graph.js -->
+                            </div>
                         </div>
                         <div class="skill-tooltip" id="skill-tooltip">
                             <div class="skill-tooltip-title"></div>

@@ -1906,6 +1906,12 @@ header.collapsed .cv-download svg {
     pointer-events: auto !important;
 }
 
+/* Go back button must be clickable */
+.skills-panel.graph-active .go-back-btn {
+    z-index: 100;
+    pointer-events: auto !important;
+}
+
 .skills-panel.graph-active .graph-legend,
 .skills-panel.graph-active .graph-hint {
     display: none;
@@ -6120,16 +6126,250 @@ header.collapsed .cv-download svg {
     }
 }
 
-/* Fullscreen mode adjustments */
-body.canvas-fullscreen .reset-camera-btn {
-    position: fixed !important;
+/* Go Back Button - appears when locked on a target */
+.go-back-btn {
+    position: absolute;
     bottom: 1rem;
     left: 1rem;
-    z-index: 10002;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    background: rgba(10, 15, 20, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    z-index: 100;
+    pointer-events: auto;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-10px);
+}
+
+.go-back-btn.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+}
+
+.go-back-btn svg {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.2s ease;
+}
+
+.go-back-btn:hover {
+    background: rgba(10, 15, 20, 0.95);
+    border-color: rgba(45, 212, 191, 0.5);
+    color: var(--accent-teal);
+    transform: translateX(0);
+    box-shadow: 0 4px 20px rgba(45, 212, 191, 0.2);
+}
+
+.go-back-btn:hover svg {
+    transform: translateX(-3px);
+}
+
+.go-back-btn:active {
+    transform: scale(0.98);
+}
+
+/* Mobile adjustments for go back button */
+@media (max-width: 900px) {
+    .go-back-btn {
+        bottom: auto;
+        top: 1rem;
+        left: 1rem;
+        padding: 0.7rem;
+        border-radius: 10px;
+    }
+
+    .go-back-btn span {
+        display: none;
+    }
+
+    .go-back-btn svg {
+        width: 22px;
+        height: 22px;
+    }
+}
+
+/* Hierarchy Navigation Panel */
+.hierarchy-panel {
+    position: absolute;
+    top: 50%;
+    left: 1rem;
+    transform: translateY(-50%);
+    background: transparent;
+    padding: 0.4rem 0;
+    z-index: 100;
+    pointer-events: auto;
+    overflow: visible;
+}
+
+.hierarchy-header {
+    display: none;
+}
+
+.hierarchy-title {
+    display: none;
+}
+
+.hierarchy-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* Hide all dots */
+.hierarchy-dot {
+    display: none;
+}
+
+/* Solar system group */
+.hierarchy-system {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0.35rem;
+}
+
+.hierarchy-system:last-child {
+    margin-bottom: 0;
+}
+
+/* Sun (top level) */
+.hierarchy-sun {
+    padding: 0.18rem 0.5rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+    border-radius: 3px;
+}
+
+.hierarchy-sun:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.hierarchy-sun.active {
+    background: rgba(232, 185, 35, 0.15);
+}
+
+.hierarchy-sun .hierarchy-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    white-space: nowrap;
+    transition: color 0.15s ease;
+    letter-spacing: 0.02em;
+}
+
+.hierarchy-sun:hover .hierarchy-label {
+    color: rgba(255, 255, 255, 1);
+}
+
+.hierarchy-sun.active .hierarchy-label {
+    color: var(--accent-gold);
+}
+
+/* Planet (second level) */
+.hierarchy-planets {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 0.1rem;
+}
+
+.hierarchy-planet {
+    padding: 0.12rem 0.5rem 0.12rem 1rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+    border-radius: 3px;
+}
+
+.hierarchy-planet:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.hierarchy-planet.active {
+    background: rgba(45, 212, 191, 0.15);
+}
+
+.hierarchy-planet .hierarchy-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+    transition: color 0.15s ease;
+}
+
+.hierarchy-planet:hover .hierarchy-label {
+    color: rgba(255, 255, 255, 1);
+}
+
+.hierarchy-planet.active .hierarchy-label {
+    color: var(--accent-teal);
+}
+
+/* Sub-moon (third level) - displayed below planets with more indent */
+.hierarchy-moon {
+    padding: 0.1rem 0.5rem 0.1rem 1.5rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+    border-radius: 3px;
+}
+
+.hierarchy-moon:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.hierarchy-moon.active {
+    background: rgba(167, 139, 250, 0.15);
+}
+
+.hierarchy-moon .hierarchy-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.55);
+    white-space: nowrap;
+    transition: color 0.15s ease;
+}
+
+.hierarchy-moon:hover .hierarchy-label {
+    color: rgba(255, 255, 255, 1);
+}
+
+.hierarchy-moon.active .hierarchy-label {
+    color: #a78bfa;
+}
+
+/* Hierarchy panel must be clickable */
+.skills-panel.graph-active .hierarchy-panel {
     pointer-events: auto !important;
 }
 
-/* Solar System Navigation Buttons */
+.skills-panel.graph-active .hierarchy-panel * {
+    pointer-events: auto !important;
+}
+
+/* Mobile: hide hierarchy on small screens */
+@media (max-width: 900px) {
+    .hierarchy-panel {
+        display: none;
+    }
+}
+
+/* Solar System Navigation Buttons - REMOVED, keeping CSS for cleanup */
 .solar-nav-container {
     position: absolute;
     bottom: 1rem;

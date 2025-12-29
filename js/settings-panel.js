@@ -22,52 +22,53 @@
         planets: {
             sections: [
                 {
-                    id: 'planet-a',
-                    label: 'Oceanic Planet (A)',
-                    icon: 'water',
-                    color: '#2dd4bf',
-                    toggle: 'planets',  // Links to renderToggles.planets
+                    id: 'terrain',
+                    label: 'Terrain',
+                    icon: 'mountain',
+                    color: '#a78bfa',
+                    toggle: 'planets',
                     controls: [
-                        { type: 'slider', id: 'a-noise-scale', label: 'Noise Scale', param: 'planetParamsA.noiseScale', min: 0.5, max: 4, step: 0.1, decimals: 1 },
-                        { type: 'slider', id: 'a-terrain-height', label: 'Terrain Height', param: 'planetParamsA.terrainHeight', min: 0, max: 3, step: 0.1, decimals: 1 },
-                        { type: 'slider', id: 'a-land-roughness', label: 'Land Roughness', param: 'planetParamsA.landRoughness', min: 0.1, max: 1, step: 0.05, decimals: 2 },
-                        { type: 'slider', id: 'a-normal-strength', label: 'Normal Strength', param: 'planetParamsA.normalStrength', min: 0, max: 0.5, step: 0.01, decimals: 2 },
-                        { type: 'slider', id: 'a-ocean-roughness', label: 'Ocean Roughness', param: 'planetParamsA.oceanRoughness', min: 0, max: 1, step: 0.05, decimals: 2 },
-                        { type: 'slider', id: 'a-sea-level', label: 'Sea Level', param: 'planetParamsA.seaLevel', min: -0.5, max: 0.5, step: 0.02, decimals: 2 },
-                        { type: 'subheader', label: 'Water SSS' },
-                        { type: 'slider', id: 'a-sss-intensity', label: 'Intensity', param: 'planetParamsA.sssIntensity', min: 0, max: 3, step: 0.1, decimals: 1 },
-                        { type: 'slider', id: 'a-sss-wrap', label: 'Wrap', param: 'planetParamsA.sssWrap', min: 0, max: 1, step: 0.05, decimals: 2 },
-                        { type: 'slider', id: 'a-sss-backlight', label: 'Backlight', param: 'planetParamsA.sssBacklight', min: 0, max: 2, step: 0.1, decimals: 1 },
-                        { type: 'color', id: 'a-sss-color', label: 'Color', param: 'planetParamsA.sssColor' },
-                        { type: 'subheader', label: 'Atmosphere' },
-                        { type: 'slider', id: 'a-atmos-intensity', label: 'Brightness', param: 'planetParamsA.atmosIntensity', min: 0, max: 10, step: 0.1, decimals: 1 },
-                        { type: 'slider', id: 'a-atmos-thickness', label: 'Radius', param: 'planetParamsA.atmosThickness', min: 1, max: 3, step: 0.01, decimals: 2 },
-                        { type: 'slider', id: 'a-atmos-power', label: 'Density', param: 'planetParamsA.atmosPower', min: 0.1, max: 50, step: 0.1, decimals: 1 },
-                        { type: 'color', id: 'a-scatter-color', label: 'Scatter Color', param: 'planetParamsA.scatterColor' },
-                        { type: 'slider', id: 'a-scatter-scale', label: 'Scatter Scale', param: 'planetParamsA.scatterScale', min: 0, max: 20, step: 0.1, decimals: 2 },
-                        { type: 'slider', id: 'a-sunset-strength', label: 'Sunset', param: 'planetParamsA.sunsetStrength', min: 0, max: 1, step: 0.01, decimals: 2 }
+                        { type: 'slider', id: 'terrain-noise-scale', label: 'Noise Scale', param: 'terrainParams.noiseScale', min: 0.5, max: 5, step: 0.1, decimals: 1 },
+                        { type: 'slider', id: 'terrain-sea-level', label: 'Sea Level', param: 'terrainParams.seaLevel', min: -0.5, max: 0.5, step: 0.02, decimals: 2 },
+                        { type: 'slider', id: 'terrain-normal-strength', label: 'Normal Strength', param: 'terrainParams.normalStrength', min: 0, max: 0.5, step: 0.01, decimals: 2 }
                     ]
                 },
                 {
-                    id: 'planet-b',
-                    label: 'Lava Planet (B)',
-                    icon: 'fire',
-                    color: '#f97316',
-                    toggle: 'planets',  // Same toggle as planet-a
+                    id: 'material-a',
+                    label: 'Material A (Below Sea)',
+                    icon: 'water',
+                    color: '#2dd4bf',
                     controls: [
-                        { type: 'slider', id: 'b-noise-scale', label: 'Noise Scale', param: 'planetParamsB.noiseScale', min: 0.5, max: 4, step: 0.1, decimals: 1 },
-                        { type: 'slider', id: 'b-terrain-height', label: 'Terrain Height', param: 'planetParamsB.terrainHeight', min: 0, max: 3, step: 0.1, decimals: 1 },
-                        { type: 'slider', id: 'b-land-roughness', label: 'Rock Roughness', param: 'planetParamsB.landRoughness', min: 0.1, max: 1, step: 0.05, decimals: 2 },
-                        { type: 'slider', id: 'b-normal-strength', label: 'Normal Strength', param: 'planetParamsB.normalStrength', min: 0, max: 0.5, step: 0.01, decimals: 2 },
-                        { type: 'slider', id: 'b-lava-intensity', label: 'Lava Glow', param: 'planetParamsB.lavaIntensity', min: 0, max: 5, step: 0.1, decimals: 1 },
-                        { type: 'slider', id: 'b-sea-level', label: 'Lava Level', param: 'planetParamsB.seaLevel', min: -0.5, max: 0.5, step: 0.02, decimals: 2 },
-                        { type: 'subheader', label: 'Atmosphere' },
-                        { type: 'slider', id: 'b-atmos-intensity', label: 'Brightness', param: 'planetParamsB.atmosIntensity', min: 0, max: 10, step: 0.1, decimals: 1 },
-                        { type: 'slider', id: 'b-atmos-thickness', label: 'Radius', param: 'planetParamsB.atmosThickness', min: 1, max: 3, step: 0.01, decimals: 2 },
-                        { type: 'slider', id: 'b-atmos-power', label: 'Density', param: 'planetParamsB.atmosPower', min: 0.1, max: 50, step: 0.1, decimals: 1 },
-                        { type: 'color', id: 'b-scatter-color', label: 'Scatter Color', param: 'planetParamsB.scatterColor' },
-                        { type: 'slider', id: 'b-scatter-scale', label: 'Scatter Scale', param: 'planetParamsB.scatterScale', min: 0, max: 20, step: 0.1, decimals: 2 },
-                        { type: 'slider', id: 'b-sunset-strength', label: 'Sunset', param: 'planetParamsB.sunsetStrength', min: 0, max: 1, step: 0.01, decimals: 2 }
+                        { type: 'color', id: 'mat-a-base-color', label: 'Base Color', param: 'materialA.baseColor' },
+                        { type: 'slider', id: 'mat-a-roughness', label: 'Roughness', param: 'materialA.roughness', min: 0, max: 1, step: 0.01, decimals: 2 },
+                        { type: 'color', id: 'mat-a-sss-color', label: 'SSS Color', param: 'materialA.sssColor' },
+                        { type: 'slider', id: 'mat-a-sss-distance', label: 'SSS Distance', param: 'materialA.sssDistance', min: 0, max: 3, step: 0.1, decimals: 1 }
+                    ]
+                },
+                {
+                    id: 'material-b',
+                    label: 'Material B (Above Sea)',
+                    icon: 'earth',
+                    color: '#84cc16',
+                    controls: [
+                        { type: 'color', id: 'mat-b-base-color', label: 'Base Color', param: 'materialB.baseColor' },
+                        { type: 'slider', id: 'mat-b-roughness', label: 'Roughness', param: 'materialB.roughness', min: 0, max: 1, step: 0.01, decimals: 2 },
+                        { type: 'color', id: 'mat-b-sss-color', label: 'SSS Color', param: 'materialB.sssColor' },
+                        { type: 'slider', id: 'mat-b-sss-distance', label: 'SSS Distance', param: 'materialB.sssDistance', min: 0, max: 3, step: 0.1, decimals: 1 }
+                    ]
+                },
+                {
+                    id: 'atmosphere',
+                    label: 'Atmosphere',
+                    icon: 'cloud',
+                    color: '#60a5fa',
+                    controls: [
+                        { type: 'slider', id: 'atmos-intensity', label: 'Intensity', param: 'atmosParams.intensity', min: 0, max: 5, step: 0.1, decimals: 1 },
+                        { type: 'slider', id: 'atmos-thickness', label: 'Thickness', param: 'atmosParams.thickness', min: 0.5, max: 3, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'atmos-power', label: 'Density', param: 'atmosParams.power', min: 1, max: 100, step: 1, decimals: 0 },
+                        { type: 'color', id: 'atmos-scatter-color', label: 'Scatter Color', param: 'atmosParams.scatterColor' },
+                        { type: 'slider', id: 'atmos-scatter-scale', label: 'Scatter Scale', param: 'atmosParams.scatterScale', min: 0, max: 50, step: 1, decimals: 0 },
+                        { type: 'slider', id: 'atmos-sunset', label: 'Sunset Strength', param: 'atmosParams.sunsetStrength', min: 0, max: 2, step: 0.05, decimals: 2 }
                     ]
                 }
             ]
@@ -882,7 +883,7 @@
     function init() {
         // Wait for DOM and ALL param objects to be ready
         // volumetricParams, spaceParticleParams, and postProcessParams are exposed in core.js
-        if (!window.planetParamsA || !window.sunParams || !window.volumetricParams || !window.spaceParticleParams || !window.postProcessParams) {
+        if (!window.terrainParams || !window.materialA || !window.materialB || !window.sunParams || !window.volumetricParams || !window.spaceParticleParams || !window.postProcessParams) {
             setTimeout(init, 100);
             return;
         }

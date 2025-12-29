@@ -240,8 +240,7 @@
     let isFocusing = false;           // True while camera is transitioning to focus target
     let focusTarget = null;           // The node being focused on
     let focusProgress = 0;            // 0 to 1 progress of the focus transition
-    const focusDuration = 1.5;        // Seconds to complete focus transition
-    const focusDistance = 0.35;       // How close to get to the target (in world units, further away)
+    const focusDuration = 1.0;        // Seconds to complete focus transition (snappy)
 
     // Camera follow system - continuously track a selected planet
     let isFollowing = false;          // True while camera is following a planet
@@ -263,7 +262,26 @@
     // Track which solar system the camera is currently at (after navigation completes)
     let currentSolarSystem = null;
 
-    // Navigate to a solar system by sun ID
+    // Unified navigation state (replaces separate sun/planet systems)
+    let lockedTarget = null;           // Currently locked node (sun, planet, or moon)
+    let lockDistance = 0.5;            // Current distance from target (modified by scroll)
+    let lockDistanceMin = 0.15;        // Closest zoom
+    let lockDistanceMax = 2.0;         // Furthest zoom
+    let navigationStack = [];          // Breadcrumb: parent chain for Escape key
+
+    // Orbit-around-target state (when dragging while locked)
+    let orbitYaw = 0;                  // Horizontal orbit angle around target
+    let orbitPitch = 0;                // Vertical orbit angle around target
+    let orbitStartYaw = 0;             // Yaw when drag started
+    let orbitStartPitch = 0;           // Pitch when drag started
+
+    // Drag vs click detection
+    let mouseDownNode = null;          // Node under cursor on mousedown
+    let mouseDownX = 0, mouseDownY = 0; // Mouse position on mousedown
+    let hasDragged = false;            // True if mouse moved beyond threshold
+    const dragThreshold = 5;           // Pixels of movement to count as drag
+
+    // Navigate to a solar system by sun ID (wrapper for lockOnTarget)
     function navigateToSolarSystem(sunId) {
         const sunNode = nodes.find(n => n.id === sunId);
         if (!sunNode) {
@@ -273,34 +291,11 @@
 
         // Ensure worldX/Y/Z are set (they're populated by simulate())
         if (sunNode.worldX === undefined) {
-            // Force update node positions if not yet initialized
-            console.log('navigateToSolarSystem: forcing position update for', sunId);
             simulate();
         }
 
-        // Don't restart if already navigating to this sun
-        if (isNavigating && navTarget === sunNode) return;
-
-        // Don't re-navigate if already at this solar system
-        if (currentSolarSystem === sunId) return;
-
-        // Clear current solar system since we're navigating away
-        currentSolarSystem = null;
-
-        isNavigating = true;
-        isFocusing = false;  // Cancel any node focus
-        focusTarget = null;
-        navTarget = sunNode;
-        navTargetId = sunId;
-        navPhase = 'look';
-        navPhaseTime = 0;
-        // Store starting position for smooth travel interpolation
-        navStartPosX = cameraPosX;
-        navStartPosY = cameraPosY;
-        navStartPosZ = cameraPosZ;
-
-        // Update button states
-        updateNavButtonStates(sunId);
+        // Use unified lock system
+        lockOnTarget(sunNode);
     }
 
     // Update nav button active states
@@ -368,7 +363,299 @@
     function cancelFollow() {
         isFollowing = false;
         followTarget = null;
+        lockedTarget = null;
+        navigationStack = [];
+        // Update Go Back button visibility
+        setTimeout(updateGoBackButton, 0);
     }
+
+    // Build parent chain for navigation stack
+    function buildNavigationStack(node) {
+        const stack = [];
+        if (!node) return stack;
+
+        // Walk up the parent chain
+        let current = node;
+        while (current.parentSunId) {
+            const parent = nodes.find(n => n.id === current.parentSunId);
+            if (parent) {
+                stack.unshift(parent);  // Add to front (so parent sun is first)
+                current = parent;
+            } else {
+                break;
+            }
+        }
+        return stack;
+    }
+
+    // Unified function to lock camera on any node (sun, planet, or moon)
+    function lockOnTarget(node) {
+        if (!node) return;
+
+        // Don't restart if already locked on this node
+        if (lockedTarget === node && isFollowing) return;
+
+        // Build navigation stack from parent chain
+        navigationStack = buildNavigationStack(node);
+
+        // Calculate appropriate lock distance based on node size
+        const nodeSize = (node.size || node.baseSize || 20) * 0.0003;
+        if (node.isSun) {
+            lockDistance = 0.6 + nodeSize;  // Further for suns
+        } else {
+            lockDistance = 0.4 + nodeSize;  // Closer for planets/moons
+        }
+
+        // Set the locked target
+        lockedTarget = node;
+
+        // Initialize orbit angles based on current camera position relative to target
+        // This ensures smooth transition - camera starts orbiting from where it arrives
+        const targetX = node.worldX || 0;
+        const targetY = node.worldY || 0;
+        const targetZ = node.worldZ || 0;
+        const dx = cameraPosX - targetX;
+        const dy = cameraPosY - targetY;
+        const dz = cameraPosZ - targetZ;
+        orbitYaw = Math.atan2(dx, dz);
+        orbitPitch = Math.atan2(dy, Math.sqrt(dx * dx + dz * dz));
+
+        // Start focus animation (reuse existing system)
+        isFocusing = true;
+        focusTarget = node;
+        focusProgress = 0;
+
+        // Mark for following after focus completes
+        isFollowing = true;
+        followTarget = node;
+
+        // Cancel any ongoing navigation
+        isNavigating = false;
+        navTarget = null;
+
+        // Update current solar system tracking
+        if (node.isSun) {
+            currentSolarSystem = node.id;
+            updateNavButtonStates(node.id);
+        } else {
+            // Find the root sun for this node
+            const rootSun = navigationStack.length > 0 ? navigationStack[0] : null;
+            if (rootSun && rootSun.isSun) {
+                currentSolarSystem = rootSun.id;
+                updateNavButtonStates(rootSun.id);
+            }
+        }
+
+        // Update Go Back button visibility
+        setTimeout(updateGoBackButton, 0);
+    }
+
+    // Navigate back up the hierarchy (Escape key)
+    function navigateBack() {
+        if (navigationStack.length > 0) {
+            // Go to parent - pop from stack and lock onto it
+            const parent = navigationStack.pop();
+            lockedTarget = parent;
+
+            // Rebuild stack for the parent
+            navigationStack = buildNavigationStack(parent);
+
+            // Calculate lock distance for parent
+            const nodeSize = (parent.size || parent.baseSize || 20) * 0.0003;
+            if (parent.isSun) {
+                lockDistance = 0.6 + nodeSize;
+            } else {
+                lockDistance = 0.4 + nodeSize;
+            }
+
+            // Initialize orbit angles from current camera position
+            const targetX = parent.worldX || 0;
+            const targetY = parent.worldY || 0;
+            const targetZ = parent.worldZ || 0;
+            const dx = cameraPosX - targetX;
+            const dy = cameraPosY - targetY;
+            const dz = cameraPosZ - targetZ;
+            orbitYaw = Math.atan2(dx, dz);
+            orbitPitch = Math.atan2(dy, Math.sqrt(dx * dx + dz * dz));
+
+            // Start focus animation to parent
+            isFocusing = true;
+            focusTarget = parent;
+            focusProgress = 0;
+            isFollowing = true;
+            followTarget = parent;
+
+            // Update solar system tracking
+            if (parent.isSun) {
+                currentSolarSystem = parent.id;
+                updateNavButtonStates(parent.id);
+            }
+
+            // Update Go Back button visibility
+            setTimeout(updateGoBackButton, 0);
+        } else if (lockedTarget) {
+            // At sun level or directly selected - go to universe view
+            cancelFollow();
+            resetCameraToDefault();
+            // Update Go Back button visibility
+            setTimeout(updateGoBackButton, 0);
+        }
+        // If already at universe view (no lockedTarget), do nothing
+    }
+
+    // Expose functions globally
+    window.lockOnTarget = lockOnTarget;
+    window.navigateBack = navigateBack;
+
+    // Go Back button visibility
+    const goBackBtn = document.getElementById('go-back-btn');
+    function updateGoBackButton() {
+        if (goBackBtn) {
+            if (lockedTarget) {
+                goBackBtn.classList.add('visible');
+            } else {
+                goBackBtn.classList.remove('visible');
+            }
+        }
+        // Also update hierarchy panel
+        updateHierarchyPanel();
+    }
+
+    // Hierarchy Navigation Panel
+    const hierarchyContent = document.getElementById('hierarchy-content');
+
+    // Build hierarchy data structure from moonOrbits and subMoonOrbits
+    function buildHierarchyData() {
+        const suns = nodes.filter(n => n.isLight);
+        const hierarchy = {};
+
+        // Initialize each sun's hierarchy
+        suns.forEach(sun => {
+            hierarchy[sun.id] = {
+                node: sun,
+                planets: {}
+            };
+        });
+
+        // Add planets to their parent suns
+        Object.keys(moonOrbits).forEach(planetId => {
+            const orbit = moonOrbits[planetId];
+            const planetNode = nodes.find(n => n.id === planetId);
+            if (planetNode && hierarchy[orbit.sun]) {
+                hierarchy[orbit.sun].planets[planetId] = {
+                    node: planetNode,
+                    moons: []
+                };
+            }
+        });
+
+        // Add sub-moons to their parent planets
+        Object.keys(subMoonOrbits).forEach(moonId => {
+            const orbit = subMoonOrbits[moonId];
+            const moonNode = nodes.find(n => n.id === moonId);
+            if (moonNode) {
+                // Find which sun contains the parent planet
+                for (const sunId in hierarchy) {
+                    if (hierarchy[sunId].planets[orbit.parent]) {
+                        hierarchy[sunId].planets[orbit.parent].moons.push(moonNode);
+                        break;
+                    }
+                }
+            }
+        });
+
+        return hierarchy;
+    }
+
+    // Populate hierarchy panel HTML - flat structure, always unfolded, text only
+    function populateHierarchyPanel() {
+        if (!hierarchyContent) return;
+
+        const hierarchy = buildHierarchyData();
+        let html = '';
+
+        // Order: Unity, Unreal, Graphics
+        const sunOrder = ['unity', 'unreal', 'graphics'];
+
+        sunOrder.forEach(sunId => {
+            const system = hierarchy[sunId];
+            if (!system) return;
+
+            const sun = system.node;
+
+            html += `<div class="hierarchy-system" data-sun-id="${sun.id}">`;
+            html += `<div class="hierarchy-sun" data-node-id="${sun.id}">`;
+            html += `<span class="hierarchy-label">${sun.label}</span>`;
+            html += `</div>`;
+            html += `<div class="hierarchy-planets">`;
+
+            // Add planets and their moons in flat sequence
+            Object.keys(system.planets).forEach(planetId => {
+                const planet = system.planets[planetId];
+                const planetNode = planet.node;
+
+                // Planet
+                html += `<div class="hierarchy-planet" data-node-id="${planetNode.id}">`;
+                html += `<span class="hierarchy-label">${planetNode.label}</span>`;
+                html += `</div>`;
+
+                // Moons directly below their planet (not nested)
+                planet.moons.forEach(moon => {
+                    html += `<div class="hierarchy-moon" data-node-id="${moon.id}">`;
+                    html += `<span class="hierarchy-label">${moon.label}</span>`;
+                    html += `</div>`;
+                });
+            });
+
+            html += `</div>`; // hierarchy-planets
+            html += `</div>`; // hierarchy-system
+        });
+
+        hierarchyContent.innerHTML = html;
+
+        // Add click event listeners
+        attachHierarchyListeners();
+    }
+
+    // Attach click listeners to hierarchy items - simple navigation only
+    function attachHierarchyListeners() {
+        if (!hierarchyContent) return;
+
+        // All items just navigate on click
+        hierarchyContent.querySelectorAll('[data-node-id]').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const nodeId = el.dataset.nodeId;
+                const node = nodes.find(n => n.id === nodeId);
+                if (node) {
+                    lockOnTarget(node);
+                }
+            });
+        });
+    }
+
+    // Update hierarchy panel to show current location
+    function updateHierarchyPanel() {
+        if (!hierarchyContent) return;
+
+        // Remove all active states
+        hierarchyContent.querySelectorAll('.active').forEach(el => {
+            el.classList.remove('active');
+        });
+
+        if (lockedTarget) {
+            const targetId = lockedTarget.id;
+
+            // Find and highlight the current node
+            const targetEl = hierarchyContent.querySelector(`[data-node-id="${targetId}"]`);
+            if (targetEl) {
+                targetEl.classList.add('active');
+            }
+        }
+    }
+
+    // Initialize hierarchy panel after nodes are set up
+    setTimeout(populateHierarchyPanel, 100);
 
     const tooltip = document.getElementById('skill-tooltip');
     const tooltipTitle = tooltip.querySelector('.skill-tooltip-title');
@@ -971,41 +1258,32 @@
         sphereProgram.uBackgroundTexture = gl.getUniformLocation(sphereProgram, 'uBackgroundTexture');
         sphereProgram.uUseBackgroundTexture = gl.getUniformLocation(sphereProgram, 'uUseBackgroundTexture');
 
-        // Planet A (Oceanic/Mountain) uniforms
-        sphereProgram.uNoiseScaleA = gl.getUniformLocation(sphereProgram, 'uNoiseScaleA');
-        sphereProgram.uTerrainHeightA = gl.getUniformLocation(sphereProgram, 'uTerrainHeightA');
-        sphereProgram.uAtmosIntensityA = gl.getUniformLocation(sphereProgram, 'uAtmosIntensityA');
-        sphereProgram.uAtmosThicknessA = gl.getUniformLocation(sphereProgram, 'uAtmosThicknessA');
-        sphereProgram.uAtmosPowerA = gl.getUniformLocation(sphereProgram, 'uAtmosPowerA');
-        sphereProgram.uScatterRA = gl.getUniformLocation(sphereProgram, 'uScatterRA');
-        sphereProgram.uScatterGA = gl.getUniformLocation(sphereProgram, 'uScatterGA');
-        sphereProgram.uScatterBA = gl.getUniformLocation(sphereProgram, 'uScatterBA');
-        sphereProgram.uScatterScaleA = gl.getUniformLocation(sphereProgram, 'uScatterScaleA');
-        sphereProgram.uSunsetStrengthA = gl.getUniformLocation(sphereProgram, 'uSunsetStrengthA');
-        sphereProgram.uOceanRoughnessA = gl.getUniformLocation(sphereProgram, 'uOceanRoughnessA');
-        sphereProgram.uSSSIntensityA = gl.getUniformLocation(sphereProgram, 'uSSSIntensityA');
-        sphereProgram.uSSSWrapA = gl.getUniformLocation(sphereProgram, 'uSSSWrapA');
-        sphereProgram.uSSSBacklightA = gl.getUniformLocation(sphereProgram, 'uSSSBacklightA');
-        sphereProgram.uSSSColorA = gl.getUniformLocation(sphereProgram, 'uSSSColorA');
-        sphereProgram.uSeaLevelA = gl.getUniformLocation(sphereProgram, 'uSeaLevelA');
-        sphereProgram.uLandRoughnessA = gl.getUniformLocation(sphereProgram, 'uLandRoughnessA');
-        sphereProgram.uNormalStrengthA = gl.getUniformLocation(sphereProgram, 'uNormalStrengthA');
+        // Terrain uniforms
+        sphereProgram.uNoiseScale = gl.getUniformLocation(sphereProgram, 'uNoiseScale');
+        sphereProgram.uSeaLevel = gl.getUniformLocation(sphereProgram, 'uSeaLevel');
+        sphereProgram.uNormalStrength = gl.getUniformLocation(sphereProgram, 'uNormalStrength');
 
-        // Planet B (Lava/Desert) uniforms
-        sphereProgram.uNoiseScaleB = gl.getUniformLocation(sphereProgram, 'uNoiseScaleB');
-        sphereProgram.uTerrainHeightB = gl.getUniformLocation(sphereProgram, 'uTerrainHeightB');
-        sphereProgram.uAtmosIntensityB = gl.getUniformLocation(sphereProgram, 'uAtmosIntensityB');
-        sphereProgram.uAtmosThicknessB = gl.getUniformLocation(sphereProgram, 'uAtmosThicknessB');
-        sphereProgram.uAtmosPowerB = gl.getUniformLocation(sphereProgram, 'uAtmosPowerB');
-        sphereProgram.uScatterRB = gl.getUniformLocation(sphereProgram, 'uScatterRB');
-        sphereProgram.uScatterGB = gl.getUniformLocation(sphereProgram, 'uScatterGB');
-        sphereProgram.uScatterBB = gl.getUniformLocation(sphereProgram, 'uScatterBB');
-        sphereProgram.uScatterScaleB = gl.getUniformLocation(sphereProgram, 'uScatterScaleB');
-        sphereProgram.uSunsetStrengthB = gl.getUniformLocation(sphereProgram, 'uSunsetStrengthB');
-        sphereProgram.uLavaIntensityB = gl.getUniformLocation(sphereProgram, 'uLavaIntensityB');
-        sphereProgram.uSeaLevelB = gl.getUniformLocation(sphereProgram, 'uSeaLevelB');
-        sphereProgram.uLandRoughnessB = gl.getUniformLocation(sphereProgram, 'uLandRoughnessB');
-        sphereProgram.uNormalStrengthB = gl.getUniformLocation(sphereProgram, 'uNormalStrengthB');
+        // Atmosphere uniforms
+        sphereProgram.uAtmosIntensity = gl.getUniformLocation(sphereProgram, 'uAtmosIntensity');
+        sphereProgram.uAtmosThickness = gl.getUniformLocation(sphereProgram, 'uAtmosThickness');
+        sphereProgram.uAtmosPower = gl.getUniformLocation(sphereProgram, 'uAtmosPower');
+        sphereProgram.uScatterR = gl.getUniformLocation(sphereProgram, 'uScatterR');
+        sphereProgram.uScatterG = gl.getUniformLocation(sphereProgram, 'uScatterG');
+        sphereProgram.uScatterB = gl.getUniformLocation(sphereProgram, 'uScatterB');
+        sphereProgram.uScatterScale = gl.getUniformLocation(sphereProgram, 'uScatterScale');
+        sphereProgram.uSunsetStrength = gl.getUniformLocation(sphereProgram, 'uSunsetStrength');
+
+        // Material A uniforms (below sea level)
+        sphereProgram.uMatABaseColor = gl.getUniformLocation(sphereProgram, 'uMatABaseColor');
+        sphereProgram.uMatARoughness = gl.getUniformLocation(sphereProgram, 'uMatARoughness');
+        sphereProgram.uMatASSSColor = gl.getUniformLocation(sphereProgram, 'uMatASSSColor');
+        sphereProgram.uMatASSSDistance = gl.getUniformLocation(sphereProgram, 'uMatASSSDistance');
+
+        // Material B uniforms (above sea level)
+        sphereProgram.uMatBBaseColor = gl.getUniformLocation(sphereProgram, 'uMatBBaseColor');
+        sphereProgram.uMatBRoughness = gl.getUniformLocation(sphereProgram, 'uMatBRoughness');
+        sphereProgram.uMatBSSSColor = gl.getUniformLocation(sphereProgram, 'uMatBSSSColor');
+        sphereProgram.uMatBSSSDistance = gl.getUniformLocation(sphereProgram, 'uMatBSSSDistance');
 
         sphereProgram.buf = gl.createBuffer();
 
@@ -2063,46 +2341,37 @@
             gl.uniform1f(sphereProgram.uUseBackgroundTexture, 0.0);
         }
 
-        // Planet A (Oceanic/Mountain) uniforms
-        gl.uniform1f(sphereProgram.uNoiseScaleA, planetParamsA.noiseScale);
-        gl.uniform1f(sphereProgram.uTerrainHeightA, planetParamsA.terrainHeight);
-        gl.uniform1f(sphereProgram.uAtmosIntensityA, planetParamsA.atmosIntensity);
-        gl.uniform1f(sphereProgram.uAtmosThicknessA, planetParamsA.atmosThickness);
-        gl.uniform1f(sphereProgram.uAtmosPowerA, planetParamsA.atmosPower);
-        // Convert scatter color hex to RGB beta values
-        const scatterA = hex2vec(planetParamsA.scatterColor);
-        gl.uniform1f(sphereProgram.uScatterRA, scatterA[0]);
-        gl.uniform1f(sphereProgram.uScatterGA, scatterA[1]);
-        gl.uniform1f(sphereProgram.uScatterBA, scatterA[2]);
-        gl.uniform1f(sphereProgram.uScatterScaleA, planetParamsA.scatterScale);
-        gl.uniform1f(sphereProgram.uSunsetStrengthA, planetParamsA.sunsetStrength);
-        gl.uniform1f(sphereProgram.uOceanRoughnessA, planetParamsA.oceanRoughness);
-        gl.uniform1f(sphereProgram.uSSSIntensityA, planetParamsA.sssIntensity);
-        gl.uniform1f(sphereProgram.uSSSWrapA, planetParamsA.sssWrap);
-        gl.uniform1f(sphereProgram.uSSSBacklightA, planetParamsA.sssBacklight);
-        const sssColorA = hex2vec(planetParamsA.sssColor);
-        gl.uniform3f(sphereProgram.uSSSColorA, sssColorA[0], sssColorA[1], sssColorA[2]);
-        gl.uniform1f(sphereProgram.uSeaLevelA, planetParamsA.seaLevel);
-        gl.uniform1f(sphereProgram.uLandRoughnessA, planetParamsA.landRoughness);
-        gl.uniform1f(sphereProgram.uNormalStrengthA, planetParamsA.normalStrength);
+        // Terrain uniforms
+        gl.uniform1f(sphereProgram.uNoiseScale, terrainParams.noiseScale);
+        gl.uniform1f(sphereProgram.uSeaLevel, terrainParams.seaLevel);
+        gl.uniform1f(sphereProgram.uNormalStrength, terrainParams.normalStrength);
 
-        // Planet B (Lava/Desert) uniforms
-        gl.uniform1f(sphereProgram.uNoiseScaleB, planetParamsB.noiseScale);
-        gl.uniform1f(sphereProgram.uTerrainHeightB, planetParamsB.terrainHeight);
-        gl.uniform1f(sphereProgram.uAtmosIntensityB, planetParamsB.atmosIntensity);
-        gl.uniform1f(sphereProgram.uAtmosThicknessB, planetParamsB.atmosThickness);
-        gl.uniform1f(sphereProgram.uAtmosPowerB, planetParamsB.atmosPower);
-        // Convert scatter color hex to RGB beta values
-        const scatterB = hex2vec(planetParamsB.scatterColor);
-        gl.uniform1f(sphereProgram.uScatterRB, scatterB[0]);
-        gl.uniform1f(sphereProgram.uScatterGB, scatterB[1]);
-        gl.uniform1f(sphereProgram.uScatterBB, scatterB[2]);
-        gl.uniform1f(sphereProgram.uScatterScaleB, planetParamsB.scatterScale);
-        gl.uniform1f(sphereProgram.uSunsetStrengthB, planetParamsB.sunsetStrength);
-        gl.uniform1f(sphereProgram.uLavaIntensityB, planetParamsB.lavaIntensity);
-        gl.uniform1f(sphereProgram.uSeaLevelB, planetParamsB.seaLevel);
-        gl.uniform1f(sphereProgram.uLandRoughnessB, planetParamsB.landRoughness);
-        gl.uniform1f(sphereProgram.uNormalStrengthB, planetParamsB.normalStrength);
+        // Atmosphere uniforms
+        gl.uniform1f(sphereProgram.uAtmosIntensity, atmosParams.intensity);
+        gl.uniform1f(sphereProgram.uAtmosThickness, atmosParams.thickness);
+        gl.uniform1f(sphereProgram.uAtmosPower, atmosParams.power);
+        const scatterColor = hex2vec(atmosParams.scatterColor);
+        gl.uniform1f(sphereProgram.uScatterR, scatterColor[0]);
+        gl.uniform1f(sphereProgram.uScatterG, scatterColor[1]);
+        gl.uniform1f(sphereProgram.uScatterB, scatterColor[2]);
+        gl.uniform1f(sphereProgram.uScatterScale, atmosParams.scatterScale);
+        gl.uniform1f(sphereProgram.uSunsetStrength, atmosParams.sunsetStrength);
+
+        // Material A uniforms (below sea level)
+        const matABaseColor = hex2vec(materialA.baseColor);
+        gl.uniform3f(sphereProgram.uMatABaseColor, matABaseColor[0], matABaseColor[1], matABaseColor[2]);
+        gl.uniform1f(sphereProgram.uMatARoughness, materialA.roughness);
+        const matASSSColor = hex2vec(materialA.sssColor);
+        gl.uniform3f(sphereProgram.uMatASSSColor, matASSSColor[0], matASSSColor[1], matASSSColor[2]);
+        gl.uniform1f(sphereProgram.uMatASSSDistance, materialA.sssDistance);
+
+        // Material B uniforms (above sea level)
+        const matBBaseColor = hex2vec(materialB.baseColor);
+        gl.uniform3f(sphereProgram.uMatBBaseColor, matBBaseColor[0], matBBaseColor[1], matBBaseColor[2]);
+        gl.uniform1f(sphereProgram.uMatBRoughness, materialB.roughness);
+        const matBSSSColor = hex2vec(materialB.sssColor);
+        gl.uniform3f(sphereProgram.uMatBSSSColor, matBSSSColor[0], matBSSSColor[1], matBSSSColor[2]);
+        gl.uniform1f(sphereProgram.uMatBSSSDistance, materialB.sssDistance);
 
         const q = [[-1,-1],[1,-1],[1,1],[-1,-1],[1,1],[-1,1]];
 
@@ -2960,30 +3229,32 @@
             const horizontalDist = Math.sqrt(dx * dx + dz * dz);
             const targetPitch = -Math.atan2(dy, horizontalDist);
 
-            // Calculate target position (approach but stop at focusDistance)
-            const stopDist = focusDistance + (focusTarget.size || focusTarget.baseSize || 20) * 0.0003;
+            // Calculate target position (approach but stop at lockDistance)
+            const stopDist = lockDistance + (focusTarget.size || focusTarget.baseSize || 20) * 0.0003;
             const approachT = Math.max(0, 1 - stopDist / dist);
             const targetPosX = cameraPosX + dx * approachT;
             const targetPosY = cameraPosY + dy * approachT;
             const targetPosZ = cameraPosZ + dz * approachT;
 
-            // Smooth easing (ease-out cubic)
+            // Smooth easing (ease-out cubic) - faster interpolation
             focusProgress += 0.016 / focusDuration;
             const t = Math.min(1, focusProgress);
             const ease = 1 - Math.pow(1 - t, 3);
 
+            // Strong interpolation for snappy feel
+            const lerpFactor = 0.15 + ease * 0.15;  // 0.15 to 0.30
+
             // Interpolate rotation toward target
-            // Handle angle wrapping for yaw
             let yawDiff = targetYaw - cameraRotY;
             while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
             while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
-            cameraRotY += yawDiff * ease * 0.1;
-            cameraRotX += (targetPitch - cameraRotX) * ease * 0.1;
+            cameraRotY += yawDiff * lerpFactor;
+            cameraRotX += (targetPitch - cameraRotX) * lerpFactor;
 
             // Interpolate position toward target
-            cameraPosX += (targetPosX - cameraPosX) * ease * 0.05;
-            cameraPosY += (targetPosY - cameraPosY) * ease * 0.05;
-            cameraPosZ += (targetPosZ - cameraPosZ) * ease * 0.05;
+            cameraPosX += (targetPosX - cameraPosX) * lerpFactor;
+            cameraPosY += (targetPosY - cameraPosY) * lerpFactor;
+            cameraPosZ += (targetPosZ - cameraPosZ) * lerpFactor;
 
             // Update targets to match current (prevents snapping when focus ends)
             targetCameraPosX = cameraPosX;
@@ -2992,59 +3263,68 @@
             targetCameraRotX = cameraRotX;
             targetCameraRotY = cameraRotY;
 
-            // Check if focus transition is complete
-            if (t >= 1 && dist < stopDist * 1.5) {
+            // Check if focus transition is complete (close enough to target)
+            if (t >= 1 || dist < stopDist * 1.2) {
                 isFocusing = false;
-                focusTarget = null;
                 focusProgress = 0;
                 container.style.cursor = 'grab';
-                // Note: if isFollowing is true, follow logic will take over
+
+                // Sync orbit angles from final camera position for seamless handoff
+                if (focusTarget) {
+                    const fx = focusTarget.worldX || 0;
+                    const fy = focusTarget.worldY || 0;
+                    const fz = focusTarget.worldZ || 0;
+                    const ox = cameraPosX - fx;
+                    const oy = cameraPosY - fy;
+                    const oz = cameraPosZ - fz;
+                    orbitYaw = Math.atan2(ox, oz);
+                    orbitPitch = Math.atan2(oy, Math.sqrt(ox * ox + oz * oz));
+                }
+                focusTarget = null;
             }
         } else if (isFollowing && followTarget && !isFocusing) {
-            // Camera follow system - continuously track the selected planet
+            // Camera follow system - orbit around the locked target
             const targetWorldX = followTarget.worldX || 0;
             const targetWorldY = followTarget.worldY || 0;
             const targetWorldZ = followTarget.worldZ || 0;
 
-            // Calculate direction from camera to target
+            // Calculate desired distance from target
+            const nodeSize = (followTarget.size || followTarget.baseSize || 20) * 0.0003;
+            const desiredDist = lockDistance + nodeSize;
+
+            // Calculate camera position using spherical coordinates around target
+            // orbitYaw = horizontal angle, orbitPitch = vertical angle
+            const cosP = Math.cos(orbitPitch);
+            const sinP = Math.sin(orbitPitch);
+            const cosY = Math.cos(orbitYaw);
+            const sinY = Math.sin(orbitYaw);
+
+            // Spherical to cartesian (camera offset from target)
+            const offsetX = desiredDist * cosP * sinY;
+            const offsetY = desiredDist * sinP;
+            const offsetZ = desiredDist * cosP * cosY;
+
+            // Target camera position
+            const targetPosX = targetWorldX + offsetX;
+            const targetPosY = targetWorldY + offsetY;
+            const targetPosZ = targetWorldZ + offsetZ;
+
+            // Instant camera position - no smoothing for responsive 3D software feel
+            cameraPosX = targetPosX;
+            cameraPosY = targetPosY;
+            cameraPosZ = targetPosZ;
+
+            // Calculate direction from camera to target for look-at
             const dx = targetWorldX - cameraPosX;
             const dy = targetWorldY - cameraPosY;
             const dz = targetWorldZ - cameraPosZ;
-            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-            // Calculate target rotation to look at the node
-            const targetYaw = Math.atan2(dx, dz);
+            // Instant rotation to look at target - no smoothing
             const horizontalDist = Math.sqrt(dx * dx + dz * dz);
-            const targetPitch = -Math.atan2(dy, horizontalDist);
+            cameraRotY = Math.atan2(dx, dz);
+            cameraRotX = -Math.atan2(dy, horizontalDist);
 
-            // Smoothly rotate to look at target
-            let yawDiff = targetYaw - cameraRotY;
-            while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
-            while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
-            cameraRotY += yawDiff * 0.08;
-            cameraRotX += (targetPitch - cameraRotX) * 0.08;
-
-            // Maintain follow distance - move toward/away from target as needed
-            const nodeSize = (followTarget.size || followTarget.baseSize || 20) * 0.0003;
-            const desiredDist = followDistance + nodeSize;
-
-            if (dist > 0.01) {
-                const dirX = dx / dist;
-                const dirY = dy / dist;
-                const dirZ = dz / dist;
-
-                // Calculate target position at desired distance
-                const targetPosX = targetWorldX - dirX * desiredDist;
-                const targetPosY = targetWorldY - dirY * desiredDist;
-                const targetPosZ = targetWorldZ - dirZ * desiredDist;
-
-                // Smoothly move toward target position
-                cameraPosX += (targetPosX - cameraPosX) * 0.05;
-                cameraPosY += (targetPosY - cameraPosY) * 0.05;
-                cameraPosZ += (targetPosZ - cameraPosZ) * 0.05;
-            }
-
-            // Update targets to match current
+            // Sync target values
             targetCameraPosX = cameraPosX;
             targetCameraPosY = cameraPosY;
             targetCameraPosZ = cameraPosZ;
@@ -3559,7 +3839,7 @@
             });
         }
 
-        // Draw label only for gazedNode (hovered planet)
+        // Draw label for gazedNode (hovered) - shows where user will travel next
         if (showPlanetLabels && gazedNode && gazeSmoothProximity > 0.1) {
             const node = gazedNode;
 
@@ -3602,13 +3882,15 @@
         }
 
         // ========================================
-        // CINEMATIC GAZE LABEL: Show planet info when mouse is near it
+        // CINEMATIC GAZE LABEL: Show planet info for locked target or hovered planet
         // ========================================
-        if (gazedNode && gazeSmoothProximity > 0.1) {
-            const node = gazedNode;
+        const cinematicNode = lockedTarget || gazedNode;
+        const cinematicProximity = lockedTarget ? 1.0 : gazeSmoothProximity;
+        if (cinematicNode && cinematicProximity > 0.1) {
+            const node = cinematicNode;
 
-            // Calculate UI alpha based on proximity (fades in/out smoothly)
-            const gazeAlpha = Math.min(1, gazeSmoothProximity * 2) * globalFadeIn;
+            // Calculate UI alpha based on proximity (fades in/out smoothly, or full if locked)
+            const gazeAlpha = Math.min(1, cinematicProximity * 2) * globalFadeIn;
 
             // Convert world distance to fictional "light years" (1 world unit = 2.5 light years)
             const distanceLY = (node.gazeDistance * 2.5).toFixed(2);
@@ -3793,8 +4075,8 @@
         // Only handle left click
         if (e.button !== 0) return;
 
-        // Block clicks during navigation (camera is auto-traveling to a solar system)
-        if (isNavigating) return;
+        // Block clicks during navigation or focus transition
+        if (isNavigating || isFocusing) return;
 
         const rect = canvas.getBoundingClientRect();
         const screenX = e.clientX - rect.left;
@@ -3806,64 +4088,35 @@
         mouseX = world.x;
         mouseY = world.y;
 
-        // Check if clicking while a planet label is shown (gazedNode)
-        // This allows clicking anywhere to select the gazed planet
+        // Track mousedown for drag vs click detection
+        mouseDownX = e.clientX;
+        mouseDownY = e.clientY;
+        hasDragged = false;
+
+        // Check what's under cursor (gazedNode or direct hit)
         if (gazedNode && gazeSmoothProximity > 0.3) {
-            // Clicking while looking at a planet: select and follow it
-            if (gazedNode.isSun) {
-                navigateToSolarSystem(gazedNode.id);
-                return;
-            }
-
-            // Don't re-select if already following this node
-            if (isFollowing && followTarget === gazedNode) return;
-
-            selectAndFollowPlanet(gazedNode);
-            container.style.cursor = 'default';
-
-            // Show tooltip for the selected node
-            if (!tooltipTarget || tooltipTarget !== gazedNode) {
-                tooltipTarget = gazedNode;
-                generateTooltipPosition(gazedNode);
-            }
-            return;
+            mouseDownNode = gazedNode;
+        } else {
+            mouseDownNode = getNodeAt(screenX, screenY);
         }
 
-        // Check if clicking on a node directly
-        const clickedNode = getNodeAt(screenX, screenY);
+        // Start drag/orbit immediately
+        isOrbiting = true;
+        orbitStartX = e.clientX;
+        orbitStartY = e.clientY;
 
-        if (clickedNode) {
-            // Clicking on a sun: navigate to that solar system (don't focus)
-            if (clickedNode.isSun) {
-                navigateToSolarSystem(clickedNode.id);
-                return;
-            }
-
-            // Clicking on a planet/moon: select and follow it
-            // Don't start if already following this node
-            if (isFollowing && followTarget === clickedNode) return;
-
-            selectAndFollowPlanet(clickedNode);
-            container.style.cursor = 'default';
-
-            // Show tooltip for the focused node
-            if (!tooltipTarget || tooltipTarget !== clickedNode) {
-                tooltipTarget = clickedNode;
-                generateTooltipPosition(clickedNode);
-            }
-        } else if (!isFocusing) {
-            // Clicking on empty space: start camera rotation
-            // Cancel following if active
-            if (isFollowing) {
-                cancelFollow();
-            }
-            isOrbiting = true;
-            orbitStartX = e.clientX;
-            orbitStartY = e.clientY;
+        if (lockedTarget) {
+            // Orbit around locked target - normalize yaw
+            while (orbitYaw > Math.PI) orbitYaw -= Math.PI * 2;
+            while (orbitYaw < -Math.PI) orbitYaw += Math.PI * 2;
+            orbitStartYaw = orbitYaw;
+            orbitStartPitch = orbitPitch;
+        } else {
+            // Free camera rotation
             orbitStartRotX = targetCameraRotX;
             orbitStartRotY = targetCameraRotY;
-            container.style.cursor = 'move';
         }
+        container.style.cursor = 'move';
     });
 
     canvas.addEventListener('mousemove', (e) => {
@@ -3880,12 +4133,31 @@
         if (isOrbiting) {
             const deltaX = e.clientX - orbitStartX;
             const deltaY = e.clientY - orbitStartY;
-            // Sensitivity from camera params
+
+            // Check if we've moved beyond threshold (now considered a drag, not click)
+            const totalMove = Math.abs(e.clientX - mouseDownX) + Math.abs(e.clientY - mouseDownY);
+            if (totalMove > dragThreshold) {
+                hasDragged = true;
+            }
+
             const sensitivity = window.cameraParams.rotationSpeed;
-            targetCameraRotY = orbitStartRotY + deltaX * sensitivity;
-            targetCameraRotX = orbitStartRotX + deltaY * sensitivity;
-            // Clamp pitch to avoid flipping
-            targetCameraRotX = Math.max(-Math.PI * 0.4, Math.min(Math.PI * 0.4, targetCameraRotX));
+
+            if (lockedTarget) {
+                // Orbit around the locked target
+                orbitYaw = orbitStartYaw + deltaX * sensitivity;
+                orbitPitch = orbitStartPitch + deltaY * sensitivity;
+                // Normalize yaw to prevent precision issues
+                while (orbitYaw > Math.PI) orbitYaw -= Math.PI * 2;
+                while (orbitYaw < -Math.PI) orbitYaw += Math.PI * 2;
+                // Clamp pitch to avoid gimbal lock at poles (can look up/down but not flip)
+                const maxPitch = Math.PI * 0.49;  // Just under 90 degrees
+                orbitPitch = Math.max(-maxPitch, Math.min(maxPitch, orbitPitch));
+            } else {
+                // Free camera rotation (not locked)
+                targetCameraRotY = orbitStartRotY + deltaX * sensitivity;
+                targetCameraRotX = orbitStartRotX + deltaY * sensitivity;
+                targetCameraRotX = Math.max(-Math.PI * 0.4, Math.min(Math.PI * 0.4, targetCameraRotX));
+            }
             return;
         }
 
@@ -3907,7 +4179,24 @@
     canvas.addEventListener('mouseup', () => {
         if (isOrbiting) {
             isOrbiting = false;
-            container.style.cursor = hoveredNode ? 'pointer' : 'grab';
+
+            // If it was a click (not a drag), select the node
+            if (!hasDragged && mouseDownNode) {
+                lockOnTarget(mouseDownNode);
+                container.style.cursor = 'default';
+
+                // Show tooltip
+                if (!tooltipTarget || tooltipTarget !== mouseDownNode) {
+                    tooltipTarget = mouseDownNode;
+                    generateTooltipPosition(mouseDownNode);
+                }
+            } else {
+                container.style.cursor = hoveredNode ? 'pointer' : 'grab';
+            }
+
+            // Reset drag state
+            mouseDownNode = null;
+            hasDragged = false;
             return;
         }
         // No more dragging - just reset cursor
@@ -3919,11 +4208,25 @@
     canvas.addEventListener('mouseleave', () => {
         hoveredNode = null;
         isOrbiting = false;
+        mouseDownNode = null;
+        hasDragged = false;
         if (!isFocusing) {
             container.style.cursor = 'grab';
         }
         updateTooltip(null);
     });
+
+    // Scroll wheel zoom when locked on a target
+    canvas.addEventListener('wheel', (e) => {
+        if (!lockedTarget) return;  // Only zoom when locked on target
+
+        e.preventDefault();
+        const zoomSpeed = 0.08;
+        const delta = e.deltaY > 0 ? 1 : -1;  // Scroll down = zoom out
+
+        lockDistance += delta * zoomSpeed;
+        lockDistance = Math.max(lockDistanceMin, Math.min(lockDistanceMax, lockDistance));
+    }, { passive: false });
 
     canvas.addEventListener('touchstart', (e) => {
         e.preventDefault();
@@ -3941,19 +4244,8 @@
         // Check if tapping on a node
         const tappedNode = getNodeAt(screenX, screenY);
         if (tappedNode) {
-            // Tapping on a sun: navigate to that solar system (don't focus)
-            if (tappedNode.isSun) {
-                navigateToSolarSystem(tappedNode.id);
-                return;
-            }
-
-            // Tapping on a planet/moon: start focus transition
-            // Don't start if already focusing on this node
-            if (isFocusing && focusTarget === tappedNode) return;
-
-            isFocusing = true;
-            focusTarget = tappedNode;
-            focusProgress = 0;
+            // Unified: lock on any node type (sun, planet, or moon)
+            lockOnTarget(tappedNode);
 
             // Show tooltip for the focused node
             if (!tooltipTarget || tooltipTarget !== tappedNode) {
@@ -3980,6 +4272,13 @@
     // Keyboard controls
     document.addEventListener('keydown', (e) => {
         if (e.target.matches('input, textarea')) return;
+
+        // Escape key: navigate back up the hierarchy
+        if (e.code === 'Escape') {
+            navigateBack();
+            e.preventDefault();
+            return;
+        }
 
         // Track movement keys
         const key = e.code.toLowerCase();
@@ -4278,168 +4577,6 @@
             if (fogValue) fogValue.textContent = '0.15';
         });
     }
-
-    // ========================================
-    // PLANET A (OCEANIC) CONTROLS
-    // ========================================
-    const planetAControls = document.getElementById('planet-a-controls');
-    const planetAToggle = document.getElementById('planet-a-toggle');
-    const planetAResetBtn = document.getElementById('planet-a-reset-btn');
-
-    const planetASlidersConfig = {
-        'a-noise-scale': { param: 'noiseScale', valueEl: 'a-noise-scale-value', default: 1.8, decimals: 1 },
-        'a-terrain-height': { param: 'terrainHeight', valueEl: 'a-terrain-height-value', default: 0.6, decimals: 1 },
-        'a-atmos-intensity': { param: 'atmosIntensity', valueEl: 'a-atmos-intensity-value', default: 0.6, decimals: 1 },
-        'a-atmos-thickness': { param: 'atmosThickness', valueEl: 'a-atmos-thickness-value', default: 2.5, decimals: 2 },
-        'a-atmos-power': { param: 'atmosPower', valueEl: 'a-atmos-power-value', default: 37.1, decimals: 1 },
-        'a-scatter-scale': { param: 'scatterScale', valueEl: 'a-scatter-scale-value', default: 0.5, decimals: 2 },
-        'a-sunset-strength': { param: 'sunsetStrength', valueEl: 'a-sunset-strength-value', default: 1.0, decimals: 2 },
-        'a-ocean-roughness': { param: 'oceanRoughness', valueEl: 'a-ocean-roughness-value', default: 0.55, decimals: 2 },
-        'a-sss-intensity': { param: 'sssIntensity', valueEl: 'a-sss-intensity-value', default: 1.0, decimals: 1 },
-        'a-sss-wrap': { param: 'sssWrap', valueEl: 'a-sss-wrap-value', default: 0.3, decimals: 2 },
-        'a-sss-backlight': { param: 'sssBacklight', valueEl: 'a-sss-backlight-value', default: 0.5, decimals: 2 },
-        'a-sea-level': { param: 'seaLevel', valueEl: 'a-sea-level-value', default: 0.0, decimals: 2 },
-        'a-land-roughness': { param: 'landRoughness', valueEl: 'a-land-roughness-value', default: 0.65, decimals: 2 },
-        'a-normal-strength': { param: 'normalStrength', valueEl: 'a-normal-strength-value', default: 0.15, decimals: 2 }
-    };
-
-    // Scatter color picker for Planet A
-    const scatterColorA = document.getElementById('a-scatter-color');
-    if (scatterColorA) {
-        scatterColorA.value = planetParamsA.scatterColor;
-        scatterColorA.addEventListener('input', () => {
-            planetParamsA.scatterColor = scatterColorA.value;
-        });
-    }
-
-    // SSS color picker for Planet A
-    const sssColorA = document.getElementById('a-sss-color');
-    if (sssColorA) {
-        sssColorA.value = planetParamsA.sssColor;
-        sssColorA.addEventListener('input', () => {
-            planetParamsA.sssColor = sssColorA.value;
-        });
-    }
-
-    // Initialize Planet A sliders
-    Object.entries(planetASlidersConfig).forEach(([sliderId, config]) => {
-        const slider = document.getElementById(sliderId);
-        const valueEl = document.getElementById(config.valueEl);
-        if (slider && valueEl) {
-            slider.value = planetParamsA[config.param];
-            valueEl.textContent = planetParamsA[config.param].toFixed(config.decimals);
-
-            slider.addEventListener('input', () => {
-                const value = parseFloat(slider.value);
-                planetParamsA[config.param] = value;
-                valueEl.textContent = value.toFixed(config.decimals);
-            });
-        }
-    });
-
-    if (planetAToggle) {
-        planetAToggle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            planetAControls.classList.toggle('active');
-        });
-    }
-
-    if (planetAResetBtn) {
-        planetAResetBtn.addEventListener('click', () => {
-            Object.entries(planetASlidersConfig).forEach(([sliderId, config]) => {
-                const slider = document.getElementById(sliderId);
-                const valueEl = document.getElementById(config.valueEl);
-                planetParamsA[config.param] = config.default;
-                if (slider) slider.value = config.default;
-                if (valueEl) valueEl.textContent = config.default.toFixed(config.decimals);
-            });
-            // Reset scatter color picker
-            planetParamsA.scatterColor = '#1a40e6';
-            if (scatterColorA) scatterColorA.value = '#1a40e6';
-            // Reset SSS color picker
-            planetParamsA.sssColor = '#0d578c';
-            const sssColorReset = document.getElementById('a-sss-color');
-            if (sssColorReset) sssColorReset.value = '#0d578c';
-        });
-    }
-
-    // ========================================
-    // PLANET B (LAVA) CONTROLS
-    // ========================================
-    const planetBControls = document.getElementById('planet-b-controls');
-    const planetBToggle = document.getElementById('planet-b-toggle');
-    const planetBResetBtn = document.getElementById('planet-b-reset-btn');
-
-    const planetBSlidersConfig = {
-        'b-noise-scale': { param: 'noiseScale', valueEl: 'b-noise-scale-value', default: 1.8, decimals: 1 },
-        'b-terrain-height': { param: 'terrainHeight', valueEl: 'b-terrain-height-value', default: 0.6, decimals: 1 },
-        'b-atmos-intensity': { param: 'atmosIntensity', valueEl: 'b-atmos-intensity-value', default: 0.8, decimals: 1 },
-        'b-atmos-thickness': { param: 'atmosThickness', valueEl: 'b-atmos-thickness-value', default: 2.0, decimals: 2 },
-        'b-atmos-power': { param: 'atmosPower', valueEl: 'b-atmos-power-value', default: 25.0, decimals: 1 },
-        'b-scatter-scale': { param: 'scatterScale', valueEl: 'b-scatter-scale-value', default: 0.8, decimals: 2 },
-        'b-sunset-strength': { param: 'sunsetStrength', valueEl: 'b-sunset-strength-value', default: 0.5, decimals: 2 },
-        'b-lava-intensity': { param: 'lavaIntensity', valueEl: 'b-lava-intensity-value', default: 3.0, decimals: 1 },
-        'b-sea-level': { param: 'seaLevel', valueEl: 'b-sea-level-value', default: 0.0, decimals: 2 },
-        'b-land-roughness': { param: 'landRoughness', valueEl: 'b-land-roughness-value', default: 0.75, decimals: 2 },
-        'b-normal-strength': { param: 'normalStrength', valueEl: 'b-normal-strength-value', default: 0.2, decimals: 2 }
-    };
-
-    // Scatter color picker for Planet B
-    const scatterColorB = document.getElementById('b-scatter-color');
-    if (scatterColorB) {
-        scatterColorB.value = planetParamsB.scatterColor;
-        scatterColorB.addEventListener('input', () => {
-            planetParamsB.scatterColor = scatterColorB.value;
-        });
-    }
-
-    // Initialize Planet B sliders
-    Object.entries(planetBSlidersConfig).forEach(([sliderId, config]) => {
-        const slider = document.getElementById(sliderId);
-        const valueEl = document.getElementById(config.valueEl);
-        if (slider && valueEl) {
-            slider.value = planetParamsB[config.param];
-            valueEl.textContent = planetParamsB[config.param].toFixed(config.decimals);
-
-            slider.addEventListener('input', () => {
-                const value = parseFloat(slider.value);
-                planetParamsB[config.param] = value;
-                valueEl.textContent = value.toFixed(config.decimals);
-            });
-        }
-    });
-
-    if (planetBToggle) {
-        planetBToggle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            planetBControls.classList.toggle('active');
-        });
-    }
-
-    if (planetBResetBtn) {
-        planetBResetBtn.addEventListener('click', () => {
-            Object.entries(planetBSlidersConfig).forEach(([sliderId, config]) => {
-                const slider = document.getElementById(sliderId);
-                const valueEl = document.getElementById(config.valueEl);
-                planetParamsB[config.param] = config.default;
-                if (slider) slider.value = config.default;
-                if (valueEl) valueEl.textContent = config.default.toFixed(config.decimals);
-            });
-            // Reset scatter color picker
-            planetParamsB.scatterColor = '#e63319';
-            if (scatterColorB) scatterColorB.value = '#e63319';
-        });
-    }
-
-    // Close panels when clicking outside
-    document.addEventListener('click', (e) => {
-        if (planetAControls && !planetAControls.contains(e.target)) {
-            planetAControls.classList.remove('active');
-        }
-        if (planetBControls && !planetBControls.contains(e.target)) {
-            planetBControls.classList.remove('active');
-        }
-    });
 
     // ========================================
     // PHYSICS CONTROLS UI
@@ -4784,44 +4921,6 @@
             }
         }
 
-        // Planet A sliders
-        updateSlider('a-noise-scale', planetParamsA.noiseScale, 1);
-        updateSlider('a-terrain-height', planetParamsA.terrainHeight, 1);
-        updateSlider('a-atmos-intensity', planetParamsA.atmosIntensity, 1);
-        updateSlider('a-atmos-thickness', planetParamsA.atmosThickness, 2);
-        updateSlider('a-atmos-power', planetParamsA.atmosPower, 1);
-        updateSlider('a-scatter-scale', planetParamsA.scatterScale, 2);
-        updateSlider('a-sunset-strength', planetParamsA.sunsetStrength, 2);
-        updateSlider('a-ocean-roughness', planetParamsA.oceanRoughness, 2);
-        updateSlider('a-sss-intensity', planetParamsA.sssIntensity, 1);
-        updateSlider('a-sea-level', planetParamsA.seaLevel, 2);
-        updateSlider('a-land-roughness', planetParamsA.landRoughness, 2);
-        updateSlider('a-normal-strength', planetParamsA.normalStrength, 2);
-        // Scatter color picker
-        const scatterColorA = document.getElementById('a-scatter-color');
-        if (scatterColorA) scatterColorA.value = planetParamsA.scatterColor;
-        // SSS controls
-        updateSlider('a-sss-wrap', planetParamsA.sssWrap, 2);
-        updateSlider('a-sss-backlight', planetParamsA.sssBacklight, 1);
-        const sssColorAEl = document.getElementById('a-sss-color');
-        if (sssColorAEl) sssColorAEl.value = planetParamsA.sssColor;
-
-        // Planet B sliders
-        updateSlider('b-noise-scale', planetParamsB.noiseScale, 1);
-        updateSlider('b-terrain-height', planetParamsB.terrainHeight, 1);
-        updateSlider('b-atmos-intensity', planetParamsB.atmosIntensity, 1);
-        updateSlider('b-atmos-thickness', planetParamsB.atmosThickness, 2);
-        updateSlider('b-atmos-power', planetParamsB.atmosPower, 1);
-        updateSlider('b-scatter-scale', planetParamsB.scatterScale, 2);
-        updateSlider('b-sunset-strength', planetParamsB.sunsetStrength, 2);
-        updateSlider('b-lava-intensity', planetParamsB.lavaIntensity, 1);
-        updateSlider('b-sea-level', planetParamsB.seaLevel, 2);
-        updateSlider('b-land-roughness', planetParamsB.landRoughness, 2);
-        updateSlider('b-normal-strength', planetParamsB.normalStrength, 2);
-        // Scatter color picker
-        const scatterColorB = document.getElementById('b-scatter-color');
-        if (scatterColorB) scatterColorB.value = planetParamsB.scatterColor;
-
         // Sun sliders
         updateSlider('sun-core-size', sunParams.coreSize, 2);
         updateSlider('sun-glow-size', sunParams.glowSize, 2);
@@ -4944,22 +5043,28 @@
     function exportAsCode() {
         const settings = getAllSettings();
 
-        // Generate JavaScript code that can be pasted into main.js
+        // Generate JavaScript code that can be pasted into core.js
         const code = `// ============================================
 // EXPORTED SHADER SETTINGS - Generated ${new Date().toISOString()}
-// Paste this at the top of main.js (replace the existing param objects)
+// Paste this in core.js (replace the existing param objects)
 // ============================================
 
-// Planet A: Oceanic/Mountain planets (blue/green, water)
-const planetParamsA = ${JSON.stringify(settings.planetParamsA, null, 4)};
+// Terrain parameters
+const terrainParams = ${JSON.stringify(settings.terrainParams, null, 4)};
 
-// Planet B: Lava/Desert planets (volcanic)
-const planetParamsB = ${JSON.stringify(settings.planetParamsB, null, 4)};
+// Material A (Below sea level)
+const materialA = ${JSON.stringify(settings.materialA, null, 4)};
+
+// Material B (Above sea level)
+const materialB = ${JSON.stringify(settings.materialB, null, 4)};
+
+// Atmosphere parameters
+const atmosParams = ${JSON.stringify(settings.atmosParams, null, 4)};
 
 // Sun/Star halo parameters
 const sunParams = ${JSON.stringify(settings.sunParams, null, 4)};
 
-// Light properties (shared across all planet types)
+// Light properties
 const lightParams = ${JSON.stringify(settings.lightParams, null, 4)};
 
 // Volumetric light parameters
@@ -4971,7 +5076,7 @@ const spaceParticleParams = ${JSON.stringify(settings.spaceParticleParams, null,
 // Orbital system parameters
 const orbitParams = ${JSON.stringify(settings.orbitParams, null, 4)};
 
-// Render feature toggles (enable/disable individual renderers)
+// Render feature toggles
 window.renderToggles = ${JSON.stringify(settings.renderToggles, null, 4)};
 `;
 

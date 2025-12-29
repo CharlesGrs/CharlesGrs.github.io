@@ -51,46 +51,46 @@ window.renderTiming = {
 // RENDER PARAMETERS (UI-controllable)
 // ============================================
 
-// Planet A: Oceanic/Mountain planets (blue/green, water)
-var planetParamsA = {
-    noiseScale: 2.5,
-    terrainHeight: 0,
-    atmosIntensity: 1,
-    atmosThickness: 1.82,
-    atmosPower: 50,
+// ============================================
+// PLANET PARAMETERS - Clean 2-Material PBR System
+// ============================================
+
+// Terrain parameters (shared by all planets)
+var terrainParams = {
+    noiseScale: 2.0,         // Terrain noise frequency
+    seaLevel: 0.0,           // Height threshold for material split
+    normalStrength: 0.15     // Normal map strength from height
+};
+window.terrainParams = terrainParams;
+
+// Material A - Below sea level (water, lava, etc.)
+var materialA = {
+    baseColor: '#1a5a7a',    // Base albedo color
+    roughness: 0.15,         // PBR roughness (0=mirror, 1=diffuse)
+    sssColor: '#00aaff',     // Subsurface scattering color
+    sssDistance: 1.5         // SSS penetration distance
+};
+window.materialA = materialA;
+
+// Material B - Above sea level (land, rock, etc.)
+var materialB = {
+    baseColor: '#4a6b4a',    // Base albedo color
+    roughness: 0.7,          // PBR roughness
+    sssColor: '#553322',     // Subsurface scattering color
+    sssDistance: 0.3         // SSS penetration distance
+};
+window.materialB = materialB;
+
+// Atmosphere parameters (unchanged)
+var atmosParams = {
+    intensity: 1.0,
+    thickness: 1.82,
+    power: 50,
     scatterColor: '#1d4ad3',
     scatterScale: 20,
-    sunsetStrength: 1,
-    oceanRoughness: 0.15,
-    sssIntensity: 2.6,
-    sssWrap: 0.45,
-    sssBacklight: 1.1,
-    sssColor: '#00aaff',
-    seaLevel: 0.08,
-    landRoughness: 1,
-    normalStrength: 0.12
+    sunsetStrength: 1.0
 };
-
-// Planet B: Lava/Desert planets (volcanic)
-var planetParamsB = {
-    noiseScale: 2.3,
-    terrainHeight: 0,
-    atmosIntensity: 1.2,
-    atmosThickness: 1.09,
-    atmosPower: 48.2,
-    scatterColor: '#8238cc',
-    scatterScale: 20,
-    sunsetStrength: 0.66,
-    lavaIntensity: 2,
-    seaLevel: 0.16,
-    landRoughness: 1,
-    normalStrength: 0.33
-};
-
-// Global render params
-var renderParams = {
-    parallaxStrength: 1.0
-};
+window.atmosParams = atmosParams;
 
 // Light properties
 var lightParams = {
@@ -255,8 +255,6 @@ var postProcessParams = {
 };
 
 // Expose parameter objects globally for settings panel
-window.planetParamsA = planetParamsA;
-window.planetParamsB = planetParamsB;
 window.lightParams = lightParams;
 window.sunParams = sunParams;
 window.volumetricParams = volumetricParams;
@@ -288,8 +286,10 @@ window.renderToggles = {
 // 2. Expose it on window (e.g., window.myNewParams = myNewParams)
 // 3. Add its name to this list
 window.PERSISTED_PARAM_OBJECTS = [
-    'planetParamsA',
-    'planetParamsB',
+    'terrainParams',
+    'materialA',
+    'materialB',
+    'atmosParams',
     'sunParams',
     'lightParams',
     'orbitParams',
