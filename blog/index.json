@@ -1,7 +1,10 @@
 {
     "posts": [
+        "gpu-cache-hierarchy",
+        "procedural-planet-rendering",
         "screen-space-atmospheric-scattering",
-        "anamorphic-bloom"
+        "anamorphic-bloom",
+        "frosted-glass-sdf"
     ],
     "categories": [
         {

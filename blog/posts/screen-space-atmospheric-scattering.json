@@ -2,12 +2,12 @@
     "id": "screen-space-atmospheric-scattering",
     "title": "Screen-Space Atmospheric Light Scattering",
     "subtitle": "Rendering Volumetric God Rays Without Ray Marching",
-    "date": "2024-12-29",
+    "date": "2025-12-29",
     "category": "rendering",
     "tags": ["volumetric", "atmosphere", "glsl", "post-processing", "lighting"],
     "readTime": "12 min",
     "featured": true,
-    "thumbnail": null,
+    "thumbnail": "volumetric-light-thumb.png",
     "excerpt": "Implement efficient screen-space volumetric light scattering that responds to multiple dynamic light sources with perspective-correct falloff and animated noise.",
     "sections": [
         {

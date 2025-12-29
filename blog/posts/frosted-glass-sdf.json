@@ -1,0 +1,251 @@
+{
+    "id": "frosted-glass-sdf",
+    "title": "Frosted Glass with SDF Refraction",
+    "subtitle": "Apple LiquidGlass-Inspired Real-Time Effects",
+    "date": "2025-12-29",
+    "category": "vfx",
+    "tags": ["glass", "blur", "sdf", "refraction", "webgl", "post-processing"],
+    "readTime": "6 min",
+    "featured": false,
+    "thumbnail": "frosted-glass-thumb.png",
+    "excerpt": "Create stunning frosted glass effects using signed distance fields for smooth edge refraction and optimized Gaussian blur.",
+    "sections": [
+        {
+            "type": "intro",
+            "content": "Apple's LiquidGlass design language brought beautiful frosted glass effects into the spotlight. Behind the aesthetic lies clever GPU programming: signed distance fields for smooth rounded corners, edge-aware refraction, and highly optimized blur passes. Let's build a production-ready frosted glass shader."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "glass-effect-overview",
+            "title": "Frosted Glass Pipeline Overview",
+            "width": 700,
+            "height": 200
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "The Rounded Rectangle SDF"
+        },
+        {
+            "type": "paragraph",
+            "content": "Signed Distance Fields tell us how far any point is from a shape's surface. For a rounded rectangle, negative values are inside, positive values are outside, and the magnitude tells us the exact distance. This enables buttery-smooth edges and distance-based effects."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Rounded Rectangle SDF",
+            "content": "// p = point to test, b = box half-size, r = corner radius\nfloat sdRoundedBox(vec2 p, vec2 b, float r) {\n    // Move point toward box center by corner radius\n    vec2 q = abs(p) - b + r;\n    \n    // Outside: distance to nearest corner circle\n    // Inside: negative distance to nearest edge\n    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;\n}"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "sdf-distance-field",
+            "title": "SDF Distance Field Visualization",
+            "width": 650,
+            "height": 280
+        },
+        {
+            "type": "paragraph",
+            "content": "The SDF gives us pixel-perfect anti-aliasing for free: simply use smoothstep() around the zero crossing. No jagged edges, no expensive multi-sampling."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Anti-Aliased Mask from SDF",
+            "content": "float d = sdRoundedBox(p, halfSize, cornerRadius);\n\n// Soft edge mask: 1.0 inside, 0.0 outside\n// edgeSoftness controls anti-aliasing width (typically 1-2 pixels)\nfloat mask = 1.0 - smoothstep(-edgeSoftness, edgeSoftness, d);\n\nif (mask < 0.001) discard;  // Early-out for fully transparent"
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Edge Refraction from SDF Gradients"
+        },
+        {
+            "type": "paragraph",
+            "content": "Real frosted glass refracts light, bending it as it passes through curved surfaces. We can compute refraction direction from the SDF gradient using finite differences - sample the SDF at nearby points and measure how the distance changes."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "sdf-gradient-refraction",
+            "title": "Computing Refraction from SDF Gradient",
+            "width": 700,
+            "height": 250
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Edge Refraction Computation",
+            "content": "vec2 computeEdgeRefraction(vec2 uv, vec2 size, float radius, float smoothness, float falloff) {\n    vec2 p = (uv - 0.5) * size;\n    vec2 b = size * 0.5;\n    \n    float d = sdRoundedBox(p, b, radius);\n    \n    // Finite differences to compute gradient\n    float eps = max(1.0, smoothness);  // Smoothness = sample distance\n    float dx = sdRoundedBox(p + vec2(eps, 0.0), b, radius)\n             - sdRoundedBox(p - vec2(eps, 0.0), b, radius);\n    float dy = sdRoundedBox(p + vec2(0.0, eps), b, radius)\n             - sdRoundedBox(p - vec2(0.0, eps), b, radius);\n    \n    vec2 grad = vec2(dx, dy) / (2.0 * eps);\n    \n    // Fade refraction as we move away from edges\n    float edgeDist = -d;  // Positive inside\n    float edgeFade = 1.0 - smoothstep(0.0, radius * falloff, edgeDist);\n    \n    return grad * edgeFade;\n}"
+        },
+        {
+            "type": "callout",
+            "variant": "tip",
+            "content": "The smoothness parameter controls gradient sampling distance. Higher values produce smoother but less sharp refraction. Start with 2.0-4.0 for subtle effects."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Optimized Separable Gaussian Blur"
+        },
+        {
+            "type": "paragraph",
+            "content": "Frosted glass needs heavy blur, but naive implementations are expensive. The key insight: a 2D Gaussian blur is separable into two 1D passes (horizontal, then vertical). This reduces O(N^2) samples to O(2N). But we can go further with linear sampling."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "separable-blur-pipeline",
+            "title": "Separable Blur: H-Pass + V-Pass",
+            "width": 700,
+            "height": 220
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "content": "Linear Sampling Optimization"
+        },
+        {
+            "type": "paragraph",
+            "content": "GPUs perform bilinear filtering in hardware for free. By sampling between texel centers, we get a weighted average of two texels in one fetch. This halves our sample count without quality loss."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "linear-sampling-trick",
+            "title": "Linear Sampling: 2 Texels in 1 Fetch",
+            "width": 650,
+            "height": 200
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "9-Tap Gaussian with Linear Sampling",
+            "content": "// Optimized Gaussian blur using linear sampling\n// These weights/offsets combine pairs of standard Gaussian taps\nfloat weights[3];\nweights[0] = 0.227027027;  // center\nweights[1] = 0.316216216;  // combined taps 1+2\nweights[2] = 0.070270270;  // combined taps 3+4\n\nfloat offsets[3];\noffsets[0] = 0.0;\noffsets[1] = 1.384615385;  // optimized offset between texels\noffsets[2] = 3.230769231;\n\nvec4 result = texture2D(uSource, uv) * weights[0];\n\nfor (int i = 1; i < 3; i++) {\n    vec2 offset = direction * offsets[i] * texelSize * blurRadius;\n    result += texture2D(uSource, uv + offset) * weights[i];\n    result += texture2D(uSource, uv - offset) * weights[i];\n}\n\n// 5 texture fetches instead of 9, same quality!"
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Kawase Blur for Extra Smoothing"
+        },
+        {
+            "type": "paragraph",
+            "content": "For ultra-smooth glass, add Kawase blur passes after Gaussian. Kawase blur samples 4 corners plus center in a diamond pattern - just 5 taps per pass. Multiple passes at increasing offsets create beautiful, soft falloff."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Kawase Blur Pass",
+            "content": "// Ultra-fast blur: 5 samples per pass\nvec2 off = texelSize * uOffset;  // Offset increases each pass\n\nvec4 sum = texture2D(uSource, uv);                        // center\nsum += texture2D(uSource, uv + vec2(-off.x, -off.y));     // top-left\nsum += texture2D(uSource, uv + vec2( off.x, -off.y));     // top-right\nsum += texture2D(uSource, uv + vec2(-off.x,  off.y));     // bottom-left\nsum += texture2D(uSource, uv + vec2( off.x,  off.y));     // bottom-right\n\ngl_FragColor = sum * 0.2;"
+        },
+        {
+            "type": "callout",
+            "variant": "info",
+            "content": "Kawase blur was designed for bloom in games like Ratchet & Clank. It's not physically accurate but produces pleasing results with minimal samples."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Chromatic Aberration at Edges"
+        },
+        {
+            "type": "paragraph",
+            "content": "Real glass separates light into its component wavelengths. We simulate this by sampling RGB channels at slightly different offsets, scaled by our refraction gradient."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Edge Chromatic Aberration",
+            "content": "vec2 edgeRefract = computeEdgeRefraction(uv, panelSize, cornerRadius, smoothness, falloff);\nvec2 refractOffset = -edgeRefract * refractStrength * 0.01;\nvec2 baseUV = screenUV + refractOffset;\n\nvec3 color;\nif (chromaticAberration > 0.001) {\n    // Aberration scales with refraction strength\n    float aberrationAmount = length(edgeRefract) * chromaticAberration * 0.003;\n    vec2 aberrationDir = normalize(edgeRefract + vec2(0.001));\n    \n    // Sample R, G, B at different offsets\n    color.r = texture2D(uBlurredScene, baseUV + aberrationDir * aberrationAmount).r;\n    color.g = texture2D(uBlurredScene, baseUV).g;\n    color.b = texture2D(uBlurredScene, baseUV - aberrationDir * aberrationAmount).b;\n} else {\n    color = texture2D(uBlurredScene, baseUV).rgb;\n}"
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "content": "Interactive Demo"
+        },
+        {
+            "type": "paragraph",
+            "content": "Adjust the sliders to see how corner radius, blur, and refraction combine to create the frosted glass effect. Notice how refraction is strongest at the curved corners."
+        },
+        {
+            "type": "shader-demo",
+            "id": "frosted-glass-demo",
+            "title": "Frosted Glass - Adjust Parameters",
+            "width": 700,
+            "height": 400,
+            "vertexShader": "attribute vec2 a_position;\nvarying vec2 v_texCoord;\nvoid main() {\n    v_texCoord = a_position * 0.5 + 0.5;\n    gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+            "fragmentShader": "precision highp float;\nvarying vec2 v_texCoord;\nuniform float u_time;\nuniform float u_cornerRadius;\nuniform float u_blur;\nuniform float u_refraction;\nuniform vec2 u_resolution;\n\nfloat sdRoundedBox(vec2 p, vec2 b, float r) {\n    vec2 q = abs(p) - b + r;\n    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;\n}\n\nvec2 computeRefraction(vec2 uv, vec2 size, float radius) {\n    vec2 p = (uv - 0.5) * size;\n    vec2 b = size * 0.5;\n    float d = sdRoundedBox(p, b, radius);\n    float eps = 3.0;\n    float dx = sdRoundedBox(p + vec2(eps, 0.0), b, radius) - sdRoundedBox(p - vec2(eps, 0.0), b, radius);\n    float dy = sdRoundedBox(p + vec2(0.0, eps), b, radius) - sdRoundedBox(p - vec2(0.0, eps), b, radius);\n    vec2 grad = vec2(dx, dy) / (2.0 * eps);\n    float edgeFade = 1.0 - smoothstep(0.0, radius * 1.5, -d);\n    return grad * edgeFade;\n}\n\nfloat noise(vec2 p) {\n    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);\n}\n\nvoid main() {\n    vec2 uv = v_texCoord;\n    vec2 panelUV = (uv - 0.5) * vec2(1.4, 1.2) + 0.5;\n    vec2 panelSize = vec2(280.0, 200.0);\n    float radius = u_cornerRadius * 40.0 + 5.0;\n    \n    vec2 p = (panelUV - 0.5) * panelSize;\n    vec2 b = panelSize * 0.5;\n    float d = sdRoundedBox(p, b, radius);\n    float mask = 1.0 - smoothstep(-1.5, 1.5, d);\n    \n    // Background pattern\n    vec3 bg = vec3(0.04, 0.06, 0.08);\n    float t = u_time * 0.3;\n    for (int i = 0; i < 6; i++) {\n        float fi = float(i);\n        vec2 center = vec2(0.5 + 0.35 * sin(t + fi * 1.1), 0.5 + 0.35 * cos(t * 0.8 + fi * 0.9));\n        float dist = length(uv - center);\n        vec3 col = vec3(0.18 + fi * 0.08, 0.6 - fi * 0.05, 0.75 - fi * 0.08);\n        bg += col * 0.25 * smoothstep(0.3, 0.0, dist);\n    }\n    \n    if (mask < 0.001) {\n        gl_FragColor = vec4(bg, 1.0);\n        return;\n    }\n    \n    // Refraction\n    vec2 refract = computeRefraction(panelUV, panelSize, radius);\n    vec2 offset = -refract * u_refraction * 0.15;\n    \n    // Fake blur by averaging nearby samples\n    vec3 glassColor = vec3(0.0);\n    float blurSize = u_blur * 0.05;\n    float total = 0.0;\n    for (int x = -2; x <= 2; x++) {\n        for (int y = -2; y <= 2; y++) {\n            vec2 off = vec2(float(x), float(y)) * blurSize;\n            float w = 1.0 / (1.0 + length(off) * 5.0);\n            vec2 sampleUV = uv + offset + off;\n            \n            vec3 sample_bg = vec3(0.04, 0.06, 0.08);\n            for (int i = 0; i < 6; i++) {\n                float fi = float(i);\n                vec2 center = vec2(0.5 + 0.35 * sin(t + fi * 1.1), 0.5 + 0.35 * cos(t * 0.8 + fi * 0.9));\n                float dist = length(sampleUV - center);\n                vec3 col = vec3(0.18 + fi * 0.08, 0.6 - fi * 0.05, 0.75 - fi * 0.08);\n                sample_bg += col * 0.25 * smoothstep(0.3, 0.0, dist);\n            }\n            glassColor += sample_bg * w;\n            total += w;\n        }\n    }\n    glassColor /= total;\n    \n    // Glass tint\n    glassColor = mix(glassColor, glassColor * vec3(0.95, 0.98, 1.0), 0.3);\n    \n    // Edge highlight\n    float edgeGlow = smoothstep(8.0, 0.0, abs(d)) * 0.15;\n    glassColor += vec3(1.0) * edgeGlow;\n    \n    // Blend\n    vec3 finalColor = mix(bg, glassColor, mask);\n    \n    gl_FragColor = vec4(finalColor, 1.0);\n}",
+            "uniforms": {
+                "u_time": { "type": "float", "value": 0.0 },
+                "u_cornerRadius": { "type": "float", "value": 0.5 },
+                "u_blur": { "type": "float", "value": 0.6 },
+                "u_refraction": { "type": "float", "value": 0.5 },
+                "u_resolution": { "type": "vec2", "value": [700, 400] }
+            },
+            "controls": [
+                {
+                    "uniform": "u_cornerRadius",
+                    "label": "Corner Radius",
+                    "min": 0,
+                    "max": 1,
+                    "step": 0.05,
+                    "default": 0.5
+                },
+                {
+                    "uniform": "u_blur",
+                    "label": "Blur Amount",
+                    "min": 0,
+                    "max": 1,
+                    "step": 0.05,
+                    "default": 0.6
+                },
+                {
+                    "uniform": "u_refraction",
+                    "label": "Edge Refraction",
+                    "min": 0,
+                    "max": 1,
+                    "step": 0.05,
+                    "default": 0.5
+                }
+            ]
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Performance Considerations"
+        },
+        {
+            "type": "list",
+            "items": [
+                "Render blur at half or quarter resolution, then upsample - most blur detail is lost anyway",
+                "Use linear sampling to halve texture fetches with zero quality loss",
+                "Chain multiple Kawase passes (offsets 1, 2, 3) instead of one massive Gaussian",
+                "Compute SDF once per panel, not per pixel - store in a texture for complex shapes",
+                "Early-out pixels outside the panel using the SDF mask",
+                "Mobile: reduce blur passes from 4 to 2, skip chromatic aberration"
+            ]
+        },
+        {
+            "type": "callout",
+            "variant": "tip",
+            "content": "For multiple overlapping glass panels, render all blur passes first into a shared buffer, then composite each panel. This avoids redundant blur computation."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "The Complete Pipeline"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "glass-complete-pipeline",
+            "title": "Full Frosted Glass Render Pipeline",
+            "width": 700,
+            "height": 180
+        },
+        {
+            "type": "paragraph",
+            "content": "The final shader applies tone mapping to match your scene's post-processing, ensuring the glass blends naturally. A subtle edge highlight (from the SDF gradient) adds that premium glossy feel."
+        },
+        {
+            "type": "callout",
+            "variant": "info",
+            "content": "This technique works great for UI panels, modal dialogs, and floating menus. For curved 3D glass surfaces, you'll need raymarched SDFs or mesh-based approaches instead."
+        }
+    ],
+    "related": ["anamorphic-bloom"]
+}

@@ -2,4 +2,6 @@
 .claude/agents/threejs-portfolio-architect.md
 CLAUDE.md
 .claude/commands/shader-artistry.md
+node_modules/
+tools/output/
 nul

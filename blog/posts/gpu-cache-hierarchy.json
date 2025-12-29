@@ -1,0 +1,381 @@
+{
+    "id": "gpu-cache-hierarchy",
+    "title": "GPU Cache Hierarchy: Understanding L1, L2, and VRAM",
+    "subtitle": "How memory access patterns affect texture fetch cycles and shader performance",
+    "date": "2025-12-29",
+    "category": "optimization",
+    "tags": ["gpu", "optimization", "memory", "textures", "performance"],
+    "readTime": "15 min",
+    "featured": true,
+    "thumbnail": "gpu-cache-hierarchy-thumb.png",
+    "excerpt": "Dive deep into GPU memory architecture—L1, L2 caches, and VRAM—to understand how cache hits and misses dramatically impact texture fetch latency and shader performance.",
+    "sections": [
+        {
+            "type": "intro",
+            "content": "Every texture sample in your shader triggers a memory request. Whether that request takes 4 cycles or 400+ cycles depends entirely on where the data lives in the GPU's memory hierarchy. Understanding cache behavior isn't just academic—it's the difference between 60fps and 30fps in texture-heavy shaders."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "cache-hierarchy-overview",
+            "title": "GPU Memory Hierarchy Overview",
+            "width": 750,
+            "height": 320
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "The Memory Hierarchy"
+        },
+        {
+            "type": "paragraph",
+            "content": "Modern GPUs organize memory into a hierarchy of increasingly larger but slower storage. At the top sit registers—blazingly fast but severely limited. Below them, L1 and L2 caches act as staging areas for frequently accessed data. At the bottom, VRAM holds all your textures, buffers, and render targets."
+        },
+        {
+            "type": "list",
+            "items": [
+                "Registers: ~1 cycle access, 256KB total per SM (shared across thousands of threads)",
+                "L1 Cache: ~20-30 cycles, 32-128KB per SM, dedicated to each streaming multiprocessor",
+                "L2 Cache: ~100-200 cycles, 2-6MB shared across all SMs, unified memory controller",
+                "VRAM (GDDR6/HBM): ~400-800 cycles, 8-24GB, massive bandwidth but high latency"
+            ]
+        },
+        {
+            "type": "svg-diagram",
+            "id": "cache-latency-comparison",
+            "title": "Memory Access Latency Comparison",
+            "width": 700,
+            "height": 250
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Cache Lines and Spatial Locality"
+        },
+        {
+            "type": "paragraph",
+            "content": "When you sample a single texel, the GPU doesn't fetch just that one pixel. It fetches an entire cache line—typically 32 or 64 bytes of contiguous memory. For RGBA8 textures, that's 8-16 texels. This design exploits spatial locality: pixels near each other in UV space tend to be accessed together."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "cache-line-fetch",
+            "title": "Cache Line Fetching",
+            "width": 700,
+            "height": 280
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Coherent vs Incoherent Texture Sampling",
+            "content": "// GOOD: Coherent access - neighboring fragments sample neighboring texels\nvec4 color = texture(uTexture, vTexCoord);\n\n// BAD: Random access - cache thrashing, every sample misses\nvec2 randomUV = hash2D(gl_FragCoord.xy); // Random UV per pixel\nvec4 color = texture(uTexture, randomUV); // Cache line wasted\n\n// UGLY: Dependent reads - latency stacking\nvec2 offset = texture(uOffsetMap, vTexCoord).xy; // First fetch\nvec4 color = texture(uTexture, vTexCoord + offset); // Must wait!"
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "The Warp and Cache Coalescing"
+        },
+        {
+            "type": "paragraph",
+            "content": "GPUs execute threads in groups called warps (NVIDIA, 32 threads) or wavefronts (AMD, 32-64 threads). When all threads in a warp access memory at the same time, the hardware tries to coalesce these requests into as few cache line fetches as possible. Perfect coalescing means 32 threads hitting the same cache line—one fetch serves everyone."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "warp-coalescing",
+            "title": "Memory Coalescing in a Warp",
+            "width": 750,
+            "height": 300
+        },
+        {
+            "type": "paragraph",
+            "content": "Fragment shaders naturally achieve good coalescing because GPU rasterizers process pixels in 2x2 quads, and quads are grouped into tiles that map to consecutive threads. When you sample a texture at the interpolated UV, neighboring fragments sample neighboring texels—perfect spatial locality."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "What Causes Cache Misses?"
+        },
+        {
+            "type": "list",
+            "items": [
+                "Random UVs: Procedural distortion, noise-based sampling, stippling patterns",
+                "Dependent texture reads: UV offset stored in another texture (parallax, flow maps)",
+                "Large UV jumps: Sampling distant mip levels, cubemap edge cases",
+                "Texture thrashing: Too many unique textures accessed in same shader pass",
+                "Working set overflow: Total active texture data exceeds L2 capacity"
+            ]
+        },
+        {
+            "type": "svg-diagram",
+            "id": "cache-miss-patterns",
+            "title": "Common Cache Miss Patterns",
+            "width": 750,
+            "height": 320
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Mipmapping: The Cache's Best Friend"
+        },
+        {
+            "type": "paragraph",
+            "content": "Mipmaps aren't just for visual quality—they're a cache optimization. When a surface is far from the camera, sampling the full-resolution texture would fetch distant texels that span many cache lines. The mipmap's smaller footprint keeps samples spatially coherent and cache-friendly."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "mipmap-cache-benefit",
+            "title": "Mipmap Cache Efficiency",
+            "width": 700,
+            "height": 280
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Explicit LOD for Cache Control",
+            "content": "// Auto mip selection (usually correct)\nvec4 color = texture(uTexture, uv);\n\n// Force lower-res mip for cache efficiency in blur passes\n// Saves bandwidth when you're averaging anyway\nvec4 color = textureLod(uTexture, uv, 2.0); // Mip level 2\n\n// Bias toward higher mips (cache-friendly, softer)\nvec4 color = texture(uTexture, uv, 1.0); // +1 mip bias\n\n// textureGrad: Explicit derivatives for anisotropic filtering\n// Controls footprint precisely for cache-aware sampling\nvec4 color = textureGrad(uTexture, uv, dFdx(uv) * 0.5, dFdy(uv) * 0.5);"
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Measuring Cache Efficiency"
+        },
+        {
+            "type": "paragraph",
+            "content": "GPU profilers like NVIDIA Nsight, AMD Radeon GPU Profiler, and RenderDoc expose cache hit rates and memory throughput. Key metrics to watch:"
+        },
+        {
+            "type": "list",
+            "items": [
+                "L1 Hit Rate: Should be >80% for well-optimized shaders. Below 60% indicates access pattern problems.",
+                "L2 Hit Rate: Measures working set fit. Below 70% suggests texture thrashing or too many unique textures.",
+                "Texture Memory Throughput: Compare to theoretical max. Low throughput with high latency = cache misses.",
+                "Memory-bound vs Compute-bound: If memory is the bottleneck, cache optimization has highest impact."
+            ]
+        },
+        {
+            "type": "svg-diagram",
+            "id": "cache-hit-rate-gauge",
+            "title": "Cache Hit Rate Impact on Performance",
+            "width": 700,
+            "height": 200
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Interactive Demo: Cache Access Patterns"
+        },
+        {
+            "type": "paragraph",
+            "content": "This demo visualizes how different sampling patterns affect cache efficiency. Coherent access (left) keeps samples within cache lines, while random access (right) causes cache thrashing. Watch how the 'heat' of memory access spreads differently."
+        },
+        {
+            "type": "shader-demo",
+            "id": "cache-pattern-demo",
+            "title": "Texture Access Pattern Visualization",
+            "width": 700,
+            "height": 350,
+            "vertexShader": "attribute vec2 a_position;\nvarying vec2 v_texCoord;\nvoid main() {\n    v_texCoord = a_position * 0.5 + 0.5;\n    gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+            "fragmentShader": "precision highp float;\nvarying vec2 v_texCoord;\nuniform float u_time;\nuniform float u_pattern;\nuniform float u_cacheLineSize;\n\n// Simple hash for visualization\nfloat hash(vec2 p) {\n    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);\n}\n\nvoid main() {\n    vec2 uv = v_texCoord;\n    \n    // Simulate a texture grid (16x16 'texels')\n    vec2 texelCoord = floor(uv * 16.0);\n    \n    // Cache line: 4 texels wide (simulated)\n    vec2 cacheLine = floor(texelCoord / u_cacheLineSize);\n    \n    // Current 'fetch' position animated over time\n    float t = u_time * 0.5;\n    vec2 fetchPos;\n    \n    if (u_pattern < 0.5) {\n        // Coherent: scan left-to-right, top-to-bottom\n        float scanLine = floor(mod(t * 4.0, 16.0));\n        float scanCol = mod(t * 64.0, 16.0);\n        fetchPos = vec2(scanCol, scanLine);\n    } else {\n        // Random: jump around unpredictably\n        float frame = floor(t * 8.0);\n        fetchPos = vec2(\n            hash(vec2(frame, 0.0)) * 16.0,\n            hash(vec2(0.0, frame)) * 16.0\n        );\n    }\n    \n    vec2 fetchCacheLine = floor(fetchPos / u_cacheLineSize);\n    \n    // Visualize cache line hit\n    float isActiveCacheLine = step(0.5, 1.0 - length(cacheLine - fetchCacheLine));\n    float isActiveTexel = step(length(texelCoord - floor(fetchPos)), 0.5);\n    \n    // Color: texel grid with cache line highlighting\n    vec3 gridColor = vec3(0.1, 0.12, 0.15);\n    vec3 texelColor = mix(gridColor, vec3(0.15, 0.18, 0.22), \n        step(0.5, mod(texelCoord.x + texelCoord.y, 2.0)));\n    \n    // Cache line border\n    vec2 withinCache = mod(texelCoord, u_cacheLineSize);\n    float isCacheBorder = step(withinCache.x, 0.5) + step(withinCache.y, 0.5);\n    texelColor = mix(texelColor, vec3(0.2, 0.25, 0.3), min(isCacheBorder, 1.0) * 0.5);\n    \n    // Highlight active cache line (what we'd fetch)\n    vec3 cacheHitColor = u_pattern < 0.5 ? vec3(0.18, 0.83, 0.75) : vec3(0.91, 0.73, 0.14);\n    texelColor = mix(texelColor, cacheHitColor * 0.4, isActiveCacheLine * 0.8);\n    \n    // Highlight the actual sampled texel\n    texelColor = mix(texelColor, vec3(1.0), isActiveTexel);\n    \n    // Grid lines\n    vec2 grid = abs(fract(uv * 16.0) - 0.5);\n    float gridLine = step(0.45, max(grid.x, grid.y));\n    texelColor = mix(texelColor, vec3(0.3), gridLine * 0.3);\n    \n    gl_FragColor = vec4(texelColor, 1.0);\n}",
+            "uniforms": {
+                "u_time": { "type": "float", "value": 0.0 },
+                "u_pattern": { "type": "float", "value": 0.0 },
+                "u_cacheLineSize": { "type": "float", "value": 4.0 },
+                "u_resolution": { "type": "vec2", "value": [700, 350] }
+            },
+            "controls": [
+                {
+                    "uniform": "u_pattern",
+                    "label": "Access Pattern (0=Coherent, 1=Random)",
+                    "min": 0,
+                    "max": 1,
+                    "step": 1,
+                    "default": 0
+                },
+                {
+                    "uniform": "u_cacheLineSize",
+                    "label": "Cache Line Size (texels)",
+                    "min": 2,
+                    "max": 8,
+                    "step": 1,
+                    "default": 4
+                }
+            ]
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Texture Fetch Latency Hiding"
+        },
+        {
+            "type": "paragraph",
+            "content": "GPUs hide memory latency through massive parallelism. While one warp waits for texture data, the scheduler switches to another warp that's ready to execute. This is why occupancy matters: more warps in flight means more opportunities to hide latency."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "latency-hiding",
+            "title": "Latency Hiding Through Warp Scheduling",
+            "width": 750,
+            "height": 280
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Prefetching Texture Data",
+            "content": "// Strategy: Issue all texture fetches early, do math while waiting\n\n// Issue fetches immediately (non-blocking)\nvec4 albedo = texture(uAlbedo, uv);       // Fetch 1\nvec4 normal = texture(uNormal, uv);       // Fetch 2\nvec4 roughness = texture(uRoughness, uv); // Fetch 3\nvec4 ao = texture(uAO, uv);               // Fetch 4\n\n// Do expensive math while waiting for textures\nvec3 N = normalize(vNormal);\nvec3 V = normalize(uCameraPos - vWorldPos);\nvec3 L = normalize(uLightPos - vWorldPos);\nvec3 H = normalize(V + L);\nfloat NdotL = max(dot(N, L), 0.0);\nfloat NdotV = max(dot(N, V), 0.0);\nfloat NdotH = max(dot(N, H), 0.0);\n\n// By now, texture fetches have likely completed\n// Using the data doesn't stall\nvec3 albedoColor = albedo.rgb;"
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Texture Memory Layout"
+        },
+        {
+            "type": "paragraph",
+            "content": "GPUs store textures in Morton order (Z-order curve) or similar space-filling curves, not linear row-by-row. This layout keeps 2D-local texels close in memory, improving cache efficiency for typical sampling patterns."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "morton-order",
+            "title": "Morton Order (Z-curve) Memory Layout",
+            "width": 700,
+            "height": 280
+        },
+        {
+            "type": "callout",
+            "variant": "info",
+            "content": "Texture swizzling happens automatically when you upload textures via the graphics API. Never manually 'optimize' texture data layout—the driver handles this based on GPU-specific tiling patterns."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Practical Optimization Strategies"
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "content": "1. Texture Atlasing"
+        },
+        {
+            "type": "paragraph",
+            "content": "Packing multiple textures into one atlas keeps related data in the same cache space. When sampling from an atlas, neighboring draw calls often hit already-cached data. The tradeoff: more complex UV math and potential filtering artifacts at tile boundaries."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "content": "2. Channel Packing"
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Channel Packing for Fewer Fetches",
+            "content": "// BAD: 4 separate texture fetches (4x memory traffic)\nvec4 albedo = texture(uAlbedo, uv);     // RGBA\nfloat rough = texture(uRoughness, uv).r; // R (wastes GBA)\nfloat metal = texture(uMetallic, uv).r;  // R (wastes GBA)  \nfloat ao = texture(uAO, uv).r;           // R (wastes GBA)\n\n// GOOD: 2 fetches with packed data\nvec4 albedo = texture(uAlbedo, uv);      // RGB = color, A = unused\nvec4 orm = texture(uORM, uv);            // R = AO, G = Roughness, B = Metallic\nfloat ao = orm.r;\nfloat rough = orm.g;\nfloat metal = orm.b;"
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "content": "3. Reduce Dependent Reads"
+        },
+        {
+            "type": "paragraph",
+            "content": "Dependent texture reads—where the UV comes from another texture—serialize memory access. The GPU can't prefetch the second texture until the first completes. Minimize these chains or compute UVs mathematically when possible."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "dependent-read-chain",
+            "title": "Dependent Read Latency Stacking",
+            "width": 700,
+            "height": 220
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "content": "4. Bindless Textures"
+        },
+        {
+            "type": "paragraph",
+            "content": "Traditional texture binding forces driver overhead and limits cache utilization across draw calls. Bindless textures (via GL_ARB_bindless_texture or Vulkan descriptor indexing) keep all textures resident and accessible, improving cache reuse across the frame."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Interactive Demo: Cache Miss Cost"
+        },
+        {
+            "type": "paragraph",
+            "content": "This demo simulates the visual impact of cache misses by artificially delaying 'uncached' samples. Coherent patterns render smoothly; incoherent patterns show temporal artifacts as we simulate fetch latency."
+        },
+        {
+            "type": "shader-demo",
+            "id": "cache-miss-cost-demo",
+            "title": "Simulated Cache Miss Impact",
+            "width": 700,
+            "height": 350,
+            "vertexShader": "attribute vec2 a_position;\nvarying vec2 v_texCoord;\nvoid main() {\n    v_texCoord = a_position * 0.5 + 0.5;\n    gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+            "fragmentShader": "precision highp float;\nvarying vec2 v_texCoord;\nuniform float u_time;\nuniform float u_incoherence;\nuniform float u_showLatency;\n\n// Noise functions for procedural texture\nfloat hash(vec2 p) {\n    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);\n}\n\nfloat noise(vec2 p) {\n    vec2 i = floor(p);\n    vec2 f = fract(p);\n    f = f * f * (3.0 - 2.0 * f);\n    return mix(\n        mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),\n        mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),\n        f.y\n    );\n}\n\nfloat fbm(vec2 p) {\n    float v = 0.0;\n    float a = 0.5;\n    for (int i = 0; i < 4; i++) {\n        v += a * noise(p);\n        p *= 2.0;\n        a *= 0.5;\n    }\n    return v;\n}\n\nvoid main() {\n    vec2 uv = v_texCoord;\n    \n    // Add incoherence: random UV offset per pixel\n    vec2 offset = vec2(\n        hash(gl_FragCoord.xy + u_time),\n        hash(gl_FragCoord.yx - u_time)\n    ) * u_incoherence * 0.5;\n    \n    vec2 sampleUV = uv + offset;\n    \n    // Simulate cache miss latency by temporal jitter\n    float cacheMiss = step(0.5, hash(floor(sampleUV * 8.0) + floor(u_time * 10.0)));\n    float latencyNoise = hash(gl_FragCoord.xy + u_time * 100.0);\n    \n    // Sample our 'texture' (procedural pattern)\n    float pattern = fbm(sampleUV * 8.0);\n    pattern += fbm(sampleUV * 16.0) * 0.5;\n    \n    // Apply simulated latency artifacts\n    float latencyArtifact = cacheMiss * u_showLatency * latencyNoise * u_incoherence;\n    pattern = mix(pattern, pattern * (1.0 - latencyArtifact * 0.5), u_showLatency);\n    \n    // Color based on cache efficiency\n    vec3 coherentColor = vec3(0.18, 0.83, 0.75); // Teal\n    vec3 missColor = vec3(0.91, 0.73, 0.14);     // Gold  \n    vec3 color = mix(coherentColor, missColor, u_incoherence) * pattern;\n    \n    // Show 'stall' indicator\n    if (u_showLatency > 0.5 && cacheMiss > 0.5 && u_incoherence > 0.3) {\n        color = mix(color, vec3(0.8, 0.2, 0.1), latencyNoise * 0.3);\n    }\n    \n    gl_FragColor = vec4(color, 1.0);\n}",
+            "uniforms": {
+                "u_time": { "type": "float", "value": 0.0 },
+                "u_incoherence": { "type": "float", "value": 0.0 },
+                "u_showLatency": { "type": "float", "value": 0.0 },
+                "u_resolution": { "type": "vec2", "value": [700, 350] }
+            },
+            "controls": [
+                {
+                    "uniform": "u_incoherence",
+                    "label": "UV Incoherence (0=Coherent, 1=Random)",
+                    "min": 0,
+                    "max": 1,
+                    "step": 0.01,
+                    "default": 0
+                },
+                {
+                    "uniform": "u_showLatency",
+                    "label": "Show Latency Artifacts (0=Off, 1=On)",
+                    "min": 0,
+                    "max": 1,
+                    "step": 1,
+                    "default": 0
+                }
+            ]
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Architecture Differences"
+        },
+        {
+            "type": "paragraph",
+            "content": "Cache behavior varies significantly between GPU vendors and generations. NVIDIA's L1 is tightly coupled with shared memory, AMD's Infinity Cache adds another hierarchy level, and mobile GPUs often have smaller but more specialized caches optimized for tiled rendering."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "architecture-comparison",
+            "title": "Cache Architecture Comparison",
+            "width": 750,
+            "height": 260
+        },
+        {
+            "type": "callout",
+            "variant": "tip",
+            "content": "Profile on your target hardware. Desktop optimizations may hurt mobile performance and vice versa. AMD's cache hierarchy differs enough from NVIDIA that vendor-specific tuning often pays off."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Key Takeaways"
+        },
+        {
+            "type": "list",
+            "items": [
+                "Cache hits are 10-20x faster than VRAM fetches. Coherent access patterns are critical for performance.",
+                "Mipmapping isn't optional—it's a cache optimization that keeps your working set manageable.",
+                "Pack related data into fewer textures. Four 1-channel fetches cost more than one 4-channel fetch.",
+                "Issue texture fetches early and do math while waiting. GPUs hide latency through parallelism.",
+                "Avoid dependent texture reads when possible. Each dependency serializes memory access.",
+                "Profile with Nsight/RGP—cache hit rates reveal optimization opportunities invisible to frame timing alone."
+            ]
+        },
+        {
+            "type": "callout",
+            "variant": "warning",
+            "content": "Don't micro-optimize without profiling. Cache behavior is complex and hardware-dependent. Measure first, optimize second, and verify improvements on actual target hardware."
+        }
+    ],
+    "related": ["procedural-planet-rendering", "screen-space-atmospheric-scattering"]
+}

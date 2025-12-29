@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Primary Meta Tags -->
+    <title>Procedural Planet Rendering with PBR | Charles Grassi</title>
+    <meta name="title" content="Procedural Planet Rendering with PBR | Charles Grassi">
+    <meta name="description" content="A deep dive into rendering procedurally-generated planets with physically-based materials, multi-octave terrain noise, subsurface scattering, and real-time atmospheric effects.">
+    <meta name="author" content="Charles Grassi">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://charlesgrs.github.io/blog/procedural-planet-rendering/">
+    <meta property="og:title" content="Procedural Planet Rendering with PBR">
+    <meta property="og:description" content="A deep dive into rendering procedurally-generated planets with physically-based materials, multi-octave terrain noise, subsurface scattering, and real-time atmospheric effects.">
+    <meta property="og:image" content="https://charlesgrs.github.io/og-image.png">
+    <meta property="og:site_name" content="Charles Grassi">
+    <meta property="article:published_time" content="2025-12-29T00:00:00.000Z">
+    <meta property="article:author" content="Charles Grassi">
+    <meta property="article:section" content="Rendering">
+    <meta property="article:tag" content="pbr">
+    <meta property="article:tag" content="procedural">
+    <meta property="article:tag" content="glsl">
+    <meta property="article:tag" content="atmosphere">
+    <meta property="article:tag" content="terrain">
+    <meta property="article:tag" content="lighting">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@charles_grassi">
+    <meta name="twitter:creator" content="@charles_grassi">
+    <meta name="twitter:title" content="Procedural Planet Rendering with PBR">
+    <meta name="twitter:description" content="A deep dive into rendering procedurally-generated planets with physically-based materials, multi-octave terrain noise, subsurface scattering, and real-time atmospheric effects.">
+    <meta name="twitter:image" content="https://charlesgrs.github.io/og-image.png">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://charlesgrs.github.io/blog/procedural-planet-rendering/">
+
+    <!-- Theme -->
+    <meta name="theme-color" content="#0a0f14">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        "headline": "Procedural Planet Rendering with PBR",
+        "description": "A deep dive into rendering procedurally-generated planets with physically-based materials, multi-octave terrain noise, subsurface scattering, and real-time atmospheric effects.",
+        "image": "https://charlesgrs.github.io/og-image.png",
+        "datePublished": "2025-12-29T00:00:00.000Z",
+        "dateModified": "2025-12-29T00:00:00.000Z",
+        "author": {
+            "@type": "Person",
+            "name": "Charles Grassi",
+            "url": "https://charlesgrs.github.io"
+        },
+        "publisher": {
+            "@type": "Person",
+            "name": "Charles Grassi",
+            "url": "https://charlesgrs.github.io"
+        },
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https://charlesgrs.github.io/blog/procedural-planet-rendering/"
+        },
+        "articleSection": "Rendering",
+        "keywords": "pbr, procedural, glsl, atmosphere, terrain, lighting"
+    }
+    </script>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/blog.css">
+
+    <style>
+        /* Static page specific styles */
+        body {
+            background: var(--bg-primary);
+            min-height: 100vh;
+        }
+
+        /* Top header bar - fixed */
+        .site-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(10, 15, 20, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 0.75rem 1.5rem;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+
+        .header-brand {
+            margin-right: auto;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .brand-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .brand-separator {
+            color: rgba(255, 255, 255, 0.2);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .brand-section {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent-teal);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .header-cta {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .cta-demos {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(45, 212, 191, 0.1);
+            border: 1px solid rgba(45, 212, 191, 0.3);
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent-teal);
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+
+        .cta-demos:hover {
+            background: rgba(45, 212, 191, 0.2);
+            border-color: rgba(45, 212, 191, 0.5);
+            box-shadow: 0 0 20px rgba(45, 212, 191, 0.15);
+        }
+
+        .cta-hire {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1.25rem;
+            background: linear-gradient(135deg, var(--accent-gold) 0%, #d4a520 100%);
+            border: none;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #0a0f14;
+            text-decoration: none;
+            transition: all 0.25s ease;
+            box-shadow: 0 2px 8px rgba(232, 185, 35, 0.3);
+        }
+
+        .cta-hire:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(232, 185, 35, 0.4);
+        }
+
+        .static-blog-page {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: var(--space-lg);
+            padding-top: 5rem; /* Account for fixed header */
+        }
+
+        .article-nav {
+            margin-bottom: var(--space-lg);
+        }
+
+        .nav-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.8rem;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+
+        .nav-back:hover {
+            border-color: var(--accent-teal);
+            color: var(--accent-teal);
+        }
+
+        .nav-back svg {
+            width: 14px;
+            height: 14px;
+            transition: transform 0.25s ease;
+        }
+
+        .nav-back:hover svg {
+            transform: translateX(-3px);
+        }
+
+        /* CTA Banner after article */
+        .article-cta-banner {
+            margin-top: var(--space-xl);
+            padding: var(--space-lg);
+            background: linear-gradient(145deg, rgba(20, 28, 38, 0.9) 0%, rgba(15, 22, 30, 0.95) 100%);
+            border: 1px solid rgba(232, 185, 35, 0.2);
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .cta-banner-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: var(--text-xl);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 0.5rem 0;
+        }
+
+        .cta-banner-subtitle {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+            margin: 0 0 var(--space-md) 0;
+        }
+
+        .cta-banner-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .cta-banner-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+
+        .cta-banner-btn.primary {
+            background: linear-gradient(135deg, var(--accent-gold) 0%, #d4a520 100%);
+            color: #0a0f14;
+            box-shadow: 0 2px 12px rgba(232, 185, 35, 0.3);
+        }
+
+        .cta-banner-btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(232, 185, 35, 0.4);
+        }
+
+        .cta-banner-btn.secondary {
+            background: rgba(45, 212, 191, 0.1);
+            border: 1px solid rgba(45, 212, 191, 0.3);
+            color: var(--accent-teal);
+        }
+
+        .cta-banner-btn.secondary:hover {
+            background: rgba(45, 212, 191, 0.2);
+            border-color: rgba(45, 212, 191, 0.5);
+        }
+
+        .static-footer {
+            margin-top: var(--space-xl);
+            padding-top: var(--space-lg);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            text-align: center;
+        }
+
+        .footer-author {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-xs);
+            margin-bottom: var(--space-md);
+        }
+
+        .footer-author-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: var(--text-base);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .footer-author-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: var(--text-xs);
+            color: var(--text-secondary);
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: var(--space-md);
+        }
+
+        .footer-link {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: var(--text-xs);
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.25s;
+        }
+
+        .footer-link:hover {
+            color: var(--accent-teal);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .site-header {
+                padding: 0.5rem 1rem;
+            }
+
+            .header-content {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+
+            .brand-separator, .brand-section {
+                display: none;
+            }
+
+            .header-cta {
+                gap: 0.5rem;
+            }
+
+            .cta-demos span,
+            .cta-hire span {
+                display: none;
+            }
+
+            .cta-demos,
+            .cta-hire {
+                padding: 0.5rem;
+            }
+
+            .static-blog-page {
+                padding: var(--space-md);
+                padding-top: 4.5rem;
+            }
+
+            .cta-banner-buttons {
+                flex-direction: column;
+            }
+
+            .cta-banner-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Fixed Header -->
+    <header class="site-header">
+        <div class="header-content">
+            <a href="../../" class="header-brand">
+                <span class="brand-name">Charles Grassi</span>
+                <span class="brand-separator">//</span>
+                <span class="brand-section">Blog</span>
+            </a>
+            <div class="header-cta">
+                <a href="../../?tab=skills" class="cta-demos">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                    <span>Live Demos</span>
+                </a>
+                <a href="../../?tab=contact" class="cta-hire">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <span>Hire Me</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="static-blog-page">
+        <!-- Back Navigation -->
+        <nav class="article-nav">
+            <a href="../../blog/" class="nav-back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                All Posts
+            </a>
+        </nav>
+
+        <!-- Article -->
+        <article class="blog-article">
+            <header class="article-header">
+                <div class="article-meta">
+                    <span class="article-category">Rendering</span>
+                    <span>December 29, 2025</span>
+                    <span>18 min read</span>
+                </div>
+                <h1 class="article-title">Procedural Planet Rendering with PBR</h1>
+                <p class="article-subtitle">Building Realistic Planets with Cook-Torrance BRDF, FBM Terrain, and Atmospheric Scattering</p>
+                <div class="card-tags" style="margin-top: var(--space-sm);"><span class="card-tag">pbr</span><span class="card-tag">procedural</span><span class="card-tag">glsl</span><span class="card-tag">atmosphere</span><span class="card-tag">terrain</span><span class="card-tag">lighting</span></div>
+            </header>
+
+            <div class="article-content">
+                <p class="article-section section-intro">Rendering convincing planets in real-time requires balancing physical accuracy with performance. This implementation combines Cook-Torrance PBR for realistic surface lighting, FBM noise for procedural terrain, Rayleigh-inspired atmospheric scattering, and subsurface scattering for translucent materials like water and lava. The result is planets that respond naturally to multiple dynamic light sources while maintaining high frame rates.</p>
+<figure class="article-section section-svg-diagram" data-diagram-id="planet-pipeline-overview">
+                <div class="svg-container" style="max-width: 700px;">
+                    <div class="svg-placeholder" data-width="700" data-height="200">
+                        <noscript>Diagram: Planet Rendering Pipeline</noscript>
+                    </div>
+                </div>
+                <figcaption>Planet Rendering Pipeline</figcaption>
+            </figure>
+<h2 class="article-section section-heading">Sphere Reconstruction from Screen Space</h2>
+<p class="article-section section-paragraph">Rather than rendering a 3D sphere mesh, we draw billboards (camera-facing quads) and reconstruct the sphere mathematically in the fragment shader. This approach avoids tessellation artifacts and provides perfect silhouettes at any zoom level. Given a point on the quad, we calculate whether it lies within the sphere&#39;s projected radius, then derive the surface normal from the implicit sphere equation.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Sphere Reconstruction from Billboard UV</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// vUV is the quad coordinate relative to center [-<span class="number">1</span>, <span class="number">1</span>]</span>
+<span class="keyword">float</span> d = <span class="function">length</span>(vUV);
+<span class="keyword">float</span> planetRadius = <span class="number">0.6</span>;  <span class="comment">// Normalized sphere radius on quad</span>
+
+<span class="comment">// Calculate Z coordinate on sphere surface</span>
+<span class="keyword">float</span> rotZSq = planetRadius * planetRadius - d * d;
+<span class="keyword">float</span> rotZ = rotZSq &gt; <span class="number">0.0</span> ? <span class="function">sqrt</span>(rotZSq) : <span class="number">0.0</span>;
+
+<span class="comment">// 3D position on sphere</span>
+<span class="keyword">vec3</span> spherePos = <span class="keyword">vec3</span>(vUV, rotZ);
+
+<span class="comment">// Derive surface normal (points outward from sphere center)</span>
+<span class="keyword">vec3</span> baseN = d &lt; planetRadius 
+    ? <span class="function">normalize</span>(<span class="keyword">vec3</span>(vUV, <span class="function">sqrt</span>(planetRadius * planetRadius - d * d)))
+    : <span class="keyword">vec3</span>(<span class="number">0.0</span>, <span class="number">0.0</span>, <span class="number">1.0</span>);
+
+<span class="comment">// Mask <span class="keyword">for</span> planet surface vs atmosphere</span>
+<span class="keyword">float</span> planetMask = <span class="number">1.0</span> - <span class="function">smoothstep</span>(planetRadius - <span class="number">0.003</span>, planetRadius + <span class="number">0.001</span>, d);</pre></div>
+            </div>
+<figure class="article-section section-svg-diagram" data-diagram-id="sphere-reconstruction">
+                <div class="svg-container" style="max-width: 600px;">
+                    <div class="svg-placeholder" data-width="600" data-height="280">
+                        <noscript>Diagram: Sphere Reconstruction from Billboard</noscript>
+                    </div>
+                </div>
+                <figcaption>Sphere Reconstruction from Billboard</figcaption>
+            </figure>
+<h2 class="article-section section-heading">Planet Rotation with Rodrigues Formula</h2>
+<p class="article-section section-paragraph">Each planet rotates around a unique axis derived from its index. We use Rodrigues&#39; rotation formula to rotate the sphere position, giving each planet a distinct spin direction and speed. This rotation affects where terrain features appear and how they move over time.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Rodrigues Rotation Formula</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// Generate unique rotation axis per planet from index</span>
+<span class="keyword">float</span> axisSeed = vIndex * <span class="number">1.618033988749</span>;  <span class="comment">// Golden ratio <span class="keyword">for</span> distribution</span>
+<span class="keyword">vec3</span> rotAxis = <span class="function">normalize</span>(<span class="keyword">vec3</span>(
+    <span class="function">sin</span>(axisSeed * <span class="number">2.3</span> + <span class="number">0.5</span>),
+    <span class="function">cos</span>(axisSeed * <span class="number">3.7</span> + <span class="number">1.2</span>),
+    <span class="function">sin</span>(axisSeed * <span class="number">1.9</span> + <span class="number">2.8</span>)
+));
+
+<span class="comment">// Rotation speed varies per planet</span>
+<span class="keyword">float</span> rotSpeed = <span class="number">0.03</span> + <span class="number">0.05</span> * <span class="function">fract</span>(axisSeed * <span class="number">7.3</span>);
+<span class="keyword">float</span> rotAngle = uTime * rotSpeed;
+
+<span class="comment">// Rodrigues&#<span class="number">39</span>; rotation formula: efficient axis-angle rotation</span>
+<span class="comment">// v_rot = v*<span class="function">cos</span>(a) + (k x v)*<span class="function">sin</span>(a) + k*(k.v)*(<span class="number">1</span>-<span class="function">cos</span>(a))</span>
+<span class="keyword">float</span> cosA = <span class="function">cos</span>(rotAngle);
+<span class="keyword">float</span> sinA = <span class="function">sin</span>(rotAngle);
+<span class="keyword">vec3</span> rotatedPos = spherePos * cosA
+                + <span class="function">cross</span>(rotAxis, spherePos) * sinA
+                + rotAxis * <span class="function">dot</span>(rotAxis, spherePos) * (<span class="number">1.0</span> - cosA);</pre></div>
+            </div>
+<aside class="article-section section-callout info">
+                <p>Rodrigues&#39; formula rotates a vector around an arbitrary axis using only the axis vector and angle - no matrix construction needed. It&#39;s computationally cheaper than building a 3x3 rotation matrix when you only need to rotate a few vectors.</p>
+            </aside>
+<h2 class="article-section section-heading">Procedural Terrain with FBM Noise</h2>
+<p class="article-section section-paragraph">Terrain is generated using Fractional Brownian Motion (FBM) - layered simplex noise with decreasing amplitude and increasing frequency per octave. We sample 5 octaves, with each octave adding finer detail. The noise is evaluated in 3D space using the rotated sphere position, creating seamless terrain that wraps around the planet.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">5-Octave FBM Terrain Height</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="keyword">float</span> terrainHeight(<span class="keyword">vec3</span> pos, <span class="keyword">float</span> scale) {
+    <span class="keyword">float</span> height = <span class="number">0.0</span>;
+    <span class="keyword">float</span> amplitude = <span class="number">0.5</span>;
+    <span class="keyword">float</span> frequency = scale;  <span class="comment">// uNoiseScale <span class="keyword">uniform</span></span>
+
+    <span class="comment">// <span class="number">5</span> octaves of simplex noise</span>
+    height += snoise3D(pos * frequency) * amplitude;
+    frequency *= <span class="number">2.0</span>; amplitude *= <span class="number">0.5</span>;
+    height += snoise3D(pos * frequency) * amplitude;
+    frequency *= <span class="number">2.0</span>; amplitude *= <span class="number">0.5</span>;
+    height += snoise3D(pos * frequency) * amplitude;
+    frequency *= <span class="number">2.0</span>; amplitude *= <span class="number">0.5</span>;
+    height += snoise3D(pos * frequency) * amplitude;
+    frequency *= <span class="number">2.0</span>; amplitude *= <span class="number">0.5</span>;
+    height += snoise3D(pos * frequency) * amplitude;
+
+    <span class="keyword">return</span> height;  <span class="comment">// Range approximately [-<span class="number">1</span>, <span class="number">1</span>]</span>
+}
+
+<span class="comment">// Sample terrain at rotated position</span>
+<span class="comment">// Offset by planet index <span class="keyword">for</span> unique terrain per planet</span>
+<span class="keyword">vec3</span> planetOffset = <span class="keyword">vec3</span>(vIndex * <span class="number">10.0</span>, vIndex * <span class="number">7.3</span>, vIndex * <span class="number">5.1</span>);
+<span class="keyword">vec3</span> terrainCoord = <span class="function">normalize</span>(rotatedPos) + planetOffset;
+<span class="keyword">float</span> heightC = terrainHeight(terrainCoord, uNoiseScale);</pre></div>
+            </div>
+<figure class="article-section section-svg-diagram" data-diagram-id="fbm-terrain-octaves">
+                <div class="svg-container" style="max-width: 700px;">
+                    <div class="svg-placeholder" data-width="700" data-height="180">
+                        <noscript>Diagram: FBM Octave Stacking for Terrain</noscript>
+                    </div>
+                </div>
+                <figcaption>FBM Octave Stacking for Terrain</figcaption>
+            </figure>
+<h2 class="article-section section-heading">Normal Mapping from Height Field</h2>
+<p class="article-section section-paragraph">To create the illusion of terrain geometry without actually displacing vertices, we compute a perturbed normal from the height field. By sampling the terrain at small offsets along the surface tangent and bitangent, we calculate height gradients that translate to normal perturbation.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Terrain Normal from Height Gradient</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="keyword">float</span> eps = <span class="number">0.02</span>;  <span class="comment">// Sample offset distance</span>
+
+<span class="comment">// Build tangent frame on sphere surface</span>
+<span class="keyword">vec3</span> sphereUp = <span class="function">abs</span>(rotatedPosNorm.y) &lt; <span class="number">0.999</span> 
+    ? <span class="keyword">vec3</span>(<span class="number">0.0</span>, <span class="number">1.0</span>, <span class="number">0.0</span>) 
+    : <span class="keyword">vec3</span>(<span class="number">1.0</span>, <span class="number">0.0</span>, <span class="number">0.0</span>);
+<span class="keyword">vec3</span> sphereTangent = <span class="function">normalize</span>(<span class="function">cross</span>(sphereUp, rotatedPosNorm));
+<span class="keyword">vec3</span> sphereBitangent = <span class="function">cross</span>(rotatedPosNorm, sphereTangent);
+
+<span class="comment">// Sample heights at tangent offsets</span>
+<span class="keyword">float</span> heightC = terrainHeight(terrainCoord, uNoiseScale);
+<span class="keyword">float</span> heightX = terrainHeight(rotatedPosNorm + sphereTangent * eps + planetOffset, uNoiseScale);
+<span class="keyword">float</span> heightY = terrainHeight(rotatedPosNorm + sphereBitangent * eps + planetOffset, uNoiseScale);
+
+<span class="comment">// Convert height differences to normal perturbation</span>
+<span class="keyword">float</span> terrainGradX = -(heightX - heightC) / eps * uNormalStrength;
+<span class="keyword">float</span> terrainGradY = -(heightY - heightC) / eps * uNormalStrength;
+
+<span class="comment">// Perturb base normal using tangent frame</span>
+<span class="keyword">vec3</span> N = <span class="function">normalize</span>(baseN + tangent * terrainGradX + bitangent * terrainGradY);</pre></div>
+            </div>
+<figure class="article-section section-svg-diagram" data-diagram-id="normal-perturbation">
+                <div class="svg-container" style="max-width: 650px;">
+                    <div class="svg-placeholder" data-width="650" data-height="250">
+                        <noscript>Diagram: Normal Perturbation from Height Field</noscript>
+                    </div>
+                </div>
+                <figcaption>Normal Perturbation from Height Field</figcaption>
+            </figure>
+<h2 class="article-section section-heading">Dual-Material System</h2>
+<p class="article-section section-paragraph">Each planet supports two materials blended by terrain height. Material A (below sea level) handles water, lava, or low-lying terrain. Material B (above sea level) handles land, rock, or elevated terrain. Each material has independent base color, roughness, and subsurface scattering properties.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Height-Based Material Blending</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// Material parameters (uniforms)</span>
+<span class="comment">// Material A: below sea level (water, lava, etc.)</span>
+<span class="keyword">uniform</span> <span class="keyword">vec3</span> uMatABaseColor;      <span class="comment">// e.g., deep blue <span class="keyword">for</span> ocean</span>
+<span class="keyword">uniform</span> <span class="keyword">float</span> uMatARoughness;      <span class="comment">// e.g., <span class="number">0.1</span> <span class="keyword">for</span> smooth water</span>
+<span class="keyword">uniform</span> <span class="keyword">vec3</span> uMatASSSColor;        <span class="comment">// subsurface scatter color</span>
+<span class="keyword">uniform</span> <span class="keyword">float</span> uMatASSSDistance;    <span class="comment">// scatter depth</span>
+
+<span class="comment">// Material B: above sea level (land, rock, etc.)</span>
+<span class="keyword">uniform</span> <span class="keyword">vec3</span> uMatBBaseColor;      <span class="comment">// e.g., green/brown <span class="keyword">for</span> land</span>
+<span class="keyword">uniform</span> <span class="keyword">float</span> uMatBRoughness;      <span class="comment">// e.g., <span class="number">0.7</span> <span class="keyword">for</span> rough terrain</span>
+<span class="keyword">uniform</span> <span class="keyword">vec3</span> uMatBSSSColor;
+<span class="keyword">uniform</span> <span class="keyword">float</span> uMatBSSSDistance;
+
+<span class="comment">// Smooth blend based on terrain height vs sea level</span>
+<span class="keyword">float</span> materialMask = <span class="function">smoothstep</span>(uSeaLevel - <span class="number">0.02</span>, uSeaLevel + <span class="number">0.02</span>, heightC);
+
+<span class="comment">// Interpolate all material properties</span>
+<span class="keyword">vec3</span> baseColor = <span class="function">mix</span>(uMatABaseColor, uMatBBaseColor, materialMask);
+<span class="keyword">float</span> roughness = <span class="function">mix</span>(uMatARoughness, uMatBRoughness, materialMask);
+<span class="keyword">vec3</span> sssColor = <span class="function">mix</span>(uMatASSSColor, uMatBSSSColor, materialMask);
+<span class="keyword">float</span> sssDistance = <span class="function">mix</span>(uMatASSSDistance, uMatBSSSDistance, materialMask);</pre></div>
+            </div>
+<figure class="article-section section-svg-diagram" data-diagram-id="material-blend-diagram">
+                <div class="svg-container" style="max-width: 600px;">
+                    <div class="svg-placeholder" data-width="600" data-height="200">
+                        <noscript>Diagram: Dual Material Blending by Height</noscript>
+                    </div>
+                </div>
+                <figcaption>Dual Material Blending by Height</figcaption>
+            </figure>
+<h2 class="article-section section-heading">Cook-Torrance PBR BRDF</h2>
+<p class="article-section section-paragraph">Surface lighting uses the Cook-Torrance microfacet BRDF, the industry standard for physically-based rendering. This model combines three components: the GGX normal distribution function (D), the Smith geometry function (G), and the Fresnel-Schlick approximation (F). Together they create realistic specular highlights that respond correctly to roughness and viewing angle.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">GGX Normal Distribution Function</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// GGX/Trowbridge-Reitz distribution</span>
+<span class="comment">// Models the statistical distribution of microfacet orientations</span>
+<span class="keyword">float</span> distributionGGX(<span class="keyword">float</span> NdH, <span class="keyword">float</span> roughness) {
+    <span class="keyword">float</span> a = roughness * roughness;
+    <span class="keyword">float</span> a2 = a * a;  <span class="comment">// Disney&#<span class="number">39</span>;s roughness remapping</span>
+    <span class="keyword">float</span> NdH2 = NdH * NdH;
+    
+    <span class="keyword">float</span> denom = NdH2 * (a2 - <span class="number">1.0</span>) + <span class="number">1.0</span>;
+    <span class="keyword">return</span> a2 / (PI * denom * denom);
+}
+
+<span class="comment">// The GGX distribution has a long tail, creating</span>
+<span class="comment">// realistic highlight falloff vs Blinn-Phong</span></pre></div>
+            </div>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Smith Geometry Function</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// Schlick-GGX geometry term <span class="keyword">for</span> a single direction</span>
+<span class="comment">// Accounts <span class="keyword">for</span> microfacet self-shadowing</span>
+<span class="keyword">float</span> geometrySchlickGGX(<span class="keyword">float</span> NdV, <span class="keyword">float</span> roughness) {
+    <span class="keyword">float</span> r = roughness + <span class="number">1.0</span>;
+    <span class="keyword">float</span> k = (r * r) / <span class="number">8.0</span>;  <span class="comment">// Remapping <span class="keyword">for</span> direct lighting</span>
+    <span class="keyword">return</span> NdV / (NdV * (<span class="number">1.0</span> - k) + k);
+}
+
+<span class="comment">// Smith&#<span class="number">39</span>;s method: combine view and light shadowing</span>
+<span class="keyword">float</span> geometrySmith(<span class="keyword">float</span> NdV, <span class="keyword">float</span> NdL, <span class="keyword">float</span> roughness) {
+    <span class="keyword">float</span> ggx1 = geometrySchlickGGX(NdV, roughness);
+    <span class="keyword">float</span> ggx2 = geometrySchlickGGX(NdL, roughness);
+    <span class="keyword">return</span> ggx1 * ggx2;  <span class="comment">// Joint masking-shadowing</span>
+}</pre></div>
+            </div>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Fresnel-Schlick Approximation</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// Fresnel effect: reflectance increases at grazing angles</span>
+<span class="keyword">vec3</span> fresnelSchlick(<span class="keyword">float</span> cosTheta, <span class="keyword">vec3</span> F0) {
+    <span class="keyword">return</span> F0 + (<span class="number">1.0</span> - F0) * <span class="function">pow</span>(<span class="function">clamp</span>(<span class="number">1.0</span> - cosTheta, <span class="number">0.0</span>, <span class="number">1.0</span>), <span class="number">5.0</span>);
+}
+
+<span class="comment">// Roughness-aware Fresnel <span class="keyword">for</span> IBL</span>
+<span class="keyword">vec3</span> fresnelSchlickRoughness(<span class="keyword">float</span> cosTheta, <span class="keyword">vec3</span> F0, <span class="keyword">float</span> roughness) {
+    <span class="keyword">return</span> F0 + (<span class="function">max</span>(<span class="keyword">vec3</span>(<span class="number">1.0</span> - roughness), F0) - F0) 
+              * <span class="function">pow</span>(<span class="function">clamp</span>(<span class="number">1.0</span> - cosTheta, <span class="number">0.0</span>, <span class="number">1.0</span>), <span class="number">5.0</span>);
+}
+
+<span class="comment">// F0 <span class="keyword">for</span> dielectrics (non-metals): typically <span class="number">0.04</span></span>
+<span class="keyword">vec3</span> F0 = <span class="keyword">vec3</span>(<span class="number">0.04</span>);</pre></div>
+            </div>
+<figure class="article-section section-svg-diagram" data-diagram-id="cook-torrance-components">
+                <div class="svg-container" style="max-width: 700px;">
+                    <div class="svg-placeholder" data-width="700" data-height="220">
+                        <noscript>Diagram: Cook-Torrance BRDF Components</noscript>
+                    </div>
+                </div>
+                <figcaption>Cook-Torrance BRDF Components</figcaption>
+            </figure>
+<h3 class="article-section section-heading">Combining the BRDF</h3>
+<p class="article-section section-paragraph">The complete Cook-Torrance BRDF multiplies D, G, and F terms together, divided by a normalization factor. The result gives us a specular contribution that we add to a diffuse term weighted by how much light wasn&#39;t reflected (energy conservation).</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Complete Cook-Torrance BRDF</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="keyword">vec4</span> cookTorranceBRDF(<span class="keyword">vec3</span> N, <span class="keyword">vec3</span> V, <span class="keyword">vec3</span> L, <span class="keyword">float</span> roughness, <span class="keyword">vec3</span> F0) {
+    <span class="keyword">vec3</span> H = <span class="function">normalize</span>(V + L);  <span class="comment">// Half-vector</span>
+    
+    <span class="comment">// Dot products (clamped to avoid artifacts)</span>
+    <span class="keyword">float</span> NdV = <span class="function">max</span>(<span class="function">dot</span>(N, V), <span class="number">0.001</span>);
+    <span class="keyword">float</span> NdL = <span class="function">max</span>(<span class="function">dot</span>(N, L), <span class="number">0.0</span>);
+    <span class="keyword">float</span> NdH = <span class="function">max</span>(<span class="function">dot</span>(N, H), <span class="number">0.0</span>);
+    <span class="keyword">float</span> HdV = <span class="function">max</span>(<span class="function">dot</span>(H, V), <span class="number">0.0</span>);
+
+    <span class="comment">// BRDF terms</span>
+    <span class="keyword">float</span> D = distributionGGX(NdH, roughness);
+    <span class="keyword">float</span> G = geometrySmith(NdV, NdL, roughness);
+    <span class="keyword">vec3</span> F = fresnelSchlick(HdV, F0);
+
+    <span class="comment">// Cook-Torrance specular</span>
+    <span class="keyword">vec3</span> numerator = D * G * F;
+    <span class="keyword">float</span> denominator = <span class="number">4.0</span> * NdV * NdL + <span class="number">0.0001</span>;  <span class="comment">// Avoid div by zero</span>
+    <span class="keyword">vec3</span> specular = numerator / denominator;
+
+    <span class="comment">// Return specular term and average Fresnel <span class="keyword">for</span> diffuse weighting</span>
+    <span class="keyword">float</span> avgF = (F.r + F.g + F.b) / <span class="number">3.0</span>;
+    <span class="keyword">return</span> <span class="keyword">vec4</span>(specular * NdL, avgF);
+}</pre></div>
+            </div>
+<h2 class="article-section section-heading">Multi-Light Accumulation</h2>
+<p class="article-section section-paragraph">The shader supports 3 dynamic point lights plus an interactive mouse light. Each light contributes independently with its own color, intensity, and attenuation. We transform normals to world space to ensure correct lighting regardless of camera orientation.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">World-Space Lighting Setup</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// Transform normal to world space using camera basis</span>
+<span class="keyword">vec3</span> cameraForward = <span class="keyword">vec3</span>(sinRotY * cosRotX, -sinRotX, cosRotY * cosRotX);
+<span class="keyword">vec3</span> cameraRight = <span class="keyword">vec3</span>(cosRotY, <span class="number">0.0</span>, -sinRotY);
+<span class="keyword">vec3</span> cameraUp = <span class="function">cross</span>(cameraForward, cameraRight);
+
+<span class="keyword">vec3</span> N_world = <span class="function">normalize</span>(cameraRight * N.x - cameraUp * N.y - cameraForward * N.z);
+<span class="keyword">vec3</span> V_world = -cameraForward;  <span class="comment">// View direction</span>
+
+<span class="comment">// World position of <span class="keyword">this</span> surface point</span>
+<span class="keyword">float</span> radiusWorld = vOriginalRadius * worldScale;
+<span class="keyword">vec3</span> surfaceWorldPos = planetWorldPos + N_world * radiusWorld;</pre></div>
+            </div>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Per-Light Contribution</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// Accumulate diffuse and specular from each light</span>
+<span class="keyword">vec3</span> totalDiffuse = <span class="keyword">vec3</span>(<span class="number">0.0</span>);
+<span class="keyword">vec3</span> totalSpecular = <span class="keyword">vec3</span>(<span class="number">0.0</span>);
+
+<span class="comment">// Light <span class="number">0</span> contribution</span>
+<span class="keyword">vec3</span> L0 = <span class="function">normalize</span>(uLight0WorldPos - surfaceWorldPos);
+<span class="keyword">float</span> dist0 = <span class="function">length</span>(uLight0WorldPos - surfaceWorldPos);
+<span class="keyword">float</span> atten0 = <span class="number">1.0</span> / (<span class="number">1.0</span> + uLight0Atten * <span class="number">200.0</span> * dist0 * dist0);  <span class="comment">// Quadratic</span>
+<span class="keyword">float</span> NdL0 = <span class="function">max</span>(<span class="function">dot</span>(N_world, L0), <span class="number">0.0</span>);
+
+<span class="keyword">vec4</span> pbr0 = cookTorranceBRDF(N_world, V_world, L0, roughness, F0);
+totalSpecular += uLightColor0 * pbr0.xyz * atten0 * uLight0Intensity;
+
+<span class="comment">// Energy-conserving diffuse: weight by (<span class="number">1</span> - Fresnel)</span>
+<span class="keyword">float</span> diffuseWeight0 = (<span class="number">1.0</span> - pbr0.w) / PI;
+totalDiffuse += uLightColor0 * NdL0 * atten0 * diffuseWeight0 * uLight0Intensity;
+
+<span class="comment">// Repeat <span class="keyword">for</span> lights <span class="number">1</span>, <span class="number">2</span>, and mouse light...</span></pre></div>
+            </div>
+<h2 class="article-section section-heading">Subsurface Scattering Approximation</h2>
+<p class="article-section section-paragraph">For translucent materials like water or ice, light penetrates the surface and scatters internally before exiting. We approximate this with a wrap lighting term and backlight contribution, creating soft illumination that bleeds around the terminator edge.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Subsurface Scattering Approximation</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// Wrap lighting: extends lit area past terminator</span>
+<span class="comment">// sssWrap of <span class="number">0.5</span> means <span class="number">50</span>% wrap around the terminator</span>
+<span class="keyword">float</span> sssWrap = <span class="number">0.5</span>;
+<span class="keyword">float</span> sssNdL0 = <span class="function">max</span>(<span class="number">0.0</span>, (<span class="function">dot</span>(N_world, L0) + sssWrap) / (<span class="number">1.0</span> + sssWrap));
+<span class="keyword">float</span> sssNdL1 = <span class="function">max</span>(<span class="number">0.0</span>, (<span class="function">dot</span>(N_world, L1) + sssWrap) / (<span class="number">1.0</span> + sssWrap));
+<span class="keyword">float</span> sssNdL2 = <span class="function">max</span>(<span class="number">0.0</span>, (<span class="function">dot</span>(N_world, L2) + sssWrap) / (<span class="number">1.0</span> + sssWrap));
+
+<span class="comment">// Backlight: light passing through thin areas</span>
+<span class="keyword">float</span> backLight0 = <span class="function">pow</span>(<span class="function">max</span>(<span class="number">0.0</span>, -<span class="function">dot</span>(N_world, L0)), <span class="number">2.0</span>);
+<span class="keyword">float</span> backLight1 = <span class="function">pow</span>(<span class="function">max</span>(<span class="number">0.0</span>, -<span class="function">dot</span>(N_world, L1)), <span class="number">2.0</span>);
+<span class="keyword">float</span> backLight2 = <span class="function">pow</span>(<span class="function">max</span>(<span class="number">0.0</span>, -<span class="function">dot</span>(N_world, L2)), <span class="number">2.0</span>);
+
+<span class="comment">// Combine SSS contribution</span>
+<span class="keyword">vec3</span> sss = sssColor * sssDistance * (
+    uLightColor0 * (sssNdL0 + backLight0 * <span class="number">0.5</span>) * atten0 * uLight0Intensity +
+    uLightColor1 * (sssNdL1 + backLight1 * <span class="number">0.5</span>) * atten1 * uLight1Intensity +
+    uLightColor2 * (sssNdL2 + backLight2 * <span class="number">0.5</span>) * atten2 * uLight2Intensity
+);</pre></div>
+            </div>
+<figure class="article-section section-svg-diagram" data-diagram-id="sss-diagram">
+                <div class="svg-container" style="max-width: 650px;">
+                    <div class="svg-placeholder" data-width="650" data-height="200">
+                        <noscript>Diagram: Subsurface Scattering Effect</noscript>
+                    </div>
+                </div>
+                <figcaption>Subsurface Scattering Effect</figcaption>
+            </figure>
+<h2 class="article-section section-heading">Physically-Based Atmospheric Scattering</h2>
+<p class="article-section section-paragraph">The atmosphere extends beyond the planet&#39;s solid surface and requires special handling. We ray-march through the atmospheric shell, computing optical depth based on density that falls off exponentially with altitude. This drives wavelength-dependent Rayleigh scattering for realistic sky coloring.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Atmospheric Shell Setup</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// Atmosphere extends beyond planet radius</span>
+<span class="keyword">float</span> atmosRadius = planetRadius + <span class="number">0.4</span> * uAtmosThickness;
+<span class="keyword">float</span> atmosThickness = atmosRadius - planetRadius;
+
+<span class="comment">// Rayleigh scattering coefficients (wavelength-dependent)</span>
+<span class="keyword">vec3</span> beta = <span class="keyword">vec3</span>(uScatterR, uScatterG, uScatterB);
+<span class="keyword">float</span> densityFalloff = uAtmosPower;  <span class="comment">// Exponential decay rate</span></pre></div>
+            </div>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Optical Depth Integration</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="keyword">float</span> opticalDepth = <span class="number">0.0</span>;
+
+<span class="keyword">if</span> (d &lt; atmosRadius) {
+    <span class="keyword">float</span> atmosZ = <span class="function">sqrt</span>(<span class="function">max</span>(<span class="number">0.0</span>, atmosRadius * atmosRadius - d * d));
+
+    <span class="keyword">if</span> (d &lt; planetRadius) {
+        <span class="comment">// Ray enters atmosphere, hits planet surface</span>
+        <span class="keyword">float</span> planetZ = <span class="function">sqrt</span>(<span class="function">max</span>(<span class="number">0.0</span>, planetRadius * planetRadius - d * d));
+        <span class="keyword">float</span> pathLength = atmosZ - planetZ;
+
+        <span class="comment">// Integrate density along path (<span class="number">4</span> samples)</span>
+        <span class="keyword">for</span> (<span class="keyword">float</span> i = <span class="number">0.0</span>; i &lt; <span class="number">4.0</span>; i++) {
+            <span class="keyword">float</span> t = (i + <span class="number">0.5</span>) / <span class="number">4.0</span>;
+            <span class="keyword">float</span> sampleZ = planetZ + t * (atmosZ - planetZ);
+            <span class="keyword">float</span> sampleR = <span class="function">sqrt</span>(d * d + sampleZ * sampleZ);
+            <span class="keyword">float</span> sampleHeight01 = (sampleR - planetRadius) / atmosThickness;
+            <span class="keyword">float</span> sampleDensity = <span class="function">exp</span>(-sampleHeight01 * densityFalloff) 
+                                * (<span class="number">1.0</span> - sampleHeight01);
+            opticalDepth += sampleDensity * (pathLength / <span class="number">4.0</span>);
+        }
+    } <span class="keyword">else</span> {
+        <span class="comment">// Ray passes through atmosphere only (limb view)</span>
+        <span class="keyword">float</span> pathLength = <span class="number">2.0</span> * atmosZ;
+        <span class="comment">// <span class="number">6</span> samples <span class="keyword">for</span> longer path</span>
+        <span class="keyword">for</span> (<span class="keyword">float</span> i = <span class="number">0.0</span>; i &lt; <span class="number">6.0</span>; i++) {
+            <span class="keyword">float</span> t = (i + <span class="number">0.5</span>) / <span class="number">6.0</span>;
+            <span class="keyword">float</span> sampleZ = atmosZ * (<span class="number">1.0</span> - <span class="number">2.0</span> * t);
+            <span class="keyword">float</span> sampleR = <span class="function">sqrt</span>(d * d + sampleZ * sampleZ);
+            <span class="keyword">float</span> sampleHeight01 = <span class="function">clamp</span>((sampleR - planetRadius) / atmosThickness, <span class="number">0.0</span>, <span class="number">1.0</span>);
+            <span class="keyword">float</span> sampleDensity = <span class="function">exp</span>(-sampleHeight01 * densityFalloff) 
+                                * (<span class="number">1.0</span> - sampleHeight01);
+            opticalDepth += sampleDensity * (pathLength / <span class="number">6.0</span>);
+        }
+    }
+}
+
+opticalDepth *= uScatterScale;</pre></div>
+            </div>
+<figure class="article-section section-svg-diagram" data-diagram-id="atmos-integration">
+                <div class="svg-container" style="max-width: 650px;">
+                    <div class="svg-placeholder" data-width="650" data-height="280">
+                        <noscript>Diagram: Atmospheric Ray Integration</noscript>
+                    </div>
+                </div>
+                <figcaption>Atmospheric Ray Integration</figcaption>
+            </figure>
+<h3 class="article-section section-heading">Rayleigh Color Shift</h3>
+<p class="article-section section-paragraph">Rayleigh scattering depends on wavelength^-4, meaning blue light scatters much more than red. We compute transmittance through the atmosphere using Beer-Lambert law, then derive the scattered color. This creates blue skies where atmosphere is thin and warm sunset colors where the optical path is long.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Rayleigh Transmittance and Scatter Color</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// Beer-Lambert transmittance through atmosphere</span>
+<span class="keyword">vec3</span> transmittance = <span class="function">exp</span>(-beta * opticalDepth * uSunsetStrength);
+
+<span class="comment">// Normalize transmittance to get color shift</span>
+<span class="keyword">vec3</span> transmitColor = transmittance;
+<span class="keyword">float</span> maxT = <span class="function">max</span>(transmittance.r, <span class="function">max</span>(transmittance.g, transmittance.b));
+<span class="keyword">if</span> (maxT &gt; <span class="number">0.001</span>) {
+    transmitColor = transmittance / maxT;
+} <span class="keyword">else</span> {
+    <span class="comment">// Deep atmosphere: warm sunset colors</span>
+    transmitColor = <span class="keyword">vec3</span>(<span class="number">1.0</span>, <span class="number">0.3</span>, <span class="number">0.1</span>);
+}
+
+<span class="comment">// Blue scatter <span class="keyword">for</span> thin atmosphere</span>
+<span class="keyword">vec3</span> blueScatter = <span class="keyword">vec3</span>(<span class="number">1.0</span>) - <span class="function">exp</span>(-beta * <span class="number">8.0</span>);
+
+<span class="comment">// Blend between blue scatter and transmit color based on depth</span>
+<span class="keyword">float</span> depthFactor = <span class="number">1.0</span> - <span class="function">exp</span>(-opticalDepth * <span class="number">2.0</span> * uSunsetStrength);
+<span class="keyword">vec3</span> scatterColor = <span class="function">mix</span>(blueScatter, transmitColor, depthFactor);
+
+<span class="comment">// Final atmosphere contribution</span>
+<span class="keyword">vec3</span> atmosColor = incomingLight * scatterColor * atmosDensity * uAtmosIntensity;</pre></div>
+            </div>
+<figure class="article-section section-svg-diagram" data-diagram-id="rayleigh-color-shift">
+                <div class="svg-container" style="max-width: 700px;">
+                    <div class="svg-placeholder" data-width="700" data-height="220">
+                        <noscript>Diagram: Rayleigh Wavelength-Dependent Scattering</noscript>
+                    </div>
+                </div>
+                <figcaption>Rayleigh Wavelength-Dependent Scattering</figcaption>
+            </figure>
+<aside class="article-section section-callout tip">
+                <p>The sunset strength parameter controls how quickly blue shifts to orange/red at the limb. Higher values create more dramatic sunset effects, while lower values keep the atmosphere uniformly blue.</p>
+            </aside>
+<h2 class="article-section section-heading">Atmosphere Self-Shadowing</h2>
+<p class="article-section section-paragraph">The planet casts a shadow on its own atmosphere. We compute where each light&#39;s rays would intersect the planet, creating shadow cones that darken the atmosphere on the planet&#39;s far side from each light source.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Atmospheric Shadow Computation</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// For pixels <span class="keyword">in</span> the atmosphere (outside planet surface)</span>
+<span class="keyword">float</span> atmosShadow0 = <span class="number">1.0</span>;  <span class="comment">// Start fully lit</span>
+
+<span class="keyword">if</span> (d &gt;= planetRadius &amp;&amp; d &lt; atmosRadius) {
+    <span class="keyword">float</span> r = planetRadius;
+    <span class="keyword">float</span> penumbraWidth = r * <span class="number">0.2</span>;  <span class="comment">// Soft shadow edge</span>
+
+    <span class="comment">// 2D light direction from planet center</span>
+    <span class="keyword">vec2</span> D0 = <span class="function">normalize</span>(uLight0ScreenPos - vCenter);
+    
+    <span class="comment">// Distance from light ray to current point</span>
+    <span class="keyword">float</span> perpDist0 = <span class="function">abs</span>(vUV.x * D0.y - vUV.y * D0.x);
+    <span class="keyword">float</span> alongRay0 = <span class="function">dot</span>(vUV, D0);
+
+    <span class="comment">// In shadow <span class="keyword">if</span>: behind planet center AND close to light ray</span>
+    <span class="keyword">if</span> (alongRay0 &lt; <span class="number">0.0</span> &amp;&amp; perpDist0 &lt; r + penumbraWidth) {
+        <span class="keyword">float</span> behindPlanet = -alongRay0 / r;
+        <span class="keyword">float</span> shadowStart = <span class="function">smoothstep</span>(<span class="number">0.0</span>, <span class="number">1.0</span>, behindPlanet);
+        <span class="keyword">float</span> shadowCore = <span class="function">smoothstep</span>(r + penumbraWidth, r - penumbraWidth, perpDist0);
+        atmosShadow0 = <span class="number">1.0</span> - shadowCore * shadowStart;
+    }
+    
+    atmosShadow0 = <span class="function">max</span>(atmosShadow0, <span class="number">0.05</span>);  <span class="comment">// Never fully black</span>
+}</pre></div>
+            </div>
+<figure class="article-section section-svg-diagram" data-diagram-id="atmos-self-shadow">
+                <div class="svg-container" style="max-width: 650px;">
+                    <div class="svg-placeholder" data-width="650" data-height="250">
+                        <noscript>Diagram: Atmospheric Self-Shadowing</noscript>
+                    </div>
+                </div>
+                <figcaption>Atmospheric Self-Shadowing</figcaption>
+            </figure>
+<h2 class="article-section section-heading">Final Composition</h2>
+<p class="article-section section-paragraph">The final color combines diffuse lighting, specular highlights, subsurface scattering, ambient light, Fresnel rim, and atmospheric contribution. We also apply depth fog based on camera distance for integration with the background.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Final Color Composition</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="keyword">vec3</span> col = <span class="keyword">vec3</span>(<span class="number">0.0</span>);
+
+<span class="comment">// Surface lighting (planet only)</span>
+col += baseColor * totalDiffuse * <span class="number">2.5</span> * planetMask;   <span class="comment">// Diffuse</span>
+col += totalSpecular * <span class="number">3.0</span> * planetMask;              <span class="comment">// Specular</span>
+col += sss * planetMask;                               <span class="comment">// Subsurface</span>
+
+<span class="comment">// Ambient from average light color</span>
+<span class="keyword">vec3</span> lightEnvColor = (uLightColor0 * atten0 * uLight0Intensity + 
+                      uLightColor1 * atten1 * uLight1Intensity + 
+                      uLightColor2 * atten2 * uLight2Intensity) 
+                   / <span class="function">max</span>(totalAttenuation, <span class="number">0.001</span>);
+col += baseColor * lightEnvColor * uAmbientIntensity * <span class="number">0.1</span> * planetMask;
+
+<span class="comment">// Fresnel rim highlighting</span>
+<span class="keyword">vec3</span> fresnelRim = fresnelSchlickRoughness(NdV, F0, roughness) * planetMask;
+<span class="keyword">float</span> rimIntensity = <span class="function">mix</span>(<span class="number">0.04</span>, <span class="number">0.15</span>, <span class="number">1.0</span> - roughness);
+col += lightEnvColor * fresnelRim * totalAttenuation * rimIntensity;
+
+<span class="comment">// Atmosphere blend over terrain at limb</span>
+<span class="keyword">float</span> limbFactor = <span class="function">pow</span>(<span class="number">1.0</span> - NdV, <span class="number">2.0</span>);  <span class="comment">// Stronger at edges</span>
+<span class="keyword">float</span> terrainAtmosBlend = atmosAlpha * (<span class="number">0.3</span> + limbFactor * <span class="number">0.7</span>) * planetMask;
+col = <span class="function">mix</span>(col, atmosColor, terrainAtmosBlend);
+
+<span class="comment">// Depth fog <span class="keyword">for</span> distance fade</span>
+<span class="keyword">float</span> distToCamera = <span class="function">length</span>(surfaceWorldPos - cameraPos);
+<span class="keyword">float</span> fogAmount = <span class="number">1.0</span> - <span class="function">exp</span>(-distToCamera * uFogIntensity);
+col = <span class="function">mix</span>(col, fogColor, fogAmount * planetMask);
+
+<span class="comment">// Atmosphere glow outside planet surface</span>
+col += foggedAtmosColor * (<span class="number">1.0</span> - planetMask);</pre></div>
+            </div>
+<h2 class="article-section section-heading">Performance Considerations</h2>
+<ul class="article-section section-list"><li>Billboard rendering: No mesh tessellation needed, perfect silhouettes at any distance</li>
+<li>Noise evaluation: 5 FBM octaves is expensive; consider reducing for mobile or distant planets</li>
+<li>Atmosphere ray marching: Fixed sample counts (4-6) balance quality with performance</li>
+<li>Multiple lights: Cost scales linearly with light count; 3 lights + mouse is reasonable</li>
+<li>Early discard: Pixels outside the atmosphere shell are discarded early</li>
+<li>Depth fade: Distant planets can reduce quality without visible difference</li></ul>
+<aside class="article-section section-callout warning">
+                <p>The 5-octave FBM terrain is evaluated 3 times per pixel (center + 2 tangent offsets) for normal computation. This is the main performance bottleneck. Consider reducing octaves or using a pre-baked normal map for mobile targets.</p>
+            </aside>
+<h2 class="article-section section-heading">Parameter Reference</h2>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Planet Shader Parameters</span>
+                    <span class="code-language">javascript</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// Oceanic planet (Type A) - water world</span>
+planetParamsA = {
+    noiseScale: <span class="number">2.5</span>,           <span class="comment">// Terrain frequency</span>
+    seaLevel: <span class="number">0.0</span>,             <span class="comment">// Water/land boundary</span>
+    normalStrength: <span class="number">0.4</span>,       <span class="comment">// Terrain bumpiness</span>
+    
+    matABaseColor: [<span class="number">0.1</span>, <span class="number">0.3</span>, <span class="number">0.5</span>],   <span class="comment">// Deep ocean</span>
+    matARoughness: <span class="number">0.15</span>,              <span class="comment">// Smooth water</span>
+    matASSSColor: [<span class="number">0.2</span>, <span class="number">0.5</span>, <span class="number">0.6</span>],    <span class="comment">// Subsurface tint</span>
+    matASSSDistance: <span class="number">0.3</span>,
+    
+    matBBaseColor: [<span class="number">0.3</span>, <span class="number">0.45</span>, <span class="number">0.2</span>],  <span class="comment">// Green land</span>
+    matBRoughness: <span class="number">0.8</span>,               <span class="comment">// Rough terrain</span>
+    
+    atmosIntensity: <span class="number">1.2</span>,
+    atmosThickness: <span class="number">0.5</span>,
+    scatterR: <span class="number">0.4</span>, scatterG: <span class="number">0.7</span>, scatterB: <span class="number">1.0</span>  <span class="comment">// Blue sky</span>
+};
+
+<span class="comment">// Volcanic planet (Type B) - lava world</span>
+planetParamsB = {
+    noiseScale: <span class="number">3.0</span>,
+    seaLevel: -<span class="number">0.2</span>,
+    matABaseColor: [<span class="number">0.8</span>, <span class="number">0.2</span>, <span class="number">0.05</span>],  <span class="comment">// Molten lava</span>
+    matARoughness: <span class="number">0.3</span>,
+    matBBaseColor: [<span class="number">0.15</span>, <span class="number">0.1</span>, <span class="number">0.08</span>], <span class="comment">// Dark rock</span>
+    atmosIntensity: <span class="number">0.6</span>,
+    scatterR: <span class="number">1.0</span>, scatterG: <span class="number">0.4</span>, scatterB: <span class="number">0.2</span>  <span class="comment">// Orange haze</span>
+};</pre></div>
+            </div>
+            </div>
+        </article>
+
+        <!-- CTA Banner -->
+        <div class="article-cta-banner">
+            <h2 class="cta-banner-title">Want to see more?</h2>
+            <p class="cta-banner-subtitle">Check out my interactive portfolio with live shader demos</p>
+            <div class="cta-banner-buttons">
+                <a href="../../?tab=contact" class="cta-banner-btn primary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22,6 12,13 2,6"/>
+                    </svg>
+                    Get in Touch
+                </a>
+                <a href="../../?tab=skills" class="cta-banner-btn secondary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                    Live Demos
+                </a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="static-footer">
+            <div class="footer-author">
+                <span class="footer-author-name">Charles Grassi</span>
+                <span class="footer-author-title">Graphics Programmer & Technical Artist</span>
+            </div>
+            <div class="footer-links">
+                <a href="../../" class="footer-link">Portfolio</a>
+                <a href="../../blog/" class="footer-link">Blog</a>
+                <a href="https://twitter.com/charles_grassi" class="footer-link" target="_blank" rel="noopener">Twitter</a>
+                <a href="https://www.linkedin.com/in/charles-grassi/" class="footer-link" target="_blank" rel="noopener">LinkedIn</a>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Optional: Load JS for interactive diagrams/demos -->
+    <script src="../../js/blog-diagrams.js" defer></script>
+    <script>
+        // Initialize SVG diagrams if blog-diagrams.js is available
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof window.blogSvgDiagrams !== 'undefined') {
+                var diagrams = document.querySelectorAll('.section-svg-diagram');
+                diagrams.forEach(function(container) {
+                    var id = container.getAttribute('data-diagram-id');
+                    var placeholder = container.querySelector('.svg-placeholder');
+                    if (placeholder && window.blogSvgDiagrams[id]) {
+                        var w = parseInt(placeholder.getAttribute('data-width')) || 600;
+                        var h = parseInt(placeholder.getAttribute('data-height')) || 200;
+                        var svgContainer = container.querySelector('.svg-container');
+                        svgContainer.innerHTML = '';
+                        try {
+                            window.blogSvgDiagrams[id](svgContainer, w, h);
+                        } catch (e) {
+                            console.error('Diagram error:', id, e);
+                        }
+                    }
+                });
+            }
+
+            // Initialize shader demos
+            var demos = document.querySelectorAll('.section-shader-demo');
+            demos.forEach(function(container) {
+                var canvas = container.querySelector('.shader-canvas');
+                var loadingEl = container.querySelector('.shader-loading');
+                var configStr = container.getAttribute('data-shader-config');
+
+                if (!canvas || !configStr) return;
+
+                try {
+                    var config = JSON.parse(configStr);
+                    initShaderDemo(canvas, config, container, loadingEl);
+                } catch (e) {
+                    if (loadingEl) {
+                        loadingEl.textContent = 'Shader error: ' + e.message;
+                        loadingEl.classList.add('error');
+                    }
+                }
+            });
+        });
+
+        function initShaderDemo(canvas, config, container, loadingEl) {
+            var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (!gl) throw new Error('WebGL not supported');
+
+            var vertShader = gl.createShader(gl.VERTEX_SHADER);
+            gl.shaderSource(vertShader, config.vertexShader);
+            gl.compileShader(vertShader);
+            if (!gl.getShaderParameter(vertShader, gl.COMPILE_STATUS)) {
+                throw new Error(gl.getShaderInfoLog(vertShader));
+            }
+
+            var fragShader = gl.createShader(gl.FRAGMENT_SHADER);
+            gl.shaderSource(fragShader, config.fragmentShader);
+            gl.compileShader(fragShader);
+            if (!gl.getShaderParameter(fragShader, gl.COMPILE_STATUS)) {
+                throw new Error(gl.getShaderInfoLog(fragShader));
+            }
+
+            var program = gl.createProgram();
+            gl.attachShader(program, vertShader);
+            gl.attachShader(program, fragShader);
+            gl.linkProgram(program);
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                throw new Error(gl.getProgramInfoLog(program));
+            }
+
+            gl.useProgram(program);
+
+            var posBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1
+            ]), gl.STATIC_DRAW);
+
+            var posLoc = gl.getAttribLocation(program, 'a_position');
+            gl.enableVertexAttribArray(posLoc);
+            gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+            var uniformLocs = {};
+            var uniformValues = {};
+            for (var name in config.uniforms) {
+                uniformLocs[name] = gl.getUniformLocation(program, name);
+                uniformValues[name] = config.uniforms[name].value;
+            }
+
+            // Setup controls
+            var controls = container.querySelectorAll('input[type="range"]');
+            controls.forEach(function(input) {
+                var uniformName = input.getAttribute('data-uniform');
+                var valueDisplay = input.parentElement.querySelector('.control-value');
+                input.addEventListener('input', function() {
+                    uniformValues[uniformName] = parseFloat(input.value);
+                    if (valueDisplay) valueDisplay.textContent = parseFloat(input.value).toFixed(2);
+                });
+            });
+
+            var startTime = performance.now();
+
+            function render() {
+                var elapsed = (performance.now() - startTime) / 1000;
+                gl.viewport(0, 0, canvas.width, canvas.height);
+                gl.clearColor(0.04, 0.06, 0.08, 1.0);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                gl.useProgram(program);
+
+                for (var name in uniformLocs) {
+                    var loc = uniformLocs[name];
+                    if (!loc) continue;
+                    if (name === 'u_time') gl.uniform1f(loc, elapsed);
+                    else if (name === 'u_resolution') gl.uniform2f(loc, canvas.width, canvas.height);
+                    else {
+                        var val = uniformValues[name];
+                        if (typeof val === 'number') gl.uniform1f(loc, val);
+                        else if (Array.isArray(val) && val.length === 2) gl.uniform2f(loc, val[0], val[1]);
+                        else if (Array.isArray(val) && val.length === 3) gl.uniform3f(loc, val[0], val[1], val[2]);
+                    }
+                }
+
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+                requestAnimationFrame(render);
+            }
+
+            if (loadingEl) loadingEl.style.display = 'none';
+            render();
+        }
+    </script>
+</body>
+</html>

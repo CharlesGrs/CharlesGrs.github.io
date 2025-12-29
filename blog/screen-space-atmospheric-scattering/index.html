@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Primary Meta Tags -->
+    <title>Screen-Space Atmospheric Light Scattering | Charles Grassi</title>
+    <meta name="title" content="Screen-Space Atmospheric Light Scattering | Charles Grassi">
+    <meta name="description" content="Implement efficient screen-space volumetric light scattering that responds to multiple dynamic light sources with perspective-correct falloff and animated noise.">
+    <meta name="author" content="Charles Grassi">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://charlesgrs.github.io/blog/screen-space-atmospheric-scattering/">
+    <meta property="og:title" content="Screen-Space Atmospheric Light Scattering">
+    <meta property="og:description" content="Implement efficient screen-space volumetric light scattering that responds to multiple dynamic light sources with perspective-correct falloff and animated noise.">
+    <meta property="og:image" content="https://charlesgrs.github.io/blog/images/volumetric-light-thumb.png">
+    <meta property="og:site_name" content="Charles Grassi">
+    <meta property="article:published_time" content="2025-12-29T00:00:00.000Z">
+    <meta property="article:author" content="Charles Grassi">
+    <meta property="article:section" content="Rendering">
+    <meta property="article:tag" content="volumetric">
+    <meta property="article:tag" content="atmosphere">
+    <meta property="article:tag" content="glsl">
+    <meta property="article:tag" content="post-processing">
+    <meta property="article:tag" content="lighting">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@charles_grassi">
+    <meta name="twitter:creator" content="@charles_grassi">
+    <meta name="twitter:title" content="Screen-Space Atmospheric Light Scattering">
+    <meta name="twitter:description" content="Implement efficient screen-space volumetric light scattering that responds to multiple dynamic light sources with perspective-correct falloff and animated noise.">
+    <meta name="twitter:image" content="https://charlesgrs.github.io/blog/images/volumetric-light-thumb.png">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://charlesgrs.github.io/blog/screen-space-atmospheric-scattering/">
+
+    <!-- Theme -->
+    <meta name="theme-color" content="#0a0f14">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        "headline": "Screen-Space Atmospheric Light Scattering",
+        "description": "Implement efficient screen-space volumetric light scattering that responds to multiple dynamic light sources with perspective-correct falloff and animated noise.",
+        "image": "https://charlesgrs.github.io/blog/images/volumetric-light-thumb.png",
+        "datePublished": "2025-12-29T00:00:00.000Z",
+        "dateModified": "2025-12-29T00:00:00.000Z",
+        "author": {
+            "@type": "Person",
+            "name": "Charles Grassi",
+            "url": "https://charlesgrs.github.io"
+        },
+        "publisher": {
+            "@type": "Person",
+            "name": "Charles Grassi",
+            "url": "https://charlesgrs.github.io"
+        },
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https://charlesgrs.github.io/blog/screen-space-atmospheric-scattering/"
+        },
+        "articleSection": "Rendering",
+        "keywords": "volumetric, atmosphere, glsl, post-processing, lighting"
+    }
+    </script>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/blog.css">
+
+    <style>
+        /* Static page specific styles */
+        body {
+            background: var(--bg-primary);
+            min-height: 100vh;
+        }
+
+        /* Top header bar - fixed */
+        .site-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(10, 15, 20, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 0.75rem 1.5rem;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+
+        .header-brand {
+            margin-right: auto;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .brand-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .brand-separator {
+            color: rgba(255, 255, 255, 0.2);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .brand-section {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent-teal);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .header-cta {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .cta-demos {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(45, 212, 191, 0.1);
+            border: 1px solid rgba(45, 212, 191, 0.3);
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent-teal);
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+
+        .cta-demos:hover {
+            background: rgba(45, 212, 191, 0.2);
+            border-color: rgba(45, 212, 191, 0.5);
+            box-shadow: 0 0 20px rgba(45, 212, 191, 0.15);
+        }
+
+        .cta-hire {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1.25rem;
+            background: linear-gradient(135deg, var(--accent-gold) 0%, #d4a520 100%);
+            border: none;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #0a0f14;
+            text-decoration: none;
+            transition: all 0.25s ease;
+            box-shadow: 0 2px 8px rgba(232, 185, 35, 0.3);
+        }
+
+        .cta-hire:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(232, 185, 35, 0.4);
+        }
+
+        .static-blog-page {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: var(--space-lg);
+            padding-top: 5rem; /* Account for fixed header */
+        }
+
+        .article-nav {
+            margin-bottom: var(--space-lg);
+        }
+
+        .nav-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.8rem;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+
+        .nav-back:hover {
+            border-color: var(--accent-teal);
+            color: var(--accent-teal);
+        }
+
+        .nav-back svg {
+            width: 14px;
+            height: 14px;
+            transition: transform 0.25s ease;
+        }
+
+        .nav-back:hover svg {
+            transform: translateX(-3px);
+        }
+
+        /* CTA Banner after article */
+        .article-cta-banner {
+            margin-top: var(--space-xl);
+            padding: var(--space-lg);
+            background: linear-gradient(145deg, rgba(20, 28, 38, 0.9) 0%, rgba(15, 22, 30, 0.95) 100%);
+            border: 1px solid rgba(232, 185, 35, 0.2);
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .cta-banner-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: var(--text-xl);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 0.5rem 0;
+        }
+
+        .cta-banner-subtitle {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+            margin: 0 0 var(--space-md) 0;
+        }
+
+        .cta-banner-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .cta-banner-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+
+        .cta-banner-btn.primary {
+            background: linear-gradient(135deg, var(--accent-gold) 0%, #d4a520 100%);
+            color: #0a0f14;
+            box-shadow: 0 2px 12px rgba(232, 185, 35, 0.3);
+        }
+
+        .cta-banner-btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(232, 185, 35, 0.4);
+        }
+
+        .cta-banner-btn.secondary {
+            background: rgba(45, 212, 191, 0.1);
+            border: 1px solid rgba(45, 212, 191, 0.3);
+            color: var(--accent-teal);
+        }
+
+        .cta-banner-btn.secondary:hover {
+            background: rgba(45, 212, 191, 0.2);
+            border-color: rgba(45, 212, 191, 0.5);
+        }
+
+        .static-footer {
+            margin-top: var(--space-xl);
+            padding-top: var(--space-lg);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            text-align: center;
+        }
+
+        .footer-author {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-xs);
+            margin-bottom: var(--space-md);
+        }
+
+        .footer-author-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: var(--text-base);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .footer-author-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: var(--text-xs);
+            color: var(--text-secondary);
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: var(--space-md);
+        }
+
+        .footer-link {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: var(--text-xs);
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.25s;
+        }
+
+        .footer-link:hover {
+            color: var(--accent-teal);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .site-header {
+                padding: 0.5rem 1rem;
+            }
+
+            .header-content {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+
+            .brand-separator, .brand-section {
+                display: none;
+            }
+
+            .header-cta {
+                gap: 0.5rem;
+            }
+
+            .cta-demos span,
+            .cta-hire span {
+                display: none;
+            }
+
+            .cta-demos,
+            .cta-hire {
+                padding: 0.5rem;
+            }
+
+            .static-blog-page {
+                padding: var(--space-md);
+                padding-top: 4.5rem;
+            }
+
+            .cta-banner-buttons {
+                flex-direction: column;
+            }
+
+            .cta-banner-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Fixed Header -->
+    <header class="site-header">
+        <div class="header-content">
+            <a href="../../" class="header-brand">
+                <span class="brand-name">Charles Grassi</span>
+                <span class="brand-separator">//</span>
+                <span class="brand-section">Blog</span>
+            </a>
+            <div class="header-cta">
+                <a href="../../?tab=skills" class="cta-demos">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                    <span>Live Demos</span>
+                </a>
+                <a href="../../?tab=contact" class="cta-hire">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <span>Hire Me</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="static-blog-page">
+        <!-- Back Navigation -->
+        <nav class="article-nav">
+            <a href="../../blog/" class="nav-back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                All Posts
+            </a>
+        </nav>
+
+        <!-- Article -->
+        <article class="blog-article">
+            <header class="article-header">
+                <div class="article-meta">
+                    <span class="article-category">Rendering</span>
+                    <span>December 29, 2025</span>
+                    <span>12 min read</span>
+                </div>
+                <h1 class="article-title">Screen-Space Atmospheric Light Scattering</h1>
+                <p class="article-subtitle">Rendering Volumetric God Rays Without Ray Marching</p>
+                <div class="card-tags" style="margin-top: var(--space-sm);"><span class="card-tag">volumetric</span><span class="card-tag">atmosphere</span><span class="card-tag">glsl</span><span class="card-tag">post-processing</span><span class="card-tag">lighting</span></div>
+            </header>
+
+            <div class="article-content">
+                <p class="article-section section-intro">Volumetric lighting creates that ethereal quality where light seems to fill the air itself - think fog-pierced headlights or sunbeams through cathedral windows. Traditional approaches ray-march through 3D volumes, but for real-time applications with multiple dynamic lights, we need something faster. This technique renders atmospheric scattering entirely in screen-space, achieving rich volumetric effects at a fraction of the cost.</p>
+<figure class="article-section section-svg-diagram" data-diagram-id="volumetric-overview">
+                <div class="svg-container" style="max-width: 700px;">
+                    <div class="svg-placeholder" data-width="700" data-height="220">
+                        <noscript>Diagram: Screen-Space vs Ray-Marched Volumetric Light</noscript>
+                    </div>
+                </div>
+                <figcaption>Screen-Space vs Ray-Marched Volumetric Light</figcaption>
+            </figure>
+<h2 class="article-section section-heading">The Core Concept</h2>
+<p class="article-section section-paragraph">Instead of marching rays through a 3D volume, we project each light source to screen space and compute a radial falloff function. The key insight is that atmospheric scattering from a point light approximates a radial gradient centered on the light&#39;s screen position - we just need to make it physically plausible with proper falloff, perspective correction, and noise modulation.</p>
+<figure class="article-section section-svg-diagram" data-diagram-id="radial-falloff-diagram">
+                <div class="svg-container" style="max-width: 600px;">
+                    <div class="svg-placeholder" data-width="600" data-height="250">
+                        <noscript>Diagram: Radial Falloff from Screen-Space Light Position</noscript>
+                    </div>
+                </div>
+                <figcaption>Radial Falloff from Screen-Space Light Position</figcaption>
+            </figure>
+<h2 class="article-section section-heading">World-to-Screen Projection</h2>
+<p class="article-section section-paragraph">First, we need to transform world-space light positions to screen coordinates. This happens on the CPU and is passed as uniforms. We also compute visibility - lights behind the camera should contribute nothing, and lights near screen edges should fade smoothly to avoid harsh cutoffs.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Light Screen Position and Visibility Setup</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// Screen-space light positions (camera-transformed, <span class="keyword">in</span> pixels)</span>
+<span class="keyword">uniform</span> <span class="keyword">vec2</span> uLight0Screen;
+<span class="keyword">uniform</span> <span class="keyword">vec2</span> uLight1Screen;
+<span class="keyword">uniform</span> <span class="keyword">vec2</span> uLight2Screen;
+
+<span class="comment">// Light visibility (<span class="number">0.0</span> = behind camera, <span class="number">1.0</span> = visible)</span>
+<span class="keyword">uniform</span> <span class="keyword">float</span> uLight0Visible;
+<span class="keyword">uniform</span> <span class="keyword">float</span> uLight1Visible;
+<span class="keyword">uniform</span> <span class="keyword">float</span> uLight2Visible;
+
+<span class="comment">// World positions <span class="keyword">for</span> perspective correction</span>
+<span class="keyword">uniform</span> <span class="keyword">vec3</span> uLight0WorldPos;
+<span class="keyword">uniform</span> <span class="keyword">vec3</span> uLight1WorldPos;
+<span class="keyword">uniform</span> <span class="keyword">vec3</span> uLight2WorldPos;
+
+<span class="comment">// Camera state</span>
+<span class="keyword">uniform</span> <span class="keyword">vec3</span> uCameraPos;
+<span class="keyword">uniform</span> <span class="keyword">float</span> uCameraRotX;  <span class="comment">// Pitch</span>
+<span class="keyword">uniform</span> <span class="keyword">float</span> uCameraRotY;  <span class="comment">// Yaw</span></pre></div>
+            </div>
+<h2 class="article-section section-heading">Edge Fade for Off-Screen Lights</h2>
+<p class="article-section section-paragraph">Lights near or beyond screen edges need smooth fade-out to prevent jarring transitions when rotating the camera. We compute separate X and Y fade factors that smoothly reduce intensity as the light moves off-screen.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Smooth Edge Fade Implementation</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// Convert screen pixels to normalized UV</span>
+<span class="keyword">vec2</span> lightUV = lightScreenPos / uResolution;
+lightUV.y = <span class="number">1.0</span> - lightUV.y;  <span class="comment">// Flip Y <span class="keyword">for</span> GL convention</span>
+
+<span class="comment">// Edge fade - smoothly reduce intensity off-screen</span>
+<span class="comment">// The <span class="number">1.5</span> factor allows glow to extend slightly beyond edges</span>
+<span class="keyword">float</span> edgeFadeX = <span class="number">1.0</span> - <span class="function">smoothstep</span>(<span class="number">0.0</span>, <span class="number">1.5</span>, <span class="function">abs</span>(lightUV.x - <span class="number">0.5</span>) - <span class="number">0.5</span>);
+<span class="keyword">float</span> edgeFadeY = <span class="number">1.0</span> - <span class="function">smoothstep</span>(<span class="number">0.0</span>, <span class="number">1.5</span>, <span class="function">abs</span>(lightUV.y - <span class="number">0.5</span>) - <span class="number">0.5</span>);
+<span class="keyword">float</span> edgeFade = edgeFadeX * edgeFadeY;
+
+<span class="comment">// Early <span class="keyword">out</span> <span class="keyword">for</span> lights too far off-screen</span>
+<span class="keyword">if</span> (edgeFade &lt; <span class="number">0.01</span>) <span class="keyword">return</span> <span class="keyword">vec3</span>(<span class="number">0.0</span>);</pre></div>
+            </div>
+<figure class="article-section section-svg-diagram" data-diagram-id="edge-fade-visualization">
+                <div class="svg-container" style="max-width: 500px;">
+                    <div class="svg-placeholder" data-width="500" data-height="280">
+                        <noscript>Diagram: Edge Fade Zones</noscript>
+                    </div>
+                </div>
+                <figcaption>Edge Fade Zones</figcaption>
+            </figure>
+<h2 class="article-section section-heading">Perspective-Correct Distance</h2>
+<p class="article-section section-paragraph">A naive screen-space distance calculation would make lights appear to grow as you move away from them - the opposite of reality. We correct for perspective by scaling the screen distance based on the camera-to-light depth, normalized against a reference viewing distance.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Perspective Correction for Light Falloff</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// Aspect-corrected distance <span class="keyword">in</span> screen space</span>
+<span class="keyword">vec2</span> delta = uv - lightUV;
+delta.x *= uResolution.x / uResolution.y;  <span class="comment">// Correct <span class="keyword">for</span> aspect ratio</span>
+<span class="keyword">float</span> screenDist = <span class="function">length</span>(delta);
+
+<span class="comment">// Compute camera-to-light distance <span class="keyword">for</span> perspective correction</span>
+<span class="keyword">float</span> lightDepth = <span class="function">length</span>(lightWorldPos - uCameraPos);
+
+<span class="comment">// Normalize against reference <span class="function">distance</span>(typical viewing distance)</span>
+<span class="keyword">float</span> referenceDepth = <span class="number">1.0</span>;
+<span class="keyword">float</span> perspectiveScale = <span class="function">max</span>(lightDepth, <span class="number">0.1</span>) / referenceDepth;
+
+<span class="comment">// Scale screen distance by depth ratio</span>
+<span class="comment">// Farther away: perspectiveScale &gt; <span class="number">1.0</span>, shrinks apparent radius</span>
+<span class="comment">// Closer: perspectiveScale &lt; <span class="number">1.0</span>, grows apparent radius</span>
+<span class="keyword">float</span> dist = screenDist * perspectiveScale;</pre></div>
+            </div>
+<figure class="article-section section-svg-diagram" data-diagram-id="perspective-correction">
+                <div class="svg-container" style="max-width: 650px;">
+                    <div class="svg-placeholder" data-width="650" data-height="240">
+                        <noscript>Diagram: Perspective Correction Effect</noscript>
+                    </div>
+                </div>
+                <figcaption>Perspective Correction Effect</figcaption>
+            </figure>
+<h2 class="article-section section-heading">Physically-Based Falloff</h2>
+<p class="article-section section-paragraph">Light intensity follows an inverse-power law: I = 1 / (1 + d^n). Using n=2 gives classic inverse-square falloff. The &#39;1 +&#39; in the denominator prevents division by zero at the light center and controls the core brightness.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Inverse-Power Falloff</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// Parameters</span>
+<span class="keyword">uniform</span> <span class="keyword">float</span> uVolumetricIntensity;  <span class="comment">// Overall brightness (default <span class="number">1.0</span>)</span>
+<span class="keyword">uniform</span> <span class="keyword">float</span> uVolumetricFalloff;    <span class="comment">// Falloff exponent (default <span class="number">2.0</span>)</span>
+<span class="keyword">uniform</span> <span class="keyword">float</span> uVolumetricScale;      <span class="comment">// Distance scale (default <span class="number">3.0</span>)</span>
+
+<span class="comment">// Base light falloff (inverse-power law)</span>
+<span class="comment">// I = <span class="number">1</span> / (<span class="number">1</span> + (d * scale)^falloff)</span>
+<span class="keyword">float</span> light = <span class="number">1.0</span> / (<span class="number">1.0</span> + <span class="function">pow</span>(dist * uVolumetricScale, uVolumetricFalloff));
+
+<span class="comment">// Apply intensity multiplier</span>
+light *= uVolumetricIntensity * lightIntensity;</pre></div>
+            </div>
+<aside class="article-section section-callout tip">
+                <p>Falloff exponent of 2.0 matches real-world physics (inverse-square law). Values below 2.0 create softer, more diffuse glow. Values above 2.0 create tighter, more focused light cones.</p>
+            </aside>
+<h2 class="article-section section-heading">Animated Volumetric Noise</h2>
+<p class="article-section section-paragraph">Real atmospheric scattering isn&#39;t uniform - dust particles, moisture, and air currents create variation. We sample 3D noise using a skybox ray direction, giving us view-dependent patterns that feel volumetric rather than screen-aligned. Time-based animation adds subtle motion.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Skybox Direction for 3D Noise Sampling</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="keyword">vec3</span> getSkyboxDirection(<span class="keyword">vec2</span> screenPos) {
+    <span class="keyword">float</span> fov = <span class="number">0.8</span>;
+    <span class="keyword">vec3</span> rayDir = <span class="function">normalize</span>(<span class="keyword">vec3</span>(screenPos.x * fov, screenPos.y * fov, <span class="number">1.0</span>));
+
+    <span class="comment">// Apply camera rotation</span>
+    <span class="keyword">float</span> cosRotX = <span class="function">cos</span>(uCameraRotX);
+    <span class="keyword">float</span> sinRotX = <span class="function">sin</span>(uCameraRotX);
+    <span class="keyword">float</span> cosRotY = <span class="function">cos</span>(uCameraRotY);
+    <span class="keyword">float</span> sinRotY = <span class="function">sin</span>(uCameraRotY);
+
+    <span class="comment">// Rotate around X axis (pitch)</span>
+    <span class="keyword">float</span> ry = rayDir.y * cosRotX - rayDir.z * sinRotX;
+    <span class="keyword">float</span> rz = rayDir.y * sinRotX + rayDir.z * cosRotX;
+    rayDir.y = ry;
+    rayDir.z = rz;
+
+    <span class="comment">// Rotate around Y axis (yaw)</span>
+    <span class="keyword">float</span> rx = rayDir.x * cosRotY + rayDir.z * sinRotY;
+    rz = -rayDir.x * sinRotY + rayDir.z * cosRotY;
+    rayDir.x = rx;
+    rayDir.z = rz;
+
+    <span class="keyword">return</span> rayDir;
+}</pre></div>
+            </div>
+<figure class="article-section section-svg-diagram" data-diagram-id="noise-sampling-diagram">
+                <div class="svg-container" style="max-width: 600px;">
+                    <div class="svg-placeholder" data-width="600" data-height="260">
+                        <noscript>Diagram: 3D Noise Sampling via Skybox Direction</noscript>
+                    </div>
+                </div>
+                <figcaption>3D Noise Sampling via Skybox Direction</figcaption>
+            </figure>
+<h2 class="article-section section-heading">FBM Noise with Controllable Octaves</h2>
+<p class="article-section section-paragraph">We use Fractional Brownian Motion (FBM) to layer multiple noise frequencies. A controllable octave parameter lets us balance detail versus performance - fewer octaves for mobile, more for desktop.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">FBM with Runtime Octave Control</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="keyword">uniform</span> <span class="keyword">float</span> uVolumetricNoiseOctaves;  <span class="comment">// <span class="number">0</span>-<span class="number">1</span>, blends octaves</span>
+
+<span class="keyword">float</span> volumetricFBM(<span class="keyword">vec3</span> p) {
+    <span class="keyword">float</span> totalAmp = <span class="number">0.5</span>;
+    <span class="keyword">float</span> v = volumetricNoise3D(p) * <span class="number">0.5</span>;  <span class="comment">// Base octave</span>
+
+    <span class="comment">// Second octave (enabled when octaves &gt; <span class="number">0</span>)</span>
+    <span class="keyword">float</span> oct2 = <span class="function">clamp</span>(uVolumetricNoiseOctaves * <span class="number">2.0</span>, <span class="number">0.0</span>, <span class="number">1.0</span>);
+    v += volumetricNoise3D(p * <span class="number">2.0</span>) * <span class="number">0.25</span> * oct2;
+    totalAmp += <span class="number">0.25</span> * oct2;
+
+    <span class="comment">// Third octave (enabled when octaves &gt; <span class="number">0.5</span>)</span>
+    <span class="keyword">float</span> oct3 = <span class="function">clamp</span>((uVolumetricNoiseOctaves - <span class="number">0.5</span>) * <span class="number">2.0</span>, <span class="number">0.0</span>, <span class="number">1.0</span>);
+    v += volumetricNoise3D(p * <span class="number">4.0</span>) * <span class="number">0.125</span> * oct3;
+    totalAmp += <span class="number">0.125</span> * oct3;
+
+    <span class="keyword">return</span> v / totalAmp;  <span class="comment">// Normalize</span>
+}
+
+<span class="keyword">float</span> sampleNoiseAt(<span class="keyword">vec3</span> worldPos, <span class="keyword">float</span> lightIndex) {
+    <span class="comment">// Offset by light index to decorrelate patterns</span>
+    <span class="comment">// Animate with time <span class="keyword">for</span> subtle motion</span>
+    <span class="keyword">vec3</span> pos = worldPos * uVolumetricNoiseScale 
+             + <span class="keyword">vec3</span>(<span class="number">0.0</span>, <span class="number">0.0</span>, lightIndex * <span class="number">50.0</span> + uTime * <span class="number">0.02</span>);
+    <span class="keyword">return</span> volumetricFBM(pos);
+}</pre></div>
+            </div>
+<figure class="article-section section-svg-diagram" data-diagram-id="fbm-octaves">
+                <div class="svg-container" style="max-width: 700px;">
+                    <div class="svg-placeholder" data-width="700" data-height="200">
+                        <noscript>Diagram: FBM Octave Blending</noscript>
+                    </div>
+                </div>
+                <figcaption>FBM Octave Blending</figcaption>
+            </figure>
+<h2 class="article-section section-heading">Wavelength-Dependent Scattering</h2>
+<p class="article-section section-paragraph">Real atmospheric scattering is wavelength-dependent - blue light scatters more than red (Rayleigh scattering). We expose per-channel scatter rates that let artists tune the color shift from warm centers to cool edges.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Per-Channel Scatter Rates</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// Scatter rates per channel (Rayleigh-inspired)</span>
+<span class="keyword">uniform</span> <span class="keyword">float</span> uVolumetricScatterR;  <span class="comment">// Red (default <span class="number">0.3</span>, less scatter)</span>
+<span class="keyword">uniform</span> <span class="keyword">float</span> uVolumetricScatterG;  <span class="comment">// Green (default <span class="number">0.5</span>)</span>
+<span class="keyword">uniform</span> <span class="keyword">float</span> uVolumetricScatterB;  <span class="comment">// Blue (default <span class="number">1.0</span>, more scatter)</span>
+<span class="keyword">uniform</span> <span class="keyword">float</span> uVolumetricSaturation; <span class="comment">// Color boost (default <span class="number">1.8</span>)</span>
+
+<span class="comment">// Saturate light color <span class="keyword">for</span> vivid appearance</span>
+<span class="keyword">float</span> luma = <span class="function">dot</span>(lightColor, <span class="keyword">vec3</span>(<span class="number">0.299</span>, <span class="number">0.587</span>, <span class="number">0.114</span>));
+<span class="keyword">vec3</span> saturatedColor = <span class="function">mix</span>(<span class="keyword">vec3</span>(luma), lightColor, uVolumetricSaturation);</pre></div>
+            </div>
+<aside class="article-section section-callout info">
+                <p>Rayleigh scattering intensity is proportional to 1/wavelength^4. Blue light (450nm) scatters about 5.5x more than red (700nm). Our simplified per-channel rates approximate this effect without the full physics simulation.</p>
+            </aside>
+<h2 class="article-section section-heading">Combining Multiple Lights</h2>
+<p class="article-section section-paragraph">Each light contributes independently, with its own screen position, color, intensity, and visibility. We sum contributions additively - physically correct for light transport.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Multi-Light Accumulation</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="keyword">vec3</span> volumetricLightContribution(<span class="keyword">vec2</span> uv, <span class="keyword">vec3</span> skyDir) {
+    <span class="keyword">vec3</span> result = <span class="keyword">vec3</span>(<span class="number">0.0</span>);
+    
+    <span class="comment">// Each light adds independently</span>
+    result += volumetricLight(uv, uLight0Screen, uLightColor0, <span class="number">0.0</span>, 
+                              skyDir, uLight0Intensity, uLight0Visible, 
+                              uLight0WorldPos);
+    
+    result += volumetricLight(uv, uLight1Screen, uLightColor1, <span class="number">1.0</span>, 
+                              skyDir, uLight1Intensity, uLight1Visible, 
+                              uLight1WorldPos);
+    
+    result += volumetricLight(uv, uLight2Screen, uLightColor2, <span class="number">2.0</span>, 
+                              skyDir, uLight2Intensity, uLight2Visible, 
+                              uLight2WorldPos);
+    
+    <span class="keyword">return</span> result;
+}</pre></div>
+            </div>
+<figure class="article-section section-svg-diagram" data-diagram-id="multi-light-blend">
+                <div class="svg-container" style="max-width: 650px;">
+                    <div class="svg-placeholder" data-width="650" data-height="220">
+                        <noscript>Diagram: Additive Multi-Light Blending</noscript>
+                    </div>
+                </div>
+                <figcaption>Additive Multi-Light Blending</figcaption>
+            </figure>
+<h2 class="article-section section-heading">Final Compositing</h2>
+<p class="article-section section-paragraph">The final pass applies vignette for subtle edge darkening, soft tone mapping to prevent blowout, and ensures we never go darker than the background color.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Final Compositing Pass</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="keyword">void</span> <span class="function">main</span>() {
+    <span class="keyword">vec2</span> uv = vUV;
+    <span class="keyword">vec2</span> screenPos = (uv - <span class="number">0.5</span>) * <span class="number">2.0</span>;
+    screenPos.x *= uResolution.x / uResolution.y;  <span class="comment">// Aspect correction</span>
+
+    <span class="comment">// Get view direction <span class="keyword">for</span> noise sampling</span>
+    <span class="keyword">vec3</span> skyDir = getSkyboxDirection(screenPos);
+
+    <span class="comment">// Accumulate volumetric contribution</span>
+    <span class="keyword">vec3</span> finalColor = volumetricLightContribution(uv, skyDir);
+
+    <span class="comment">// Vignette (subtle edge darkening)</span>
+    <span class="keyword">float</span> vignette = <span class="number">1.0</span> - <span class="function">length</span>(uv - <span class="number">0.5</span>) * uVignetteStrength;
+    finalColor *= vignette;
+
+    <span class="comment">// Soft Reinhard tone mapping</span>
+    finalColor = finalColor / (finalColor + <span class="keyword">vec3</span>(<span class="number">0.6</span>));
+
+    <span class="comment">// Never go darker than background</span>
+    <span class="keyword">vec3</span> bgColor = <span class="keyword">vec3</span>(<span class="number">0.039</span>, <span class="number">0.059</span>, <span class="number">0.078</span>);  <span class="comment">// #0a0f14</span>
+    finalColor = <span class="function">max</span>(finalColor, bgColor);
+
+    <span class="keyword">gl_FragColor</span> = <span class="keyword">vec4</span>(finalColor, <span class="number">1.0</span>);
+}</pre></div>
+            </div>
+<h2 class="article-section section-heading">Performance Considerations</h2>
+<ul class="article-section section-list"><li>Single full-screen pass: O(pixels) complexity, independent of light count for small N</li>
+<li>Early-out for invisible lights: Skip entire contribution when behind camera or off-screen</li>
+<li>Distance fade: Avoid computing noise for pixels far from any light</li>
+<li>Octave scaling: Reduce noise octaves on mobile (0.3) vs desktop (0.5-0.7)</li>
+<li>Resolution scaling: Can render at 1/2 or 1/4 resolution and upsample with bilinear</li></ul>
+<aside class="article-section section-callout warning">
+                <p>The noise functions dominate performance. On mobile, consider reducing uVolumetricNoiseOctaves to 0.3 or disabling noise entirely by setting uVolumetricNoiseStrength to 0.0. The effect still looks good with just the smooth radial falloff.</p>
+            </aside>
+<h2 class="article-section section-heading">Tunable Parameters</h2>
+<p class="article-section section-paragraph">The shader exposes many parameters for artistic control. Here are recommended starting values and their effects:</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Recommended Parameter Values</span>
+                    <span class="code-language">javascript</span>
+                </div>
+                <div class="code-content"><pre>volumetricParams = {
+    intensity: <span class="number">1.0</span>,        <span class="comment">// Overall brightness</span>
+    falloff: <span class="number">2.0</span>,          <span class="comment">// Inverse-square (physical)</span>
+    scale: <span class="number">3.0</span>,            <span class="comment">// Controls spread radius</span>
+    saturation: <span class="number">1.8</span>,       <span class="comment">// Color vividness</span>
+    noiseScale: <span class="number">4.0</span>,       <span class="comment">// Noise frequency</span>
+    noiseStrength: <span class="number">0.12</span>,   <span class="comment">// Noise displacement amount</span>
+    noiseOctaves: <span class="number">0.5</span>,     <span class="comment">// Detail level (<span class="number">0</span>-<span class="number">1</span>)</span>
+    scatterR: <span class="number">0.3</span>,         <span class="comment">// Red scatter (low)</span>
+    scatterG: <span class="number">0.5</span>,         <span class="comment">// Green scatter (medium)</span>
+    scatterB: <span class="number">1.0</span>,         <span class="comment">// Blue scatter (high)</span>
+    vignetteStrength: <span class="number">0.3</span>  <span class="comment">// Edge darkening</span>
+};</pre></div>
+            </div>
+            </div>
+        </article>
+
+        <!-- CTA Banner -->
+        <div class="article-cta-banner">
+            <h2 class="cta-banner-title">Want to see more?</h2>
+            <p class="cta-banner-subtitle">Check out my interactive portfolio with live shader demos</p>
+            <div class="cta-banner-buttons">
+                <a href="../../?tab=contact" class="cta-banner-btn primary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22,6 12,13 2,6"/>
+                    </svg>
+                    Get in Touch
+                </a>
+                <a href="../../?tab=skills" class="cta-banner-btn secondary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                    Live Demos
+                </a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="static-footer">
+            <div class="footer-author">
+                <span class="footer-author-name">Charles Grassi</span>
+                <span class="footer-author-title">Graphics Programmer & Technical Artist</span>
+            </div>
+            <div class="footer-links">
+                <a href="../../" class="footer-link">Portfolio</a>
+                <a href="../../blog/" class="footer-link">Blog</a>
+                <a href="https://twitter.com/charles_grassi" class="footer-link" target="_blank" rel="noopener">Twitter</a>
+                <a href="https://www.linkedin.com/in/charles-grassi/" class="footer-link" target="_blank" rel="noopener">LinkedIn</a>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Optional: Load JS for interactive diagrams/demos -->
+    <script src="../../js/blog-diagrams.js" defer></script>
+    <script>
+        // Initialize SVG diagrams if blog-diagrams.js is available
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof window.blogSvgDiagrams !== 'undefined') {
+                var diagrams = document.querySelectorAll('.section-svg-diagram');
+                diagrams.forEach(function(container) {
+                    var id = container.getAttribute('data-diagram-id');
+                    var placeholder = container.querySelector('.svg-placeholder');
+                    if (placeholder && window.blogSvgDiagrams[id]) {
+                        var w = parseInt(placeholder.getAttribute('data-width')) || 600;
+                        var h = parseInt(placeholder.getAttribute('data-height')) || 200;
+                        var svgContainer = container.querySelector('.svg-container');
+                        svgContainer.innerHTML = '';
+                        try {
+                            window.blogSvgDiagrams[id](svgContainer, w, h);
+                        } catch (e) {
+                            console.error('Diagram error:', id, e);
+                        }
+                    }
+                });
+            }
+
+            // Initialize shader demos
+            var demos = document.querySelectorAll('.section-shader-demo');
+            demos.forEach(function(container) {
+                var canvas = container.querySelector('.shader-canvas');
+                var loadingEl = container.querySelector('.shader-loading');
+                var configStr = container.getAttribute('data-shader-config');
+
+                if (!canvas || !configStr) return;
+
+                try {
+                    var config = JSON.parse(configStr);
+                    initShaderDemo(canvas, config, container, loadingEl);
+                } catch (e) {
+                    if (loadingEl) {
+                        loadingEl.textContent = 'Shader error: ' + e.message;
+                        loadingEl.classList.add('error');
+                    }
+                }
+            });
+        });
+
+        function initShaderDemo(canvas, config, container, loadingEl) {
+            var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (!gl) throw new Error('WebGL not supported');
+
+            var vertShader = gl.createShader(gl.VERTEX_SHADER);
+            gl.shaderSource(vertShader, config.vertexShader);
+            gl.compileShader(vertShader);
+            if (!gl.getShaderParameter(vertShader, gl.COMPILE_STATUS)) {
+                throw new Error(gl.getShaderInfoLog(vertShader));
+            }
+
+            var fragShader = gl.createShader(gl.FRAGMENT_SHADER);
+            gl.shaderSource(fragShader, config.fragmentShader);
+            gl.compileShader(fragShader);
+            if (!gl.getShaderParameter(fragShader, gl.COMPILE_STATUS)) {
+                throw new Error(gl.getShaderInfoLog(fragShader));
+            }
+
+            var program = gl.createProgram();
+            gl.attachShader(program, vertShader);
+            gl.attachShader(program, fragShader);
+            gl.linkProgram(program);
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                throw new Error(gl.getProgramInfoLog(program));
+            }
+
+            gl.useProgram(program);
+
+            var posBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1
+            ]), gl.STATIC_DRAW);
+
+            var posLoc = gl.getAttribLocation(program, 'a_position');
+            gl.enableVertexAttribArray(posLoc);
+            gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+            var uniformLocs = {};
+            var uniformValues = {};
+            for (var name in config.uniforms) {
+                uniformLocs[name] = gl.getUniformLocation(program, name);
+                uniformValues[name] = config.uniforms[name].value;
+            }
+
+            // Setup controls
+            var controls = container.querySelectorAll('input[type="range"]');
+            controls.forEach(function(input) {
+                var uniformName = input.getAttribute('data-uniform');
+                var valueDisplay = input.parentElement.querySelector('.control-value');
+                input.addEventListener('input', function() {
+                    uniformValues[uniformName] = parseFloat(input.value);
+                    if (valueDisplay) valueDisplay.textContent = parseFloat(input.value).toFixed(2);
+                });
+            });
+
+            var startTime = performance.now();
+
+            function render() {
+                var elapsed = (performance.now() - startTime) / 1000;
+                gl.viewport(0, 0, canvas.width, canvas.height);
+                gl.clearColor(0.04, 0.06, 0.08, 1.0);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                gl.useProgram(program);
+
+                for (var name in uniformLocs) {
+                    var loc = uniformLocs[name];
+                    if (!loc) continue;
+                    if (name === 'u_time') gl.uniform1f(loc, elapsed);
+                    else if (name === 'u_resolution') gl.uniform2f(loc, canvas.width, canvas.height);
+                    else {
+                        var val = uniformValues[name];
+                        if (typeof val === 'number') gl.uniform1f(loc, val);
+                        else if (Array.isArray(val) && val.length === 2) gl.uniform2f(loc, val[0], val[1]);
+                        else if (Array.isArray(val) && val.length === 3) gl.uniform3f(loc, val[0], val[1], val[2]);
+                    }
+                }
+
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+                requestAnimationFrame(render);
+            }
+
+            if (loadingEl) loadingEl.style.display = 'none';
+            render();
+        }
+    </script>
+</body>
+</html>

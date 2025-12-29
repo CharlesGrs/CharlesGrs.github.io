@@ -138,7 +138,49 @@ Highlighted boxes for tips, warnings, or important information.
 - `warning` (amber): Common pitfalls, gotchas
 - `info` (blue): Additional context, related concepts
 
-### 8. SVG Diagram Section (CRITICAL)
+### 8. Shader Demo Section
+Interactive WebGL shader demos with real-time parameter controls. Shader code is stored directly in the JSON.
+
+```json
+{
+    "type": "shader-demo",
+    "id": "unique-demo-id",
+    "title": "Demo Caption",
+    "width": 700,
+    "height": 400,
+    "vertexShader": "attribute vec2 a_position;\nvarying vec2 v_texCoord;\nvoid main() {\n    v_texCoord = a_position * 0.5 + 0.5;\n    gl_Position = vec4(a_position, 0.0, 1.0);\n}",
+    "fragmentShader": "precision highp float;\nvarying vec2 v_texCoord;\nuniform float u_time;\nuniform float u_param1;\n\nvoid main() {\n    vec2 uv = v_texCoord;\n    // Your shader code here\n    gl_FragColor = vec4(uv, 0.5, 1.0);\n}",
+    "uniforms": {
+        "u_time": { "type": "float", "value": 0.0 },
+        "u_param1": { "type": "float", "value": 0.5 },
+        "u_resolution": { "type": "vec2", "value": [700, 400] }
+    },
+    "controls": [
+        {
+            "uniform": "u_param1",
+            "label": "Parameter Name",
+            "min": 0,
+            "max": 1,
+            "step": 0.01,
+            "default": 0.5
+        }
+    ]
+}
+```
+
+**Key Points**:
+- `vertexShader`: GLSL vertex shader code with `\n` for newlines
+- `fragmentShader`: GLSL fragment shader code with `\n` for newlines
+- `uniforms`: Define uniform variables (u_time is auto-updated for animation)
+- `controls`: Optional sliders that modify uniforms in real-time
+- Built-in uniforms: `u_time` (auto), `u_resolution` (canvas size)
+
+**Shader Tips**:
+- Use `precision highp float;` for WebGL compatibility
+- Keep shaders simple for performance (runs every frame)
+- Use the teal/gold color palette for consistency with site theme
+
+### 9. SVG Diagram Section
 Animated technical diagrams generated via JavaScript.
 
 ```json
@@ -151,13 +193,14 @@ Animated technical diagrams generated via JavaScript.
 }
 ```
 
-**IMPORTANT**: Each SVG diagram requires a corresponding generator function in `js/blog.js` inside the `svgDiagrams` object.
+**IMPORTANT**: Each SVG diagram requires a corresponding generator function in `js/blog-diagrams.js` inside the `blogSvgDiagrams` object (exposed as `window.blogSvgDiagrams`).
 
 ## Creating SVG Diagram Generators
 
-For each `svg-diagram` section, add a generator function to `js/blog.js`:
+For each `svg-diagram` section, add a generator function to `js/blog-diagrams.js`:
 
 ```javascript
+// Inside the IIFE in blog-diagrams.js
 var svgDiagrams = {
     // ... existing diagrams ...
 
@@ -175,12 +218,24 @@ var svgDiagrams = {
         // - createArrow(x1, y1, x2, y2, color)
         // - createDoubleArrow(x1, y1, x2, y2, color)
 
+        // For complex shapes not covered by helpers, create custom functions:
+        // function createCustomShape(x, y, size) {
+        //     var el = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        //     el.setAttribute('d', 'M' + x + ',' + y + ' L...');
+        //     el.setAttribute('fill', 'none');
+        //     el.setAttribute('stroke', '#2dd4bf');
+        //     return el;
+        // }
+
         // Add SMIL animations inside elements:
         // element.innerHTML = '<animate attributeName="r" values="10;15;10" dur="2s" repeatCount="indefinite"/>';
 
         container.appendChild(svg);
     }
 };
+
+// Exposed globally at the end of the IIFE:
+window.blogSvgDiagrams = svgDiagrams;
 ```
 
 ### SVG Helper Functions Available
@@ -316,9 +371,83 @@ float kneeWidth = uSoftKnee * 0.5 + 0.1;
 
 2. **Register in index**: Add `"your-post-slug"` to `blog/index.json` posts array
 
-3. **Add SVG diagram generators**: Add functions to `svgDiagrams` object in `js/blog.js`
+3. **Add SVG diagram generators**: Add functions to `blogSvgDiagrams` object in `js/blog-diagrams.js`
 
-4. **Test locally**: Run `python -m http.server 8000` and verify at `http://localhost:8000`
+4. **Generate static HTML pages**: Run `node tools/build-blog.js` to generate SEO-friendly static pages
+
+5. **Test locally**: Run `python -m http.server 8000` and verify at `http://localhost:8000`
+
+6. **Generate LinkedIn version** (optional): Run `node tools/blog-to-linkedin.js your-post-slug` to create LinkedIn article with auto-generated diagram screenshots
+
+## Static HTML Generation (SEO)
+
+The blog uses a hybrid approach for SEO:
+- **JSON files** store the content (easy to edit)
+- **Static HTML pages** are generated for search engines and social sharing
+- **JS-rendered version** provides the interactive portfolio experience
+
+### Generated Files
+
+Running `node tools/build-blog.js` creates:
+- `/blog/index.html` - Blog listing page
+- `/blog/{post-id}/index.html` - Individual post pages
+
+### URLs
+
+| URL | Description |
+|-----|-------------|
+| `charlesgrs.github.io/blog/` | Static blog index |
+| `charlesgrs.github.io/blog/post-slug/` | Static post page (SEO-friendly) |
+| `charlesgrs.github.io/?post=post-slug` | Portfolio with post auto-opened (deep link) |
+
+### Static Page Features
+
+Each generated post page includes:
+- Full Open Graph meta tags (og:title, og:description, og:image)
+- Twitter Card meta tags
+- JSON-LD structured data (TechArticle schema)
+- Canonical URLs
+- "View in Portfolio" link that deep-links to `/?post=post-slug`
+- Same styling as portfolio blog (uses css/blog.css)
+- Embedded JS for shader demos and SVG diagrams
+
+### Deep Linking
+
+The portfolio supports opening a specific blog post via URL parameter:
+```
+https://charlesgrs.github.io/?post=screen-space-atmospheric-scattering
+```
+
+This automatically:
+1. Switches to the Blog tab
+2. Opens the specified post
+
+Static pages link to this URL via the "View in Portfolio" button.
+
+### Build Workflow
+
+After creating or editing a post:
+```bash
+# Generate/regenerate all static HTML pages
+node tools/build-blog.js
+
+# Commit everything
+git add .
+git commit -m "Add new blog post: Post Title"
+git push
+```
+
+### Social Sharing
+
+With static HTML pages, sharing a post URL on Twitter/LinkedIn/Facebook will show:
+- Post title
+- Post excerpt/description
+- Thumbnail image (from `blog/images/`)
+
+Test your OG tags at:
+- Twitter: https://cards-dev.twitter.com/validator
+- LinkedIn: https://www.linkedin.com/post-inspector/
+- Facebook: https://developers.facebook.com/tools/debug/
 
 ## Example: Complete Post Structure
 

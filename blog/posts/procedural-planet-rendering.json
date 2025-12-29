@@ -1,0 +1,350 @@
+{
+    "id": "procedural-planet-rendering",
+    "title": "Procedural Planet Rendering with PBR",
+    "subtitle": "Building Realistic Planets with Cook-Torrance BRDF, FBM Terrain, and Atmospheric Scattering",
+    "date": "2025-12-29",
+    "category": "rendering",
+    "tags": ["pbr", "procedural", "glsl", "atmosphere", "terrain", "lighting"],
+    "readTime": "18 min",
+    "featured": true,
+    "thumbnail": null,
+    "excerpt": "A deep dive into rendering procedurally-generated planets with physically-based materials, multi-octave terrain noise, subsurface scattering, and real-time atmospheric effects.",
+    "sections": [
+        {
+            "type": "intro",
+            "content": "Rendering convincing planets in real-time requires balancing physical accuracy with performance. This implementation combines Cook-Torrance PBR for realistic surface lighting, FBM noise for procedural terrain, Rayleigh-inspired atmospheric scattering, and subsurface scattering for translucent materials like water and lava. The result is planets that respond naturally to multiple dynamic light sources while maintaining high frame rates."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "planet-pipeline-overview",
+            "title": "Planet Rendering Pipeline",
+            "width": 700,
+            "height": 200
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Sphere Reconstruction from Screen Space"
+        },
+        {
+            "type": "paragraph",
+            "content": "Rather than rendering a 3D sphere mesh, we draw billboards (camera-facing quads) and reconstruct the sphere mathematically in the fragment shader. This approach avoids tessellation artifacts and provides perfect silhouettes at any zoom level. Given a point on the quad, we calculate whether it lies within the sphere's projected radius, then derive the surface normal from the implicit sphere equation."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Sphere Reconstruction from Billboard UV",
+            "content": "// vUV is the quad coordinate relative to center [-1, 1]\nfloat d = length(vUV);\nfloat planetRadius = 0.6;  // Normalized sphere radius on quad\n\n// Calculate Z coordinate on sphere surface\nfloat rotZSq = planetRadius * planetRadius - d * d;\nfloat rotZ = rotZSq > 0.0 ? sqrt(rotZSq) : 0.0;\n\n// 3D position on sphere\nvec3 spherePos = vec3(vUV, rotZ);\n\n// Derive surface normal (points outward from sphere center)\nvec3 baseN = d < planetRadius \n    ? normalize(vec3(vUV, sqrt(planetRadius * planetRadius - d * d)))\n    : vec3(0.0, 0.0, 1.0);\n\n// Mask for planet surface vs atmosphere\nfloat planetMask = 1.0 - smoothstep(planetRadius - 0.003, planetRadius + 0.001, d);"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "sphere-reconstruction",
+            "title": "Sphere Reconstruction from Billboard",
+            "width": 600,
+            "height": 280
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Planet Rotation with Rodrigues Formula"
+        },
+        {
+            "type": "paragraph",
+            "content": "Each planet rotates around a unique axis derived from its index. We use Rodrigues' rotation formula to rotate the sphere position, giving each planet a distinct spin direction and speed. This rotation affects where terrain features appear and how they move over time."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Rodrigues Rotation Formula",
+            "content": "// Generate unique rotation axis per planet from index\nfloat axisSeed = vIndex * 1.618033988749;  // Golden ratio for distribution\nvec3 rotAxis = normalize(vec3(\n    sin(axisSeed * 2.3 + 0.5),\n    cos(axisSeed * 3.7 + 1.2),\n    sin(axisSeed * 1.9 + 2.8)\n));\n\n// Rotation speed varies per planet\nfloat rotSpeed = 0.03 + 0.05 * fract(axisSeed * 7.3);\nfloat rotAngle = uTime * rotSpeed;\n\n// Rodrigues' rotation formula: efficient axis-angle rotation\n// v_rot = v*cos(a) + (k x v)*sin(a) + k*(k.v)*(1-cos(a))\nfloat cosA = cos(rotAngle);\nfloat sinA = sin(rotAngle);\nvec3 rotatedPos = spherePos * cosA\n                + cross(rotAxis, spherePos) * sinA\n                + rotAxis * dot(rotAxis, spherePos) * (1.0 - cosA);"
+        },
+        {
+            "type": "callout",
+            "variant": "info",
+            "content": "Rodrigues' formula rotates a vector around an arbitrary axis using only the axis vector and angle - no matrix construction needed. It's computationally cheaper than building a 3x3 rotation matrix when you only need to rotate a few vectors."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Procedural Terrain with FBM Noise"
+        },
+        {
+            "type": "paragraph",
+            "content": "Terrain is generated using Fractional Brownian Motion (FBM) - layered simplex noise with decreasing amplitude and increasing frequency per octave. We sample 5 octaves, with each octave adding finer detail. The noise is evaluated in 3D space using the rotated sphere position, creating seamless terrain that wraps around the planet."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "5-Octave FBM Terrain Height",
+            "content": "float terrainHeight(vec3 pos, float scale) {\n    float height = 0.0;\n    float amplitude = 0.5;\n    float frequency = scale;  // uNoiseScale uniform\n\n    // 5 octaves of simplex noise\n    height += snoise3D(pos * frequency) * amplitude;\n    frequency *= 2.0; amplitude *= 0.5;\n    height += snoise3D(pos * frequency) * amplitude;\n    frequency *= 2.0; amplitude *= 0.5;\n    height += snoise3D(pos * frequency) * amplitude;\n    frequency *= 2.0; amplitude *= 0.5;\n    height += snoise3D(pos * frequency) * amplitude;\n    frequency *= 2.0; amplitude *= 0.5;\n    height += snoise3D(pos * frequency) * amplitude;\n\n    return height;  // Range approximately [-1, 1]\n}\n\n// Sample terrain at rotated position\n// Offset by planet index for unique terrain per planet\nvec3 planetOffset = vec3(vIndex * 10.0, vIndex * 7.3, vIndex * 5.1);\nvec3 terrainCoord = normalize(rotatedPos) + planetOffset;\nfloat heightC = terrainHeight(terrainCoord, uNoiseScale);"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "fbm-terrain-octaves",
+            "title": "FBM Octave Stacking for Terrain",
+            "width": 700,
+            "height": 180
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Normal Mapping from Height Field"
+        },
+        {
+            "type": "paragraph",
+            "content": "To create the illusion of terrain geometry without actually displacing vertices, we compute a perturbed normal from the height field. By sampling the terrain at small offsets along the surface tangent and bitangent, we calculate height gradients that translate to normal perturbation."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Terrain Normal from Height Gradient",
+            "content": "float eps = 0.02;  // Sample offset distance\n\n// Build tangent frame on sphere surface\nvec3 sphereUp = abs(rotatedPosNorm.y) < 0.999 \n    ? vec3(0.0, 1.0, 0.0) \n    : vec3(1.0, 0.0, 0.0);\nvec3 sphereTangent = normalize(cross(sphereUp, rotatedPosNorm));\nvec3 sphereBitangent = cross(rotatedPosNorm, sphereTangent);\n\n// Sample heights at tangent offsets\nfloat heightC = terrainHeight(terrainCoord, uNoiseScale);\nfloat heightX = terrainHeight(rotatedPosNorm + sphereTangent * eps + planetOffset, uNoiseScale);\nfloat heightY = terrainHeight(rotatedPosNorm + sphereBitangent * eps + planetOffset, uNoiseScale);\n\n// Convert height differences to normal perturbation\nfloat terrainGradX = -(heightX - heightC) / eps * uNormalStrength;\nfloat terrainGradY = -(heightY - heightC) / eps * uNormalStrength;\n\n// Perturb base normal using tangent frame\nvec3 N = normalize(baseN + tangent * terrainGradX + bitangent * terrainGradY);"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "normal-perturbation",
+            "title": "Normal Perturbation from Height Field",
+            "width": 650,
+            "height": 250
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Dual-Material System"
+        },
+        {
+            "type": "paragraph",
+            "content": "Each planet supports two materials blended by terrain height. Material A (below sea level) handles water, lava, or low-lying terrain. Material B (above sea level) handles land, rock, or elevated terrain. Each material has independent base color, roughness, and subsurface scattering properties."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Height-Based Material Blending",
+            "content": "// Material parameters (uniforms)\n// Material A: below sea level (water, lava, etc.)\nuniform vec3 uMatABaseColor;      // e.g., deep blue for ocean\nuniform float uMatARoughness;      // e.g., 0.1 for smooth water\nuniform vec3 uMatASSSColor;        // subsurface scatter color\nuniform float uMatASSSDistance;    // scatter depth\n\n// Material B: above sea level (land, rock, etc.)\nuniform vec3 uMatBBaseColor;      // e.g., green/brown for land\nuniform float uMatBRoughness;      // e.g., 0.7 for rough terrain\nuniform vec3 uMatBSSSColor;\nuniform float uMatBSSSDistance;\n\n// Smooth blend based on terrain height vs sea level\nfloat materialMask = smoothstep(uSeaLevel - 0.02, uSeaLevel + 0.02, heightC);\n\n// Interpolate all material properties\nvec3 baseColor = mix(uMatABaseColor, uMatBBaseColor, materialMask);\nfloat roughness = mix(uMatARoughness, uMatBRoughness, materialMask);\nvec3 sssColor = mix(uMatASSSColor, uMatBSSSColor, materialMask);\nfloat sssDistance = mix(uMatASSSDistance, uMatBSSSDistance, materialMask);"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "material-blend-diagram",
+            "title": "Dual Material Blending by Height",
+            "width": 600,
+            "height": 200
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Cook-Torrance PBR BRDF"
+        },
+        {
+            "type": "paragraph",
+            "content": "Surface lighting uses the Cook-Torrance microfacet BRDF, the industry standard for physically-based rendering. This model combines three components: the GGX normal distribution function (D), the Smith geometry function (G), and the Fresnel-Schlick approximation (F). Together they create realistic specular highlights that respond correctly to roughness and viewing angle."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "GGX Normal Distribution Function",
+            "content": "// GGX/Trowbridge-Reitz distribution\n// Models the statistical distribution of microfacet orientations\nfloat distributionGGX(float NdH, float roughness) {\n    float a = roughness * roughness;\n    float a2 = a * a;  // Disney's roughness remapping\n    float NdH2 = NdH * NdH;\n    \n    float denom = NdH2 * (a2 - 1.0) + 1.0;\n    return a2 / (PI * denom * denom);\n}\n\n// The GGX distribution has a long tail, creating\n// realistic highlight falloff vs Blinn-Phong"
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Smith Geometry Function",
+            "content": "// Schlick-GGX geometry term for a single direction\n// Accounts for microfacet self-shadowing\nfloat geometrySchlickGGX(float NdV, float roughness) {\n    float r = roughness + 1.0;\n    float k = (r * r) / 8.0;  // Remapping for direct lighting\n    return NdV / (NdV * (1.0 - k) + k);\n}\n\n// Smith's method: combine view and light shadowing\nfloat geometrySmith(float NdV, float NdL, float roughness) {\n    float ggx1 = geometrySchlickGGX(NdV, roughness);\n    float ggx2 = geometrySchlickGGX(NdL, roughness);\n    return ggx1 * ggx2;  // Joint masking-shadowing\n}"
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Fresnel-Schlick Approximation",
+            "content": "// Fresnel effect: reflectance increases at grazing angles\nvec3 fresnelSchlick(float cosTheta, vec3 F0) {\n    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);\n}\n\n// Roughness-aware Fresnel for IBL\nvec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {\n    return F0 + (max(vec3(1.0 - roughness), F0) - F0) \n              * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);\n}\n\n// F0 for dielectrics (non-metals): typically 0.04\nvec3 F0 = vec3(0.04);"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "cook-torrance-components",
+            "title": "Cook-Torrance BRDF Components",
+            "width": 700,
+            "height": 220
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "content": "Combining the BRDF"
+        },
+        {
+            "type": "paragraph",
+            "content": "The complete Cook-Torrance BRDF multiplies D, G, and F terms together, divided by a normalization factor. The result gives us a specular contribution that we add to a diffuse term weighted by how much light wasn't reflected (energy conservation)."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Complete Cook-Torrance BRDF",
+            "content": "vec4 cookTorranceBRDF(vec3 N, vec3 V, vec3 L, float roughness, vec3 F0) {\n    vec3 H = normalize(V + L);  // Half-vector\n    \n    // Dot products (clamped to avoid artifacts)\n    float NdV = max(dot(N, V), 0.001);\n    float NdL = max(dot(N, L), 0.0);\n    float NdH = max(dot(N, H), 0.0);\n    float HdV = max(dot(H, V), 0.0);\n\n    // BRDF terms\n    float D = distributionGGX(NdH, roughness);\n    float G = geometrySmith(NdV, NdL, roughness);\n    vec3 F = fresnelSchlick(HdV, F0);\n\n    // Cook-Torrance specular\n    vec3 numerator = D * G * F;\n    float denominator = 4.0 * NdV * NdL + 0.0001;  // Avoid div by zero\n    vec3 specular = numerator / denominator;\n\n    // Return specular term and average Fresnel for diffuse weighting\n    float avgF = (F.r + F.g + F.b) / 3.0;\n    return vec4(specular * NdL, avgF);\n}"
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Multi-Light Accumulation"
+        },
+        {
+            "type": "paragraph",
+            "content": "The shader supports 3 dynamic point lights plus an interactive mouse light. Each light contributes independently with its own color, intensity, and attenuation. We transform normals to world space to ensure correct lighting regardless of camera orientation."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "World-Space Lighting Setup",
+            "content": "// Transform normal to world space using camera basis\nvec3 cameraForward = vec3(sinRotY * cosRotX, -sinRotX, cosRotY * cosRotX);\nvec3 cameraRight = vec3(cosRotY, 0.0, -sinRotY);\nvec3 cameraUp = cross(cameraForward, cameraRight);\n\nvec3 N_world = normalize(cameraRight * N.x - cameraUp * N.y - cameraForward * N.z);\nvec3 V_world = -cameraForward;  // View direction\n\n// World position of this surface point\nfloat radiusWorld = vOriginalRadius * worldScale;\nvec3 surfaceWorldPos = planetWorldPos + N_world * radiusWorld;"
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Per-Light Contribution",
+            "content": "// Accumulate diffuse and specular from each light\nvec3 totalDiffuse = vec3(0.0);\nvec3 totalSpecular = vec3(0.0);\n\n// Light 0 contribution\nvec3 L0 = normalize(uLight0WorldPos - surfaceWorldPos);\nfloat dist0 = length(uLight0WorldPos - surfaceWorldPos);\nfloat atten0 = 1.0 / (1.0 + uLight0Atten * 200.0 * dist0 * dist0);  // Quadratic\nfloat NdL0 = max(dot(N_world, L0), 0.0);\n\nvec4 pbr0 = cookTorranceBRDF(N_world, V_world, L0, roughness, F0);\ntotalSpecular += uLightColor0 * pbr0.xyz * atten0 * uLight0Intensity;\n\n// Energy-conserving diffuse: weight by (1 - Fresnel)\nfloat diffuseWeight0 = (1.0 - pbr0.w) / PI;\ntotalDiffuse += uLightColor0 * NdL0 * atten0 * diffuseWeight0 * uLight0Intensity;\n\n// Repeat for lights 1, 2, and mouse light..."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Subsurface Scattering Approximation"
+        },
+        {
+            "type": "paragraph",
+            "content": "For translucent materials like water or ice, light penetrates the surface and scatters internally before exiting. We approximate this with a wrap lighting term and backlight contribution, creating soft illumination that bleeds around the terminator edge."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Subsurface Scattering Approximation",
+            "content": "// Wrap lighting: extends lit area past terminator\n// sssWrap of 0.5 means 50% wrap around the terminator\nfloat sssWrap = 0.5;\nfloat sssNdL0 = max(0.0, (dot(N_world, L0) + sssWrap) / (1.0 + sssWrap));\nfloat sssNdL1 = max(0.0, (dot(N_world, L1) + sssWrap) / (1.0 + sssWrap));\nfloat sssNdL2 = max(0.0, (dot(N_world, L2) + sssWrap) / (1.0 + sssWrap));\n\n// Backlight: light passing through thin areas\nfloat backLight0 = pow(max(0.0, -dot(N_world, L0)), 2.0);\nfloat backLight1 = pow(max(0.0, -dot(N_world, L1)), 2.0);\nfloat backLight2 = pow(max(0.0, -dot(N_world, L2)), 2.0);\n\n// Combine SSS contribution\nvec3 sss = sssColor * sssDistance * (\n    uLightColor0 * (sssNdL0 + backLight0 * 0.5) * atten0 * uLight0Intensity +\n    uLightColor1 * (sssNdL1 + backLight1 * 0.5) * atten1 * uLight1Intensity +\n    uLightColor2 * (sssNdL2 + backLight2 * 0.5) * atten2 * uLight2Intensity\n);"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "sss-diagram",
+            "title": "Subsurface Scattering Effect",
+            "width": 650,
+            "height": 200
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Physically-Based Atmospheric Scattering"
+        },
+        {
+            "type": "paragraph",
+            "content": "The atmosphere extends beyond the planet's solid surface and requires special handling. We ray-march through the atmospheric shell, computing optical depth based on density that falls off exponentially with altitude. This drives wavelength-dependent Rayleigh scattering for realistic sky coloring."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Atmospheric Shell Setup",
+            "content": "// Atmosphere extends beyond planet radius\nfloat atmosRadius = planetRadius + 0.4 * uAtmosThickness;\nfloat atmosThickness = atmosRadius - planetRadius;\n\n// Rayleigh scattering coefficients (wavelength-dependent)\nvec3 beta = vec3(uScatterR, uScatterG, uScatterB);\nfloat densityFalloff = uAtmosPower;  // Exponential decay rate"
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Optical Depth Integration",
+            "content": "float opticalDepth = 0.0;\n\nif (d < atmosRadius) {\n    float atmosZ = sqrt(max(0.0, atmosRadius * atmosRadius - d * d));\n\n    if (d < planetRadius) {\n        // Ray enters atmosphere, hits planet surface\n        float planetZ = sqrt(max(0.0, planetRadius * planetRadius - d * d));\n        float pathLength = atmosZ - planetZ;\n\n        // Integrate density along path (4 samples)\n        for (float i = 0.0; i < 4.0; i++) {\n            float t = (i + 0.5) / 4.0;\n            float sampleZ = planetZ + t * (atmosZ - planetZ);\n            float sampleR = sqrt(d * d + sampleZ * sampleZ);\n            float sampleHeight01 = (sampleR - planetRadius) / atmosThickness;\n            float sampleDensity = exp(-sampleHeight01 * densityFalloff) \n                                * (1.0 - sampleHeight01);\n            opticalDepth += sampleDensity * (pathLength / 4.0);\n        }\n    } else {\n        // Ray passes through atmosphere only (limb view)\n        float pathLength = 2.0 * atmosZ;\n        // 6 samples for longer path\n        for (float i = 0.0; i < 6.0; i++) {\n            float t = (i + 0.5) / 6.0;\n            float sampleZ = atmosZ * (1.0 - 2.0 * t);\n            float sampleR = sqrt(d * d + sampleZ * sampleZ);\n            float sampleHeight01 = clamp((sampleR - planetRadius) / atmosThickness, 0.0, 1.0);\n            float sampleDensity = exp(-sampleHeight01 * densityFalloff) \n                                * (1.0 - sampleHeight01);\n            opticalDepth += sampleDensity * (pathLength / 6.0);\n        }\n    }\n}\n\nopticalDepth *= uScatterScale;"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "atmos-integration",
+            "title": "Atmospheric Ray Integration",
+            "width": 650,
+            "height": 280
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "content": "Rayleigh Color Shift"
+        },
+        {
+            "type": "paragraph",
+            "content": "Rayleigh scattering depends on wavelength^-4, meaning blue light scatters much more than red. We compute transmittance through the atmosphere using Beer-Lambert law, then derive the scattered color. This creates blue skies where atmosphere is thin and warm sunset colors where the optical path is long."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Rayleigh Transmittance and Scatter Color",
+            "content": "// Beer-Lambert transmittance through atmosphere\nvec3 transmittance = exp(-beta * opticalDepth * uSunsetStrength);\n\n// Normalize transmittance to get color shift\nvec3 transmitColor = transmittance;\nfloat maxT = max(transmittance.r, max(transmittance.g, transmittance.b));\nif (maxT > 0.001) {\n    transmitColor = transmittance / maxT;\n} else {\n    // Deep atmosphere: warm sunset colors\n    transmitColor = vec3(1.0, 0.3, 0.1);\n}\n\n// Blue scatter for thin atmosphere\nvec3 blueScatter = vec3(1.0) - exp(-beta * 8.0);\n\n// Blend between blue scatter and transmit color based on depth\nfloat depthFactor = 1.0 - exp(-opticalDepth * 2.0 * uSunsetStrength);\nvec3 scatterColor = mix(blueScatter, transmitColor, depthFactor);\n\n// Final atmosphere contribution\nvec3 atmosColor = incomingLight * scatterColor * atmosDensity * uAtmosIntensity;"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "rayleigh-color-shift",
+            "title": "Rayleigh Wavelength-Dependent Scattering",
+            "width": 700,
+            "height": 220
+        },
+        {
+            "type": "callout",
+            "variant": "tip",
+            "content": "The sunset strength parameter controls how quickly blue shifts to orange/red at the limb. Higher values create more dramatic sunset effects, while lower values keep the atmosphere uniformly blue."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Atmosphere Self-Shadowing"
+        },
+        {
+            "type": "paragraph",
+            "content": "The planet casts a shadow on its own atmosphere. We compute where each light's rays would intersect the planet, creating shadow cones that darken the atmosphere on the planet's far side from each light source."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Atmospheric Shadow Computation",
+            "content": "// For pixels in the atmosphere (outside planet surface)\nfloat atmosShadow0 = 1.0;  // Start fully lit\n\nif (d >= planetRadius && d < atmosRadius) {\n    float r = planetRadius;\n    float penumbraWidth = r * 0.2;  // Soft shadow edge\n\n    // 2D light direction from planet center\n    vec2 D0 = normalize(uLight0ScreenPos - vCenter);\n    \n    // Distance from light ray to current point\n    float perpDist0 = abs(vUV.x * D0.y - vUV.y * D0.x);\n    float alongRay0 = dot(vUV, D0);\n\n    // In shadow if: behind planet center AND close to light ray\n    if (alongRay0 < 0.0 && perpDist0 < r + penumbraWidth) {\n        float behindPlanet = -alongRay0 / r;\n        float shadowStart = smoothstep(0.0, 1.0, behindPlanet);\n        float shadowCore = smoothstep(r + penumbraWidth, r - penumbraWidth, perpDist0);\n        atmosShadow0 = 1.0 - shadowCore * shadowStart;\n    }\n    \n    atmosShadow0 = max(atmosShadow0, 0.05);  // Never fully black\n}"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "atmos-self-shadow",
+            "title": "Atmospheric Self-Shadowing",
+            "width": 650,
+            "height": 250
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Final Composition"
+        },
+        {
+            "type": "paragraph",
+            "content": "The final color combines diffuse lighting, specular highlights, subsurface scattering, ambient light, Fresnel rim, and atmospheric contribution. We also apply depth fog based on camera distance for integration with the background."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Final Color Composition",
+            "content": "vec3 col = vec3(0.0);\n\n// Surface lighting (planet only)\ncol += baseColor * totalDiffuse * 2.5 * planetMask;   // Diffuse\ncol += totalSpecular * 3.0 * planetMask;              // Specular\ncol += sss * planetMask;                               // Subsurface\n\n// Ambient from average light color\nvec3 lightEnvColor = (uLightColor0 * atten0 * uLight0Intensity + \n                      uLightColor1 * atten1 * uLight1Intensity + \n                      uLightColor2 * atten2 * uLight2Intensity) \n                   / max(totalAttenuation, 0.001);\ncol += baseColor * lightEnvColor * uAmbientIntensity * 0.1 * planetMask;\n\n// Fresnel rim highlighting\nvec3 fresnelRim = fresnelSchlickRoughness(NdV, F0, roughness) * planetMask;\nfloat rimIntensity = mix(0.04, 0.15, 1.0 - roughness);\ncol += lightEnvColor * fresnelRim * totalAttenuation * rimIntensity;\n\n// Atmosphere blend over terrain at limb\nfloat limbFactor = pow(1.0 - NdV, 2.0);  // Stronger at edges\nfloat terrainAtmosBlend = atmosAlpha * (0.3 + limbFactor * 0.7) * planetMask;\ncol = mix(col, atmosColor, terrainAtmosBlend);\n\n// Depth fog for distance fade\nfloat distToCamera = length(surfaceWorldPos - cameraPos);\nfloat fogAmount = 1.0 - exp(-distToCamera * uFogIntensity);\ncol = mix(col, fogColor, fogAmount * planetMask);\n\n// Atmosphere glow outside planet surface\ncol += foggedAtmosColor * (1.0 - planetMask);"
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Performance Considerations"
+        },
+        {
+            "type": "list",
+            "items": [
+                "Billboard rendering: No mesh tessellation needed, perfect silhouettes at any distance",
+                "Noise evaluation: 5 FBM octaves is expensive; consider reducing for mobile or distant planets",
+                "Atmosphere ray marching: Fixed sample counts (4-6) balance quality with performance",
+                "Multiple lights: Cost scales linearly with light count; 3 lights + mouse is reasonable",
+                "Early discard: Pixels outside the atmosphere shell are discarded early",
+                "Depth fade: Distant planets can reduce quality without visible difference"
+            ]
+        },
+        {
+            "type": "callout",
+            "variant": "warning",
+            "content": "The 5-octave FBM terrain is evaluated 3 times per pixel (center + 2 tangent offsets) for normal computation. This is the main performance bottleneck. Consider reducing octaves or using a pre-baked normal map for mobile targets."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Parameter Reference"
+        },
+        {
+            "type": "code",
+            "language": "javascript",
+            "title": "Planet Shader Parameters",
+            "content": "// Oceanic planet (Type A) - water world\nplanetParamsA = {\n    noiseScale: 2.5,           // Terrain frequency\n    seaLevel: 0.0,             // Water/land boundary\n    normalStrength: 0.4,       // Terrain bumpiness\n    \n    matABaseColor: [0.1, 0.3, 0.5],   // Deep ocean\n    matARoughness: 0.15,              // Smooth water\n    matASSSColor: [0.2, 0.5, 0.6],    // Subsurface tint\n    matASSSDistance: 0.3,\n    \n    matBBaseColor: [0.3, 0.45, 0.2],  // Green land\n    matBRoughness: 0.8,               // Rough terrain\n    \n    atmosIntensity: 1.2,\n    atmosThickness: 0.5,\n    scatterR: 0.4, scatterG: 0.7, scatterB: 1.0  // Blue sky\n};\n\n// Volcanic planet (Type B) - lava world\nplanetParamsB = {\n    noiseScale: 3.0,\n    seaLevel: -0.2,\n    matABaseColor: [0.8, 0.2, 0.05],  // Molten lava\n    matARoughness: 0.3,\n    matBBaseColor: [0.15, 0.1, 0.08], // Dark rock\n    atmosIntensity: 0.6,\n    scatterR: 1.0, scatterG: 0.4, scatterB: 0.2  // Orange haze\n};"
+        }
+    ],
+    "related": ["screen-space-atmospheric-scattering", "anamorphic-bloom"]
+}

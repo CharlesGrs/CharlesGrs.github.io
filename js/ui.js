@@ -511,6 +511,26 @@
             }
         });
     });
+
+    // Handle tab URL parameter for deep linking (e.g., ?tab=skills or ?tab=contact)
+    function checkTabDeepLink() {
+        var params = new URLSearchParams(window.location.search);
+        var tabParam = params.get('tab');
+        if (tabParam) {
+            var targetTab = document.querySelector('.chrome-tab[data-panel="' + tabParam + '"]');
+            if (targetTab) {
+                targetTab.click();
+            }
+        }
+    }
+
+    // Run on DOMContentLoaded or immediately if already loaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', checkTabDeepLink);
+    } else {
+        // DOM already ready, run after a small delay to ensure all scripts initialized
+        setTimeout(checkTabDeepLink, 150);
+    }
 })();
 
 // ============================================
