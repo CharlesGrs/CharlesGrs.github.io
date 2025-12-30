@@ -901,7 +901,7 @@
                                 <span class="preview-label">Shader Usage</span>
                             </div>
                             <div class="code-block">
-                                <pre><span class="comment">// Sample and invert SDF (white=inside)</span>
+                                <pre><span class="comment">// Sample SDF (black=inside, white=outside)</span>
 <span class="keyword">float</span> dist = <span class="number">1.0</span> - <span class="function">texture2D</span>(sdfTexture, uv).<span class="keyword">r</span>;
 
 <span class="comment">// Anti-aliased edge</span>
@@ -1185,7 +1185,8 @@
                     const srcIdx = srcY * srcWidth + srcX;
 
                     const dist = inside[srcIdx] - outside[srcIdx];
-                    const normalized = 0.5 + 0.5 * (dist / radius);
+                    // Invert so BLACK = inside text, WHITE = outside (standard SDF convention)
+                    const normalized = 0.5 - 0.5 * (dist / radius);
                     const value = Math.round(Math.max(0, Math.min(255, normalized * 255)));
 
                     const dstIdx = (y * dstSize + x) * 4;
@@ -1302,7 +1303,7 @@
                         vec2 uvG = uv + vec2(sliceOffset, 0.0);
                         vec2 uvB = uv + vec2(sliceOffset - rgbSplit, 0.0);
 
-                        // Invert SDF: 1.0 - dist makes high values = inside text
+                        // Invert SDF: black=inside becomes high dist values
                         float distR = 1.0 - texture2D(uTexture, uvR).r;
                         float distG = 1.0 - texture2D(uTexture, uvG).r;
                         float distB = 1.0 - texture2D(uTexture, uvB).r;
@@ -1341,7 +1342,7 @@
 
                     void main() {
                         vec2 uv = vec2(vTexCoord.x, 1.0 - vTexCoord.y);
-                        // Invert SDF: high values = inside text
+                        // Invert SDF: black=inside becomes high dist values
                         float dist = 1.0 - texture2D(uTexture, uv).r;
 
                         // Black background
@@ -1383,7 +1384,7 @@
 
                     void main() {
                         vec2 uv = vec2(vTexCoord.x, 1.0 - vTexCoord.y);
-                        // Invert SDF: high values = inside text
+                        // Invert SDF: black=inside becomes high dist values
                         float dist = 1.0 - texture2D(uTexture, uv).r;
 
                         // Animated thickness
@@ -1431,7 +1432,7 @@
                         float angle = uTime * 0.8;
                         vec2 shadowOffset = vec2(cos(angle), sin(angle)) * 0.04;
 
-                        // Invert SDF: high values = inside text
+                        // Invert SDF: black=inside becomes high dist values
                         float shadowDist = 1.0 - texture2D(uTexture, uv - shadowOffset).r;
                         float dist = 1.0 - texture2D(uTexture, uv).r;
 
@@ -1469,7 +1470,7 @@
 
                     void main() {
                         vec2 uv = vec2(vTexCoord.x, 1.0 - vTexCoord.y);
-                        // Invert SDF: high values = inside text
+                        // Invert SDF: black=inside becomes high dist values
                         float dist = 1.0 - texture2D(uTexture, uv).r;
 
                         // Text mask
@@ -1517,7 +1518,7 @@
                         float wave3 = sin((uv.x + uv.y) * 8.0 + uTime * 2.5) * 0.006;
 
                         vec2 distortedUV = uv + vec2(wave1 + wave3, wave2 + wave3);
-                        // Invert SDF: high values = inside text
+                        // Invert SDF: black=inside becomes high dist values
                         float dist = 1.0 - texture2D(uTexture, distortedUV).r;
 
                         // Chrome-like gradient based on distortion
@@ -1561,7 +1562,7 @@
 
                     void main() {
                         vec2 uv = vec2(vTexCoord.x, 1.0 - vTexCoord.y);
-                        // Invert SDF: high values = inside text
+                        // Invert SDF: black=inside becomes high dist values
                         float dist = 1.0 - texture2D(uTexture, uv).r;
 
                         // Animated fire noise

@@ -112,7 +112,7 @@ var sunParams = {
     coreSize: 0.75,
     glowSize: 1.0,
     glowIntensity: 1.0,
-    quadScale: 1.0  // Multiplier for sun size (adjusts radius passed to shader)
+    quadScale: 0.5  // Multiplier for sun size (adjusts radius passed to shader)
 };
 
 // Orbital system parameters
@@ -242,7 +242,7 @@ var postProcessParams = {
     grainSize: 0.5,
     // Bloom (multi-pass, anamorphic)
     bloomThreshold: 1,
-    bloomIntensity: 0.2,
+    bloomIntensity: 0.45,
     bloomRadius: 0.5,
     bloomSoftKnee: 1,
     bloomTint: 0,
@@ -263,7 +263,7 @@ var glassParams = {
     blurDownscale: 2,          // Downscale factor for blur FBO (2, 4, or 8)
 
     // Glass material
-    cornerRadius: 19,          // Rounded corner radius in pixels
+    cornerRadius: 13,          // Rounded corner radius in pixels
     edgeSoftness: 0.7,         // Edge anti-aliasing
     refractStrength: 20,       // How much edges bend light (lens curvature)
     squircleN: 4,              // Squircle exponent: 2=ellipse, 4=Apple squircle, 8+=more rectangular
@@ -282,8 +282,8 @@ var glassParams = {
     bevelDepth: 1,             // How pronounced the 3D bevel effect is (0-1)
 
     // Caustics (light focusing through curved edges)
-    causticsIntensity: 0.15,   // Brightness of caustic bands (0-2)
-    causticsScale: 3,          // Size/width of caustic pattern (0.5-3)
+    causticsIntensity: 0.06,   // Brightness of caustic bands (0-2)
+    causticsScale: 1,          // Size/width of caustic pattern (0.5-3)
 
     // Specular highlights (LiquidGlass rim lighting)
     specularIntensity: 0.05,   // Overall specular brightness
@@ -296,18 +296,18 @@ var glassParams = {
 
     // Panel position and scale (centered square quad)
     offsetX: 0,                // Horizontal offset in pixels (negative = left, positive = right)
-    offsetY: 0,                // Vertical offset in pixels (negative = up, positive = down)
-    scaleX: 1,                 // Horizontal scale multiplier (1 = square base)
-    scaleY: 1,                 // Vertical scale multiplier (1 = square base)
+    offsetY: 140,              // Vertical offset in pixels (negative = up, positive = down)
+    scaleX: 0.65,              // Horizontal scale multiplier (1 = square base)
+    scaleY: 0.65,              // Vertical scale multiplier (1 = square base)
 
     // SDF Bump Mapping (logo/text embossing)
     sdfBumpEnabled: true,      // Enable SDF-based bump mapping
-    sdfBumpStrength: 0.3,      // Normal perturbation strength (-1 to 1, negative = invert bump)
-    sdfBumpPow: 1.0,           // Power curve on SDF distance (affects sharpness)
+    sdfBumpStrength: 1,        // Normal perturbation strength (-1 to 1, negative = invert bump)
+    sdfBumpPow: 0.6,           // Power curve on SDF distance (affects sharpness)
     sdfOffsetX: 0,             // Horizontal offset of SDF texture (UV space, -1 to 1)
     sdfOffsetY: 0,             // Vertical offset of SDF texture (UV space, -1 to 1)
-    sdfScale: 1.0,             // Scale of SDF texture (1 = fill panel)
-    sdfDistance: 0.5           // Distance threshold for SDF (0-1, controls edge detection)
+    sdfScale: 0.95,            // Scale of SDF texture (1 = fill panel)
+    sdfDistance: 0.13          // Distance threshold for SDF (0-1, controls edge detection)
 };
 
 // Space particle parameters
@@ -320,8 +320,8 @@ var spaceParticleParams = {
     endDistance: 71,
 
     // Appearance
-    particleSize: 7,
-    brightness: 0.5,
+    particleSize: 5.5,
+    brightness: 0.4,
 
     // Star colors (hex)
     starColorCool: '#91f7f2',

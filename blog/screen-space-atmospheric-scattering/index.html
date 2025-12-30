@@ -196,14 +196,123 @@
         }
 
         .static-blog-page {
-            max-width: 900px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: var(--space-lg);
             padding-top: 5rem; /* Account for fixed header */
         }
 
         .article-nav {
-            margin-bottom: var(--space-lg);
+            max-width: 1100px;
+            margin: 0 auto var(--space-md) auto;
+        }
+
+        /* Article with TOC Layout */
+        .article-with-toc {
+            display: grid;
+            grid-template-columns: minmax(0, 800px) 220px;
+            gap: 0 2rem;
+            justify-content: center;
+        }
+
+        .article-with-toc .blog-article {
+            max-width: 800px;
+        }
+
+        /* TOC Styles */
+        .article-toc {
+            position: sticky;
+            top: 5rem;
+            align-self: start;
+            width: 220px;
+            max-height: calc(100vh - 180px);
+        }
+
+        .toc-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: var(--space-sm);
+            padding-bottom: var(--space-xs);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .toc-header-icon {
+            width: 14px;
+            height: 14px;
+            color: var(--accent-teal);
+            opacity: 0.7;
+        }
+
+        .toc-header-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+
+        .toc-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow-y: auto;
+            max-height: calc(100vh - 240px);
+        }
+
+        .toc-item {
+            display: flex;
+            padding: 0.5rem 0.75rem;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            line-height: 1.35;
+        }
+
+        .toc-item:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .toc-item.toc-subchapter {
+            padding-left: 1.5rem;
+            font-size: 0.75rem;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.45);
+        }
+
+        .toc-item.active {
+            color: var(--accent-teal);
+            background: rgba(45, 212, 191, 0.04);
+        }
+
+        .toc-item.active.settled {
+            color: var(--accent-gold);
+            background: rgba(232, 185, 35, 0.06);
+        }
+
+        /* Hide TOC on smaller screens */
+        @media (max-width: 1080px) {
+            .article-toc {
+                display: none;
+            }
+
+            .article-with-toc {
+                grid-template-columns: minmax(0, 900px);
+            }
+
+            .article-with-toc .blog-article {
+                max-width: 900px;
+            }
+
+            .article-nav {
+                max-width: 900px;
+            }
         }
 
         .nav-back {
@@ -432,21 +541,22 @@
             </a>
         </nav>
 
-        <!-- Article -->
-        <article class="blog-article">
-            <header class="article-header">
-                <div class="article-meta">
-                    <span class="article-category">Rendering</span>
-                    <span>December 29, 2025</span>
-                    <span>12 min read</span>
-                </div>
-                <h1 class="article-title">Screen-Space Atmospheric Light Scattering</h1>
-                <p class="article-subtitle">Rendering Volumetric God Rays Without Ray Marching</p>
-                <div class="card-tags" style="margin-top: var(--space-sm);"><span class="card-tag">volumetric</span><span class="card-tag">atmosphere</span><span class="card-tag">glsl</span><span class="card-tag">post-processing</span><span class="card-tag">lighting</span></div>
-            </header>
+        <!-- Article with TOC Layout -->
+        <div class="article-with-toc">
+            <article class="blog-article">
+                <header class="article-header">
+                    <div class="article-meta">
+                        <span class="article-category">Rendering</span>
+                        <span>December 29, 2025</span>
+                        <span>12 min read</span>
+                    </div>
+                    <h1 class="article-title">Screen-Space Atmospheric Light Scattering</h1>
+                    <p class="article-subtitle">Rendering Volumetric God Rays Without Ray Marching</p>
+                    <div class="card-tags" style="margin-top: var(--space-sm);"><span class="card-tag">volumetric</span><span class="card-tag">atmosphere</span><span class="card-tag">glsl</span><span class="card-tag">post-processing</span><span class="card-tag">lighting</span></div>
+                </header>
 
-            <div class="article-content">
-                <p class="article-section section-intro">Volumetric lighting creates that ethereal quality where light seems to fill the air itself - think fog-pierced headlights or sunbeams through cathedral windows. Traditional approaches ray-march through 3D volumes, but for real-time applications with multiple dynamic lights, we need something faster. This technique renders atmospheric scattering entirely in screen-space, achieving rich volumetric effects at a fraction of the cost.</p>
+                <div class="article-content">
+                    <p class="article-section section-intro">Volumetric lighting creates that ethereal quality where light seems to fill the air itself - think fog-pierced headlights or sunbeams through cathedral windows. Traditional approaches ray-march through 3D volumes, but for real-time applications with multiple dynamic lights, we need something faster. This technique renders atmospheric scattering entirely in screen-space, achieving rich volumetric effects at a fraction of the cost.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="volumetric-overview">
                 <div class="svg-container" style="max-width: 700px;">
                     <div class="svg-placeholder" data-width="700" data-height="220">
@@ -455,7 +565,7 @@
                 </div>
                 <figcaption>Screen-Space vs Ray-Marched Volumetric Light</figcaption>
             </figure>
-<h2 class="article-section section-heading">The Core Concept</h2>
+<h2 id="section-2-the-core-concept" class="article-section section-heading" data-toc-level="2">The Core Concept</h2>
 <p class="article-section section-paragraph">Instead of marching rays through a 3D volume, we project each light source to screen space and compute a radial falloff function. The key insight is that atmospheric scattering from a point light approximates a radial gradient centered on the light&#39;s screen position - we just need to make it physically plausible with proper falloff, perspective correction, and noise modulation.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="radial-falloff-diagram">
                 <div class="svg-container" style="max-width: 600px;">
@@ -465,7 +575,7 @@
                 </div>
                 <figcaption>Radial Falloff from Screen-Space Light Position</figcaption>
             </figure>
-<h2 class="article-section section-heading">World-to-Screen Projection</h2>
+<h2 id="section-5-world-to-screen-projection" class="article-section section-heading" data-toc-level="2">World-to-Screen Projection</h2>
 <p class="article-section section-paragraph">First, we need to transform world-space light positions to screen coordinates. This happens on the CPU and is passed as uniforms. We also compute visibility - lights behind the camera should contribute nothing, and lights near screen edges should fade smoothly to avoid harsh cutoffs.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -492,7 +602,7 @@
 <span class="keyword">uniform</span> <span class="keyword">float</span> uCameraRotX;  <span class="comment">// Pitch</span>
 <span class="keyword">uniform</span> <span class="keyword">float</span> uCameraRotY;  <span class="comment">// Yaw</span></pre></div>
             </div>
-<h2 class="article-section section-heading">Edge Fade for Off-Screen Lights</h2>
+<h2 id="section-8-edge-fade-for-off-screen-lights" class="article-section section-heading" data-toc-level="2">Edge Fade for Off-Screen Lights</h2>
 <p class="article-section section-paragraph">Lights near or beyond screen edges need smooth fade-out to prevent jarring transitions when rotating the camera. We compute separate X and Y fade factors that smoothly reduce intensity as the light moves off-screen.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -520,7 +630,7 @@ lightUV.y = <span class="number">1.0</span> - lightUV.y;  <span class="comment">
                 </div>
                 <figcaption>Edge Fade Zones</figcaption>
             </figure>
-<h2 class="article-section section-heading">Perspective-Correct Distance</h2>
+<h2 id="section-12-perspective-correct-distance" class="article-section section-heading" data-toc-level="2">Perspective-Correct Distance</h2>
 <p class="article-section section-paragraph">A naive screen-space distance calculation would make lights appear to grow as you move away from them - the opposite of reality. We correct for perspective by scaling the screen distance based on the camera-to-light depth, normalized against a reference viewing distance.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -552,7 +662,7 @@ delta.x *= uResolution.x / uResolution.y;  <span class="comment">// Correct <spa
                 </div>
                 <figcaption>Perspective Correction Effect</figcaption>
             </figure>
-<h2 class="article-section section-heading">Physically-Based Falloff</h2>
+<h2 id="section-16-physically-based-falloff" class="article-section section-heading" data-toc-level="2">Physically-Based Falloff</h2>
 <p class="article-section section-paragraph">Light intensity follows an inverse-power law: I = 1 / (1 + d^n). Using n=2 gives classic inverse-square falloff. The &#39;1 +&#39; in the denominator prevents division by zero at the light center and controls the core brightness.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -574,7 +684,7 @@ light *= uVolumetricIntensity * lightIntensity;</pre></div>
 <aside class="article-section section-callout tip">
                 <p>Falloff exponent of 2.0 matches real-world physics (inverse-square law). Values below 2.0 create softer, more diffuse glow. Values above 2.0 create tighter, more focused light cones.</p>
             </aside>
-<h2 class="article-section section-heading">Animated Volumetric Noise</h2>
+<h2 id="section-20-animated-volumetric-noise" class="article-section section-heading" data-toc-level="2">Animated Volumetric Noise</h2>
 <p class="article-section section-paragraph">Real atmospheric scattering isn&#39;t uniform - dust particles, moisture, and air currents create variation. We sample 3D noise using a skybox ray direction, giving us view-dependent patterns that feel volumetric rather than screen-aligned. Time-based animation adds subtle motion.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -614,7 +724,7 @@ light *= uVolumetricIntensity * lightIntensity;</pre></div>
                 </div>
                 <figcaption>3D Noise Sampling via Skybox Direction</figcaption>
             </figure>
-<h2 class="article-section section-heading">FBM Noise with Controllable Octaves</h2>
+<h2 id="section-24-fbm-noise-with-controllable-octaves" class="article-section section-heading" data-toc-level="2">FBM Noise with Controllable Octaves</h2>
 <p class="article-section section-paragraph">We use Fractional Brownian Motion (FBM) to layer multiple noise frequencies. A controllable octave parameter lets us balance detail versus performance - fewer octaves for mobile, more for desktop.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -656,7 +766,7 @@ light *= uVolumetricIntensity * lightIntensity;</pre></div>
                 </div>
                 <figcaption>FBM Octave Blending</figcaption>
             </figure>
-<h2 class="article-section section-heading">Wavelength-Dependent Scattering</h2>
+<h2 id="section-28-wavelength-dependent-scattering" class="article-section section-heading" data-toc-level="2">Wavelength-Dependent Scattering</h2>
 <p class="article-section section-paragraph">Real atmospheric scattering is wavelength-dependent - blue light scatters more than red (Rayleigh scattering). We expose per-channel scatter rates that let artists tune the color shift from warm centers to cool edges.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -676,7 +786,7 @@ light *= uVolumetricIntensity * lightIntensity;</pre></div>
 <aside class="article-section section-callout info">
                 <p>Rayleigh scattering intensity is proportional to 1/wavelength^4. Blue light (450nm) scatters about 5.5x more than red (700nm). Our simplified per-channel rates approximate this effect without the full physics simulation.</p>
             </aside>
-<h2 class="article-section section-heading">Combining Multiple Lights</h2>
+<h2 id="section-32-combining-multiple-lights" class="article-section section-heading" data-toc-level="2">Combining Multiple Lights</h2>
 <p class="article-section section-paragraph">Each light contributes independently, with its own screen position, color, intensity, and visibility. We sum contributions additively - physically correct for light transport.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -710,7 +820,7 @@ light *= uVolumetricIntensity * lightIntensity;</pre></div>
                 </div>
                 <figcaption>Additive Multi-Light Blending</figcaption>
             </figure>
-<h2 class="article-section section-heading">Final Compositing</h2>
+<h2 id="section-36-final-compositing" class="article-section section-heading" data-toc-level="2">Final Compositing</h2>
 <p class="article-section section-paragraph">The final pass applies vignette for subtle edge darkening, soft tone mapping to prevent blowout, and ensures we never go darker than the background color.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -742,7 +852,7 @@ light *= uVolumetricIntensity * lightIntensity;</pre></div>
     <span class="keyword">gl_FragColor</span> = <span class="keyword">vec4</span>(finalColor, <span class="number">1.0</span>);
 }</pre></div>
             </div>
-<h2 class="article-section section-heading">Performance Considerations</h2>
+<h2 id="section-39-performance-considerations" class="article-section section-heading" data-toc-level="2">Performance Considerations</h2>
 <ul class="article-section section-list"><li>Single full-screen pass: O(pixels) complexity, independent of light count for small N</li>
 <li>Early-out for invisible lights: Skip entire contribution when behind camera or off-screen</li>
 <li>Distance fade: Avoid computing noise for pixels far from any light</li>
@@ -751,7 +861,7 @@ light *= uVolumetricIntensity * lightIntensity;</pre></div>
 <aside class="article-section section-callout warning">
                 <p>The noise functions dominate performance. On mobile, consider reducing uVolumetricNoiseOctaves to 0.3 or disabling noise entirely by setting uVolumetricNoiseStrength to 0.0. The effect still looks good with just the smooth radial falloff.</p>
             </aside>
-<h2 class="article-section section-heading">Tunable Parameters</h2>
+<h2 id="section-42-tunable-parameters" class="article-section section-heading" data-toc-level="2">Tunable Parameters</h2>
 <p class="article-section section-paragraph">The shader exposes many parameters for artistic control. Here are recommended starting values and their effects:</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -772,8 +882,32 @@ light *= uVolumetricIntensity * lightIntensity;</pre></div>
     vignetteStrength: <span class="number">0.3</span>  <span class="comment">// Edge darkening</span>
 };</pre></div>
             </div>
+                </div>
+            </article>
+            
+        <aside class="article-toc">
+            <div class="toc-header">
+                <svg class="toc-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 6h16M4 12h16M4 18h10"/>
+                </svg>
+                <span class="toc-header-title">Contents</span>
             </div>
-        </article>
+            <nav class="toc-nav">
+                <a class="toc-item" href="#section-2-the-core-concept" data-target="section-2-the-core-concept">The Core Concept</a>
+                    <a class="toc-item" href="#section-5-world-to-screen-projection" data-target="section-5-world-to-screen-projection">World-to-Screen Projection</a>
+                    <a class="toc-item" href="#section-8-edge-fade-for-off-screen-lights" data-target="section-8-edge-fade-for-off-screen-lights">Edge Fade for Off-Screen Lights</a>
+                    <a class="toc-item" href="#section-12-perspective-correct-distance" data-target="section-12-perspective-correct-distance">Perspective-Correct Distance</a>
+                    <a class="toc-item" href="#section-16-physically-based-falloff" data-target="section-16-physically-based-falloff">Physically-Based Falloff</a>
+                    <a class="toc-item" href="#section-20-animated-volumetric-noise" data-target="section-20-animated-volumetric-noise">Animated Volumetric Noise</a>
+                    <a class="toc-item" href="#section-24-fbm-noise-with-controllable-octaves" data-target="section-24-fbm-noise-with-controllable-octaves">FBM Noise with Controllable Octaves</a>
+                    <a class="toc-item" href="#section-28-wavelength-dependent-scattering" data-target="section-28-wavelength-dependent-scattering">Wavelength-Dependent Scattering</a>
+                    <a class="toc-item" href="#section-32-combining-multiple-lights" data-target="section-32-combining-multiple-lights">Combining Multiple Lights</a>
+                    <a class="toc-item" href="#section-36-final-compositing" data-target="section-36-final-compositing">Final Compositing</a>
+                    <a class="toc-item" href="#section-39-performance-considerations" data-target="section-39-performance-considerations">Performance Considerations</a>
+                    <a class="toc-item" href="#section-42-tunable-parameters" data-target="section-42-tunable-parameters">Tunable Parameters</a>
+            </nav>
+        </aside>
+        </div>
 
         <!-- CTA Banner -->
         <div class="article-cta-banner">
@@ -941,6 +1075,71 @@ light *= uVolumetricIntensity * lightIntensity;</pre></div>
             if (loadingEl) loadingEl.style.display = 'none';
             render();
         }
+
+        // TOC scroll tracking and smooth scroll
+        (function initToc() {
+            var tocItems = document.querySelectorAll('.toc-item');
+            var headings = document.querySelectorAll('.section-heading[id]');
+            if (tocItems.length < 2 || headings.length < 2) return;
+
+            var settleTimeout = null;
+            var currentActiveId = null;
+
+            function setActiveTocItem(activeId, immediate) {
+                if (settleTimeout) {
+                    clearTimeout(settleTimeout);
+                    settleTimeout = null;
+                }
+
+                tocItems.forEach(function(item) {
+                    item.classList.remove('settled');
+                    var isActive = item.getAttribute('data-target') === activeId;
+                    item.classList.toggle('active', isActive);
+                });
+
+                currentActiveId = activeId;
+
+                var delay = immediate ? 0 : 150;
+                settleTimeout = setTimeout(function() {
+                    var activeItem = document.querySelector('.toc-item[data-target="' + currentActiveId + '"]');
+                    if (activeItem) activeItem.classList.add('settled');
+                }, delay);
+            }
+
+            // Smooth scroll on click
+            tocItems.forEach(function(item) {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var targetId = item.getAttribute('data-target');
+                    var target = document.getElementById(targetId);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        setActiveTocItem(targetId, false);
+                    }
+                });
+            });
+
+            // Scroll tracking with IntersectionObserver
+            var observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        setActiveTocItem(entry.target.id, false);
+                    }
+                });
+            }, {
+                rootMargin: '-80px 0px -60% 0px',
+                threshold: 0
+            });
+
+            headings.forEach(function(heading) {
+                observer.observe(heading);
+            });
+
+            // Set initial state
+            if (headings.length > 0) {
+                setActiveTocItem(headings[0].id, true);
+            }
+        })();
     </script>
 </body>
 </html>

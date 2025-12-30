@@ -196,14 +196,123 @@
         }
 
         .static-blog-page {
-            max-width: 900px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: var(--space-lg);
             padding-top: 5rem; /* Account for fixed header */
         }
 
         .article-nav {
-            margin-bottom: var(--space-lg);
+            max-width: 1100px;
+            margin: 0 auto var(--space-md) auto;
+        }
+
+        /* Article with TOC Layout */
+        .article-with-toc {
+            display: grid;
+            grid-template-columns: minmax(0, 800px) 220px;
+            gap: 0 2rem;
+            justify-content: center;
+        }
+
+        .article-with-toc .blog-article {
+            max-width: 800px;
+        }
+
+        /* TOC Styles */
+        .article-toc {
+            position: sticky;
+            top: 5rem;
+            align-self: start;
+            width: 220px;
+            max-height: calc(100vh - 180px);
+        }
+
+        .toc-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: var(--space-sm);
+            padding-bottom: var(--space-xs);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .toc-header-icon {
+            width: 14px;
+            height: 14px;
+            color: var(--accent-teal);
+            opacity: 0.7;
+        }
+
+        .toc-header-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+
+        .toc-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow-y: auto;
+            max-height: calc(100vh - 240px);
+        }
+
+        .toc-item {
+            display: flex;
+            padding: 0.5rem 0.75rem;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            line-height: 1.35;
+        }
+
+        .toc-item:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .toc-item.toc-subchapter {
+            padding-left: 1.5rem;
+            font-size: 0.75rem;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.45);
+        }
+
+        .toc-item.active {
+            color: var(--accent-teal);
+            background: rgba(45, 212, 191, 0.04);
+        }
+
+        .toc-item.active.settled {
+            color: var(--accent-gold);
+            background: rgba(232, 185, 35, 0.06);
+        }
+
+        /* Hide TOC on smaller screens */
+        @media (max-width: 1080px) {
+            .article-toc {
+                display: none;
+            }
+
+            .article-with-toc {
+                grid-template-columns: minmax(0, 900px);
+            }
+
+            .article-with-toc .blog-article {
+                max-width: 900px;
+            }
+
+            .article-nav {
+                max-width: 900px;
+            }
         }
 
         .nav-back {
@@ -432,22 +541,23 @@
             </a>
         </nav>
 
-        <!-- Article -->
-        <article class="blog-article">
-            <header class="article-header">
-                <div class="article-meta">
-                    <span class="article-category">Optimization</span>
-                    <span>December 30, 2025</span>
-                    <span>5 min read</span>
-                </div>
-                <h1 class="article-title">Screen-Space Sphere Selection</h1>
-                <p class="article-subtitle">Why raycasting fails for small objects and how dot product saves the day</p>
-                <div class="card-tags" style="margin-top: var(--space-sm);"><span class="card-tag">picking</span><span class="card-tag">selection</span><span class="card-tag">optimization</span><span class="card-tag">dot-product</span><span class="card-tag">ui</span></div>
-            </header>
+        <!-- Article with TOC Layout -->
+        <div class="article-with-toc">
+            <article class="blog-article">
+                <header class="article-header">
+                    <div class="article-meta">
+                        <span class="article-category">Optimization</span>
+                        <span>December 30, 2025</span>
+                        <span>5 min read</span>
+                    </div>
+                    <h1 class="article-title">Screen-Space Sphere Selection</h1>
+                    <p class="article-subtitle">Why raycasting fails for small objects and how dot product saves the day</p>
+                    <div class="card-tags" style="margin-top: var(--space-sm);"><span class="card-tag">picking</span><span class="card-tag">selection</span><span class="card-tag">optimization</span><span class="card-tag">dot-product</span><span class="card-tag">ui</span></div>
+                </header>
 
-            <div class="article-content">
-                <p class="article-section section-intro">Click a planet on screen. Simple, right? You might reach for a ray-sphere intersection test, but that&#39;s actually the wrong tool. Small spheres, floating-point precision, and camera perspective conspire to make true 3D picking unreliable. Screen-space distance is simpler, faster, and more user-friendly.</p>
-<h2 class="article-section section-heading">The Raycasting Problem</h2>
+                <div class="article-content">
+                    <p class="article-section section-intro">Click a planet on screen. Simple, right? You might reach for a ray-sphere intersection test, but that&#39;s actually the wrong tool. Small spheres, floating-point precision, and camera perspective conspire to make true 3D picking unreliable. Screen-space distance is simpler, faster, and more user-friendly.</p>
+<h2 id="section-1-the-raycasting-problem" class="article-section section-heading" data-toc-level="2">The Raycasting Problem</h2>
 <p class="article-section section-paragraph">Raycasting computes where a ray from the camera through the mouse position intersects scene geometry. For a sphere, you solve a quadratic equation. The math is elegant but creates practical issues when objects are small.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="raycast-precision-problem">
                 <div class="svg-container" style="max-width: 700px;">
@@ -461,7 +571,7 @@
 <li>Floating-point drift: The ray origin, direction, and sphere position accumulate error. Small targets amplify tiny inaccuracies.</li>
 <li>Touch unfriendly: Mobile users have fat fingers. Requiring pixel-perfect accuracy creates frustration.</li>
 <li>Depth ambiguity: When spheres overlap in screen space, raycasting picks the frontmost—not necessarily the one the user intended.</li></ul>
-<h2 class="article-section section-heading">The Screen-Space Solution</h2>
+<h2 id="section-5-the-screen-space-solution" class="article-section section-heading" data-toc-level="2">The Screen-Space Solution</h2>
 <p class="article-section section-paragraph">Instead of casting rays into 3D space, project your spheres to screen coordinates and compute 2D distance from the mouse. If the mouse is within a threshold of a projected center, that object is selected.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="screen-space-selection">
                 <div class="svg-container" style="max-width: 700px;">
@@ -502,7 +612,7 @@
     <span class="keyword">return</span> closest;
 }</pre></div>
             </div>
-<h2 class="article-section section-heading">The Projection Math</h2>
+<h2 id="section-9-the-projection-math" class="article-section section-heading" data-toc-level="2">The Projection Math</h2>
 <p class="article-section section-paragraph">To project 3D to 2D, transform the world position to camera space, then apply perspective division. The key insight: points in front of the camera have positive Z in view space.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -542,7 +652,7 @@
                 </div>
                 <figcaption>3D to Screen Projection</figcaption>
             </figure>
-<h2 class="article-section section-heading">Touch-Friendly Hit Zones</h2>
+<h2 id="section-13-touch-friendly-hit-zones" class="article-section section-heading" data-toc-level="2">Touch-Friendly Hit Zones</h2>
 <p class="article-section section-paragraph">The real win: you can decouple visual size from interaction size. A 5-pixel sphere can have a 40-pixel hit zone. Users don&#39;t need to be surgeons to click your UI.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="hit-zone-expansion">
                 <div class="svg-container" style="max-width: 700px;">
@@ -555,8 +665,8 @@
 <aside class="article-section section-callout tip">
                 <p>For mobile, enforce a minimum hit zone of ~44px (Apple&#39;s recommendation). Desktop can be smaller but never less than visual radius + padding.</p>
             </aside>
-<h2 class="article-section section-heading">Optimizations</h2>
-<h3 class="article-section section-heading">1. Early Rejection</h3>
+<h2 id="section-17-optimizations" class="article-section section-heading" data-toc-level="2">Optimizations</h2>
+<h3 id="section-18-1-early-rejection" class="article-section section-heading" data-toc-level="3">1. Early Rejection</h3>
 <p class="article-section section-paragraph">Skip spheres behind the camera before doing any math. A single dot product tells you if an object is in front or behind.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -569,7 +679,7 @@
 
 <span class="keyword">if</span> (dot &lt; <span class="number">0</span>) continue; <span class="comment">// Behind camera, skip entirely</span></pre></div>
             </div>
-<h3 class="article-section section-heading">2. Squared Distance</h3>
+<h3 id="section-21-2-squared-distance" class="article-section section-heading" data-toc-level="3">2. Squared Distance</h3>
 <p class="article-section section-paragraph">sqrt() is expensive. Compare squared distances against squared thresholds to skip the square root entirely.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -584,9 +694,9 @@
     closestDistSq = distSq;
 }</pre></div>
             </div>
-<h3 class="article-section section-heading">3. Spatial Partitioning</h3>
+<h3 id="section-24-3-spatial-partitioning" class="article-section section-heading" data-toc-level="3">3. Spatial Partitioning</h3>
 <p class="article-section section-paragraph">For thousands of objects, divide screen space into a grid. Only test objects in the cell containing the mouse (plus neighbors). O(n) becomes O(1) average case.</p>
-<h3 class="article-section section-heading">4. Unity-Specific: BurstCompiler + Jobs</h3>
+<h3 id="section-26-4-unity-specific-burstcompiler-jobs" class="article-section section-heading" data-toc-level="3">4. Unity-Specific: BurstCompiler + Jobs</h3>
 <p class="article-section section-paragraph">In Unity, NativeArrays with Burst-compiled jobs can process thousands of sphere projections in parallel. The selection loop becomes vectorized SIMD operations.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -618,14 +728,36 @@ public <span class="keyword">struct</span> SelectionJob : IJobParallelFor {
 <aside class="article-section section-callout info">
                 <p>With Burst, 10,000 sphere projections complete in under 0.1ms on a modern CPU. The bottleneck shifts to memory bandwidth, not compute.</p>
             </aside>
-<h2 class="article-section section-heading">Key Takeaways</h2>
+<h2 id="section-30-key-takeaways" class="article-section section-heading" data-toc-level="2">Key Takeaways</h2>
 <ul class="article-section section-list"><li>Raycasting small spheres is unreliable—floating-point errors and sub-pixel targets hurt UX</li>
 <li>Project to screen space, measure 2D distance. Simpler math, better results</li>
 <li>Expand hit zones beyond visual radius for touch-friendly interaction</li>
 <li>Skip sqrt() by comparing squared distances</li>
 <li>For large object counts, use spatial partitioning or Burst-compiled parallel jobs</li></ul>
+                </div>
+            </article>
+            
+        <aside class="article-toc">
+            <div class="toc-header">
+                <svg class="toc-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 6h16M4 12h16M4 18h10"/>
+                </svg>
+                <span class="toc-header-title">Contents</span>
             </div>
-        </article>
+            <nav class="toc-nav">
+                <a class="toc-item" href="#section-1-the-raycasting-problem" data-target="section-1-the-raycasting-problem">The Raycasting Problem</a>
+                    <a class="toc-item" href="#section-5-the-screen-space-solution" data-target="section-5-the-screen-space-solution">The Screen-Space Solution</a>
+                    <a class="toc-item" href="#section-9-the-projection-math" data-target="section-9-the-projection-math">The Projection Math</a>
+                    <a class="toc-item" href="#section-13-touch-friendly-hit-zones" data-target="section-13-touch-friendly-hit-zones">Touch-Friendly Hit Zones</a>
+                    <a class="toc-item" href="#section-17-optimizations" data-target="section-17-optimizations">Optimizations</a>
+                    <a class="toc-item toc-subchapter" href="#section-18-1-early-rejection" data-target="section-18-1-early-rejection">1. Early Rejection</a>
+                    <a class="toc-item toc-subchapter" href="#section-21-2-squared-distance" data-target="section-21-2-squared-distance">2. Squared Distance</a>
+                    <a class="toc-item toc-subchapter" href="#section-24-3-spatial-partitioning" data-target="section-24-3-spatial-partitioning">3. Spatial Partitioning</a>
+                    <a class="toc-item toc-subchapter" href="#section-26-4-unity-specific-burstcompiler-jobs" data-target="section-26-4-unity-specific-burstcompiler-jobs">4. Unity-Specific: BurstCompiler + Jobs</a>
+                    <a class="toc-item" href="#section-30-key-takeaways" data-target="section-30-key-takeaways">Key Takeaways</a>
+            </nav>
+        </aside>
+        </div>
 
         <!-- CTA Banner -->
         <div class="article-cta-banner">
@@ -793,6 +925,71 @@ public <span class="keyword">struct</span> SelectionJob : IJobParallelFor {
             if (loadingEl) loadingEl.style.display = 'none';
             render();
         }
+
+        // TOC scroll tracking and smooth scroll
+        (function initToc() {
+            var tocItems = document.querySelectorAll('.toc-item');
+            var headings = document.querySelectorAll('.section-heading[id]');
+            if (tocItems.length < 2 || headings.length < 2) return;
+
+            var settleTimeout = null;
+            var currentActiveId = null;
+
+            function setActiveTocItem(activeId, immediate) {
+                if (settleTimeout) {
+                    clearTimeout(settleTimeout);
+                    settleTimeout = null;
+                }
+
+                tocItems.forEach(function(item) {
+                    item.classList.remove('settled');
+                    var isActive = item.getAttribute('data-target') === activeId;
+                    item.classList.toggle('active', isActive);
+                });
+
+                currentActiveId = activeId;
+
+                var delay = immediate ? 0 : 150;
+                settleTimeout = setTimeout(function() {
+                    var activeItem = document.querySelector('.toc-item[data-target="' + currentActiveId + '"]');
+                    if (activeItem) activeItem.classList.add('settled');
+                }, delay);
+            }
+
+            // Smooth scroll on click
+            tocItems.forEach(function(item) {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var targetId = item.getAttribute('data-target');
+                    var target = document.getElementById(targetId);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        setActiveTocItem(targetId, false);
+                    }
+                });
+            });
+
+            // Scroll tracking with IntersectionObserver
+            var observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        setActiveTocItem(entry.target.id, false);
+                    }
+                });
+            }, {
+                rootMargin: '-80px 0px -60% 0px',
+                threshold: 0
+            });
+
+            headings.forEach(function(heading) {
+                observer.observe(heading);
+            });
+
+            // Set initial state
+            if (headings.length > 0) {
+                setActiveTocItem(headings[0].id, true);
+            }
+        })();
     </script>
 </body>
 </html>

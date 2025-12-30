@@ -46,6 +46,19 @@ function escapeHtml(text) {
 }
 
 /**
+ * Generate URL-friendly slug from text
+ */
+function slugify(text) {
+    return text
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/--+/g, '-')
+        .trim()
+        .substring(0, 50);
+}
+
+/**
  * Apply syntax highlighting to code (same logic as blog.js)
  */
 function highlightCode(code, language) {
@@ -92,14 +105,15 @@ function highlightCode(code, language) {
 /**
  * Render a single section to HTML
  */
-function renderSection(section) {
+function renderSection(section, index) {
     switch (section.type) {
         case 'intro':
             return `<p class="article-section section-intro">${escapeHtml(section.content)}</p>`;
 
         case 'heading':
             const tag = `h${section.level || 2}`;
-            return `<${tag} class="article-section section-heading">${escapeHtml(section.content)}</${tag}>`;
+            const headingId = `section-${index}-${slugify(section.content)}`;
+            return `<${tag} id="${headingId}" class="article-section section-heading" data-toc-level="${section.level || 2}">${escapeHtml(section.content)}</${tag}>`;
 
         case 'paragraph':
             return `<p class="article-section section-paragraph">${escapeHtml(section.content)}</p>`;
@@ -196,10 +210,48 @@ function formatDateISO(dateStr) {
 }
 
 /**
+ * Generate Table of Contents HTML from sections
+ */
+function generateTocHtml(sections) {
+    const headings = [];
+    sections.forEach((section, index) => {
+        if (section.type === 'heading') {
+            headings.push({
+                id: `section-${index}-${slugify(section.content)}`,
+                text: section.content,
+                level: section.level || 2
+            });
+        }
+    });
+
+    // Need at least 2 headings for a TOC
+    if (headings.length < 2) return '';
+
+    const tocItems = headings.map(h => {
+        const isSubchapter = h.level >= 3;
+        return `<a class="toc-item${isSubchapter ? ' toc-subchapter' : ''}" href="#${h.id}" data-target="${h.id}">${escapeHtml(h.text)}</a>`;
+    }).join('\n                    ');
+
+    return `
+        <aside class="article-toc">
+            <div class="toc-header">
+                <svg class="toc-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 6h16M4 12h16M4 18h10"/>
+                </svg>
+                <span class="toc-header-title">Contents</span>
+            </div>
+            <nav class="toc-nav">
+                ${tocItems}
+            </nav>
+        </aside>`;
+}
+
+/**
  * Generate HTML for a single blog post
  */
 function generatePostHtml(post) {
-    const sectionsHtml = (post.sections || []).map(renderSection).join('\n');
+    const sectionsHtml = (post.sections || []).map((section, index) => renderSection(section, index)).join('\n');
+    const tocHtml = generateTocHtml(post.sections || []);
     const tagsHtml = (post.tags || []).map(tag => `<span class="card-tag">${escapeHtml(tag)}</span>`).join('');
 
     const ogImage = post.thumbnail
@@ -403,14 +455,123 @@ function generatePostHtml(post) {
         }
 
         .static-blog-page {
-            max-width: 900px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: var(--space-lg);
             padding-top: 5rem; /* Account for fixed header */
         }
 
         .article-nav {
-            margin-bottom: var(--space-lg);
+            max-width: 1100px;
+            margin: 0 auto var(--space-md) auto;
+        }
+
+        /* Article with TOC Layout */
+        .article-with-toc {
+            display: grid;
+            grid-template-columns: minmax(0, 800px) 220px;
+            gap: 0 2rem;
+            justify-content: center;
+        }
+
+        .article-with-toc .blog-article {
+            max-width: 800px;
+        }
+
+        /* TOC Styles */
+        .article-toc {
+            position: sticky;
+            top: 5rem;
+            align-self: start;
+            width: 220px;
+            max-height: calc(100vh - 180px);
+        }
+
+        .toc-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: var(--space-sm);
+            padding-bottom: var(--space-xs);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .toc-header-icon {
+            width: 14px;
+            height: 14px;
+            color: var(--accent-teal);
+            opacity: 0.7;
+        }
+
+        .toc-header-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+
+        .toc-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow-y: auto;
+            max-height: calc(100vh - 240px);
+        }
+
+        .toc-item {
+            display: flex;
+            padding: 0.5rem 0.75rem;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            line-height: 1.35;
+        }
+
+        .toc-item:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .toc-item.toc-subchapter {
+            padding-left: 1.5rem;
+            font-size: 0.75rem;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.45);
+        }
+
+        .toc-item.active {
+            color: var(--accent-teal);
+            background: rgba(45, 212, 191, 0.04);
+        }
+
+        .toc-item.active.settled {
+            color: var(--accent-gold);
+            background: rgba(232, 185, 35, 0.06);
+        }
+
+        /* Hide TOC on smaller screens */
+        @media (max-width: 1080px) {
+            .article-toc {
+                display: none;
+            }
+
+            .article-with-toc {
+                grid-template-columns: minmax(0, 900px);
+            }
+
+            .article-with-toc .blog-article {
+                max-width: 900px;
+            }
+
+            .article-nav {
+                max-width: 900px;
+            }
         }
 
         .nav-back {
@@ -639,23 +800,26 @@ function generatePostHtml(post) {
             </a>
         </nav>
 
-        <!-- Article -->
-        <article class="blog-article">
-            <header class="article-header">
-                <div class="article-meta">
-                    <span class="article-category">${escapeHtml(categoryLabel)}</span>
-                    <span>${formatDate(post.date)}</span>
-                    <span>${escapeHtml(post.readTime)} read</span>
-                </div>
-                <h1 class="article-title">${escapeHtml(post.title)}</h1>
-                ${post.subtitle ? `<p class="article-subtitle">${escapeHtml(post.subtitle)}</p>` : ''}
-                <div class="card-tags" style="margin-top: var(--space-sm);">${tagsHtml}</div>
-            </header>
+        <!-- Article with TOC Layout -->
+        <div class="article-with-toc">
+            <article class="blog-article">
+                <header class="article-header">
+                    <div class="article-meta">
+                        <span class="article-category">${escapeHtml(categoryLabel)}</span>
+                        <span>${formatDate(post.date)}</span>
+                        <span>${escapeHtml(post.readTime)} read</span>
+                    </div>
+                    <h1 class="article-title">${escapeHtml(post.title)}</h1>
+                    ${post.subtitle ? `<p class="article-subtitle">${escapeHtml(post.subtitle)}</p>` : ''}
+                    <div class="card-tags" style="margin-top: var(--space-sm);">${tagsHtml}</div>
+                </header>
 
-            <div class="article-content">
-                ${sectionsHtml}
-            </div>
-        </article>
+                <div class="article-content">
+                    ${sectionsHtml}
+                </div>
+            </article>
+            ${tocHtml}
+        </div>
 
         <!-- CTA Banner -->
         <div class="article-cta-banner">
@@ -823,6 +987,71 @@ function generatePostHtml(post) {
             if (loadingEl) loadingEl.style.display = 'none';
             render();
         }
+
+        // TOC scroll tracking and smooth scroll
+        (function initToc() {
+            var tocItems = document.querySelectorAll('.toc-item');
+            var headings = document.querySelectorAll('.section-heading[id]');
+            if (tocItems.length < 2 || headings.length < 2) return;
+
+            var settleTimeout = null;
+            var currentActiveId = null;
+
+            function setActiveTocItem(activeId, immediate) {
+                if (settleTimeout) {
+                    clearTimeout(settleTimeout);
+                    settleTimeout = null;
+                }
+
+                tocItems.forEach(function(item) {
+                    item.classList.remove('settled');
+                    var isActive = item.getAttribute('data-target') === activeId;
+                    item.classList.toggle('active', isActive);
+                });
+
+                currentActiveId = activeId;
+
+                var delay = immediate ? 0 : 150;
+                settleTimeout = setTimeout(function() {
+                    var activeItem = document.querySelector('.toc-item[data-target="' + currentActiveId + '"]');
+                    if (activeItem) activeItem.classList.add('settled');
+                }, delay);
+            }
+
+            // Smooth scroll on click
+            tocItems.forEach(function(item) {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var targetId = item.getAttribute('data-target');
+                    var target = document.getElementById(targetId);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        setActiveTocItem(targetId, false);
+                    }
+                });
+            });
+
+            // Scroll tracking with IntersectionObserver
+            var observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        setActiveTocItem(entry.target.id, false);
+                    }
+                });
+            }, {
+                rootMargin: '-80px 0px -60% 0px',
+                threshold: 0
+            });
+
+            headings.forEach(function(heading) {
+                observer.observe(heading);
+            });
+
+            // Set initial state
+            if (headings.length > 0) {
+                setActiveTocItem(headings[0].id, true);
+            }
+        })();
     </script>
 </body>
 </html>`;

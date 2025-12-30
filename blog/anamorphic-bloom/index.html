@@ -195,14 +195,123 @@
         }
 
         .static-blog-page {
-            max-width: 900px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: var(--space-lg);
             padding-top: 5rem; /* Account for fixed header */
         }
 
         .article-nav {
-            margin-bottom: var(--space-lg);
+            max-width: 1100px;
+            margin: 0 auto var(--space-md) auto;
+        }
+
+        /* Article with TOC Layout */
+        .article-with-toc {
+            display: grid;
+            grid-template-columns: minmax(0, 800px) 220px;
+            gap: 0 2rem;
+            justify-content: center;
+        }
+
+        .article-with-toc .blog-article {
+            max-width: 800px;
+        }
+
+        /* TOC Styles */
+        .article-toc {
+            position: sticky;
+            top: 5rem;
+            align-self: start;
+            width: 220px;
+            max-height: calc(100vh - 180px);
+        }
+
+        .toc-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: var(--space-sm);
+            padding-bottom: var(--space-xs);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .toc-header-icon {
+            width: 14px;
+            height: 14px;
+            color: var(--accent-teal);
+            opacity: 0.7;
+        }
+
+        .toc-header-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+
+        .toc-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow-y: auto;
+            max-height: calc(100vh - 240px);
+        }
+
+        .toc-item {
+            display: flex;
+            padding: 0.5rem 0.75rem;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            line-height: 1.35;
+        }
+
+        .toc-item:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .toc-item.toc-subchapter {
+            padding-left: 1.5rem;
+            font-size: 0.75rem;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.45);
+        }
+
+        .toc-item.active {
+            color: var(--accent-teal);
+            background: rgba(45, 212, 191, 0.04);
+        }
+
+        .toc-item.active.settled {
+            color: var(--accent-gold);
+            background: rgba(232, 185, 35, 0.06);
+        }
+
+        /* Hide TOC on smaller screens */
+        @media (max-width: 1080px) {
+            .article-toc {
+                display: none;
+            }
+
+            .article-with-toc {
+                grid-template-columns: minmax(0, 900px);
+            }
+
+            .article-with-toc .blog-article {
+                max-width: 900px;
+            }
+
+            .article-nav {
+                max-width: 900px;
+            }
         }
 
         .nav-back {
@@ -431,21 +540,22 @@
             </a>
         </nav>
 
-        <!-- Article -->
-        <article class="blog-article">
-            <header class="article-header">
-                <div class="article-meta">
-                    <span class="article-category">Rendering</span>
-                    <span>December 29, 2025</span>
-                    <span>10 min read</span>
-                </div>
-                <h1 class="article-title">Anamorphic Bloom: Cinematic Light Streaks</h1>
-                <p class="article-subtitle">Creating Film-Quality Horizontal Flares in Real-Time</p>
-                <div class="card-tags" style="margin-top: var(--space-sm);"><span class="card-tag">bloom</span><span class="card-tag">post-processing</span><span class="card-tag">glsl</span><span class="card-tag">cinematic</span></div>
-            </header>
+        <!-- Article with TOC Layout -->
+        <div class="article-with-toc">
+            <article class="blog-article">
+                <header class="article-header">
+                    <div class="article-meta">
+                        <span class="article-category">Rendering</span>
+                        <span>December 29, 2025</span>
+                        <span>10 min read</span>
+                    </div>
+                    <h1 class="article-title">Anamorphic Bloom: Cinematic Light Streaks</h1>
+                    <p class="article-subtitle">Creating Film-Quality Horizontal Flares in Real-Time</p>
+                    <div class="card-tags" style="margin-top: var(--space-sm);"><span class="card-tag">bloom</span><span class="card-tag">post-processing</span><span class="card-tag">glsl</span><span class="card-tag">cinematic</span></div>
+                </header>
 
-            <div class="article-content">
-                <p class="article-section section-intro">Anamorphic bloom creates those beautiful horizontal light streaks you see in films like Blade Runner and Star Trek. Unlike standard bloom which spreads evenly in all directions, anamorphic bloom stretches dramatically along the horizontal axis, mimicking the optical artifacts from anamorphic cinema lenses.</p>
+                <div class="article-content">
+                    <p class="article-section section-intro">Anamorphic bloom creates those beautiful horizontal light streaks you see in films like Blade Runner and Star Trek. Unlike standard bloom which spreads evenly in all directions, anamorphic bloom stretches dramatically along the horizontal axis, mimicking the optical artifacts from anamorphic cinema lenses.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="bloom-comparison">
                 <div class="svg-container" style="max-width: 700px;">
                     <div class="svg-placeholder" data-width="700" data-height="200">
@@ -454,7 +564,7 @@
                 </div>
                 <figcaption>Standard vs Anamorphic Bloom</figcaption>
             </figure>
-<h2 class="article-section section-heading">The Multi-Pass Pipeline</h2>
+<h2 id="section-2-the-multi-pass-pipeline" class="article-section section-heading" data-toc-level="2">The Multi-Pass Pipeline</h2>
 <p class="article-section section-paragraph">Real-time anamorphic bloom uses a multi-pass approach: threshold extraction, progressive downsampling with asymmetric blur, and upsampling with accumulation. Each pass operates at decreasing resolutions for efficiency.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="pipeline-flow">
                 <div class="svg-container" style="max-width: 700px;">
@@ -464,7 +574,7 @@
                 </div>
                 <figcaption>Bloom Pipeline Architecture</figcaption>
             </figure>
-<h2 class="article-section section-heading">Step 1: Threshold Extraction</h2>
+<h2 id="section-5-step-1-threshold-extraction" class="article-section section-heading" data-toc-level="2">Step 1: Threshold Extraction</h2>
 <p class="article-section section-paragraph">First, we extract pixels above a luminance threshold. The key is using a soft knee - a smooth transition that prevents harsh cutoffs and visible banding artifacts.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -497,7 +607,7 @@ contribution = contribution * contribution * (<span class="number">3.0</span> - 
                 </div>
                 <figcaption>Soft Knee Threshold Response</figcaption>
             </figure>
-<h2 class="article-section section-heading">Step 2: Asymmetric Gaussian Blur</h2>
+<h2 id="section-9-step-2-asymmetric-gaussian-blur" class="article-section section-heading" data-toc-level="2">Step 2: Asymmetric Gaussian Blur</h2>
 <p class="article-section section-paragraph">The magic of anamorphic bloom is in the blur kernel. We apply different scales to horizontal and vertical passes - stretching horizontally while compressing vertically. This creates the characteristic &quot;streak&quot; look.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -529,7 +639,7 @@ contribution = contribution * contribution * (<span class="number">3.0</span> - 
                 </div>
                 <figcaption>Asymmetric Blur Kernel Visualization</figcaption>
             </figure>
-<h3 class="article-section section-heading">Interactive Demo</h3>
+<h3 id="section-13-interactive-demo" class="article-section section-heading" data-toc-level="3">Interactive Demo</h3>
 <p class="article-section section-paragraph">Adjust the sliders below to see how blur amount and anamorphic stretch affect the final result. Notice how increasing the anamorphic value creates longer horizontal streaks while keeping the vertical spread tight.</p>
 <figure class="article-section section-shader-demo" data-demo-id="anamorphic-blur-demo" data-shader-config='{"vertexShader":"attribute vec2 a_position;\nvarying vec2 v_texCoord;\nvoid main() {\n    v_texCoord = a_position * 0.5 + 0.5;\n    gl_Position = vec4(a_position, 0.0, 1.0);\n}","fragmentShader":"precision highp float;\nvarying vec2 v_texCoord;\nuniform float u_time;\nuniform float u_blurAmount;\nuniform float u_anamorphic;\nuniform vec2 u_resolution;\n\nvoid main() {\n    vec2 uv = v_texCoord;\n    \n    // Create animated bright spots\n    float pattern = 0.0;\n    for (int i = 0; i < 5; i++) {\n        float fi = float(i);\n        vec2 spot = vec2(\n            0.5 + 0.3 * sin(u_time * 0.5 + fi * 1.3),\n            0.5 + 0.3 * cos(u_time * 0.7 + fi * 1.7)\n        );\n        float d = length(uv - spot);\n        pattern += smoothstep(0.08, 0.0, d) * (0.8 + 0.2 * sin(fi));\n    }\n    \n    // Apply anamorphic blur with offset samples\n    vec3 color = vec3(0.0);\n    float total = 0.0;\n    \n    for (int i = -7; i <= 7; i++) {\n        float fi = float(i);\n        float weight = exp(-fi * fi / 20.0);\n        \n        // Anamorphic: stretch horizontal, compress vertical\n        vec2 offset = vec2(\n            fi * u_blurAmount * 0.015 * (1.0 + u_anamorphic * 2.5),\n            fi * u_blurAmount * 0.015 * (1.0 - u_anamorphic * 0.9)\n        );\n        \n        vec2 sampleUV = uv + offset;\n        \n        // Sample pattern at offset\n        float samplePattern = 0.0;\n        for (int j = 0; j < 5; j++) {\n            float fj = float(j);\n            vec2 spot = vec2(\n                0.5 + 0.3 * sin(u_time * 0.5 + fj * 1.3),\n                0.5 + 0.3 * cos(u_time * 0.7 + fj * 1.7)\n            );\n            float d = length(sampleUV - spot);\n            samplePattern += smoothstep(0.08, 0.0, d) * (0.8 + 0.2 * sin(fj));\n        }\n        \n        color += vec3(samplePattern) * weight;\n        total += weight;\n    }\n    color /= total;\n    \n    // Color grading - teal/gold cinematic look\n    vec3 teal = vec3(0.18, 0.83, 0.75);\n    vec3 gold = vec3(0.91, 0.73, 0.14);\n    color = mix(teal * 0.3, gold, color.r) + color * 0.5;\n    \n    // Subtle vignette\n    float vignette = 1.0 - length(uv - 0.5) * 0.8;\n    color *= vignette;\n    \n    // Dark background\n    vec3 bg = vec3(0.04, 0.06, 0.08);\n    color = max(color, bg);\n    \n    gl_FragColor = vec4(color, 1.0);\n}","uniforms":{"u_time":{"type":"float","value":0},"u_blurAmount":{"type":"float","value":0.5},"u_anamorphic":{"type":"float","value":0.7},"u_resolution":{"type":"vec2","value":[700,400]}}}'>
                 <div class="shader-canvas-container" style="max-width: 700px;">
@@ -561,7 +671,7 @@ contribution = contribution * contribution * (<span class="number">3.0</span> - 
             </div>
                 <figcaption>Anamorphic Blur - Adjust Parameters</figcaption>
             </figure>
-<h2 class="article-section section-heading">The 25-Tap Gaussian Kernel</h2>
+<h2 id="section-16-the-25-tap-gaussian-kernel" class="article-section section-heading" data-toc-level="2">The 25-Tap Gaussian Kernel</h2>
 <p class="article-section section-paragraph">We use a 25-tap (12 + center + 12) Gaussian kernel with carefully chosen weights. The weights follow a Gaussian distribution (sigma ~4) which ensures smooth falloff without visible banding.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -609,7 +719,7 @@ result /= totalWeight;</pre></div>
                 </div>
                 <figcaption>Gaussian Weight Distribution</figcaption>
             </figure>
-<h2 class="article-section section-heading">Step 3: Progressive Downsampling</h2>
+<h2 id="section-20-step-3-progressive-downsampling" class="article-section section-heading" data-toc-level="2">Step 3: Progressive Downsampling</h2>
 <p class="article-section section-paragraph">To achieve wide blur radius without excessive samples, we downsample progressively. Each level halves the resolution, effectively doubling the blur coverage. A 4-level pyramid gives us 16x the effective blur radius.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -647,7 +757,7 @@ result += (h + l + m) * <span class="number">0.0625</span>;</pre></div>
                 </div>
                 <figcaption>13-Tap Downsample Pattern</figcaption>
             </figure>
-<h2 class="article-section section-heading">Step 4: Upsample &amp; Accumulate</h2>
+<h2 id="section-24-step-4-upsample-accumulate" class="article-section section-heading" data-toc-level="2">Step 4: Upsample &amp; Accumulate</h2>
 <p class="article-section section-paragraph">Finally, we upsample back through the pyramid, additively blending each level. Hardware bilinear filtering handles the upscale, while we accumulate bloom from all mip levels for a natural, multi-scale glow.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -671,7 +781,7 @@ result += (h + l + m) * <span class="number">0.0625</span>;</pre></div>
                 </div>
                 <figcaption>Mip Chain Accumulation</figcaption>
             </figure>
-<h2 class="article-section section-heading">Performance Considerations</h2>
+<h2 id="section-28-performance-considerations" class="article-section section-heading" data-toc-level="2">Performance Considerations</h2>
 <ul class="article-section section-list"><li>Separable blur: 2N samples instead of N² for equivalent quality</li>
 <li>Progressive mips: 4 levels at 1/2, 1/4, 1/8, 1/16 resolution</li>
 <li>Linear sampling: Use GPU bilinear filtering to halve tap count</li>
@@ -680,7 +790,7 @@ result += (h + l + m) * <span class="number">0.0625</span>;</pre></div>
 <aside class="article-section section-callout tip">
                 <p>For extreme anamorphic ratios (4x+), consider running the horizontal blur pass twice at different mip levels. This creates longer streaks without requiring a massive kernel.</p>
             </aside>
-<h2 class="article-section section-heading">The Complete Pipeline</h2>
+<h2 id="section-31-the-complete-pipeline" class="article-section section-heading" data-toc-level="2">The Complete Pipeline</h2>
 <figure class="article-section section-svg-diagram" data-diagram-id="complete-pipeline">
                 <div class="svg-container" style="max-width: 700px;">
                     <div class="svg-placeholder" data-width="700" data-height="320">
@@ -693,8 +803,29 @@ result += (h + l + m) * <span class="number">0.0625</span>;</pre></div>
 <aside class="article-section section-callout info">
                 <p>Real anamorphic lenses create horizontal streaks because they compress the image horizontally during capture and expand it in post. Our shader simulates this by stretching the blur kernel - no actual anamorphic optics required!</p>
             </aside>
+                </div>
+            </article>
+            
+        <aside class="article-toc">
+            <div class="toc-header">
+                <svg class="toc-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 6h16M4 12h16M4 18h10"/>
+                </svg>
+                <span class="toc-header-title">Contents</span>
             </div>
-        </article>
+            <nav class="toc-nav">
+                <a class="toc-item" href="#section-2-the-multi-pass-pipeline" data-target="section-2-the-multi-pass-pipeline">The Multi-Pass Pipeline</a>
+                    <a class="toc-item" href="#section-5-step-1-threshold-extraction" data-target="section-5-step-1-threshold-extraction">Step 1: Threshold Extraction</a>
+                    <a class="toc-item" href="#section-9-step-2-asymmetric-gaussian-blur" data-target="section-9-step-2-asymmetric-gaussian-blur">Step 2: Asymmetric Gaussian Blur</a>
+                    <a class="toc-item toc-subchapter" href="#section-13-interactive-demo" data-target="section-13-interactive-demo">Interactive Demo</a>
+                    <a class="toc-item" href="#section-16-the-25-tap-gaussian-kernel" data-target="section-16-the-25-tap-gaussian-kernel">The 25-Tap Gaussian Kernel</a>
+                    <a class="toc-item" href="#section-20-step-3-progressive-downsampling" data-target="section-20-step-3-progressive-downsampling">Step 3: Progressive Downsampling</a>
+                    <a class="toc-item" href="#section-24-step-4-upsample-accumulate" data-target="section-24-step-4-upsample-accumulate">Step 4: Upsample &amp; Accumulate</a>
+                    <a class="toc-item" href="#section-28-performance-considerations" data-target="section-28-performance-considerations">Performance Considerations</a>
+                    <a class="toc-item" href="#section-31-the-complete-pipeline" data-target="section-31-the-complete-pipeline">The Complete Pipeline</a>
+            </nav>
+        </aside>
+        </div>
 
         <!-- CTA Banner -->
         <div class="article-cta-banner">
@@ -862,6 +993,71 @@ result += (h + l + m) * <span class="number">0.0625</span>;</pre></div>
             if (loadingEl) loadingEl.style.display = 'none';
             render();
         }
+
+        // TOC scroll tracking and smooth scroll
+        (function initToc() {
+            var tocItems = document.querySelectorAll('.toc-item');
+            var headings = document.querySelectorAll('.section-heading[id]');
+            if (tocItems.length < 2 || headings.length < 2) return;
+
+            var settleTimeout = null;
+            var currentActiveId = null;
+
+            function setActiveTocItem(activeId, immediate) {
+                if (settleTimeout) {
+                    clearTimeout(settleTimeout);
+                    settleTimeout = null;
+                }
+
+                tocItems.forEach(function(item) {
+                    item.classList.remove('settled');
+                    var isActive = item.getAttribute('data-target') === activeId;
+                    item.classList.toggle('active', isActive);
+                });
+
+                currentActiveId = activeId;
+
+                var delay = immediate ? 0 : 150;
+                settleTimeout = setTimeout(function() {
+                    var activeItem = document.querySelector('.toc-item[data-target="' + currentActiveId + '"]');
+                    if (activeItem) activeItem.classList.add('settled');
+                }, delay);
+            }
+
+            // Smooth scroll on click
+            tocItems.forEach(function(item) {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var targetId = item.getAttribute('data-target');
+                    var target = document.getElementById(targetId);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        setActiveTocItem(targetId, false);
+                    }
+                });
+            });
+
+            // Scroll tracking with IntersectionObserver
+            var observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        setActiveTocItem(entry.target.id, false);
+                    }
+                });
+            }, {
+                rootMargin: '-80px 0px -60% 0px',
+                threshold: 0
+            });
+
+            headings.forEach(function(heading) {
+                observer.observe(heading);
+            });
+
+            // Set initial state
+            if (headings.length > 0) {
+                setActiveTocItem(headings[0].id, true);
+            }
+        })();
     </script>
 </body>
 </html>

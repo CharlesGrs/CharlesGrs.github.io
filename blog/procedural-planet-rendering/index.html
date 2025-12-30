@@ -16,7 +16,7 @@
     <meta property="og:url" content="https://charlesgrs.github.io/blog/procedural-planet-rendering/">
     <meta property="og:title" content="Procedural Planet Rendering with PBR">
     <meta property="og:description" content="A deep dive into rendering procedurally-generated planets with physically-based materials, multi-octave terrain noise, subsurface scattering, and real-time atmospheric effects.">
-    <meta property="og:image" content="https://charlesgrs.github.io/blog/images/prodedural-planet-thumb.png">
+    <meta property="og:image" content="https://charlesgrs.github.io/blog/images/procedural-planet-thumb.png">
     <meta property="og:site_name" content="Charles Grassi">
     <meta property="article:published_time" content="2025-12-29T00:00:00.000Z">
     <meta property="article:author" content="Charles Grassi">
@@ -34,7 +34,7 @@
     <meta name="twitter:creator" content="@charles_grassi">
     <meta name="twitter:title" content="Procedural Planet Rendering with PBR">
     <meta name="twitter:description" content="A deep dive into rendering procedurally-generated planets with physically-based materials, multi-octave terrain noise, subsurface scattering, and real-time atmospheric effects.">
-    <meta name="twitter:image" content="https://charlesgrs.github.io/blog/images/prodedural-planet-thumb.png">
+    <meta name="twitter:image" content="https://charlesgrs.github.io/blog/images/procedural-planet-thumb.png">
 
     <!-- Canonical URL -->
     <link rel="canonical" href="https://charlesgrs.github.io/blog/procedural-planet-rendering/">
@@ -55,7 +55,7 @@
         "@type": "TechArticle",
         "headline": "Procedural Planet Rendering with PBR",
         "description": "A deep dive into rendering procedurally-generated planets with physically-based materials, multi-octave terrain noise, subsurface scattering, and real-time atmospheric effects.",
-        "image": "https://charlesgrs.github.io/blog/images/prodedural-planet-thumb.png",
+        "image": "https://charlesgrs.github.io/blog/images/procedural-planet-thumb.png",
         "datePublished": "2025-12-29T00:00:00.000Z",
         "dateModified": "2025-12-29T00:00:00.000Z",
         "author": {
@@ -197,14 +197,123 @@
         }
 
         .static-blog-page {
-            max-width: 900px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: var(--space-lg);
             padding-top: 5rem; /* Account for fixed header */
         }
 
         .article-nav {
-            margin-bottom: var(--space-lg);
+            max-width: 1100px;
+            margin: 0 auto var(--space-md) auto;
+        }
+
+        /* Article with TOC Layout */
+        .article-with-toc {
+            display: grid;
+            grid-template-columns: minmax(0, 800px) 220px;
+            gap: 0 2rem;
+            justify-content: center;
+        }
+
+        .article-with-toc .blog-article {
+            max-width: 800px;
+        }
+
+        /* TOC Styles */
+        .article-toc {
+            position: sticky;
+            top: 5rem;
+            align-self: start;
+            width: 220px;
+            max-height: calc(100vh - 180px);
+        }
+
+        .toc-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: var(--space-sm);
+            padding-bottom: var(--space-xs);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .toc-header-icon {
+            width: 14px;
+            height: 14px;
+            color: var(--accent-teal);
+            opacity: 0.7;
+        }
+
+        .toc-header-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+
+        .toc-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow-y: auto;
+            max-height: calc(100vh - 240px);
+        }
+
+        .toc-item {
+            display: flex;
+            padding: 0.5rem 0.75rem;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            line-height: 1.35;
+        }
+
+        .toc-item:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .toc-item.toc-subchapter {
+            padding-left: 1.5rem;
+            font-size: 0.75rem;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.45);
+        }
+
+        .toc-item.active {
+            color: var(--accent-teal);
+            background: rgba(45, 212, 191, 0.04);
+        }
+
+        .toc-item.active.settled {
+            color: var(--accent-gold);
+            background: rgba(232, 185, 35, 0.06);
+        }
+
+        /* Hide TOC on smaller screens */
+        @media (max-width: 1080px) {
+            .article-toc {
+                display: none;
+            }
+
+            .article-with-toc {
+                grid-template-columns: minmax(0, 900px);
+            }
+
+            .article-with-toc .blog-article {
+                max-width: 900px;
+            }
+
+            .article-nav {
+                max-width: 900px;
+            }
         }
 
         .nav-back {
@@ -433,21 +542,22 @@
             </a>
         </nav>
 
-        <!-- Article -->
-        <article class="blog-article">
-            <header class="article-header">
-                <div class="article-meta">
-                    <span class="article-category">Rendering</span>
-                    <span>December 29, 2025</span>
-                    <span>18 min read</span>
-                </div>
-                <h1 class="article-title">Procedural Planet Rendering with PBR</h1>
-                <p class="article-subtitle">Building Realistic Planets with Cook-Torrance BRDF, FBM Terrain, and Atmospheric Scattering</p>
-                <div class="card-tags" style="margin-top: var(--space-sm);"><span class="card-tag">pbr</span><span class="card-tag">procedural</span><span class="card-tag">glsl</span><span class="card-tag">atmosphere</span><span class="card-tag">terrain</span><span class="card-tag">lighting</span></div>
-            </header>
+        <!-- Article with TOC Layout -->
+        <div class="article-with-toc">
+            <article class="blog-article">
+                <header class="article-header">
+                    <div class="article-meta">
+                        <span class="article-category">Rendering</span>
+                        <span>December 29, 2025</span>
+                        <span>18 min read</span>
+                    </div>
+                    <h1 class="article-title">Procedural Planet Rendering with PBR</h1>
+                    <p class="article-subtitle">Building Realistic Planets with Cook-Torrance BRDF, FBM Terrain, and Atmospheric Scattering</p>
+                    <div class="card-tags" style="margin-top: var(--space-sm);"><span class="card-tag">pbr</span><span class="card-tag">procedural</span><span class="card-tag">glsl</span><span class="card-tag">atmosphere</span><span class="card-tag">terrain</span><span class="card-tag">lighting</span></div>
+                </header>
 
-            <div class="article-content">
-                <p class="article-section section-intro">Rendering convincing planets in real-time requires balancing physical accuracy with performance. This implementation combines Cook-Torrance PBR for realistic surface lighting, FBM noise for procedural terrain, Rayleigh-inspired atmospheric scattering, and subsurface scattering for translucent materials like water and lava. The result is planets that respond naturally to multiple dynamic light sources while maintaining high frame rates.</p>
+                <div class="article-content">
+                    <p class="article-section section-intro">Rendering convincing planets in real-time requires balancing physical accuracy with performance. This implementation combines Cook-Torrance PBR for realistic surface lighting, FBM noise for procedural terrain, Rayleigh-inspired atmospheric scattering, and subsurface scattering for translucent materials like water and lava. The result is planets that respond naturally to multiple dynamic light sources while maintaining high frame rates.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="planet-pipeline-overview">
                 <div class="svg-container" style="max-width: 700px;">
                     <div class="svg-placeholder" data-width="700" data-height="200">
@@ -456,7 +566,7 @@
                 </div>
                 <figcaption>Planet Rendering Pipeline</figcaption>
             </figure>
-<h2 class="article-section section-heading">Sphere Reconstruction from Screen Space</h2>
+<h2 id="section-2-sphere-reconstruction-from-screen-space" class="article-section section-heading" data-toc-level="2">Sphere Reconstruction from Screen Space</h2>
 <p class="article-section section-paragraph">Rather than rendering a 3D sphere mesh, we draw billboards (camera-facing quads) and reconstruct the sphere mathematically in the fragment shader. This approach avoids tessellation artifacts and provides perfect silhouettes at any zoom level. Given a point on the quad, we calculate whether it lies within the sphere&#39;s projected radius, then derive the surface normal from the implicit sphere equation.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -490,7 +600,7 @@
                 </div>
                 <figcaption>Sphere Reconstruction from Billboard</figcaption>
             </figure>
-<h2 class="article-section section-heading">Planet Rotation with Rodrigues Formula</h2>
+<h2 id="section-6-planet-rotation-with-rodrigues-formula" class="article-section section-heading" data-toc-level="2">Planet Rotation with Rodrigues Formula</h2>
 <p class="article-section section-paragraph">Each planet rotates around a unique axis derived from its index. We use Rodrigues&#39; rotation formula to rotate the sphere position, giving each planet a distinct spin direction and speed. This rotation affects where terrain features appear and how they move over time.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -520,7 +630,7 @@
 <aside class="article-section section-callout info">
                 <p>Rodrigues&#39; formula rotates a vector around an arbitrary axis using only the axis vector and angle - no matrix construction needed. It&#39;s computationally cheaper than building a 3x3 rotation matrix when you only need to rotate a few vectors.</p>
             </aside>
-<h2 class="article-section section-heading">Procedural Terrain with FBM Noise</h2>
+<h2 id="section-10-procedural-terrain-with-fbm-noise" class="article-section section-heading" data-toc-level="2">Procedural Terrain with FBM Noise</h2>
 <p class="article-section section-paragraph">Terrain is generated using Fractional Brownian Motion (FBM) - layered simplex noise with decreasing amplitude and increasing frequency per octave. We sample 5 octaves, with each octave adding finer detail. The noise is evaluated in 3D space using the rotated sphere position, creating seamless terrain that wraps around the planet.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -560,7 +670,7 @@
                 </div>
                 <figcaption>FBM Octave Stacking for Terrain</figcaption>
             </figure>
-<h2 class="article-section section-heading">Normal Mapping from Height Field</h2>
+<h2 id="section-14-normal-mapping-from-height-field" class="article-section section-heading" data-toc-level="2">Normal Mapping from Height Field</h2>
 <p class="article-section section-paragraph">To create the illusion of terrain geometry without actually displacing vertices, we compute a perturbed normal from the height field. By sampling the terrain at small offsets along the surface tangent and bitangent, we calculate height gradients that translate to normal perturbation.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -596,7 +706,7 @@
                 </div>
                 <figcaption>Normal Perturbation from Height Field</figcaption>
             </figure>
-<h2 class="article-section section-heading">Dual-Material System</h2>
+<h2 id="section-18-dual-material-system" class="article-section section-heading" data-toc-level="2">Dual-Material System</h2>
 <p class="article-section section-paragraph">Each planet supports two materials blended by terrain height. Material A (below sea level) handles water, lava, or low-lying terrain. Material B (above sea level) handles land, rock, or elevated terrain. Each material has independent base color, roughness, and subsurface scattering properties.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -633,7 +743,7 @@
                 </div>
                 <figcaption>Dual Material Blending by Height</figcaption>
             </figure>
-<h2 class="article-section section-heading">Cook-Torrance PBR BRDF</h2>
+<h2 id="section-22-cook-torrance-pbr-brdf" class="article-section section-heading" data-toc-level="2">Cook-Torrance PBR BRDF</h2>
 <p class="article-section section-paragraph">Surface lighting uses the Cook-Torrance microfacet BRDF, the industry standard for physically-based rendering. This model combines three components: the GGX normal distribution function (D), the Smith geometry function (G), and the Fresnel-Schlick approximation (F). Together they create realistic specular highlights that respond correctly to roughness and viewing angle.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -701,7 +811,7 @@
                 </div>
                 <figcaption>Cook-Torrance BRDF Components</figcaption>
             </figure>
-<h3 class="article-section section-heading">Combining the BRDF</h3>
+<h3 id="section-28-combining-the-brdf" class="article-section section-heading" data-toc-level="3">Combining the BRDF</h3>
 <p class="article-section section-paragraph">The complete Cook-Torrance BRDF multiplies D, G, and F terms together, divided by a normalization factor. The result gives us a specular contribution that we add to a diffuse term weighted by how much light wasn&#39;t reflected (energy conservation).</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -732,7 +842,7 @@
     <span class="keyword">return</span> <span class="keyword">vec4</span>(specular * NdL, avgF);
 }</pre></div>
             </div>
-<h2 class="article-section section-heading">Multi-Light Accumulation</h2>
+<h2 id="section-31-multi-light-accumulation" class="article-section section-heading" data-toc-level="2">Multi-Light Accumulation</h2>
 <p class="article-section section-paragraph">The shader supports 3 dynamic point lights plus an interactive mouse light. Each light contributes independently with its own color, intensity, and attenuation. We transform normals to world space to ensure correct lighting regardless of camera orientation.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -775,7 +885,7 @@ totalDiffuse += uLightColor0 * NdL0 * atten0 * diffuseWeight0 * uLight0Intensity
 
 <span class="comment">// Repeat <span class="keyword">for</span> lights <span class="number">1</span>, <span class="number">2</span>, and mouse light...</span></pre></div>
             </div>
-<h2 class="article-section section-heading">Subsurface Scattering Approximation</h2>
+<h2 id="section-35-subsurface-scattering-approximation" class="article-section section-heading" data-toc-level="2">Subsurface Scattering Approximation</h2>
 <p class="article-section section-paragraph">For translucent materials like water or ice, light penetrates the surface and scatters internally before exiting. We approximate this with a wrap lighting term and backlight contribution, creating soft illumination that bleeds around the terminator edge.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -809,7 +919,7 @@ totalDiffuse += uLightColor0 * NdL0 * atten0 * diffuseWeight0 * uLight0Intensity
                 </div>
                 <figcaption>Subsurface Scattering Effect</figcaption>
             </figure>
-<h2 class="article-section section-heading">Physically-Based Atmospheric Scattering</h2>
+<h2 id="section-39-physically-based-atmospheric-scattering" class="article-section section-heading" data-toc-level="2">Physically-Based Atmospheric Scattering</h2>
 <p class="article-section section-paragraph">The atmosphere extends beyond the planet&#39;s solid surface and requires special handling. We ray-march through the atmospheric shell, computing optical depth based on density that falls off exponentially with altitude. This drives wavelength-dependent Rayleigh scattering for realistic sky coloring.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -875,7 +985,7 @@ opticalDepth *= uScatterScale;</pre></div>
                 </div>
                 <figcaption>Atmospheric Ray Integration</figcaption>
             </figure>
-<h3 class="article-section section-heading">Rayleigh Color Shift</h3>
+<h3 id="section-44-rayleigh-color-shift" class="article-section section-heading" data-toc-level="3">Rayleigh Color Shift</h3>
 <p class="article-section section-paragraph">Rayleigh scattering depends on wavelength^-4, meaning blue light scatters much more than red. We compute transmittance through the atmosphere using Beer-Lambert law, then derive the scattered color. This creates blue skies where atmosphere is thin and warm sunset colors where the optical path is long.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -916,7 +1026,7 @@ opticalDepth *= uScatterScale;</pre></div>
 <aside class="article-section section-callout tip">
                 <p>The sunset strength parameter controls how quickly blue shifts to orange/red at the limb. Higher values create more dramatic sunset effects, while lower values keep the atmosphere uniformly blue.</p>
             </aside>
-<h2 class="article-section section-heading">Atmosphere Self-Shadowing</h2>
+<h2 id="section-49-atmosphere-self-shadowing" class="article-section section-heading" data-toc-level="2">Atmosphere Self-Shadowing</h2>
 <p class="article-section section-paragraph">The planet casts a shadow on its own atmosphere. We compute where each light&#39;s rays would intersect the planet, creating shadow cones that darken the atmosphere on the planet&#39;s far side from each light source.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -956,7 +1066,7 @@ opticalDepth *= uScatterScale;</pre></div>
                 </div>
                 <figcaption>Atmospheric Self-Shadowing</figcaption>
             </figure>
-<h2 class="article-section section-heading">Final Composition</h2>
+<h2 id="section-53-final-composition" class="article-section section-heading" data-toc-level="2">Final Composition</h2>
 <p class="article-section section-paragraph">The final color combines diffuse lighting, specular highlights, subsurface scattering, ambient light, Fresnel rim, and atmospheric contribution. We also apply depth fog based on camera distance for integration with the background.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -995,7 +1105,7 @@ col = <span class="function">mix</span>(col, fogColor, fogAmount * planetMask);
 <span class="comment">// Atmosphere glow outside planet surface</span>
 col += foggedAtmosColor * (<span class="number">1.0</span> - planetMask);</pre></div>
             </div>
-<h2 class="article-section section-heading">Performance Considerations</h2>
+<h2 id="section-56-performance-considerations" class="article-section section-heading" data-toc-level="2">Performance Considerations</h2>
 <ul class="article-section section-list"><li>Billboard rendering: No mesh tessellation needed, perfect silhouettes at any distance</li>
 <li>Noise evaluation: 5 FBM octaves is expensive; consider reducing for mobile or distant planets</li>
 <li>Atmosphere ray marching: Fixed sample counts (4-6) balance quality with performance</li>
@@ -1005,7 +1115,7 @@ col += foggedAtmosColor * (<span class="number">1.0</span> - planetMask);</pre><
 <aside class="article-section section-callout warning">
                 <p>The 5-octave FBM terrain is evaluated 3 times per pixel (center + 2 tangent offsets) for normal computation. This is the main performance bottleneck. Consider reducing octaves or using a pre-baked normal map for mobile targets.</p>
             </aside>
-<h2 class="article-section section-heading">Parameter Reference</h2>
+<h2 id="section-59-parameter-reference" class="article-section section-heading" data-toc-level="2">Parameter Reference</h2>
 <div class="article-section section-code">
                 <div class="code-header">
                     <span class="code-title">Planet Shader Parameters</span>
@@ -1041,8 +1151,35 @@ planetParamsB = {
     scatterR: <span class="number">1.0</span>, scatterG: <span class="number">0.4</span>, scatterB: <span class="number">0.2</span>  <span class="comment">// Orange haze</span>
 };</pre></div>
             </div>
+                </div>
+            </article>
+            
+        <aside class="article-toc">
+            <div class="toc-header">
+                <svg class="toc-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 6h16M4 12h16M4 18h10"/>
+                </svg>
+                <span class="toc-header-title">Contents</span>
             </div>
-        </article>
+            <nav class="toc-nav">
+                <a class="toc-item" href="#section-2-sphere-reconstruction-from-screen-space" data-target="section-2-sphere-reconstruction-from-screen-space">Sphere Reconstruction from Screen Space</a>
+                    <a class="toc-item" href="#section-6-planet-rotation-with-rodrigues-formula" data-target="section-6-planet-rotation-with-rodrigues-formula">Planet Rotation with Rodrigues Formula</a>
+                    <a class="toc-item" href="#section-10-procedural-terrain-with-fbm-noise" data-target="section-10-procedural-terrain-with-fbm-noise">Procedural Terrain with FBM Noise</a>
+                    <a class="toc-item" href="#section-14-normal-mapping-from-height-field" data-target="section-14-normal-mapping-from-height-field">Normal Mapping from Height Field</a>
+                    <a class="toc-item" href="#section-18-dual-material-system" data-target="section-18-dual-material-system">Dual-Material System</a>
+                    <a class="toc-item" href="#section-22-cook-torrance-pbr-brdf" data-target="section-22-cook-torrance-pbr-brdf">Cook-Torrance PBR BRDF</a>
+                    <a class="toc-item toc-subchapter" href="#section-28-combining-the-brdf" data-target="section-28-combining-the-brdf">Combining the BRDF</a>
+                    <a class="toc-item" href="#section-31-multi-light-accumulation" data-target="section-31-multi-light-accumulation">Multi-Light Accumulation</a>
+                    <a class="toc-item" href="#section-35-subsurface-scattering-approximation" data-target="section-35-subsurface-scattering-approximation">Subsurface Scattering Approximation</a>
+                    <a class="toc-item" href="#section-39-physically-based-atmospheric-scattering" data-target="section-39-physically-based-atmospheric-scattering">Physically-Based Atmospheric Scattering</a>
+                    <a class="toc-item toc-subchapter" href="#section-44-rayleigh-color-shift" data-target="section-44-rayleigh-color-shift">Rayleigh Color Shift</a>
+                    <a class="toc-item" href="#section-49-atmosphere-self-shadowing" data-target="section-49-atmosphere-self-shadowing">Atmosphere Self-Shadowing</a>
+                    <a class="toc-item" href="#section-53-final-composition" data-target="section-53-final-composition">Final Composition</a>
+                    <a class="toc-item" href="#section-56-performance-considerations" data-target="section-56-performance-considerations">Performance Considerations</a>
+                    <a class="toc-item" href="#section-59-parameter-reference" data-target="section-59-parameter-reference">Parameter Reference</a>
+            </nav>
+        </aside>
+        </div>
 
         <!-- CTA Banner -->
         <div class="article-cta-banner">
@@ -1210,6 +1347,71 @@ planetParamsB = {
             if (loadingEl) loadingEl.style.display = 'none';
             render();
         }
+
+        // TOC scroll tracking and smooth scroll
+        (function initToc() {
+            var tocItems = document.querySelectorAll('.toc-item');
+            var headings = document.querySelectorAll('.section-heading[id]');
+            if (tocItems.length < 2 || headings.length < 2) return;
+
+            var settleTimeout = null;
+            var currentActiveId = null;
+
+            function setActiveTocItem(activeId, immediate) {
+                if (settleTimeout) {
+                    clearTimeout(settleTimeout);
+                    settleTimeout = null;
+                }
+
+                tocItems.forEach(function(item) {
+                    item.classList.remove('settled');
+                    var isActive = item.getAttribute('data-target') === activeId;
+                    item.classList.toggle('active', isActive);
+                });
+
+                currentActiveId = activeId;
+
+                var delay = immediate ? 0 : 150;
+                settleTimeout = setTimeout(function() {
+                    var activeItem = document.querySelector('.toc-item[data-target="' + currentActiveId + '"]');
+                    if (activeItem) activeItem.classList.add('settled');
+                }, delay);
+            }
+
+            // Smooth scroll on click
+            tocItems.forEach(function(item) {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var targetId = item.getAttribute('data-target');
+                    var target = document.getElementById(targetId);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        setActiveTocItem(targetId, false);
+                    }
+                });
+            });
+
+            // Scroll tracking with IntersectionObserver
+            var observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        setActiveTocItem(entry.target.id, false);
+                    }
+                });
+            }, {
+                rootMargin: '-80px 0px -60% 0px',
+                threshold: 0
+            });
+
+            headings.forEach(function(heading) {
+                observer.observe(heading);
+            });
+
+            // Set initial state
+            if (headings.length > 0) {
+                setActiveTocItem(headings[0].id, true);
+            }
+        })();
     </script>
 </body>
 </html>
