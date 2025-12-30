@@ -267,6 +267,15 @@ function generatePostHtml(post) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-5KEDPWV47H"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-5KEDPWV47H');
+    </script>
+
     <!-- Primary Meta Tags -->
     <title>${escapeHtml(post.title)} | ${SITE_CONFIG.siteName}</title>
     <meta name="title" content="${escapeHtml(post.title)} | ${SITE_CONFIG.siteName}">
@@ -1113,6 +1122,15 @@ function generateIndexHtml(posts) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-5KEDPWV47H"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-5KEDPWV47H');
+    </script>
 
     <!-- Primary Meta Tags -->
     <title>Blog | ${SITE_CONFIG.siteName} - Graphics Programming Articles</title>

@@ -767,7 +767,10 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
 <span class="comment">// Using the data doesn&#<span class="number">39</span>;t stall</span>
 <span class="keyword">vec3</span> albedoColor = albedo.rgb;</pre></div>
             </div>
-<h2 id="section-34-texture-memory-layout" class="article-section section-heading" data-toc-level="2">Texture Memory Layout</h2>
+<aside class="article-section section-callout info">
+                <p>Modern shader compilers reorder instructions automatically and balance prefetching against register pressure. The code order you write isn&#39;t necessarily the execution order—the compiler optimizes scheduling. This pattern is more about mental organization and ensuring fetches aren&#39;t blocked by dependent computations.</p>
+            </aside>
+<h2 id="section-35-texture-memory-layout" class="article-section section-heading" data-toc-level="2">Texture Memory Layout</h2>
 <p class="article-section section-paragraph">GPUs store textures in Morton order (Z-order curve) or similar space-filling curves, not linear row-by-row. This layout keeps 2D-local texels close in memory, improving cache efficiency for typical sampling patterns.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="morton-order">
                 <div class="svg-container" style="max-width: 700px;">
@@ -780,10 +783,10 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
 <aside class="article-section section-callout info">
                 <p>Texture swizzling happens automatically when you upload textures via the graphics API. Never manually &#39;optimize&#39; texture data layout—the driver handles this based on GPU-specific tiling patterns.</p>
             </aside>
-<h2 id="section-38-practical-optimization-strategies" class="article-section section-heading" data-toc-level="2">Practical Optimization Strategies</h2>
-<h3 id="section-39-1-texture-atlasing" class="article-section section-heading" data-toc-level="3">1. Texture Atlasing</h3>
+<h2 id="section-39-practical-optimization-strategies" class="article-section section-heading" data-toc-level="2">Practical Optimization Strategies</h2>
+<h3 id="section-40-1-texture-atlasing" class="article-section section-heading" data-toc-level="3">1. Texture Atlasing</h3>
 <p class="article-section section-paragraph">Packing multiple textures into one atlas keeps related data in the same cache space. When sampling from an atlas, neighboring draw calls often hit already-cached data. The tradeoff: more complex UV math and potential filtering artifacts at tile boundaries.</p>
-<h3 id="section-41-2-channel-packing" class="article-section section-heading" data-toc-level="3">2. Channel Packing</h3>
+<h3 id="section-42-2-channel-packing" class="article-section section-heading" data-toc-level="3">2. Channel Packing</h3>
 <div class="article-section section-code">
                 <div class="code-header">
                     <span class="code-title">Channel Packing for Fewer Fetches</span>
@@ -802,7 +805,10 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
 <span class="keyword">float</span> rough = orm.g;
 <span class="keyword">float</span> metal = orm.b;</pre></div>
             </div>
-<h3 id="section-43-3-reduce-dependent-reads" class="article-section section-heading" data-toc-level="3">3. Reduce Dependent Reads</h3>
+<aside class="article-section section-callout warning">
+                <p>Packing works best for related data (like ORM maps) where values share the same UV coordinates and update together. For unrelated channels, packing can cause cross-channel compression artifacts. Single-channel textures with BC4 compression often achieve better quality and smaller memory footprint than packed RGBA with BC7. Choose based on your data relationships.</p>
+            </aside>
+<h3 id="section-45-3-reduce-dependent-reads" class="article-section section-heading" data-toc-level="3">3. Reduce Dependent Reads</h3>
 <p class="article-section section-paragraph">Dependent texture reads—where the UV comes from another texture—serialize memory access. The GPU can&#39;t prefetch the second texture until the first completes. Minimize these chains or compute UVs mathematically when possible.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="dependent-read-chain">
                 <div class="svg-container" style="max-width: 700px;">
@@ -812,9 +818,9 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
                 </div>
                 <figcaption>Dependent Read Latency Stacking</figcaption>
             </figure>
-<h3 id="section-46-4-bindless-textures" class="article-section section-heading" data-toc-level="3">4. Bindless Textures</h3>
-<p class="article-section section-paragraph">Traditional texture binding forces driver overhead and limits cache utilization across draw calls. Bindless textures (via GL_ARB_bindless_texture or Vulkan descriptor indexing) keep all textures resident and accessible, improving cache reuse across the frame.</p>
-<h2 id="section-48-architecture-differences" class="article-section section-heading" data-toc-level="2">Architecture Differences</h2>
+<h3 id="section-48-4-bindless-textures" class="article-section section-heading" data-toc-level="3">4. Bindless Textures</h3>
+<p class="article-section section-paragraph">Traditional texture binding forces driver overhead and limits cache utilization across draw calls. Bindless textures (via GL_ARB_bindless_texture or Vulkan descriptor indexing) keep all textures resident and accessible, which can improve cache reuse across the frame. However, performance depends heavily on access patterns—uniform descriptor access (all threads in a warp reading the same texture index) is fast, but divergent access across a warp adds overhead. Profile before assuming bindless is faster for your use case.</p>
+<h2 id="section-50-architecture-differences" class="article-section section-heading" data-toc-level="2">Architecture Differences</h2>
 <p class="article-section section-paragraph">Cache behavior varies significantly between GPU vendors and generations. NVIDIA&#39;s L1 is tightly coupled with shared memory, AMD&#39;s Infinity Cache adds another hierarchy level, and mobile GPUs often have smaller but more specialized caches optimized for tiled rendering.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="architecture-comparison">
                 <div class="svg-container" style="max-width: 750px;">
@@ -827,7 +833,7 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
 <aside class="article-section section-callout tip">
                 <p>Profile on your target hardware. Desktop optimizations may hurt mobile performance and vice versa. AMD&#39;s cache hierarchy differs enough from NVIDIA that vendor-specific tuning often pays off.</p>
             </aside>
-<h2 id="section-52-quick-wins-copy-paste-patterns" class="article-section section-heading" data-toc-level="2">Quick Wins: Copy-Paste Patterns</h2>
+<h2 id="section-54-quick-wins-copy-paste-patterns" class="article-section section-heading" data-toc-level="2">Quick Wins: Copy-Paste Patterns</h2>
 <p class="article-section section-paragraph">Here are battle-tested patterns you can apply immediately to improve cache efficiency in your shaders.</p>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -899,7 +905,7 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
 <aside class="article-section section-callout tip">
                 <p>Combine these patterns: Pack your PBR textures into ORM format, prefetch all at shader start, and use mip bias in post-processing passes. This alone can yield 20-40% improvement in texture-heavy shaders.</p>
             </aside>
-<h2 id="section-58-key-takeaways" class="article-section section-heading" data-toc-level="2">Key Takeaways</h2>
+<h2 id="section-60-key-takeaways" class="article-section section-heading" data-toc-level="2">Key Takeaways</h2>
 <ul class="article-section section-list"><li>Cache hits are ~15x faster than VRAM fetches (30 vs 500 cycles). Coherent access patterns are critical for performance.</li>
 <li>Mipmapping isn&#39;t optional—it&#39;s a cache optimization that keeps your working set manageable.</li>
 <li>Pack related data into fewer textures. Four 1-channel fetches cost more than one 4-channel fetch.</li>
@@ -929,15 +935,15 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
                     <a class="toc-item" href="#section-23-measuring-cache-efficiency" data-target="section-23-measuring-cache-efficiency">Measuring Cache Efficiency</a>
                     <a class="toc-item" href="#section-27-interactive-demo-cache-access-patterns" data-target="section-27-interactive-demo-cache-access-patterns">Interactive Demo: Cache Access Patterns</a>
                     <a class="toc-item" href="#section-30-texture-fetch-latency-hiding" data-target="section-30-texture-fetch-latency-hiding">Texture Fetch Latency Hiding</a>
-                    <a class="toc-item" href="#section-34-texture-memory-layout" data-target="section-34-texture-memory-layout">Texture Memory Layout</a>
-                    <a class="toc-item" href="#section-38-practical-optimization-strategies" data-target="section-38-practical-optimization-strategies">Practical Optimization Strategies</a>
-                    <a class="toc-item toc-subchapter" href="#section-39-1-texture-atlasing" data-target="section-39-1-texture-atlasing">1. Texture Atlasing</a>
-                    <a class="toc-item toc-subchapter" href="#section-41-2-channel-packing" data-target="section-41-2-channel-packing">2. Channel Packing</a>
-                    <a class="toc-item toc-subchapter" href="#section-43-3-reduce-dependent-reads" data-target="section-43-3-reduce-dependent-reads">3. Reduce Dependent Reads</a>
-                    <a class="toc-item toc-subchapter" href="#section-46-4-bindless-textures" data-target="section-46-4-bindless-textures">4. Bindless Textures</a>
-                    <a class="toc-item" href="#section-48-architecture-differences" data-target="section-48-architecture-differences">Architecture Differences</a>
-                    <a class="toc-item" href="#section-52-quick-wins-copy-paste-patterns" data-target="section-52-quick-wins-copy-paste-patterns">Quick Wins: Copy-Paste Patterns</a>
-                    <a class="toc-item" href="#section-58-key-takeaways" data-target="section-58-key-takeaways">Key Takeaways</a>
+                    <a class="toc-item" href="#section-35-texture-memory-layout" data-target="section-35-texture-memory-layout">Texture Memory Layout</a>
+                    <a class="toc-item" href="#section-39-practical-optimization-strategies" data-target="section-39-practical-optimization-strategies">Practical Optimization Strategies</a>
+                    <a class="toc-item toc-subchapter" href="#section-40-1-texture-atlasing" data-target="section-40-1-texture-atlasing">1. Texture Atlasing</a>
+                    <a class="toc-item toc-subchapter" href="#section-42-2-channel-packing" data-target="section-42-2-channel-packing">2. Channel Packing</a>
+                    <a class="toc-item toc-subchapter" href="#section-45-3-reduce-dependent-reads" data-target="section-45-3-reduce-dependent-reads">3. Reduce Dependent Reads</a>
+                    <a class="toc-item toc-subchapter" href="#section-48-4-bindless-textures" data-target="section-48-4-bindless-textures">4. Bindless Textures</a>
+                    <a class="toc-item" href="#section-50-architecture-differences" data-target="section-50-architecture-differences">Architecture Differences</a>
+                    <a class="toc-item" href="#section-54-quick-wins-copy-paste-patterns" data-target="section-54-quick-wins-copy-paste-patterns">Quick Wins: Copy-Paste Patterns</a>
+                    <a class="toc-item" href="#section-60-key-takeaways" data-target="section-60-key-takeaways">Key Takeaways</a>
             </nav>
         </aside>
         </div>

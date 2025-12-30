@@ -233,6 +233,11 @@
             "content": "// Strategy: Issue all texture fetches early, do math while waiting\n\n// Issue fetches immediately (non-blocking)\nvec4 albedo = texture(uAlbedo, uv);       // Fetch 1\nvec4 normal = texture(uNormal, uv);       // Fetch 2\nvec4 roughness = texture(uRoughness, uv); // Fetch 3\nvec4 ao = texture(uAO, uv);               // Fetch 4\n\n// Do expensive math while waiting for textures\nvec3 N = normalize(vNormal);\nvec3 V = normalize(uCameraPos - vWorldPos);\nvec3 L = normalize(uLightPos - vWorldPos);\nvec3 H = normalize(V + L);\nfloat NdotL = max(dot(N, L), 0.0);\nfloat NdotV = max(dot(N, V), 0.0);\nfloat NdotH = max(dot(N, H), 0.0);\n\n// By now, texture fetches have likely completed\n// Using the data doesn't stall\nvec3 albedoColor = albedo.rgb;"
         },
         {
+            "type": "callout",
+            "variant": "info",
+            "content": "Modern shader compilers reorder instructions automatically and balance prefetching against register pressure. The code order you write isn't necessarily the execution order—the compiler optimizes scheduling. This pattern is more about mental organization and ensuring fetches aren't blocked by dependent computations."
+        },
+        {
             "type": "heading",
             "level": 2,
             "content": "Texture Memory Layout"
@@ -279,6 +284,11 @@
             "content": "// BAD: 4 separate texture fetches (4x memory traffic)\nvec4 albedo = texture(uAlbedo, uv);     // RGBA\nfloat rough = texture(uRoughness, uv).r; // R (wastes GBA)\nfloat metal = texture(uMetallic, uv).r;  // R (wastes GBA)  \nfloat ao = texture(uAO, uv).r;           // R (wastes GBA)\n\n// GOOD: 2 fetches with packed data\nvec4 albedo = texture(uAlbedo, uv);      // RGB = color, A = unused\nvec4 orm = texture(uORM, uv);            // R = AO, G = Roughness, B = Metallic\nfloat ao = orm.r;\nfloat rough = orm.g;\nfloat metal = orm.b;"
         },
         {
+            "type": "callout",
+            "variant": "warning",
+            "content": "Packing works best for related data (like ORM maps) where values share the same UV coordinates and update together. For unrelated channels, packing can cause cross-channel compression artifacts. Single-channel textures with BC4 compression often achieve better quality and smaller memory footprint than packed RGBA with BC7. Choose based on your data relationships."
+        },
+        {
             "type": "heading",
             "level": 3,
             "content": "3. Reduce Dependent Reads"
@@ -301,7 +311,7 @@
         },
         {
             "type": "paragraph",
-            "content": "Traditional texture binding forces driver overhead and limits cache utilization across draw calls. Bindless textures (via GL_ARB_bindless_texture or Vulkan descriptor indexing) keep all textures resident and accessible, improving cache reuse across the frame."
+            "content": "Traditional texture binding forces driver overhead and limits cache utilization across draw calls. Bindless textures (via GL_ARB_bindless_texture or Vulkan descriptor indexing) keep all textures resident and accessible, which can improve cache reuse across the frame. However, performance depends heavily on access patterns—uniform descriptor access (all threads in a warp reading the same texture index) is fast, but divergent access across a warp adds overhead. Profile before assuming bindless is faster for your use case."
         },
         {
             "type": "heading",
