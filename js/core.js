@@ -57,9 +57,9 @@ window.renderTiming = {
 
 // Terrain parameters (shared by all planets)
 var terrainParams = {
-    noiseScale: 2.0,         // Terrain noise frequency
-    seaLevel: 0.0,           // Height threshold for material split
-    normalStrength: 0.15     // Normal map strength from height
+    noiseScale: 2,           // Terrain noise frequency
+    seaLevel: -0.5,          // Height threshold for material split
+    normalStrength: 0.1      // Normal map strength from height
 };
 window.terrainParams = terrainParams;
 
@@ -117,7 +117,7 @@ var sunParams = {
 // Orbital system parameters
 var orbitParams = {
     // Speed & Movement
-    orbitSpeed: 0.1,
+    orbitSpeed: 0.75,
     cameraRotSpeed: 0.1,
     // Sun positioning
     sunSpread: 2,
@@ -138,7 +138,7 @@ var orbitParams = {
     planetSizeFactor: 0.7,
     subMoonSize: 0.15,
     // Orbit display
-    orbitLineOpacity: 0.04,
+    orbitLineOpacity: 0.03,
     orbitLineWidth: 1,
     showOrbits: 1
 };
@@ -215,41 +215,41 @@ var lensGhostParams = {
 // Post-process parameters
 var postProcessParams = {
     // Edge fade
-    edgeFadeSize: 0.04,
-    edgeFadePower: 1.0,
+    edgeFadeSize: 0,
+    edgeFadePower: 1,
     // Vignette
-    vignetteIntensity: 0,
-    vignetteRadius: 1.15,
-    vignetteSoftness: 0.85,
+    vignetteIntensity: 1,
+    vignetteRadius: 1.05,
+    vignetteSoftness: 0.8,
     // Color grading
-    brightness: 0.98,
-    contrast: 1.0,
-    saturation: 1.0,
-    gamma: 1.0,
+    brightness: 1,
+    contrast: 1,
+    saturation: 1,
+    gamma: 1,
     // Color balance (shadows/midtones/highlights)
-    shadowsR: 0.0,
-    shadowsG: 0.0,
-    shadowsB: 0.0,
-    highlightsR: 0.0,
-    highlightsG: 0.0,
-    highlightsB: 0.0,
+    shadowsR: 0,
+    shadowsG: 0,
+    shadowsB: 0,
+    highlightsR: 0,
+    highlightsG: 0,
+    highlightsB: 0,
     // Chromatic aberration
-    chromaticAberration: 1.0,
-    chromaticOffset: 0.003,
+    chromaticAberration: 0.3,
+    chromaticOffset: 0.008,
     // Film grain
-    grainIntensity: 0.0,
-    grainSize: 4.0,
+    grainIntensity: 0,
+    grainSize: 0.5,
     // Bloom (multi-pass, anamorphic)
-    bloomThreshold: 1.0,
-    bloomIntensity: 0.1,
-    bloomRadius: 1.0,
-    bloomSoftKnee: 1.0,
-    bloomTint: 0.0,
-    bloomAnamorphic: 1.0,
+    bloomThreshold: 1,
+    bloomIntensity: 0.5,
+    bloomRadius: 0.5,
+    bloomSoftKnee: 1,
+    bloomTint: 0,
+    bloomAnamorphic: 1,
     // Sharpen
-    sharpenIntensity: 0.0,
+    sharpenIntensity: 0,
     // Tone mapping
-    exposure: 1.0,
+    exposure: 1,
     toneMapping: 1  // 0 = none, 1 = ACES, 2 = Reinhard, 3 = Filmic
 };
 
@@ -279,6 +279,10 @@ var glassParams = {
     // Edge bevel controls
     edgeWidth: 2.0,            // How far effects extend from edge (multiplier of corner radius)
     bevelDepth: 0.5,           // How pronounced the 3D bevel effect is (0-1)
+
+    // Caustics (light focusing through curved edges)
+    causticsIntensity: 0.3,    // Brightness of caustic bands (0-2)
+    causticsScale: 1.0,        // Size/width of caustic pattern (0.5-3)
 
     // Specular highlights (LiquidGlass rim lighting)
     specularIntensity: 0.6,    // Overall specular brightness

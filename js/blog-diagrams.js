@@ -2472,6 +2472,651 @@
             svg.appendChild(createText(w/2, 245, 'Cache architectures vary significantly—profile on target hardware', 'diagram-label-small'));
 
             container.appendChild(svg);
+        },
+
+        // ============================================
+        // APPLE LIQUID GLASS ARTICLE DIAGRAMS
+        // ============================================
+
+        // Overview of Liquid Glass effect components
+        'liquid-glass-overview': function(container, w, h) {
+            var svg = createSvg(w, h);
+
+            // Background
+            svg.appendChild(createRect(0, 0, w, h, 0, '#0a0f14', 'none'));
+
+            // Center glass panel representation
+            var panelX = w/2 - 120;
+            var panelY = 60;
+            var panelW = 240;
+            var panelH = 140;
+
+            // Outer glow
+            var glowRect = createRect(panelX - 20, panelY - 20, panelW + 40, panelH + 40, 30, 'none', 'none');
+            glowRect.innerHTML = '<animate attributeName="fill" values="rgba(45,212,191,0.05);rgba(45,212,191,0.1);rgba(45,212,191,0.05)" dur="3s" repeatCount="indefinite"/>';
+            svg.appendChild(glowRect);
+
+            // Main glass panel with squircle-like corners
+            var panelPath = createPath(
+                'M' + (panelX + 25) + ',' + panelY +
+                ' Q' + panelX + ',' + panelY + ' ' + panelX + ',' + (panelY + 25) +
+                ' L' + panelX + ',' + (panelY + panelH - 25) +
+                ' Q' + panelX + ',' + (panelY + panelH) + ' ' + (panelX + 25) + ',' + (panelY + panelH) +
+                ' L' + (panelX + panelW - 25) + ',' + (panelY + panelH) +
+                ' Q' + (panelX + panelW) + ',' + (panelY + panelH) + ' ' + (panelX + panelW) + ',' + (panelY + panelH - 25) +
+                ' L' + (panelX + panelW) + ',' + (panelY + 25) +
+                ' Q' + (panelX + panelW) + ',' + panelY + ' ' + (panelX + panelW - 25) + ',' + panelY + ' Z',
+                'rgba(255,255,255,0.08)', 'rgba(45,212,191,0.5)', 1.5
+            );
+            svg.appendChild(panelPath);
+
+            // Bevel highlight (left edge)
+            var bevelLeft = createPath(
+                'M' + panelX + ',' + (panelY + 30) + ' L' + panelX + ',' + (panelY + panelH - 30),
+                'none', 'url(#bevelGrad)', 3
+            );
+            svg.appendChild(bevelLeft);
+
+            // Specular highlight dot
+            var specDot = createCircle(panelX + 60, panelY + 40, 8, '#fff', 'none');
+            specDot.setAttribute('opacity', '0.6');
+            specDot.innerHTML = '<animate attributeName="opacity" values="0.4;0.8;0.4" dur="2s" repeatCount="indefinite"/>';
+            svg.appendChild(specDot);
+
+            // Chromatic aberration representation at edge
+            var chromR = createLine(panelX - 5, panelY + 60, panelX + 15, panelY + 60, '#ff6b6b', 2);
+            chromR.setAttribute('opacity', '0.7');
+            var chromG = createLine(panelX - 3, panelY + 65, panelX + 12, panelY + 65, '#4ade80', 2);
+            chromG.setAttribute('opacity', '0.7');
+            var chromB = createLine(panelX - 1, panelY + 70, panelX + 9, panelY + 70, '#60a5fa', 2);
+            chromB.setAttribute('opacity', '0.7');
+            svg.appendChild(chromR);
+            svg.appendChild(chromG);
+            svg.appendChild(chromB);
+
+            // Labels around the panel
+            var labels = [
+                { x: 80, y: 70, text: 'Squircle SDF', line: { x2: panelX + 10, y2: panelY + 15 } },
+                { x: 80, y: 130, text: 'Bevel Geometry', line: { x2: panelX + 5, y2: panelY + 70 } },
+                { x: 80, y: 190, text: 'Chromatic Aberration', line: { x2: panelX + 5, y2: panelY + 100 } },
+                { x: w - 80, y: 70, text: 'Specular Fresnel', line: { x2: panelX + panelW - 60, y2: panelY + 40 } },
+                { x: w - 80, y: 130, text: 'Gaussian Blur', line: { x2: panelX + panelW/2, y2: panelY + panelH/2 } },
+                { x: w - 80, y: 190, text: 'Caustic Focusing', line: { x2: panelX + panelW - 30, y2: panelY + panelH - 30 } }
+            ];
+
+            labels.forEach(function(lbl, i) {
+                var isLeft = lbl.x < w/2;
+                var textEl = createText(lbl.x, lbl.y, lbl.text, 'diagram-label-small');
+                textEl.setAttribute('text-anchor', isLeft ? 'start' : 'end');
+                svg.appendChild(textEl);
+
+                var lineEl = createLine(isLeft ? lbl.x + lbl.text.length * 4 + 10 : lbl.x - lbl.text.length * 4 - 10, lbl.y, lbl.line.x2, lbl.line.y2, 'rgba(45,212,191,0.3)', 1);
+                lineEl.setAttribute('stroke-dasharray', '3,3');
+                svg.appendChild(lineEl);
+            });
+
+            // Title
+            svg.appendChild(createText(w/2, 250, 'Liquid Glass: Six Components Working Together', 'diagram-label'));
+
+            // Gradient definitions
+            var defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            defs.innerHTML = '<linearGradient id="bevelGrad" x1="0%" y1="0%" x2="0%" y2="100%">' +
+                '<stop offset="0%" stop-color="rgba(255,255,255,0)"/>' +
+                '<stop offset="30%" stop-color="rgba(255,255,255,0.6)"/>' +
+                '<stop offset="70%" stop-color="rgba(255,255,255,0.6)"/>' +
+                '<stop offset="100%" stop-color="rgba(255,255,255,0)"/>' +
+            '</linearGradient>';
+            svg.appendChild(defs);
+
+            container.appendChild(svg);
+        },
+
+        // Squircle vs rounded rect vs ellipse comparison
+        'squircle-comparison': function(container, w, h) {
+            var svg = createSvg(w, h);
+
+            var shapes = [
+                { x: 120, name: 'Ellipse (n=2)', n: 2, color: 'rgba(255,100,100,0.5)' },
+                { x: 350, name: 'Squircle (n=4)', n: 4, color: '#e8b923' },
+                { x: 580, name: 'Rounded Rect', n: 'rect', color: 'rgba(100,150,255,0.5)' }
+            ];
+
+            shapes.forEach(function(shape) {
+                var y = 110;
+                var width = 100;
+                var height = 60;
+
+                if (shape.n === 'rect') {
+                    // Rounded rectangle
+                    var rect = createRect(shape.x - width/2, y - height/2, width, height, 12, 'none', shape.color, 2);
+                    svg.appendChild(rect);
+                } else {
+                    // Draw superellipse using path approximation
+                    var path = '';
+                    var steps = 100;
+                    for (var i = 0; i <= steps; i++) {
+                        var t = (i / steps) * Math.PI * 2;
+                        var cos = Math.cos(t);
+                        var sin = Math.sin(t);
+                        var px = shape.x + Math.sign(cos) * Math.pow(Math.abs(cos), 2/shape.n) * width/2;
+                        var py = y + Math.sign(sin) * Math.pow(Math.abs(sin), 2/shape.n) * height/2;
+                        path += (i === 0 ? 'M' : 'L') + px.toFixed(2) + ',' + py.toFixed(2);
+                    }
+                    path += 'Z';
+                    var pathEl = createPath(path, 'none', shape.color, 2);
+                    svg.appendChild(pathEl);
+                }
+
+                // Label
+                svg.appendChild(createText(shape.x, 170, shape.name, 'diagram-label-small'));
+
+                // Apple indicator for squircle
+                if (shape.n === 4) {
+                    var apple = createText(shape.x, 190, '← Apple Style', 'diagram-label-tiny');
+                    apple.setAttribute('fill', '#e8b923');
+                    svg.appendChild(apple);
+                }
+            });
+
+            // Zoom into corner comparison
+            svg.appendChild(createText(w/2, 25, 'Corner Curvature Comparison', 'diagram-label'));
+
+            // Corner zoom boxes
+            var zoomY = 105;
+            [{ x: 165, n: 2 }, { x: 395, n: 4 }, { x: 535, n: 'rect' }].forEach(function(corner) {
+                var zoomBox = createRect(corner.x, zoomY - 25, 50, 50, 0, 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.2)', 1);
+                svg.appendChild(zoomBox);
+            });
+
+            container.appendChild(svg);
+        },
+
+        // Bevel geometry cross-section
+        'bevel-geometry-cross-section': function(container, w, h) {
+            var svg = createSvg(w, h);
+
+            // Cross-section visualization
+            var startX = 100;
+            var endX = 600;
+            var centerY = 140;
+
+            // Background panel (flat part)
+            svg.appendChild(createRect(startX, centerY - 5, endX - startX, 10, 0, 'rgba(45,212,191,0.2)', 'none'));
+
+            // Left bevel curve using 1 - sqrt(1 - x²)
+            var leftBevelPath = 'M' + startX + ',' + centerY;
+            var bevelWidth = 80;
+            for (var i = 0; i <= 40; i++) {
+                var x = i / 40; // 0 to 1
+                var curve = 1 - Math.sqrt(1 - x * x); // lens curve
+                var px = startX + x * bevelWidth;
+                var py = centerY - curve * 60;
+                leftBevelPath += ' L' + px.toFixed(2) + ',' + py.toFixed(2);
+            }
+            svg.appendChild(createPath(leftBevelPath, 'none', '#2dd4bf', 2.5));
+
+            // Right bevel curve (mirrored)
+            var rightBevelPath = 'M' + endX + ',' + centerY;
+            for (var j = 0; j <= 40; j++) {
+                var x2 = j / 40;
+                var curve2 = 1 - Math.sqrt(1 - x2 * x2);
+                var px2 = endX - x2 * bevelWidth;
+                var py2 = centerY - curve2 * 60;
+                rightBevelPath += ' L' + px2.toFixed(2) + ',' + py2.toFixed(2);
+            }
+            svg.appendChild(createPath(rightBevelPath, 'none', '#2dd4bf', 2.5));
+
+            // Normal vectors at different points
+            var normals = [
+                { x: startX + 20, angle: -60 },
+                { x: startX + 50, angle: -35 },
+                { x: startX + 80, angle: -10 },
+                { x: w/2, angle: 0 },
+                { x: endX - 80, angle: 10 },
+                { x: endX - 50, angle: 35 },
+                { x: endX - 20, angle: 60 }
+            ];
+
+            normals.forEach(function(n, i) {
+                var yOffset = 0;
+                if (Math.abs(n.angle) > 5) {
+                    var absX = Math.abs(n.x < w/2 ? n.x - startX : endX - n.x) / bevelWidth;
+                    absX = Math.min(absX, 1);
+                    yOffset = (1 - Math.sqrt(1 - absX * absX)) * 60;
+                }
+
+                var ny = centerY - yOffset;
+                var rad = n.angle * Math.PI / 180;
+                var nx = n.x + Math.sin(rad) * 30;
+                var ny2 = ny - Math.cos(rad) * 30;
+
+                var arrow = createArrow(n.x, ny, nx, ny2, '#e8b923');
+                arrow.setAttribute('opacity', '0.7');
+                svg.appendChild(arrow);
+            });
+
+            // Labels
+            svg.appendChild(createText(startX + 40, 50, 'Tilted Normal', 'diagram-label-tiny'));
+            svg.appendChild(createText(w/2, 50, 'Flat Normal', 'diagram-label-tiny'));
+
+            // Formula annotation
+            svg.appendChild(createText(w/2, 200, 'Bevel curve: y = 1 - √(1 - x²)', 'diagram-label-small'));
+            svg.appendChild(createText(w/2, 220, 'Same formula as a circular lens edge profile', 'diagram-label-tiny'));
+
+            // Dimension annotations
+            svg.appendChild(createDoubleArrow(startX, 175, startX + bevelWidth, 175, 'rgba(255,255,255,0.4)'));
+            svg.appendChild(createText(startX + bevelWidth/2, 190, 'effectZone', 'diagram-label-tiny'));
+
+            svg.appendChild(createText(w/2, 25, 'Cross-Section: Bevel Geometry & Surface Normals', 'diagram-label'));
+
+            container.appendChild(svg);
+        },
+
+        // Separable blur diagram
+        'separable-blur-diagram': function(container, w, h) {
+            var svg = createSvg(w, h);
+
+            // Source image representation
+            var sourceX = 60;
+            var sourceY = 60;
+            var boxSize = 80;
+
+            svg.appendChild(createRect(sourceX, sourceY, boxSize, boxSize, 4, 'rgba(45,212,191,0.2)', 'rgba(45,212,191,0.5)', 1));
+            svg.appendChild(createText(sourceX + boxSize/2, sourceY + boxSize/2, 'Scene', 'diagram-label-small'));
+            svg.appendChild(createText(sourceX + boxSize/2, sourceY + boxSize + 15, 'N² samples', 'diagram-label-tiny'));
+
+            // Arrow
+            svg.appendChild(createArrow(sourceX + boxSize + 10, sourceY + boxSize/2, sourceX + boxSize + 50, sourceY + boxSize/2, '#e8b923'));
+
+            // H-blur
+            var hBlurX = 190;
+            svg.appendChild(createRect(hBlurX, sourceY, boxSize, boxSize, 4, 'rgba(232,185,35,0.2)', 'rgba(232,185,35,0.5)', 1));
+
+            // Horizontal blur indicator
+            for (var i = 0; i < 5; i++) {
+                var lineY = sourceY + 15 + i * 14;
+                var opacity = 1 - Math.abs(i - 2) * 0.3;
+                svg.appendChild(createLine(hBlurX + 10, lineY, hBlurX + boxSize - 10, lineY, 'rgba(232,185,35,' + opacity + ')', 2));
+            }
+            svg.appendChild(createText(hBlurX + boxSize/2, sourceY + boxSize + 15, 'H-Pass (N)', 'diagram-label-tiny'));
+
+            // Arrow
+            svg.appendChild(createArrow(hBlurX + boxSize + 10, sourceY + boxSize/2, hBlurX + boxSize + 50, sourceY + boxSize/2, '#e8b923'));
+
+            // V-blur
+            var vBlurX = 320;
+            svg.appendChild(createRect(vBlurX, sourceY, boxSize, boxSize, 4, 'rgba(45,212,191,0.2)', 'rgba(45,212,191,0.5)', 1));
+
+            // Vertical blur indicator
+            for (var j = 0; j < 5; j++) {
+                var lineX = vBlurX + 15 + j * 14;
+                var opacity2 = 1 - Math.abs(j - 2) * 0.3;
+                svg.appendChild(createLine(lineX, sourceY + 10, lineX, sourceY + boxSize - 10, 'rgba(45,212,191,' + opacity2 + ')', 2));
+            }
+            svg.appendChild(createText(vBlurX + boxSize/2, sourceY + boxSize + 15, 'V-Pass (N)', 'diagram-label-tiny'));
+
+            // Arrow
+            svg.appendChild(createArrow(vBlurX + boxSize + 10, sourceY + boxSize/2, vBlurX + boxSize + 50, sourceY + boxSize/2, '#e8b923'));
+
+            // Result
+            var resultX = 450;
+            svg.appendChild(createRect(resultX, sourceY, boxSize, boxSize, 4, 'rgba(255,255,255,0.1)', 'rgba(255,255,255,0.5)', 1));
+
+            // Blur effect representation
+            var blurCircle = createCircle(resultX + boxSize/2, sourceY + boxSize/2, 25, 'rgba(255,255,255,0.2)', 'none');
+            blurCircle.innerHTML = '<animate attributeName="r" values="20;30;20" dur="2s" repeatCount="indefinite"/>';
+            svg.appendChild(blurCircle);
+            svg.appendChild(createText(resultX + boxSize/2, sourceY + boxSize/2, 'Blurred', 'diagram-label-small'));
+            svg.appendChild(createText(resultX + boxSize/2, sourceY + boxSize + 15, '2N total', 'diagram-label-tiny'));
+
+            // Complexity comparison
+            svg.appendChild(createText(w/2, 175, 'O(N²) → O(2N): 81 samples → 18 samples for 9-tap kernel', 'diagram-label-small'));
+
+            svg.appendChild(createText(w/2, 25, 'Separable Gaussian Blur', 'diagram-label'));
+
+            container.appendChild(svg);
+        },
+
+        // Linear sampling optimization
+        'linear-sampling-optimization': function(container, w, h) {
+            var svg = createSvg(w, h);
+
+            // Left side: discrete sampling
+            var leftX = 150;
+            var y = 90;
+
+            svg.appendChild(createText(leftX, 30, 'Discrete Sampling', 'diagram-label-small'));
+
+            // Texel grid
+            for (var i = 0; i < 5; i++) {
+                var tx = leftX - 80 + i * 40;
+                svg.appendChild(createRect(tx, y - 15, 38, 30, 2, 'rgba(255,255,255,0.1)', 'rgba(255,255,255,0.3)', 1));
+                svg.appendChild(createText(tx + 19, y, 'T' + i, 'diagram-label-tiny'));
+
+                // Sample points
+                var sampleDot = createCircle(tx + 19, y + 35, 5, '#2dd4bf', 'none');
+                sampleDot.innerHTML = '<animate attributeName="r" values="4;6;4" dur="1s" begin="' + (i * 0.15) + 's" repeatCount="indefinite"/>';
+                svg.appendChild(sampleDot);
+            }
+            svg.appendChild(createText(leftX, 150, '5 texture fetches', 'diagram-label-tiny'));
+
+            // Divider
+            svg.appendChild(createLine(300, 20, 300, 160, 'rgba(255,255,255,0.2)', 1));
+            svg.appendChild(createText(300, 90, '→', 'diagram-label'));
+
+            // Right side: linear sampling
+            var rightX = 480;
+
+            svg.appendChild(createText(rightX, 30, 'Linear Sampling', 'diagram-label-small'));
+
+            // Texel grid
+            for (var j = 0; j < 5; j++) {
+                var tx2 = rightX - 80 + j * 40;
+                svg.appendChild(createRect(tx2, y - 15, 38, 30, 2, 'rgba(255,255,255,0.1)', 'rgba(255,255,255,0.3)', 1));
+                svg.appendChild(createText(tx2 + 19, y, 'T' + j, 'diagram-label-tiny'));
+            }
+
+            // Sample points between texels
+            var samplePositions = [rightX - 61, rightX, rightX + 59];
+            samplePositions.forEach(function(sx, idx) {
+                var sampleDot2 = createCircle(sx, y + 35, 6, '#e8b923', 'none');
+                sampleDot2.innerHTML = '<animate attributeName="r" values="5;7;5" dur="1s" begin="' + (idx * 0.2) + 's" repeatCount="indefinite"/>';
+                svg.appendChild(sampleDot2);
+
+                // Lines showing interpolation
+                if (idx === 0 || idx === 2) {
+                    svg.appendChild(createLine(sx - 20, y + 20, sx, y + 30, 'rgba(232,185,35,0.5)', 1));
+                    svg.appendChild(createLine(sx + 20, y + 20, sx, y + 30, 'rgba(232,185,35,0.5)', 1));
+                }
+            });
+
+            svg.appendChild(createText(rightX, 150, '3 fetches (HW bilinear)', 'diagram-label-tiny'));
+
+            container.appendChild(svg);
+        },
+
+        // Chromatic dispersion diagram
+        'chromatic-dispersion-diagram': function(container, w, h) {
+            var svg = createSvg(w, h);
+
+            // Glass bevel cross-section
+            var glassX = 150;
+            var glassY = 40;
+            var glassH = 160;
+
+            // Glass shape
+            var glassPath = createPath(
+                'M' + glassX + ',' + glassY +
+                ' Q' + (glassX - 40) + ',' + (glassY + glassH/2) + ' ' + glassX + ',' + (glassY + glassH) +
+                ' L' + (glassX + 30) + ',' + (glassY + glassH) +
+                ' L' + (glassX + 30) + ',' + glassY + ' Z',
+                'rgba(255,255,255,0.1)', 'rgba(255,255,255,0.3)', 1
+            );
+            svg.appendChild(glassPath);
+
+            // Incoming white light
+            svg.appendChild(createLine(50, glassY + glassH/2, glassX - 25, glassY + glassH/2, '#fff', 3));
+            svg.appendChild(createText(70, glassY + glassH/2 - 15, 'White Light', 'diagram-label-tiny'));
+
+            // Dispersed light rays
+            var rays = [
+                { color: '#ff6b6b', name: 'Red (656nm)', n: 1.514, angle: 12 },
+                { color: '#4ade80', name: 'Green (550nm)', n: 1.519, angle: 15 },
+                { color: '#60a5fa', name: 'Blue (486nm)', n: 1.528, angle: 18 }
+            ];
+
+            rays.forEach(function(ray, i) {
+                var startX = glassX + 30;
+                var startY = glassY + glassH/2 + (i - 1) * 8;
+                var endX = 500;
+                var endY = startY + Math.tan(ray.angle * Math.PI / 180) * (endX - startX);
+
+                var rayLine = createLine(startX, startY, endX, endY, ray.color, 2);
+                rayLine.setAttribute('stroke-dasharray', '300');
+                rayLine.setAttribute('stroke-dashoffset', '300');
+                rayLine.innerHTML = '<animate attributeName="stroke-dashoffset" from="300" to="0" dur="1s" begin="' + (0.5 + i * 0.2) + 's" fill="freeze"/>';
+                svg.appendChild(rayLine);
+
+                // Label
+                svg.appendChild(createText(520, endY, ray.name, 'diagram-label-tiny'));
+                svg.appendChild(createText(600, endY, 'n=' + ray.n, 'diagram-label-tiny'));
+            });
+
+            // Annotations
+            svg.appendChild(createText(glassX - 10, 25, 'Glass Bevel', 'diagram-label-small'));
+            svg.appendChild(createText(w/2, 220, 'Cauchy equation: n(λ) ≈ A + B/λ² — shorter wavelengths bend more', 'diagram-label-small'));
+
+            container.appendChild(svg);
+        },
+
+        // Fresnel reflection diagram
+        'fresnel-reflection-diagram': function(container, w, h) {
+            var svg = createSvg(w, h);
+
+            // Glass surface
+            var surfaceY = 120;
+            svg.appendChild(createLine(100, surfaceY, 600, surfaceY, 'rgba(45,212,191,0.5)', 2));
+            svg.appendChild(createRect(100, surfaceY, 500, 60, 0, 'rgba(45,212,191,0.1)', 'none'));
+
+            // Normal incidence (left)
+            var normalX = 200;
+            svg.appendChild(createArrow(normalX, 40, normalX, surfaceY - 5, '#fff'));
+            svg.appendChild(createArrow(normalX, surfaceY + 5, normalX, surfaceY + 50, 'rgba(255,255,255,0.3)'));
+            svg.appendChild(createText(normalX, 25, 'Normal', 'diagram-label-tiny'));
+            svg.appendChild(createText(normalX, surfaceY - 45, '~4% reflects', 'diagram-label-tiny'));
+            svg.appendChild(createText(normalX + 40, surfaceY - 45, '→ F0', 'diagram-label-tiny'));
+
+            // Grazing angle (right)
+            var grazingX = 450;
+            svg.appendChild(createArrow(grazingX - 80, surfaceY - 30, grazingX, surfaceY - 5, '#fff'));
+            svg.appendChild(createArrow(grazingX, surfaceY - 5, grazingX + 80, surfaceY - 30, '#e8b923'));
+            svg.appendChild(createArrow(grazingX, surfaceY + 5, grazingX + 20, surfaceY + 50, 'rgba(255,255,255,0.1)'));
+            svg.appendChild(createText(grazingX, 25, 'Grazing', 'diagram-label-tiny'));
+            svg.appendChild(createText(grazingX + 50, surfaceY - 50, '~100% reflects', 'diagram-label-tiny'));
+
+            // Fresnel curve
+            var curveStartX = 100;
+            var curveEndX = 600;
+            var curveY = 195;
+
+            svg.appendChild(createLine(curveStartX, curveY, curveEndX, curveY, 'rgba(255,255,255,0.2)', 1));
+            svg.appendChild(createLine(curveStartX, curveY, curveStartX, curveY - 50, 'rgba(255,255,255,0.2)', 1));
+
+            // Fresnel curve path
+            var fresnelPath = 'M' + curveStartX + ',' + (curveY - 2); // F0 = 0.04
+            for (var angle = 0; angle <= 90; angle += 5) {
+                var x = curveStartX + (angle / 90) * (curveEndX - curveStartX);
+                var cosTheta = Math.cos(angle * Math.PI / 180);
+                var F0 = 0.04;
+                var fresnel = F0 + (1 - F0) * Math.pow(1 - cosTheta, 5);
+                var y = curveY - fresnel * 45;
+                fresnelPath += ' L' + x.toFixed(1) + ',' + y.toFixed(1);
+            }
+            svg.appendChild(createPath(fresnelPath, 'none', '#2dd4bf', 2));
+
+            svg.appendChild(createText(curveStartX - 15, curveY - 2, 'F0', 'diagram-label-tiny'));
+            svg.appendChild(createText(curveStartX - 15, curveY - 45, '1.0', 'diagram-label-tiny'));
+            svg.appendChild(createText(curveStartX + 20, curveY + 12, '0°', 'diagram-label-tiny'));
+            svg.appendChild(createText(curveEndX - 10, curveY + 12, '90°', 'diagram-label-tiny'));
+
+            svg.appendChild(createText(w/2, 10, 'Fresnel Effect: Reflectance vs. Viewing Angle', 'diagram-label'));
+
+            container.appendChild(svg);
+        },
+
+        // Window reflection physics
+        'window-reflection-physics': function(container, w, h) {
+            var svg = createSvg(w, h);
+
+            // Glass panel (center)
+            var panelX = w/2 - 10;
+            var panelTop = 40;
+            var panelBottom = 180;
+
+            svg.appendChild(createLine(panelX, panelTop, panelX, panelBottom, 'rgba(45,212,191,0.6)', 3));
+            svg.appendChild(createRect(panelX - 5, panelTop, 10, panelBottom - panelTop, 0, 'rgba(45,212,191,0.1)', 'none'));
+            svg.appendChild(createText(panelX, 195, 'Glass Panel', 'diagram-label-small'));
+
+            // Camera (left side)
+            var cameraX = 150;
+            var cameraY = 110;
+            svg.appendChild(createRect(cameraX - 20, cameraY - 15, 40, 30, 4, 'rgba(255,255,255,0.2)', '#fff', 1));
+            svg.appendChild(createCircle(cameraX + 10, cameraY, 8, 'none', '#fff'));
+            svg.appendChild(createText(cameraX, cameraY + 35, 'Camera', 'diagram-label-tiny'));
+
+            // Light source BEHIND camera (correct)
+            var lightBehindX = 80;
+            var lightBehindY = 60;
+            var lightBehind = createCircle(lightBehindX, lightBehindY, 12, '#e8b923', 'none');
+            lightBehind.innerHTML = '<animate attributeName="r" values="10;14;10" dur="2s" repeatCount="indefinite"/>';
+            svg.appendChild(lightBehind);
+            svg.appendChild(createText(lightBehindX, lightBehindY + 25, 'Light', 'diagram-label-tiny'));
+
+            // Light ray: light → panel → reflects back
+            svg.appendChild(createLine(lightBehindX + 10, lightBehindY + 5, panelX - 3, 80, '#e8b923', 1.5));
+            svg.appendChild(createArrow(panelX - 3, 80, cameraX + 25, cameraY - 10, '#e8b923'));
+            svg.appendChild(createText(panelX - 60, 65, 'Reflects ✓', 'diagram-label-tiny'));
+
+            // Light source IN FRONT (wrong - no reflection visible)
+            var lightFrontX = 550;
+            var lightFrontY = 70;
+            var lightFront = createCircle(lightFrontX, lightFrontY, 10, 'rgba(255,100,100,0.5)', 'none');
+            svg.appendChild(lightFront);
+            svg.appendChild(createText(lightFrontX, lightFrontY + 22, 'Light', 'diagram-label-tiny'));
+
+            // Light ray: transmits through
+            svg.appendChild(createLine(lightFrontX - 10, lightFrontY, panelX + 3, 90, 'rgba(255,100,100,0.3)', 1.5));
+            var transmitLine = createLine(panelX - 3, 90, 80, 130, 'rgba(255,100,100,0.3)', 1.5);
+            transmitLine.setAttribute('stroke-dasharray', '5,5');
+            svg.appendChild(transmitLine);
+            svg.appendChild(createText(panelX + 70, 75, 'Transmits', 'diagram-label-tiny'));
+
+            // Labels
+            svg.appendChild(createText(120, 215, 'Behind camera: REFLECTS', 'diagram-label-tiny'));
+            svg.appendChild(createText(520, 215, 'In front: TRANSMITS', 'diagram-label-tiny'));
+
+            svg.appendChild(createText(w/2, 15, 'Window Reflection: Light Position Matters', 'diagram-label'));
+
+            container.appendChild(svg);
+        },
+
+        // Caustics focusing diagram
+        'caustics-focusing-diagram': function(container, w, h) {
+            var svg = createSvg(w, h);
+
+            // Glass bevel (curved lens edge)
+            var lensX = 200;
+            var lensTop = 30;
+            var lensBottom = 200;
+
+            // Draw curved lens edge
+            var lensPath = 'M' + lensX + ',' + lensTop;
+            for (var y = lensTop; y <= lensBottom; y += 5) {
+                var t = (y - lensTop) / (lensBottom - lensTop);
+                var curve = Math.sin(t * Math.PI) * 30;
+                lensPath += ' L' + (lensX + curve) + ',' + y;
+            }
+            svg.appendChild(createPath(lensPath, 'none', 'rgba(45,212,191,0.6)', 3));
+
+            // Incoming parallel rays
+            var rayStartX = 80;
+            var rayColors = ['#ff6b6b', '#4ade80', '#60a5fa'];
+            var rayNames = ['R', 'G', 'B'];
+            var focalPoints = [380, 350, 320]; // Red focuses furthest, blue closest
+
+            for (var i = 0; i < 5; i++) {
+                var rayY = lensTop + 20 + i * 40;
+                var lensHitX = lensX + Math.sin(((rayY - lensTop) / (lensBottom - lensTop)) * Math.PI) * 30;
+
+                // White incoming ray
+                svg.appendChild(createLine(rayStartX, rayY, lensHitX - 2, rayY, 'rgba(255,255,255,0.5)', 1.5));
+
+                // Dispersed refracted rays
+                rayColors.forEach(function(color, ci) {
+                    var focalX = focalPoints[ci];
+                    var focalY = 115; // All converge to same Y but different X
+                    var refractedLine = createLine(lensHitX + 2, rayY, focalX, focalY, color, 1);
+                    refractedLine.setAttribute('opacity', '0.6');
+                    svg.appendChild(refractedLine);
+                });
+            }
+
+            // Focal points with labels
+            rayColors.forEach(function(color, ci) {
+                var focalDot = createCircle(focalPoints[ci], 115, 6, color, 'none');
+                focalDot.innerHTML = '<animate attributeName="r" values="5;8;5" dur="1.5s" begin="' + (ci * 0.2) + 's" repeatCount="indefinite"/>';
+                svg.appendChild(focalDot);
+            });
+
+            // Caustic band representation
+            var causticRect = createRect(310, 100, 80, 30, 4, 'none', 'rgba(232,185,35,0.5)', 1);
+            causticRect.setAttribute('stroke-dasharray', '4,4');
+            svg.appendChild(causticRect);
+            svg.appendChild(createText(350, 145, 'Caustic Band', 'diagram-label-tiny'));
+
+            // Labels
+            svg.appendChild(createText(80, 15, 'Parallel Light', 'diagram-label-tiny'));
+            svg.appendChild(createText(lensX + 50, 15, 'Curved Bevel', 'diagram-label-tiny'));
+            svg.appendChild(createText(500, 95, 'R (outer)', 'diagram-label-tiny'));
+            svg.appendChild(createText(500, 115, 'G (middle)', 'diagram-label-tiny'));
+            svg.appendChild(createText(500, 135, 'B (inner)', 'diagram-label-tiny'));
+
+            svg.appendChild(createText(w/2, 235, 'Chromatic Caustics: Each wavelength focuses at different position', 'diagram-label-small'));
+
+            container.appendChild(svg);
+        },
+
+        // Full Liquid Glass pipeline
+        'liquid-glass-pipeline': function(container, w, h) {
+            var svg = createSvg(w, h);
+
+            var stages = [
+                { name: 'Scene', sub: 'FBO' },
+                { name: 'Downsample', sub: '1/4 res' },
+                { name: 'H-Blur', sub: 'Gaussian' },
+                { name: 'V-Blur', sub: 'Gaussian' },
+                { name: 'SDF+Bevel', sub: 'Geometry' },
+                { name: 'Refract', sub: 'Per-λ' },
+                { name: 'Specular', sub: 'Fresnel' },
+                { name: 'Caustics', sub: 'Focusing' },
+                { name: 'Composite', sub: 'Final' }
+            ];
+
+            var stageWidth = 70;
+            var startX = 20;
+            var y = 70;
+
+            stages.forEach(function(stage, i) {
+                var x = startX + i * (stageWidth + 8);
+
+                var fillColor = i < 4 ? 'rgba(45,212,191,0.15)' : 'rgba(232,185,35,0.15)';
+                var strokeColor = i < 4 ? 'rgba(45,212,191,0.5)' : 'rgba(232,185,35,0.5)';
+
+                var rect = createRect(x, y, stageWidth, 45, 6, fillColor, strokeColor, 1);
+                rect.innerHTML = '<animate attributeName="fill" values="' + fillColor + ';' + fillColor.replace('0.15', '0.3') + ';' + fillColor + '" dur="3s" begin="' + (i * 0.3) + 's" repeatCount="indefinite"/>';
+                svg.appendChild(rect);
+
+                svg.appendChild(createText(x + stageWidth/2, y + 18, stage.name, 'diagram-label-tiny'));
+                var subLabel = createText(x + stageWidth/2, y + 33, stage.sub, 'diagram-label-tiny');
+                subLabel.setAttribute('fill', 'rgba(255,255,255,0.5)');
+                svg.appendChild(subLabel);
+
+                if (i < stages.length - 1) {
+                    svg.appendChild(createPath('M' + (x + stageWidth + 2) + ',' + (y + 22) + ' L' + (x + stageWidth + 6) + ',' + (y + 22),
+                        'none', 'rgba(255,255,255,0.3)', 1.5));
+                }
+            });
+
+            // Section labels
+            svg.appendChild(createLine(startX, 130, startX + 4 * (stageWidth + 8) - 8, 130, 'rgba(45,212,191,0.3)', 1));
+            svg.appendChild(createText(startX + 2 * (stageWidth + 8), 145, 'Blur Pipeline', 'diagram-label-tiny'));
+
+            svg.appendChild(createLine(startX + 4 * (stageWidth + 8), 130, startX + 9 * (stageWidth + 8) - 8, 130, 'rgba(232,185,35,0.3)', 1));
+            svg.appendChild(createText(startX + 6.5 * (stageWidth + 8), 145, 'Glass Effects', 'diagram-label-tiny'));
+
+            svg.appendChild(createText(w/2, 25, 'Complete Liquid Glass Render Pipeline', 'diagram-label'));
+
+            container.appendChild(svg);
         }
     };
 

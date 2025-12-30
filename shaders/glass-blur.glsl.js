@@ -179,6 +179,10 @@ uniform float uFresnelPower;
 uniform float uEdgeWidth;          // How far effects extend from edge (multiplier of corner radius)
 uniform float uBevelDepth;         // How pronounced the 3D bevel effect is (0-1)
 
+// Caustics properties
+uniform float uCausticsIntensity;  // Brightness of caustic effect (0-2)
+uniform float uCausticsScale;      // Size of caustic pattern (0.5-3)
+
 // World-space lights
 uniform vec3 uLight0WorldPos;  // World position (x, y, z)
 uniform vec3 uLight0Color;
@@ -485,32 +489,199 @@ vec3 computeSpecularHighlights(BevelGeometry bevel, vec2 screenUV) {
 
     // Glass F0 = 0.04 (4% reflection at normal incidence)
     // This comes from ((n1-n2)/(n1+n2))^2 where n1=1 (air), n2=1.5 (glass)
-    float F0 = 0.04;
+    //
+    // CHROMATIC ABERRATION: Different wavelengths have different refractive indices,
+    // which means different F0 values. The Fresnel equations depend on n:
+    //   F0 = ((n1-n2)/(n1+n2))^2
+    // For crown glass (typical values):
+    //   Red (656nm):   n ≈ 1.514 → F0 ≈ 0.0408
+    //   Green (550nm): n ≈ 1.519 → F0 ≈ 0.0417
+    //   Blue (486nm):  n ≈ 1.528 → F0 ≈ 0.0432
+    //
+    // The higher F0 for blue means more blue light reflects at normal incidence,
+    // creating subtle color fringing at specular highlight edges.
+
+    float F0_base = 0.04;
+
+    // Per-channel F0 based on dispersion (controlled by chromatic aberration param)
+    float dispersion = uChromaticAberration;
+    float F0_R = F0_base * mix(1.0, 0.96, dispersion);   // Red reflects slightly less
+    float F0_G = F0_base;                                 // Green is baseline
+    float F0_B = F0_base * mix(1.0, 1.06, dispersion);   // Blue reflects slightly more
 
     vec3 specular = vec3(0.0);
 
     // Light 0
     if (uLight0Intensity > 0.01) {
         vec3 lightDir = normalize(uLight0WorldPos - surfacePos);
-        float spec = computePhongSpecular(normal, viewDir, lightDir, cameraLookDir, panelNormal, uSpecularSharpness, F0);
-        specular += uLight0Color * spec * uLight0Intensity;
+
+        // Per-channel specular with chromatic aberration via different F0 values
+        float specR = computePhongSpecular(normal, viewDir, lightDir, cameraLookDir, panelNormal, uSpecularSharpness, F0_R);
+        float specG = computePhongSpecular(normal, viewDir, lightDir, cameraLookDir, panelNormal, uSpecularSharpness, F0_G);
+        float specB = computePhongSpecular(normal, viewDir, lightDir, cameraLookDir, panelNormal, uSpecularSharpness, F0_B);
+
+        specular += uLight0Color * vec3(specR, specG, specB) * uLight0Intensity;
     }
 
     // Light 1
     if (uLight1Intensity > 0.01) {
         vec3 lightDir = normalize(uLight1WorldPos - surfacePos);
-        float spec = computePhongSpecular(normal, viewDir, lightDir, cameraLookDir, panelNormal, uSpecularSharpness, F0);
-        specular += uLight1Color * spec * uLight1Intensity;
+
+        float specR = computePhongSpecular(normal, viewDir, lightDir, cameraLookDir, panelNormal, uSpecularSharpness, F0_R);
+        float specG = computePhongSpecular(normal, viewDir, lightDir, cameraLookDir, panelNormal, uSpecularSharpness, F0_G);
+        float specB = computePhongSpecular(normal, viewDir, lightDir, cameraLookDir, panelNormal, uSpecularSharpness, F0_B);
+
+        specular += uLight1Color * vec3(specR, specG, specB) * uLight1Intensity;
     }
 
     // Light 2
     if (uLight2Intensity > 0.01) {
         vec3 lightDir = normalize(uLight2WorldPos - surfacePos);
-        float spec = computePhongSpecular(normal, viewDir, lightDir, cameraLookDir, panelNormal, uSpecularSharpness, F0);
-        specular += uLight2Color * spec * uLight2Intensity;
+
+        float specR = computePhongSpecular(normal, viewDir, lightDir, cameraLookDir, panelNormal, uSpecularSharpness, F0_R);
+        float specG = computePhongSpecular(normal, viewDir, lightDir, cameraLookDir, panelNormal, uSpecularSharpness, F0_G);
+        float specB = computePhongSpecular(normal, viewDir, lightDir, cameraLookDir, panelNormal, uSpecularSharpness, F0_B);
+
+        specular += uLight2Color * vec3(specR, specG, specB) * uLight2Intensity;
     }
 
     return specular * uSpecularIntensity;
+}
+
+// ============================================================================
+// CAUSTICS - Light focusing through curved glass edges
+// ============================================================================
+// Caustics are the bright patterns created when light refracts through
+// curved transparent surfaces, focusing into concentrated bright spots.
+// At the curved bevel edges of our glass panel, light rays converge,
+// creating characteristic bright bands.
+//
+// Physics: When parallel light rays pass through a curved lens surface,
+// they converge at different focal points based on the curvature.
+// The caustic intensity is proportional to the rate of change of
+// the refraction angle (second derivative of the surface).
+
+vec3 computeCaustics(BevelGeometry bevel, vec2 screenUV) {
+    if (uCausticsIntensity < 0.001) return vec3(0.0);
+
+    // Only compute caustics near edges where there's curvature
+    if (bevel.edgeFactor < 0.01) return vec3(0.0);
+
+    // ========================================
+    // FAKE GLASS VOLUME WITH INVERTED NORMALS
+    // ========================================
+    // Real glass has thickness. Light enters through the front curved surface,
+    // travels through the glass, then exits through the back surface.
+    // We fake this by computing refraction through TWO surfaces:
+    // 1. Front surface: normal tilted outward (what we already have)
+    // 2. Back surface: same shape but inverted normal (tilted inward)
+    //
+    // Caustics form where light rays CONVERGE after passing through both surfaces.
+    // A convex lens (curved outward on both sides) focuses light.
+    // Our bevel creates a similar effect at the edges.
+
+    // Setup world space (same as specular)
+    vec3 panelToCamera = uCameraPos - uPanelWorldPos;
+    vec3 panelNormal = normalize(panelToCamera);
+
+    vec3 worldUp = vec3(0.0, 1.0, 0.0);
+    vec3 panelRight = normalize(cross(worldUp, panelNormal));
+    if (length(cross(worldUp, panelNormal)) < 0.001) {
+        panelRight = vec3(1.0, 0.0, 0.0);
+    }
+    vec3 panelUp = cross(panelNormal, panelRight);
+
+    // Convert bevel gradient to world space
+    vec2 worldGrad = bevel.gradDir * vec2(uAspectRatio, 1.0);
+    worldGrad = normalize(worldGrad + 0.0001);
+    vec3 bevelWorldDir = panelRight * (-worldGrad.x) + panelUp * (-worldGrad.y);
+
+    // Compute front and back surface normals
+    float maxBevelAngle = 0.785398; // 45 degrees
+    float bevelAngle = bevel.bevelAmount * maxBevelAngle * uBevelDepth;
+
+    float sinB = sin(bevelAngle);
+    float cosB = cos(bevelAngle);
+
+    // Front surface normal: tilts OUTWARD from center (toward edge)
+    vec3 frontNormal = normalize(panelNormal * cosB + bevelWorldDir * sinB);
+
+    // Back surface normal: points INTO the glass, tilted same way as front
+    // This creates a biconvex lens effect at the edges
+    vec3 backNormal = normalize(-panelNormal * cosB - bevelWorldDir * sinB);
+
+    // ========================================
+    // LIGHT FOCUSING CALCULATION
+    // ========================================
+    // Compute caustic intensity based on curvature and light alignment.
+    // Single bright band with subtle warm tint (no complex CA on caustics).
+
+    vec3 caustics = vec3(0.0);
+
+    // Process primary light (light 0)
+    if (uLight0Intensity > 0.01) {
+        vec3 lightDir = normalize(uLight0WorldPos - uCameraPos);
+
+        // Caustics appear when looking TOWARD the light
+        float lightTransmission = max(dot(lightDir, panelNormal), 0.0);
+
+        // Curvature causes focusing
+        float focusingPower = bevel.bevelAmount * bevel.bevelAmount * 8.0;
+
+        // Light aligned with bevel direction gets focused more
+        float lightBevelAlign = abs(dot(lightDir, bevelWorldDir));
+
+        // Simple band shape
+        float bandShape = bevel.edgeFactor * (1.0 - bevel.edgeFactor * 0.5);
+        bandShape = pow(bandShape, 0.5 / uCausticsScale);
+
+        float causticStrength = focusingPower * lightTransmission * lightBevelAlign * bandShape;
+
+        // Warm tint for focused sunlight
+        vec3 lightContrib = uLight0Color * uLight0Intensity * max(causticStrength, 0.0);
+        lightContrib *= vec3(1.1, 1.0, 0.9);
+
+        caustics += lightContrib;
+    }
+
+    // Process secondary light (light 1)
+    if (uLight1Intensity > 0.01) {
+        vec3 lightDir = normalize(uLight1WorldPos - uCameraPos);
+        float lightTransmission = max(dot(lightDir, panelNormal), 0.0);
+        float focusingPower = bevel.bevelAmount * bevel.bevelAmount * 8.0;
+        float lightBevelAlign = abs(dot(lightDir, bevelWorldDir));
+
+        float bandShape = bevel.edgeFactor * (1.0 - bevel.edgeFactor * 0.5);
+        bandShape = pow(bandShape, 0.5 / uCausticsScale);
+
+        float causticStrength = focusingPower * lightTransmission * lightBevelAlign * bandShape;
+
+        vec3 lightContrib = uLight1Color * uLight1Intensity * max(causticStrength, 0.0);
+        lightContrib *= vec3(1.1, 1.0, 0.9);
+
+        caustics += lightContrib;
+    }
+
+    // Process tertiary light (light 2)
+    if (uLight2Intensity > 0.01) {
+        vec3 lightDir = normalize(uLight2WorldPos - uCameraPos);
+        float lightTransmission = max(dot(lightDir, panelNormal), 0.0);
+        float focusingPower = bevel.bevelAmount * bevel.bevelAmount * 8.0;
+        float lightBevelAlign = abs(dot(lightDir, bevelWorldDir));
+
+        float bandShape = bevel.edgeFactor * (1.0 - bevel.edgeFactor * 0.5);
+        bandShape = pow(bandShape, 0.5 / uCausticsScale);
+
+        float causticStrength = focusingPower * lightTransmission * lightBevelAlign * bandShape;
+
+        vec3 lightContrib = uLight2Color * uLight2Intensity * max(causticStrength, 0.0);
+        lightContrib *= vec3(1.1, 1.0, 0.9);
+
+        caustics += lightContrib;
+    }
+
+    // Ensure we only ADD light, never subtract
+    return max(caustics, vec3(0.0)) * uCausticsIntensity;
 }
 
 // Mirror UV function - reflects UVs that go outside 0-1 range
@@ -597,6 +768,13 @@ void main() {
     // This ensures both effects have consistent surface normals
     vec3 specular = computeSpecularHighlights(bevel, vScreenUV);
     color += specular;
+
+    // ========================================
+    // CAUSTICS
+    // ========================================
+    // Light focusing through curved glass edges creates bright bands
+    vec3 caustics = computeCaustics(bevel, vScreenUV);
+    color += caustics;
 
     // Alpha: fully opaque with soft edges from SDF mask
     float alpha = mask;

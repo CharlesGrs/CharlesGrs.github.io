@@ -1009,6 +1009,9 @@
                 // Edge control uniforms
                 glassPanelProgram.uEdgeWidth = gl.getUniformLocation(glassPanelProgram, 'uEdgeWidth');
                 glassPanelProgram.uBevelDepth = gl.getUniformLocation(glassPanelProgram, 'uBevelDepth');
+                // Caustics uniforms
+                glassPanelProgram.uCausticsIntensity = gl.getUniformLocation(glassPanelProgram, 'uCausticsIntensity');
+                glassPanelProgram.uCausticsScale = gl.getUniformLocation(glassPanelProgram, 'uCausticsScale');
                 // World light uniforms
                 glassPanelProgram.uLight0WorldPos = gl.getUniformLocation(glassPanelProgram, 'uLight0WorldPos');
                 glassPanelProgram.uLight0Color = gl.getUniformLocation(glassPanelProgram, 'uLight0Color');
@@ -1245,7 +1248,7 @@
         gl.uniform2f(glassPanelProgram.uResolution, canvasWidth, canvasHeight);
         gl.uniform1f(glassPanelProgram.uEdgeSoftness, gp.edgeSoftness !== undefined ? gp.edgeSoftness : 1.5);
         gl.uniform1f(glassPanelProgram.uRefractStrength, gp.refractStrength !== undefined ? gp.refractStrength : 8.0);
-        gl.uniform1f(glassPanelProgram.uSquircleN, gp.squircleN !== undefined ? gp.squircleN : 4.0);  // Apple-style squircle
+        gl.uniform1f(glassPanelProgram.uSquircleN, gp.squircleN !== undefined ? gp.squircleN : 4.0);
         gl.uniform1f(glassPanelProgram.uGlassOpacity, gp.glassOpacity !== undefined ? gp.glassOpacity : 0.12);
         gl.uniform3f(glassPanelProgram.uGlassTint, gp.glassTintR || 1.0, gp.glassTintG || 1.0, gp.glassTintB || 1.0);
         gl.uniform1f(glassPanelProgram.uChromaticAberration, gp.chromaticAberration !== undefined ? gp.chromaticAberration : 2.0);
@@ -1258,6 +1261,10 @@
         // Edge control uniforms
         gl.uniform1f(glassPanelProgram.uEdgeWidth, gp.edgeWidth !== undefined ? gp.edgeWidth : 2.0);
         gl.uniform1f(glassPanelProgram.uBevelDepth, gp.bevelDepth !== undefined ? gp.bevelDepth : 0.5);
+
+        // Caustics uniforms
+        gl.uniform1f(glassPanelProgram.uCausticsIntensity, gp.causticsIntensity !== undefined ? gp.causticsIntensity : 0.3);
+        gl.uniform1f(glassPanelProgram.uCausticsScale, gp.causticsScale !== undefined ? gp.causticsScale : 1.0);
 
         // World lights from globalLights (world positions + colors)
         const lights = window.globalLights || {};
@@ -4432,6 +4439,16 @@
         // Escape key: navigate back up the hierarchy
         if (e.code === 'Escape') {
             navigateBack();
+            e.preventDefault();
+            return;
+        }
+
+        // Y key: toggle hierarchy labels visibility (preserves layout)
+        if (e.code === 'KeyY') {
+            const labels = document.querySelectorAll('.hierarchy-label');
+            labels.forEach(label => {
+                label.style.visibility = label.style.visibility === 'hidden' ? '' : 'hidden';
+            });
             e.preventDefault();
             return;
         }
