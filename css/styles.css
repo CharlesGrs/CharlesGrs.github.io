@@ -4085,7 +4085,7 @@ header.collapsed .cv-download svg {
 .chrome-tabs {
     display: flex;
     align-items: center;
-    gap: 0;
+    gap: 0.5rem;
     flex-shrink: 0;
     justify-content: center;
 }
@@ -4094,42 +4094,77 @@ header.collapsed .cv-download svg {
     position: relative;
     display: flex;
     align-items: center;
-    padding: 0.2rem 0.3rem;
+    padding: 0;
     background: transparent;
     border: none;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: all 0.2s ease;
     z-index: 1;
+}
+
+/* Bracket styling */
+.tab-bracket {
+    color: rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    font-weight: 400;
+    font-size: 0.9rem;
 }
 
 /* Main Label */
 .tab-label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
+    font-size: 0.8rem;
     font-weight: 500;
     color: rgba(255, 255, 255, 0.4);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    transition: all 0.3s ease;
+    letter-spacing: 0.06em;
+    transition: all 0.2s ease;
     position: relative;
     z-index: 2;
-    padding: 0.35rem 0.9rem;
-    background: rgba(13, 19, 24, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 4px;
+    padding: 0.5rem 0.6rem;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+}
+
+/* Scanline overlay on hover */
+.chrome-tab::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(45, 212, 191, 0.03) 2px,
+        rgba(45, 212, 191, 0.03) 4px
+    );
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    border-radius: 2px;
+}
+
+.chrome-tab:hover::before {
+    opacity: 1;
 }
 
 /* Connector line between tabs */
 .tab-connector {
     position: absolute;
-    right: -12px;
+    right: -10px;
     top: 50%;
     transform: translateY(-50%);
-    width: 24px;
-    height: 2px;
-    background: rgba(255, 255, 255, 0.08);
+    width: 16px;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
     z-index: 0;
-    border-radius: 1px;
 }
 
 .chrome-tab:last-child .tab-connector {
@@ -4139,63 +4174,78 @@ header.collapsed .cv-download svg {
 /* Hover State */
 .chrome-tab:hover .tab-label {
     color: var(--text-secondary);
-    background: rgba(20, 26, 32, 0.9);
-    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.chrome-tab:hover .tab-bracket {
+    color: var(--accent-teal);
 }
 
 /* ========== LOADED STATE (pipeline progress) ========== */
 /* Tabs before and including active get the cyan "loaded" style */
 .chrome-tab.loaded .tab-label {
     color: var(--accent-teal);
-    background: rgba(15, 29, 28, 0.9);
-    border-color: rgba(45, 212, 191, 0.4);
-    box-shadow:
-        0 0 12px rgba(45, 212, 191, 0.15),
-        inset 0 0 10px rgba(45, 212, 191, 0.05);
+}
+
+.chrome-tab.loaded .tab-bracket {
+    color: var(--accent-teal);
+    text-shadow: 0 0 8px rgba(45, 212, 191, 0.5);
 }
 
 /* Loaded connector glows cyan - but NOT on active tab */
 .chrome-tab.loaded:not(.active) .tab-connector {
     background: var(--accent-teal);
-    box-shadow: 0 0 8px rgba(45, 212, 191, 0.5), 0 0 16px rgba(45, 212, 191, 0.3);
+    box-shadow: 0 0 6px rgba(45, 212, 191, 0.5);
     animation: connectorPulse 2s ease-in-out infinite;
 }
 
 @keyframes connectorPulse {
-    0%, 100% { opacity: 0.7; box-shadow: 0 0 8px rgba(45, 212, 191, 0.5), 0 0 16px rgba(45, 212, 191, 0.3); }
-    50% { opacity: 1; box-shadow: 0 0 12px rgba(45, 212, 191, 0.7), 0 0 24px rgba(45, 212, 191, 0.4); }
+    0%, 100% { opacity: 0.7; box-shadow: 0 0 6px rgba(45, 212, 191, 0.5); }
+    50% { opacity: 1; box-shadow: 0 0 10px rgba(45, 212, 191, 0.7); }
 }
 
 /* ========== ACTIVE STATE (selected tab) ========== */
 .chrome-tab.active .tab-label {
     color: var(--accent-gold);
-    background: linear-gradient(135deg, rgba(31, 28, 16, 0.95) 0%, rgba(22, 20, 16, 0.95) 100%);
-    border-color: rgba(232, 185, 35, 0.5);
-    box-shadow:
-        0 0 15px rgba(232, 185, 35, 0.2),
-        0 0 30px rgba(232, 185, 35, 0.1),
-        inset 0 0 10px rgba(232, 185, 35, 0.08);
+    text-shadow: 0 0 15px rgba(232, 185, 35, 0.4);
     font-weight: 600;
 }
 
-/* Active tab glow */
-.chrome-tab.active::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 70px;
-    height: 50px;
-    background: radial-gradient(ellipse, rgba(232, 185, 35, 0.12) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: -1;
-    animation: activeTabGlow 2s ease-in-out infinite alternate;
+.chrome-tab.active .tab-bracket {
+    color: var(--accent-gold);
+    text-shadow: 0 0 10px rgba(232, 185, 35, 0.6);
+    animation: bracketPulse 1.5s ease-in-out infinite;
 }
 
-@keyframes activeTabGlow {
-    0% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.7; }
-    100% { transform: translate(-50%, -50%) scale(1.05); opacity: 1; }
+@keyframes bracketPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* Cursor blink on active tab */
+.chrome-tab.active::after {
+    content: '_';
+    position: absolute;
+    right: 0.2rem;
+    color: var(--accent-gold);
+    animation: cursorBlink 0.8s step-end infinite;
+    font-size: 0.7rem;
+    text-shadow: 0 0 8px rgba(232, 185, 35, 0.5);
+}
+
+@keyframes cursorBlink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+}
+
+/* Active tab background glow */
+.chrome-tab.active > .tab-label::before {
+    content: '';
+    position: absolute;
+    inset: -4px -8px;
+    background: radial-gradient(ellipse, rgba(232, 185, 35, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: -1;
+    border-radius: 4px;
 }
 
 /* Focus state for accessibility */
@@ -4241,6 +4291,16 @@ header.collapsed .cv-download svg {
         padding-top: 0.25rem;
         border-top: 1px solid rgba(255, 255, 255, 0.05);
         margin-top: 0.25rem;
+        gap: 0.3rem;
+    }
+
+    .tab-bracket {
+        font-size: 0.7rem;
+    }
+
+    .tab-label {
+        font-size: 0.6rem;
+        padding: 0.35rem 0.4rem;
     }
 
     .chrome-name {
@@ -4273,9 +4333,13 @@ header.collapsed .cv-download svg {
         display: none;
     }
 
+    .tab-bracket {
+        font-size: 0.65rem;
+    }
+
     .tab-label {
-        font-size: 0.6rem;
-        padding: 0.25rem 0.4rem;
+        font-size: 0.55rem;
+        padding: 0.2rem 0.25rem;
     }
 
     .chrome-channels .channel-port {
@@ -8501,13 +8565,14 @@ footer {
         justify-content: center;
     }
 
+    .tab-bracket {
+        font-size: 0.65rem;
+    }
+
     .tab-label {
-        font-size: 0.6rem;
-        padding: 0.4rem 0.5rem;
-        letter-spacing: 0.03em;
-        width: 100%;
-        text-align: center;
-        border-radius: 4px;
+        font-size: 0.55rem;
+        padding: 0.3rem 0.2rem;
+        letter-spacing: 0.02em;
     }
 
     /* Hide connectors on mobile */
@@ -8515,10 +8580,9 @@ footer {
         display: none;
     }
 
-    /* Active tab glow - smaller on mobile */
-    .chrome-tab.active::before {
-        width: 50px;
-        height: 40px;
+    /* Hide cursor blink on mobile - too cluttered */
+    .chrome-tab.active::after {
+        display: none;
     }
 
     .chrome-identity {
@@ -8552,17 +8616,21 @@ footer {
     }
 }
 
-/* 5 tabs in a row for wider phones */
+/* 6 tabs in a row for wider phones */
 @media (min-width: 380px) and (max-width: 600px) {
     .chrome-tabs {
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns: repeat(6, 1fr);
     }
 }
 
 @media (max-width: 379px) {
+    .tab-bracket {
+        font-size: 0.55rem;
+    }
+
     .tab-label {
-        font-size: 0.5rem;
-        padding: 0.35rem 0.3rem;
+        font-size: 0.45rem;
+        padding: 0.25rem 0.1rem;
     }
 
     .chrome-name {

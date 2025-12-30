@@ -264,9 +264,8 @@ var glassParams = {
     // Glass material
     cornerRadius: 16.0,        // Rounded corner radius in pixels
     edgeSoftness: 1.5,         // Edge anti-aliasing
-    refractStrength: 8.0,      // How much edges bend light
-    refractSmoothness: 5.0,    // Gradient smoothness (higher = smoother corners)
-    refractFalloff: 3.0,       // How far refraction extends inward (multiplier of corner radius)
+    refractStrength: 8.0,      // How much edges bend light (lens curvature)
+    squircleN: 4.0,            // Squircle exponent: 2=ellipse, 4=Apple squircle, 8+=more rectangular
 
     // Glass appearance
     glassOpacity: 0.12,        // Base glass tint opacity
@@ -277,9 +276,24 @@ var glassParams = {
     // Effects
     chromaticAberration: 2.0,  // RGB split amount at edges
 
+    // Edge bevel controls
+    edgeWidth: 2.0,            // How far effects extend from edge (multiplier of corner radius)
+    bevelDepth: 0.5,           // How pronounced the 3D bevel effect is (0-1)
+
+    // Specular highlights (LiquidGlass rim lighting)
+    specularIntensity: 0.6,    // Overall specular brightness
+    specularSharpness: 24.0,   // Specular highlight sharpness (higher = tighter highlights)
+    fresnelPower: 2.0,         // Fresnel falloff (higher = more edge-focused)
+
     // Panel padding (pixels added around hierarchy)
     paddingX: 12,
-    paddingY: 10
+    paddingY: 10,
+
+    // Panel position and scale
+    offsetX: 0,                // Horizontal offset in pixels
+    offsetY: 0,                // Vertical offset in pixels
+    scaleX: 1.0,               // Horizontal scale multiplier
+    scaleY: 1.0                // Vertical scale multiplier
 };
 
 // Space particle parameters

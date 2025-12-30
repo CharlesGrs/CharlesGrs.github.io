@@ -507,100 +507,6 @@
     // Initialize hierarchy panel after nodes are set up
     setTimeout(populateHierarchyPanel, 100);
 
-    const tooltip = document.getElementById('skill-tooltip');
-    const tooltipTitle = tooltip.querySelector('.skill-tooltip-title');
-    const tooltipDesc = tooltip.querySelector('.skill-tooltip-desc');
-    const tooltipUsage = tooltip.querySelector('.skill-tooltip-usage');
-
-    let tooltipTarget = null, tooltipPos = { x: 0, y: 0 }, tooltipConnectPoint = { x: 0, y: 0 };
-    let lineAnimProgress = 0, lineAnimStartTime = 0;
-    const lineAnimDuration = 300;
-    let tooltipSide = 'right';
-
-
-    let tooltipOffset = { x: 0, y: 0 };
-    const tooltipWidth = 260, tooltipHeight = 120;
-
-    function generateTooltipPosition(node) {
-        const margin = 20;
-        // Use screen-space coordinates (renderX/renderY) for tooltip positioning
-        const nodeScreenX = node.renderX !== undefined ? node.renderX : node.x;
-        const nodeScreenY = node.renderY !== undefined ? node.renderY : node.y;
-
-        tooltipSide = Math.random() > 0.5 ? 'right' : 'left';
-        let tx = tooltipSide === 'right' ? width - tooltipWidth - margin : margin;
-        const minY = margin, maxY = height - tooltipHeight - margin;
-        let ty = nodeScreenY - tooltipHeight / 2 + (Math.random() - 0.5) * 100;
-        ty = Math.max(minY, Math.min(maxY, ty));
-        tooltipPos = { x: tx, y: ty };
-        tooltipOffset = { x: tx - nodeScreenX, y: ty - nodeScreenY };
-        tooltipConnectPoint = tooltipSide === 'right'
-            ? { x: tx, y: ty + tooltipHeight / 2 }
-            : { x: tx + tooltipWidth, y: ty + tooltipHeight / 2 };
-        lineAnimProgress = 0;
-        lineAnimStartTime = performance.now();
-    }
-
-    function updateTooltip(node, forceKeep = false) {
-        if (node) {
-            if (tooltipTarget !== node) {
-                tooltipTarget = node;
-                generateTooltipPosition(node);
-                tooltip.classList.remove('visible');
-            }
-            tooltipTitle.textContent = node.label;
-            tooltipDesc.textContent = node.desc || '';
-            tooltipUsage.textContent = node.usage || '';
-            tooltip.className = 'skill-tooltip ' + node.category + (lineAnimProgress >= 1 ? ' visible' : '');
-            tooltip.style.left = tooltipPos.x + 'px';
-            tooltip.style.top = tooltipPos.y + 'px';
-        } else if (!forceKeep) {
-            tooltip.classList.remove('visible');
-            tooltipTarget = null;
-            lineAnimProgress = 0;
-        }
-    }
-
-    function drawTooltipConnector() {
-        if (!tooltipTarget) return;
-        const elapsed = performance.now() - lineAnimStartTime;
-        lineAnimProgress = Math.min(1, elapsed / lineAnimDuration);
-        if (lineAnimProgress >= 1 && !tooltip.classList.contains('visible')) tooltip.classList.add('visible');
-
-        const node = tooltipTarget;
-        // Use screen-space coordinates (renderX/renderY) for connector drawing
-        const nodeScreenX = node.renderX !== undefined ? node.renderX : node.x;
-        const nodeScreenY = node.renderY !== undefined ? node.renderY : node.y;
-
-        let lineColor = node.category === 'primary' ? colors.gold : node.category === 'secondary' ? colors.teal : colors.textMuted;
-        ctx.strokeStyle = lineColor;
-        ctx.lineWidth = 1.5;
-        ctx.globalAlpha = 0.8;
-
-        const cornerX = nodeScreenX, cornerY = tooltipConnectPoint.y;
-        const verticalDist = Math.abs(cornerY - nodeScreenY);
-        const horizontalDist = Math.abs(tooltipConnectPoint.x - cornerX);
-        const totalDist = verticalDist + horizontalDist;
-        const drawDist = totalDist * lineAnimProgress;
-
-        ctx.beginPath();
-        ctx.moveTo(nodeScreenX, nodeScreenY);
-        if (drawDist <= verticalDist) {
-            ctx.lineTo(nodeScreenX, nodeScreenY + (cornerY - nodeScreenY) * (drawDist / verticalDist));
-        } else {
-            ctx.lineTo(cornerX, cornerY);
-            const hProgress = (drawDist - verticalDist) / horizontalDist;
-            ctx.lineTo(cornerX + (tooltipConnectPoint.x - cornerX) * hProgress, cornerY);
-        }
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-
-        ctx.beginPath();
-        ctx.arc(nodeScreenX, nodeScreenY, 3, 0, Math.PI * 2);
-        ctx.fillStyle = lineColor;
-        ctx.fill();
-    }
-
     // WebGL sphere renderer
     let gl, glCanvas, sphereProgram, sunProgram, debugQuadProgram, orbitLineProgram, glReady = false;
     let debugQuadBuffer;
@@ -1092,11 +998,32 @@
                 glassPanelProgram.uCornerRadius = gl.getUniformLocation(glassPanelProgram, 'uCornerRadius');
                 glassPanelProgram.uEdgeSoftness = gl.getUniformLocation(glassPanelProgram, 'uEdgeSoftness');
                 glassPanelProgram.uRefractStrength = gl.getUniformLocation(glassPanelProgram, 'uRefractStrength');
-                glassPanelProgram.uRefractSmoothness = gl.getUniformLocation(glassPanelProgram, 'uRefractSmoothness');
-                glassPanelProgram.uRefractFalloff = gl.getUniformLocation(glassPanelProgram, 'uRefractFalloff');
+                glassPanelProgram.uSquircleN = gl.getUniformLocation(glassPanelProgram, 'uSquircleN');
                 glassPanelProgram.uGlassOpacity = gl.getUniformLocation(glassPanelProgram, 'uGlassOpacity');
                 glassPanelProgram.uGlassTint = gl.getUniformLocation(glassPanelProgram, 'uGlassTint');
                 glassPanelProgram.uChromaticAberration = gl.getUniformLocation(glassPanelProgram, 'uChromaticAberration');
+                // Specular highlight uniforms
+                glassPanelProgram.uSpecularIntensity = gl.getUniformLocation(glassPanelProgram, 'uSpecularIntensity');
+                glassPanelProgram.uSpecularSharpness = gl.getUniformLocation(glassPanelProgram, 'uSpecularSharpness');
+                glassPanelProgram.uFresnelPower = gl.getUniformLocation(glassPanelProgram, 'uFresnelPower');
+                // Edge control uniforms
+                glassPanelProgram.uEdgeWidth = gl.getUniformLocation(glassPanelProgram, 'uEdgeWidth');
+                glassPanelProgram.uBevelDepth = gl.getUniformLocation(glassPanelProgram, 'uBevelDepth');
+                // World light uniforms
+                glassPanelProgram.uLight0WorldPos = gl.getUniformLocation(glassPanelProgram, 'uLight0WorldPos');
+                glassPanelProgram.uLight0Color = gl.getUniformLocation(glassPanelProgram, 'uLight0Color');
+                glassPanelProgram.uLight0Intensity = gl.getUniformLocation(glassPanelProgram, 'uLight0Intensity');
+                glassPanelProgram.uLight1WorldPos = gl.getUniformLocation(glassPanelProgram, 'uLight1WorldPos');
+                glassPanelProgram.uLight1Color = gl.getUniformLocation(glassPanelProgram, 'uLight1Color');
+                glassPanelProgram.uLight1Intensity = gl.getUniformLocation(glassPanelProgram, 'uLight1Intensity');
+                glassPanelProgram.uLight2WorldPos = gl.getUniformLocation(glassPanelProgram, 'uLight2WorldPos');
+                glassPanelProgram.uLight2Color = gl.getUniformLocation(glassPanelProgram, 'uLight2Color');
+                glassPanelProgram.uLight2Intensity = gl.getUniformLocation(glassPanelProgram, 'uLight2Intensity');
+                // Camera uniforms
+                glassPanelProgram.uCameraPos = gl.getUniformLocation(glassPanelProgram, 'uCameraPos');
+                glassPanelProgram.uPanelWorldPos = gl.getUniformLocation(glassPanelProgram, 'uPanelWorldPos');
+                glassPanelProgram.uAspectRatio = gl.getUniformLocation(glassPanelProgram, 'uAspectRatio');
+                // Tone mapping
                 glassPanelProgram.uExposure = gl.getUniformLocation(glassPanelProgram, 'uExposure');
                 glassPanelProgram.uToneMapping = gl.getUniformLocation(glassPanelProgram, 'uToneMapping');
                 console.log('Glass panel program initialized');
@@ -1316,13 +1243,56 @@
 
         // Shared uniforms
         gl.uniform2f(glassPanelProgram.uResolution, canvasWidth, canvasHeight);
-        gl.uniform1f(glassPanelProgram.uEdgeSoftness, gp.edgeSoftness || 1.5);
-        gl.uniform1f(glassPanelProgram.uRefractStrength, gp.refractStrength || 8.0);
-        gl.uniform1f(glassPanelProgram.uRefractSmoothness, gp.refractSmoothness || 5.0);
-        gl.uniform1f(glassPanelProgram.uRefractFalloff, gp.refractFalloff || 3.0);
-        gl.uniform1f(glassPanelProgram.uGlassOpacity, gp.glassOpacity || 0.12);
+        gl.uniform1f(glassPanelProgram.uEdgeSoftness, gp.edgeSoftness !== undefined ? gp.edgeSoftness : 1.5);
+        gl.uniform1f(glassPanelProgram.uRefractStrength, gp.refractStrength !== undefined ? gp.refractStrength : 8.0);
+        gl.uniform1f(glassPanelProgram.uSquircleN, gp.squircleN !== undefined ? gp.squircleN : 4.0);  // Apple-style squircle
+        gl.uniform1f(glassPanelProgram.uGlassOpacity, gp.glassOpacity !== undefined ? gp.glassOpacity : 0.12);
         gl.uniform3f(glassPanelProgram.uGlassTint, gp.glassTintR || 1.0, gp.glassTintG || 1.0, gp.glassTintB || 1.0);
-        gl.uniform1f(glassPanelProgram.uChromaticAberration, gp.chromaticAberration || 2.0);
+        gl.uniform1f(glassPanelProgram.uChromaticAberration, gp.chromaticAberration !== undefined ? gp.chromaticAberration : 2.0);
+
+        // Specular highlight uniforms (LiquidGlass-style)
+        gl.uniform1f(glassPanelProgram.uSpecularIntensity, gp.specularIntensity !== undefined ? gp.specularIntensity : 0.3);
+        gl.uniform1f(glassPanelProgram.uSpecularSharpness, gp.specularSharpness !== undefined ? gp.specularSharpness : 32.0);
+        gl.uniform1f(glassPanelProgram.uFresnelPower, gp.fresnelPower !== undefined ? gp.fresnelPower : 3.0);
+
+        // Edge control uniforms
+        gl.uniform1f(glassPanelProgram.uEdgeWidth, gp.edgeWidth !== undefined ? gp.edgeWidth : 2.0);
+        gl.uniform1f(glassPanelProgram.uBevelDepth, gp.bevelDepth !== undefined ? gp.bevelDepth : 0.5);
+
+        // World lights from globalLights (world positions + colors)
+        const lights = window.globalLights || {};
+        const l0 = lights.light0 || {};
+        const l1 = lights.light1 || {};
+        const l2 = lights.light2 || {};
+
+        // Pass world positions directly
+        gl.uniform3f(glassPanelProgram.uLight0WorldPos,
+            l0.worldX !== undefined ? l0.worldX : 0,
+            l0.worldY !== undefined ? l0.worldY : 0,
+            l0.worldZ !== undefined ? l0.worldZ : 0);
+        gl.uniform3f(glassPanelProgram.uLight0Color, ...(l0.color || [1.0, 0.67, 0.2]));
+        gl.uniform1f(glassPanelProgram.uLight0Intensity, l0.intensity || 1.0);
+
+        gl.uniform3f(glassPanelProgram.uLight1WorldPos,
+            l1.worldX !== undefined ? l1.worldX : 0,
+            l1.worldY !== undefined ? l1.worldY : 0,
+            l1.worldZ !== undefined ? l1.worldZ : 0);
+        gl.uniform3f(glassPanelProgram.uLight1Color, ...(l1.color || [0.6, 0.3, 0.8]));
+        gl.uniform1f(glassPanelProgram.uLight1Intensity, l1.intensity || 1.0);
+
+        gl.uniform3f(glassPanelProgram.uLight2WorldPos,
+            l2.worldX !== undefined ? l2.worldX : 0,
+            l2.worldY !== undefined ? l2.worldY : 0,
+            l2.worldZ !== undefined ? l2.worldZ : 0);
+        gl.uniform3f(glassPanelProgram.uLight2Color, ...(l2.color || [0.2, 0.87, 1.0]));
+        gl.uniform1f(glassPanelProgram.uLight2Intensity, l2.intensity || 1.0);
+
+        // Camera position and aspect ratio
+        gl.uniform3f(glassPanelProgram.uCameraPos,
+            lights.cameraX !== undefined ? lights.cameraX : 0,
+            lights.cameraY !== undefined ? lights.cameraY : 0,
+            lights.cameraZ !== undefined ? lights.cameraZ : 3.5);
+        gl.uniform1f(glassPanelProgram.uAspectRatio, canvasWidth / canvasHeight);
 
         // Tone mapping uniforms (must match post-process settings)
         const pp = window.postProcessParams || {};
@@ -1336,16 +1306,77 @@
         // Shared corner radius for all panels
         gl.uniform1f(glassPanelProgram.uCornerRadius, gp.cornerRadius || 16.0);
 
+        // Get camera position and compute view direction
+        const camX = lights.cameraX !== undefined ? lights.cameraX : 0;
+        const camY = lights.cameraY !== undefined ? lights.cameraY : 0;
+        const camZ = lights.cameraZ !== undefined ? lights.cameraZ : 3.5;
+
+        // Get panel position/scale from glassParams
+        const offsetX = gp.offsetX || 0;
+        const offsetY = gp.offsetY || 0;
+        const scaleX = gp.scaleX !== undefined ? gp.scaleX : 1.0;
+        const scaleY = gp.scaleY !== undefined ? gp.scaleY : 1.0;
+
         // Render each panel
         for (const panel of panels) {
-            // Convert panel rect to clip space (-1 to 1)
-            const clipX = (panel.left / canvasRect.width) * 2.0 - 1.0;
-            const clipY = 1.0 - ((panel.top + panel.height) / canvasRect.height) * 2.0;  // Flip Y
-            const clipW = (panel.width / canvasRect.width) * 2.0;
-            const clipH = (panel.height / canvasRect.height) * 2.0;
+            // Apply offset and scale to panel rect
+            const centerX = panel.left + panel.width * 0.5;
+            const centerY = panel.top + panel.height * 0.5;
+            const scaledWidth = panel.width * scaleX;
+            const scaledHeight = panel.height * scaleY;
+            const scaledLeft = centerX - scaledWidth * 0.5 + offsetX;
+            const scaledTop = centerY - scaledHeight * 0.5 + offsetY;
 
+            // Convert panel rect to clip space (-1 to 1)
+            const clipX = (scaledLeft / canvasRect.width) * 2.0 - 1.0;
+            const clipY = 1.0 - ((scaledTop + scaledHeight) / canvasRect.height) * 2.0;  // Flip Y
+            const clipW = (scaledWidth / canvasRect.width) * 2.0;
+            const clipH = (scaledHeight / canvasRect.height) * 2.0;
+
+            // Compute panel center in clip space
+            const panelCenterClipX = clipX + clipW * 0.5;
+            const panelCenterClipY = clipY + clipH * 0.5;
+
+            // Unproject panel center to world space
+            // Panel is at a fixed distance in front of camera (UI plane)
+            // Use camera rotation to compute the panel's world position
+            const panelDist = 1.0;  // Distance from camera to UI plane in world units
+            const fovScale = 1.0;   // Approximate FOV scaling
+
+            // Get camera forward direction from globalCameraRotX/Y
+            const rotX = window.globalCameraRotX || 0;
+            const rotY = window.globalCameraRotY || 0;
+
+            // Camera forward vector (where camera is looking)
+            const cosX = Math.cos(rotX);
+            const sinX = Math.sin(rotX);
+            const cosY = Math.cos(rotY);
+            const sinY = Math.sin(rotY);
+
+            // Forward = -Z rotated by camera rotation
+            const fwdX = -sinY * cosX;
+            const fwdY = sinX;
+            const fwdZ = -cosY * cosX;
+
+            // Right vector (camera's local X axis)
+            const rightX = cosY;
+            const rightY = 0;
+            const rightZ = -sinY;
+
+            // Up vector (camera's local Y axis)
+            const upX = sinY * sinX;
+            const upY = cosX;
+            const upZ = cosY * sinX;
+
+            // Panel world position: camera + forward * dist + right * clipX + up * clipY
+            const aspect = canvasWidth / canvasHeight;
+            const panelWorldX = camX + fwdX * panelDist + rightX * panelCenterClipX * fovScale * aspect + upX * panelCenterClipY * fovScale;
+            const panelWorldY = camY + fwdY * panelDist + rightY * panelCenterClipX * fovScale * aspect + upY * panelCenterClipY * fovScale;
+            const panelWorldZ = camZ + fwdZ * panelDist + rightZ * panelCenterClipX * fovScale * aspect + upZ * panelCenterClipY * fovScale;
+
+            gl.uniform3f(glassPanelProgram.uPanelWorldPos, panelWorldX, panelWorldY, panelWorldZ);
             gl.uniform4f(glassPanelProgram.uPanelRect, clipX, clipY, clipW, clipH);
-            gl.uniform2f(glassPanelProgram.uPanelSize, panel.width * dpr, panel.height * dpr);
+            gl.uniform2f(glassPanelProgram.uPanelSize, scaledWidth * dpr, scaledHeight * dpr);
 
             gl.drawArrays(gl.TRIANGLES, 0, 6);
         }
@@ -2253,17 +2284,30 @@
         // Update individual properties instead of replacing object to preserve screenX/screenY
         window.globalLights.light0.x = light0.x;
         window.globalLights.light0.y = light0.y;
+        window.globalLights.light0.worldX = light0.worldX;
+        window.globalLights.light0.worldY = light0.worldY;
+        window.globalLights.light0.worldZ = light0.worldZ || 0;
         window.globalLights.light0.color = lc0;
         window.globalLights.light0.intensity = lightParams.light0Intensity;
         window.globalLights.light1.x = light1.x;
         window.globalLights.light1.y = light1.y;
+        window.globalLights.light1.worldX = light1.worldX;
+        window.globalLights.light1.worldY = light1.worldY;
+        window.globalLights.light1.worldZ = light1.worldZ || 0;
         window.globalLights.light1.color = lc1;
         window.globalLights.light1.intensity = lightParams.light1Intensity;
         window.globalLights.light2.x = light2.x;
         window.globalLights.light2.y = light2.y;
+        window.globalLights.light2.worldX = light2.worldX;
+        window.globalLights.light2.worldY = light2.worldY;
+        window.globalLights.light2.worldZ = light2.worldZ || 0;
         window.globalLights.light2.color = lc2;
         window.globalLights.light2.intensity = lightParams.light2Intensity;
         window.globalLights.resolution = { width: width, height: height };
+        // Export camera position for glass specular
+        window.globalLights.cameraX = cameraPosX;
+        window.globalLights.cameraY = cameraPosY;
+        window.globalLights.cameraZ = cameraPosZ;
 
         // Helper function to render static star particles
         function renderParticles() {
@@ -4088,8 +4132,6 @@
             ctx.restore();
         }
 
-        drawTooltipConnector();
-
         // Restore canvas state after zoom transform
         ctx.restore();
     }
@@ -4302,7 +4344,6 @@
         // Update hover state (no more dragging)
         hoveredNode = getNodeAt(screenX, screenY);
         container.style.cursor = hoveredNode ? 'pointer' : 'grab';
-        updateTooltip(hoveredNode);
     });
 
     canvas.addEventListener('mouseup', () => {
@@ -4313,12 +4354,6 @@
             if (!hasDragged && mouseDownNode) {
                 lockOnTarget(mouseDownNode);
                 container.style.cursor = 'default';
-
-                // Show tooltip
-                if (!tooltipTarget || tooltipTarget !== mouseDownNode) {
-                    tooltipTarget = mouseDownNode;
-                    generateTooltipPosition(mouseDownNode);
-                }
             } else {
                 container.style.cursor = hoveredNode ? 'pointer' : 'grab';
             }
@@ -4342,7 +4377,6 @@
         if (!isFocusing) {
             container.style.cursor = 'grab';
         }
-        updateTooltip(null);
     });
 
     // Scroll wheel zoom when locked on a target
@@ -4375,13 +4409,6 @@
         if (tappedNode) {
             // Unified: lock on any node type (sun, planet, or moon)
             lockOnTarget(tappedNode);
-
-            // Show tooltip for the focused node
-            if (!tooltipTarget || tooltipTarget !== tappedNode) {
-                tooltipTarget = tappedNode;
-                generateTooltipPosition(tappedNode);
-            }
-            updateTooltip(tappedNode);
         }
     }, { passive: false });
 
@@ -4431,15 +4458,11 @@
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
             time = 0;
-            tooltip.classList.remove('visible');
-            tooltipTarget = null;
         }
     });
 
     window.addEventListener('skillsTabActivated', () => {
         time = 0;
-        tooltip.classList.remove('visible');
-        tooltipTarget = null;
     });
 
     // ========================================

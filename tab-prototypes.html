@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tab Button Prototypes - Charles Grassi</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0f14;
+            --bg-secondary: #0d1318;
+            --accent-gold: #e8b923;
+            --accent-teal: #2dd4bf;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --text-muted: rgba(255, 255, 255, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem;
+            color: var(--accent-teal);
+            margin-bottom: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .prototype-section {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: rgba(13, 19, 24, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+        }
+
+        .prototype-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--accent-gold);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .prototype-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .tabs-container {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            justify-content: center;
+            padding: 1rem 0;
+        }
+
+        /* ============================================
+           STYLE 1: TERMINAL/HUD BRACKETS
+           ============================================ */
+        .terminal-tabs {
+            gap: 0.5rem;
+        }
+
+        .terminal-tab {
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 0;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s ease;
+        }
+
+        .terminal-tab .bracket {
+            color: rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            font-weight: 400;
+        }
+
+        .terminal-tab .label {
+            padding: 0.4rem 0.6rem;
+            transition: all 0.2s ease;
+        }
+
+        /* Scanline overlay */
+        .terminal-tab::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(45, 212, 191, 0.03) 2px,
+                rgba(45, 212, 191, 0.03) 4px
+            );
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .terminal-tab:hover::before {
+            opacity: 1;
+        }
+
+        .terminal-tab:hover {
+            color: var(--text-secondary);
+        }
+
+        .terminal-tab:hover .bracket {
+            color: var(--accent-teal);
+        }
+
+        /* Loaded state */
+        .terminal-tab.loaded {
+            color: var(--accent-teal);
+        }
+
+        .terminal-tab.loaded .bracket {
+            color: var(--accent-teal);
+            text-shadow: 0 0 8px rgba(45, 212, 191, 0.5);
+        }
+
+        /* Active state */
+        .terminal-tab.active {
+            color: var(--accent-gold);
+        }
+
+        .terminal-tab.active .bracket {
+            color: var(--accent-gold);
+            text-shadow: 0 0 10px rgba(232, 185, 35, 0.6);
+            animation: bracketPulse 1.5s ease-in-out infinite;
+        }
+
+        .terminal-tab.active .label {
+            text-shadow: 0 0 15px rgba(232, 185, 35, 0.4);
+        }
+
+        /* Cursor blink on active */
+        .terminal-tab.active::after {
+            content: '_';
+            position: absolute;
+            right: 0.3rem;
+            animation: cursorBlink 0.8s step-end infinite;
+            color: var(--accent-gold);
+        }
+
+        @keyframes bracketPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        @keyframes cursorBlink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        /* Connector dash */
+        .terminal-tab .connector {
+            width: 16px;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            margin-left: 0.5rem;
+        }
+
+        .terminal-tab.loaded .connector {
+            background: var(--accent-teal);
+            box-shadow: 0 0 6px rgba(45, 212, 191, 0.5);
+        }
+
+        .terminal-tab:last-child .connector {
+            display: none;
+        }
+
+        /* ============================================
+           STYLE 2: HOLOGRAPHIC GLASS
+           ============================================ */
+        .glass-tabs {
+            gap: 0.25rem;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 0.35rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .glass-tab {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.45rem 1rem;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.68rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+
+        /* Prismatic edge highlight */
+        .glass-tab::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 6px;
+            padding: 1px;
+            background: linear-gradient(
+                135deg,
+                rgba(255, 255, 255, 0.1) 0%,
+                rgba(45, 212, 191, 0.2) 25%,
+                rgba(232, 185, 35, 0.2) 50%,
+                rgba(255, 100, 150, 0.15) 75%,
+                rgba(255, 255, 255, 0.1) 100%
+            );
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .glass-tab:hover::before {
+            opacity: 1;
+        }
+
+        .glass-tab:hover {
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        /* Loaded state */
+        .glass-tab.loaded {
+            color: var(--accent-teal);
+            background: rgba(45, 212, 191, 0.08);
+            border-color: rgba(45, 212, 191, 0.2);
+        }
+
+        .glass-tab.loaded::before {
+            opacity: 0.5;
+            background: linear-gradient(
+                135deg,
+                rgba(45, 212, 191, 0.3) 0%,
+                rgba(45, 212, 191, 0.1) 100%
+            );
+        }
+
+        /* Active state */
+        .glass-tab.active {
+            color: var(--accent-gold);
+            background: rgba(232, 185, 35, 0.12);
+            border-color: rgba(232, 185, 35, 0.3);
+            box-shadow:
+                0 0 20px rgba(232, 185, 35, 0.15),
+                inset 0 0 15px rgba(232, 185, 35, 0.05);
+        }
+
+        .glass-tab.active::before {
+            opacity: 1;
+            background: linear-gradient(
+                135deg,
+                rgba(232, 185, 35, 0.4) 0%,
+                rgba(232, 185, 35, 0.1) 50%,
+                rgba(255, 200, 100, 0.3) 100%
+            );
+            animation: prismShift 3s ease-in-out infinite;
+        }
+
+        @keyframes prismShift {
+            0%, 100% {
+                background-position: 0% 50%;
+                filter: hue-rotate(0deg);
+            }
+            50% {
+                background-position: 100% 50%;
+                filter: hue-rotate(10deg);
+            }
+        }
+
+        /* ============================================
+           STYLE 3: MINIMAL LINE ANIMATION
+           ============================================ */
+        .line-tabs {
+            gap: 2rem;
+        }
+
+        .line-tab {
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 0;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            transition: color 0.3s ease;
+        }
+
+        /* Underline */
+        .line-tab::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: var(--accent-teal);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateX(-50%);
+            border-radius: 1px;
+        }
+
+        .line-tab:hover {
+            color: var(--text-secondary);
+        }
+
+        .line-tab:hover::after {
+            width: 30%;
+            background: var(--text-secondary);
+        }
+
+        /* Loaded state */
+        .line-tab.loaded {
+            color: var(--accent-teal);
+        }
+
+        .line-tab.loaded::after {
+            width: 100%;
+            background: var(--accent-teal);
+            box-shadow: 0 0 8px rgba(45, 212, 191, 0.4);
+        }
+
+        /* Active state */
+        .line-tab.active {
+            color: var(--accent-gold);
+            font-weight: 600;
+        }
+
+        .line-tab.active::after {
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-gold), rgba(232, 185, 35, 0.6));
+            box-shadow: 0 0 12px rgba(232, 185, 35, 0.5), 0 2px 8px rgba(232, 185, 35, 0.3);
+            animation: linePulse 2s ease-in-out infinite;
+        }
+
+        @keyframes linePulse {
+            0%, 100% {
+                box-shadow: 0 0 12px rgba(232, 185, 35, 0.5), 0 2px 8px rgba(232, 185, 35, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 18px rgba(232, 185, 35, 0.7), 0 2px 12px rgba(232, 185, 35, 0.5);
+            }
+        }
+
+        /* ============================================
+           STYLE 4: ORBITAL RINGS
+           ============================================ */
+        .orbital-tabs {
+            gap: 0.4rem;
+        }
+
+        .orbital-tab {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem 1.1rem;
+            background: rgba(13, 19, 24, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.68rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            transition: all 0.3s ease;
+            overflow: visible;
+        }
+
+        /* Orbital ring */
+        .orbital-tab .orbit {
+            position: absolute;
+            width: 120%;
+            height: 180%;
+            border: 1px solid transparent;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+            transition: all 0.4s ease;
+        }
+
+        .orbital-tab:hover {
+            color: var(--text-secondary);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .orbital-tab:hover .orbit {
+            opacity: 0.3;
+            border-color: rgba(255, 255, 255, 0.2);
+            animation: orbitSpin 8s linear infinite;
+        }
+
+        /* Loaded state */
+        .orbital-tab.loaded {
+            color: var(--accent-teal);
+            border-color: rgba(45, 212, 191, 0.3);
+            background: rgba(15, 29, 28, 0.7);
+        }
+
+        .orbital-tab.loaded .orbit {
+            opacity: 0.5;
+            border-color: rgba(45, 212, 191, 0.4);
+            animation: orbitSpin 6s linear infinite;
+        }
+
+        /* Active state */
+        .orbital-tab.active {
+            color: var(--accent-gold);
+            border-color: rgba(232, 185, 35, 0.4);
+            background: rgba(31, 28, 16, 0.8);
+            box-shadow: 0 0 20px rgba(232, 185, 35, 0.15);
+        }
+
+        .orbital-tab.active .orbit {
+            opacity: 1;
+            border-color: rgba(232, 185, 35, 0.5);
+            border-style: dashed;
+            animation: orbitSpin 4s linear infinite;
+        }
+
+        /* Orbital particle */
+        .orbital-tab .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--accent-gold);
+            border-radius: 50%;
+            opacity: 0;
+            box-shadow: 0 0 6px rgba(232, 185, 35, 0.8);
+        }
+
+        .orbital-tab.active .particle {
+            opacity: 1;
+            animation: particleOrbit 4s linear infinite;
+        }
+
+        @keyframes orbitSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes particleOrbit {
+            from {
+                transform: rotate(0deg) translateX(calc(60% + 5px)) rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg) translateX(calc(60% + 5px)) rotate(-360deg);
+            }
+        }
+
+        /* ============================================
+           STYLE 5: COMMAND PIPELINE
+           ============================================ */
+        .pipeline-tabs {
+            gap: 0;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 4px;
+            padding: 2px;
+        }
+
+        .pipeline-tab {
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 0.4rem 0.9rem;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            transition: all 0.2s ease;
+        }
+
+        /* Pipe separator */
+        .pipeline-tab::after {
+            content: '|';
+            position: absolute;
+            right: -2px;
+            color: rgba(255, 255, 255, 0.15);
+            font-weight: 300;
+        }
+
+        .pipeline-tab:last-child::after {
+            display: none;
+        }
+
+        .pipeline-tab:hover {
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        /* Loaded state */
+        .pipeline-tab.loaded {
+            color: var(--accent-teal);
+            background: rgba(45, 212, 191, 0.08);
+        }
+
+        .pipeline-tab.loaded::after {
+            color: var(--accent-teal);
+            text-shadow: 0 0 5px rgba(45, 212, 191, 0.5);
+        }
+
+        /* Active state */
+        .pipeline-tab.active {
+            color: var(--bg-primary);
+            background: var(--accent-gold);
+            font-weight: 600;
+        }
+
+        .pipeline-tab.active::after {
+            color: rgba(0, 0, 0, 0.3);
+            text-shadow: none;
+        }
+
+        /* ============================================
+           STYLE 6: GLITCH / CYBERPUNK
+           ============================================ */
+        .glitch-tabs {
+            gap: 0.6rem;
+        }
+
+        .glitch-tab {
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 0.45rem 1rem;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            transition: all 0.2s ease;
+            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+        }
+
+        .glitch-tab::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,0,100,0.1) 0%, transparent 50%, rgba(0,255,255,0.1) 100%);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .glitch-tab:hover {
+            color: var(--text-secondary);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .glitch-tab:hover::before {
+            opacity: 1;
+        }
+
+        /* Loaded state */
+        .glitch-tab.loaded {
+            color: var(--accent-teal);
+            border-color: rgba(45, 212, 191, 0.4);
+            background: rgba(45, 212, 191, 0.05);
+        }
+
+        /* Active state with glitch effect */
+        .glitch-tab.active {
+            color: var(--accent-gold);
+            border-color: var(--accent-gold);
+            background: rgba(232, 185, 35, 0.1);
+            animation: glitchBorder 0.3s ease;
+        }
+
+        .glitch-tab.active::after {
+            content: attr(data-text);
+            position: absolute;
+            left: 1rem;
+            color: rgba(255, 0, 100, 0.7);
+            animation: glitchText 2s infinite;
+            clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+        }
+
+        @keyframes glitchBorder {
+            0%, 100% { transform: translate(0); }
+            20% { transform: translate(-2px, 1px); }
+            40% { transform: translate(2px, -1px); }
+            60% { transform: translate(-1px, -1px); }
+            80% { transform: translate(1px, 1px); }
+        }
+
+        @keyframes glitchText {
+            0%, 92%, 100% { transform: translate(0); opacity: 0; }
+            93% { transform: translate(2px, -1px); opacity: 0.8; }
+            94% { transform: translate(-2px, 1px); opacity: 0.6; }
+            95% { transform: translate(1px, 0); opacity: 0; }
+        }
+
+        /* ============================================
+           STYLE 7: NEON OUTLINE
+           ============================================ */
+        .neon-tabs {
+            gap: 1rem;
+        }
+
+        .neon-tab {
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 1.2rem;
+            background: transparent;
+            border: 2px solid rgba(255, 255, 255, 0.08);
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            transition: all 0.3s ease;
+        }
+
+        .neon-tab:hover {
+            color: var(--text-secondary);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Loaded state */
+        .neon-tab.loaded {
+            color: var(--accent-teal);
+            border-color: var(--accent-teal);
+            box-shadow:
+                0 0 5px rgba(45, 212, 191, 0.3),
+                inset 0 0 5px rgba(45, 212, 191, 0.1);
+        }
+
+        /* Active state - full neon */
+        .neon-tab.active {
+            color: var(--accent-gold);
+            border-color: var(--accent-gold);
+            box-shadow:
+                0 0 10px rgba(232, 185, 35, 0.5),
+                0 0 20px rgba(232, 185, 35, 0.3),
+                0 0 40px rgba(232, 185, 35, 0.2),
+                inset 0 0 10px rgba(232, 185, 35, 0.1);
+            animation: neonFlicker 3s ease-in-out infinite;
+        }
+
+        @keyframes neonFlicker {
+            0%, 100% {
+                box-shadow:
+                    0 0 10px rgba(232, 185, 35, 0.5),
+                    0 0 20px rgba(232, 185, 35, 0.3),
+                    0 0 40px rgba(232, 185, 35, 0.2),
+                    inset 0 0 10px rgba(232, 185, 35, 0.1);
+            }
+            50% {
+                box-shadow:
+                    0 0 15px rgba(232, 185, 35, 0.6),
+                    0 0 30px rgba(232, 185, 35, 0.4),
+                    0 0 50px rgba(232, 185, 35, 0.25),
+                    inset 0 0 15px rgba(232, 185, 35, 0.15);
+            }
+            92% {
+                box-shadow:
+                    0 0 10px rgba(232, 185, 35, 0.5),
+                    0 0 20px rgba(232, 185, 35, 0.3),
+                    0 0 40px rgba(232, 185, 35, 0.2),
+                    inset 0 0 10px rgba(232, 185, 35, 0.1);
+            }
+            93% {
+                box-shadow:
+                    0 0 5px rgba(232, 185, 35, 0.3),
+                    0 0 10px rgba(232, 185, 35, 0.1);
+            }
+            94% {
+                box-shadow:
+                    0 0 10px rgba(232, 185, 35, 0.5),
+                    0 0 20px rgba(232, 185, 35, 0.3),
+                    0 0 40px rgba(232, 185, 35, 0.2),
+                    inset 0 0 10px rgba(232, 185, 35, 0.1);
+            }
+        }
+
+        /* ============================================
+           STYLE 8: MATRIX / DATA STREAM
+           ============================================ */
+        .matrix-tabs {
+            gap: 0.3rem;
+            background: rgba(0, 20, 10, 0.5);
+            padding: 0.4rem;
+            border: 1px solid rgba(45, 212, 191, 0.1);
+            border-radius: 2px;
+        }
+
+        .matrix-tab {
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 0.4rem 0.8rem;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 400;
+            color: rgba(45, 212, 191, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s ease;
+            overflow: hidden;
+        }
+
+        /* Data stream background */
+        .matrix-tab::before {
+            content: '010110100101';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+            font-size: 0.5rem;
+            color: rgba(45, 212, 191, 0.1);
+            white-space: nowrap;
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+
+        .matrix-tab:hover {
+            color: rgba(45, 212, 191, 0.7);
+        }
+
+        .matrix-tab:hover::before {
+            color: rgba(45, 212, 191, 0.2);
+            animation: dataStream 1s linear infinite;
+        }
+
+        /* Loaded state */
+        .matrix-tab.loaded {
+            color: var(--accent-teal);
+        }
+
+        .matrix-tab.loaded::before {
+            color: rgba(45, 212, 191, 0.15);
+        }
+
+        /* Active state */
+        .matrix-tab.active {
+            color: #00ff00;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+            background: rgba(0, 255, 0, 0.08);
+        }
+
+        .matrix-tab.active::before {
+            content: '>>>';
+            color: rgba(0, 255, 0, 0.3);
+            animation: none;
+        }
+
+        @keyframes dataStream {
+            from { transform: translateY(-50%) translateX(0); }
+            to { transform: translateY(-50%) translateX(-20px); }
+        }
+
+        /* ============================================
+           STYLE 9: SHADER UNIFORM SLIDERS
+           ============================================ */
+        .uniform-tabs {
+            gap: 0.5rem;
+            flex-direction: column;
+            align-items: stretch;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .uniform-tab {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.4rem 0.8rem;
+            background: rgba(13, 19, 24, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.2s ease;
+        }
+
+        .uniform-tab .uniform-name {
+            font-size: 0.6rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            min-width: 80px;
+            transition: color 0.2s ease;
+        }
+
+        .uniform-tab .uniform-bar {
+            flex: 1;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .uniform-tab .uniform-fill {
+            height: 100%;
+            width: 0%;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .uniform-tab .uniform-value {
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            min-width: 35px;
+            text-align: right;
+        }
+
+        .uniform-tab:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .uniform-tab:hover .uniform-name {
+            color: var(--text-secondary);
+        }
+
+        /* Loaded state */
+        .uniform-tab.loaded .uniform-name {
+            color: var(--accent-teal);
+        }
+
+        .uniform-tab.loaded .uniform-fill {
+            width: 60%;
+            background: var(--accent-teal);
+            box-shadow: 0 0 8px rgba(45, 212, 191, 0.4);
+        }
+
+        .uniform-tab.loaded .uniform-value {
+            color: var(--accent-teal);
+        }
+
+        /* Active state */
+        .uniform-tab.active {
+            border-color: rgba(232, 185, 35, 0.3);
+            background: rgba(31, 28, 16, 0.6);
+        }
+
+        .uniform-tab.active .uniform-name {
+            color: var(--accent-gold);
+        }
+
+        .uniform-tab.active .uniform-fill {
+            width: 100%;
+            background: linear-gradient(90deg, var(--accent-gold), rgba(232, 185, 35, 0.6));
+            box-shadow: 0 0 10px rgba(232, 185, 35, 0.5);
+        }
+
+        .uniform-tab.active .uniform-value {
+            color: var(--accent-gold);
+        }
+
+        /* ============================================
+           STYLE 10: REGISTER / MEMORY CELLS
+           ============================================ */
+        .register-tabs {
+            gap: 0.2rem;
+        }
+
+        .register-tab {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.5rem 0.6rem;
+            background: rgba(13, 19, 24, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.2s ease;
+            min-width: 70px;
+        }
+
+        .register-tab .reg-addr {
+            font-size: 0.45rem;
+            color: rgba(255, 255, 255, 0.25);
+            letter-spacing: 0.1em;
+            margin-bottom: 0.2rem;
+        }
+
+        .register-tab .reg-label {
+            font-size: 0.6rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .register-tab .reg-hex {
+            font-size: 0.45rem;
+            color: rgba(255, 255, 255, 0.2);
+            margin-top: 0.2rem;
+        }
+
+        .register-tab:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .register-tab:hover .reg-label {
+            color: var(--text-secondary);
+        }
+
+        /* Loaded state */
+        .register-tab.loaded {
+            border-color: rgba(45, 212, 191, 0.3);
+        }
+
+        .register-tab.loaded .reg-addr {
+            color: rgba(45, 212, 191, 0.5);
+        }
+
+        .register-tab.loaded .reg-label {
+            color: var(--accent-teal);
+        }
+
+        .register-tab.loaded .reg-hex {
+            color: rgba(45, 212, 191, 0.4);
+        }
+
+        /* Active state */
+        .register-tab.active {
+            background: rgba(232, 185, 35, 0.1);
+            border-color: var(--accent-gold);
+            box-shadow: 0 0 15px rgba(232, 185, 35, 0.2);
+        }
+
+        .register-tab.active .reg-addr {
+            color: rgba(232, 185, 35, 0.6);
+        }
+
+        .register-tab.active .reg-label {
+            color: var(--accent-gold);
+        }
+
+        .register-tab.active .reg-hex {
+            color: rgba(232, 185, 35, 0.5);
+            animation: hexFlicker 0.5s ease infinite;
+        }
+
+        @keyframes hexFlicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* ============================================
+           STYLE 11: WAVEFORM / AUDIO
+           ============================================ */
+        .wave-tabs {
+            gap: 0.8rem;
+        }
+
+        .wave-tab {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.8rem;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.2s ease;
+        }
+
+        .wave-tab .wave-bars {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            height: 16px;
+        }
+
+        .wave-tab .wave-bar {
+            width: 3px;
+            height: 30%;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 1px;
+            transition: all 0.2s ease;
+        }
+
+        .wave-tab .wave-label {
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: color 0.2s ease;
+        }
+
+        .wave-tab:hover .wave-label {
+            color: var(--text-secondary);
+        }
+
+        .wave-tab:hover .wave-bar {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Loaded state */
+        .wave-tab.loaded .wave-label {
+            color: var(--accent-teal);
+        }
+
+        .wave-tab.loaded .wave-bar {
+            background: var(--accent-teal);
+        }
+
+        .wave-tab.loaded .wave-bar:nth-child(1) { height: 40%; }
+        .wave-tab.loaded .wave-bar:nth-child(2) { height: 70%; }
+        .wave-tab.loaded .wave-bar:nth-child(3) { height: 50%; }
+
+        /* Active state */
+        .wave-tab.active .wave-label {
+            color: var(--accent-gold);
+        }
+
+        .wave-tab.active .wave-bar {
+            background: var(--accent-gold);
+            box-shadow: 0 0 6px rgba(232, 185, 35, 0.5);
+        }
+
+        .wave-tab.active .wave-bar:nth-child(1) { animation: waveAnim 0.6s ease-in-out infinite; }
+        .wave-tab.active .wave-bar:nth-child(2) { animation: waveAnim 0.6s ease-in-out infinite 0.1s; }
+        .wave-tab.active .wave-bar:nth-child(3) { animation: waveAnim 0.6s ease-in-out infinite 0.2s; }
+
+        @keyframes waveAnim {
+            0%, 100% { height: 30%; }
+            50% { height: 100%; }
+        }
+
+        /* ============================================
+           STYLE 12: BLUEPRINT / TECHNICAL
+           ============================================ */
+        .blueprint-tabs {
+            gap: 0;
+            border: 2px solid rgba(100, 150, 255, 0.2);
+            background:
+                linear-gradient(rgba(100, 150, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(100, 150, 255, 0.03) 1px, transparent 1px);
+            background-size: 10px 10px;
+            padding: 0;
+        }
+
+        .blueprint-tab {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.6rem 1rem;
+            background: transparent;
+            border: none;
+            border-right: 1px solid rgba(100, 150, 255, 0.15);
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: rgba(100, 150, 255, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            transition: all 0.2s ease;
+        }
+
+        .blueprint-tab:last-child {
+            border-right: none;
+        }
+
+        /* Corner marks */
+        .blueprint-tab::before,
+        .blueprint-tab::after {
+            content: '';
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-color: rgba(100, 150, 255, 0.2);
+            border-style: solid;
+            transition: all 0.2s ease;
+        }
+
+        .blueprint-tab::before {
+            top: 4px;
+            left: 4px;
+            border-width: 1px 0 0 1px;
+        }
+
+        .blueprint-tab::after {
+            bottom: 4px;
+            right: 4px;
+            border-width: 0 1px 1px 0;
+        }
+
+        .blueprint-tab:hover {
+            color: rgba(100, 150, 255, 0.7);
+            background: rgba(100, 150, 255, 0.05);
+        }
+
+        /* Loaded state */
+        .blueprint-tab.loaded {
+            color: var(--accent-teal);
+        }
+
+        .blueprint-tab.loaded::before,
+        .blueprint-tab.loaded::after {
+            border-color: var(--accent-teal);
+        }
+
+        /* Active state */
+        .blueprint-tab.active {
+            color: var(--accent-gold);
+            background: rgba(232, 185, 35, 0.08);
+        }
+
+        .blueprint-tab.active::before,
+        .blueprint-tab.active::after {
+            border-color: var(--accent-gold);
+            width: 10px;
+            height: 10px;
+        }
+
+        /* ============================================
+           INTERACTIVE DEMO
+           ============================================ */
+        .interactive-note {
+            text-align: center;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .interactive-note span {
+            color: var(--accent-teal);
+        }
+    </style>
+</head>
+<body>
+    <h1>// Tab Button Prototypes</h1>
+
+    <!-- Style 1: Terminal/HUD -->
+    <div class="prototype-section">
+        <div class="prototype-title">Style 1: Terminal / HUD Brackets</div>
+        <div class="prototype-desc">Lean into your [RT_0] aesthetic. Bracketed commands with scanlines, cursor blink on active.</div>
+        <div class="tabs-container terminal-tabs">
+            <button class="terminal-tab loaded" data-style="terminal">
+                <span class="bracket">[</span>
+                <span class="label">About</span>
+                <span class="bracket">]</span>
+                <span class="connector"></span>
+            </button>
+            <button class="terminal-tab loaded" data-style="terminal">
+                <span class="bracket">[</span>
+                <span class="label">Experience</span>
+                <span class="bracket">]</span>
+                <span class="connector"></span>
+            </button>
+            <button class="terminal-tab active" data-style="terminal">
+                <span class="bracket">[</span>
+                <span class="label">Skills</span>
+                <span class="bracket">]</span>
+                <span class="connector"></span>
+            </button>
+            <button class="terminal-tab" data-style="terminal">
+                <span class="bracket">[</span>
+                <span class="label">Portfolio</span>
+                <span class="bracket">]</span>
+                <span class="connector"></span>
+            </button>
+            <button class="terminal-tab" data-style="terminal">
+                <span class="bracket">[</span>
+                <span class="label">Blog</span>
+                <span class="bracket">]</span>
+                <span class="connector"></span>
+            </button>
+            <button class="terminal-tab" data-style="terminal">
+                <span class="bracket">[</span>
+                <span class="label">Contact</span>
+                <span class="bracket">]</span>
+            </button>
+        </div>
+        <div class="interactive-note">Click tabs to interact • <span>Gold = Active</span> • <span>Teal = Loaded/Visited</span></div>
+    </div>
+
+    <!-- Style 2: Holographic Glass -->
+    <div class="prototype-section">
+        <div class="prototype-title">Style 2: Holographic Glass</div>
+        <div class="prototype-desc">Frosted glass with prismatic edge highlights that shift on hover. Soft inner glow on active.</div>
+        <div class="tabs-container glass-tabs">
+            <button class="glass-tab loaded" data-style="glass">About</button>
+            <button class="glass-tab loaded" data-style="glass">Experience</button>
+            <button class="glass-tab active" data-style="glass">Skills</button>
+            <button class="glass-tab" data-style="glass">Portfolio</button>
+            <button class="glass-tab" data-style="glass">Blog</button>
+            <button class="glass-tab" data-style="glass">Contact</button>
+        </div>
+        <div class="interactive-note">Click tabs to interact • <span>Prismatic edges shift on hover</span></div>
+    </div>
+
+    <!-- Style 3: Minimal Line -->
+    <div class="prototype-section">
+        <div class="prototype-title">Style 3: Minimal Line Animation</div>
+        <div class="prototype-desc">Pure typography with animated underlines. Clean and modern.</div>
+        <div class="tabs-container line-tabs">
+            <button class="line-tab loaded" data-style="line">About</button>
+            <button class="line-tab loaded" data-style="line">Experience</button>
+            <button class="line-tab active" data-style="line">Skills</button>
+            <button class="line-tab" data-style="line">Portfolio</button>
+            <button class="line-tab" data-style="line">Blog</button>
+            <button class="line-tab" data-style="line">Contact</button>
+        </div>
+        <div class="interactive-note">Click tabs to interact • <span>Underline draws on selection</span></div>
+    </div>
+
+    <!-- Style 4: Orbital Rings -->
+    <div class="prototype-section">
+        <div class="prototype-title">Style 4: Orbital Rings</div>
+        <div class="prototype-desc">Planet-inspired with rotating orbital accents. Particle orbits on active state.</div>
+        <div class="tabs-container orbital-tabs">
+            <button class="orbital-tab loaded" data-style="orbital">
+                <span class="orbit"></span>
+                <span class="particle"></span>
+                About
+            </button>
+            <button class="orbital-tab loaded" data-style="orbital">
+                <span class="orbit"></span>
+                <span class="particle"></span>
+                Experience
+            </button>
+            <button class="orbital-tab active" data-style="orbital">
+                <span class="orbit"></span>
+                <span class="particle"></span>
+                Skills
+            </button>
+            <button class="orbital-tab" data-style="orbital">
+                <span class="orbit"></span>
+                <span class="particle"></span>
+                Portfolio
+            </button>
+            <button class="orbital-tab" data-style="orbital">
+                <span class="orbit"></span>
+                <span class="particle"></span>
+                Blog
+            </button>
+            <button class="orbital-tab" data-style="orbital">
+                <span class="orbit"></span>
+                <span class="particle"></span>
+                Contact
+            </button>
+        </div>
+        <div class="interactive-note">Click tabs to interact • <span>Watch the orbiting particle on active</span></div>
+    </div>
+
+    <!-- Style 5: Command Pipeline -->
+    <div class="prototype-section">
+        <div class="prototype-title">Style 5: Command Pipeline</div>
+        <div class="prototype-desc">Unix-inspired pipe chain. Active tab inverts. Compact and technical.</div>
+        <div class="tabs-container pipeline-tabs">
+            <button class="pipeline-tab loaded" data-style="pipeline">about</button>
+            <button class="pipeline-tab loaded" data-style="pipeline">experience</button>
+            <button class="pipeline-tab active" data-style="pipeline">skills</button>
+            <button class="pipeline-tab" data-style="pipeline">portfolio</button>
+            <button class="pipeline-tab" data-style="pipeline">blog</button>
+            <button class="pipeline-tab" data-style="pipeline">contact</button>
+        </div>
+        <div class="interactive-note">Click tabs to interact • <span>Like a unix command: cat about | experience | skills</span></div>
+    </div>
+
+    <!-- Style 6: Glitch/Cyberpunk -->
+    <div class="prototype-section">
+        <div class="prototype-title">Style 6: Glitch / Cyberpunk</div>
+        <div class="prototype-desc">Cut corners, chromatic aberration glitch on click. Edgy and aggressive.</div>
+        <div class="tabs-container glitch-tabs">
+            <button class="glitch-tab loaded" data-style="glitch" data-text="ABOUT">About</button>
+            <button class="glitch-tab loaded" data-style="glitch" data-text="EXPERIENCE">Experience</button>
+            <button class="glitch-tab active" data-style="glitch" data-text="SKILLS">Skills</button>
+            <button class="glitch-tab" data-style="glitch" data-text="PORTFOLIO">Portfolio</button>
+            <button class="glitch-tab" data-style="glitch" data-text="BLOG">Blog</button>
+            <button class="glitch-tab" data-style="glitch" data-text="CONTACT">Contact</button>
+        </div>
+        <div class="interactive-note">Click tabs to interact • <span>Watch the glitch on selection</span></div>
+    </div>
+
+    <!-- Style 7: Neon Outline -->
+    <div class="prototype-section">
+        <div class="prototype-title">Style 7: Neon Outline</div>
+        <div class="prototype-desc">Pure neon glow with occasional flicker. Retro-futuristic vibes.</div>
+        <div class="tabs-container neon-tabs">
+            <button class="neon-tab loaded" data-style="neon">About</button>
+            <button class="neon-tab loaded" data-style="neon">Experience</button>
+            <button class="neon-tab active" data-style="neon">Skills</button>
+            <button class="neon-tab" data-style="neon">Portfolio</button>
+            <button class="neon-tab" data-style="neon">Blog</button>
+            <button class="neon-tab" data-style="neon">Contact</button>
+        </div>
+        <div class="interactive-note">Click tabs to interact • <span>Neon flicker animation on active</span></div>
+    </div>
+
+    <!-- Style 8: Matrix/Data Stream -->
+    <div class="prototype-section">
+        <div class="prototype-title">Style 8: Matrix / Data Stream</div>
+        <div class="prototype-desc">Binary data flowing behind text. Full hacker aesthetic with green terminal colors.</div>
+        <div class="tabs-container matrix-tabs">
+            <button class="matrix-tab loaded" data-style="matrix">About</button>
+            <button class="matrix-tab loaded" data-style="matrix">Experience</button>
+            <button class="matrix-tab active" data-style="matrix">Skills</button>
+            <button class="matrix-tab" data-style="matrix">Portfolio</button>
+            <button class="matrix-tab" data-style="matrix">Blog</button>
+            <button class="matrix-tab" data-style="matrix">Contact</button>
+        </div>
+        <div class="interactive-note">Click tabs to interact • <span>Hover to see data stream</span></div>
+    </div>
+
+    <!-- Style 9: Shader Uniform Sliders -->
+    <div class="prototype-section">
+        <div class="prototype-title">Style 9: Shader Uniform Sliders</div>
+        <div class="prototype-desc">Inspired by shader parameter panels. Vertical layout with progress bars.</div>
+        <div class="tabs-container uniform-tabs">
+            <button class="uniform-tab loaded" data-style="uniform">
+                <span class="uniform-name">u_about</span>
+                <span class="uniform-bar"><span class="uniform-fill"></span></span>
+                <span class="uniform-value">0.6</span>
+            </button>
+            <button class="uniform-tab loaded" data-style="uniform">
+                <span class="uniform-name">u_experience</span>
+                <span class="uniform-bar"><span class="uniform-fill"></span></span>
+                <span class="uniform-value">0.6</span>
+            </button>
+            <button class="uniform-tab active" data-style="uniform">
+                <span class="uniform-name">u_skills</span>
+                <span class="uniform-bar"><span class="uniform-fill"></span></span>
+                <span class="uniform-value">1.0</span>
+            </button>
+            <button class="uniform-tab" data-style="uniform">
+                <span class="uniform-name">u_portfolio</span>
+                <span class="uniform-bar"><span class="uniform-fill"></span></span>
+                <span class="uniform-value">0.0</span>
+            </button>
+            <button class="uniform-tab" data-style="uniform">
+                <span class="uniform-name">u_blog</span>
+                <span class="uniform-bar"><span class="uniform-fill"></span></span>
+                <span class="uniform-value">0.0</span>
+            </button>
+            <button class="uniform-tab" data-style="uniform">
+                <span class="uniform-name">u_contact</span>
+                <span class="uniform-bar"><span class="uniform-fill"></span></span>
+                <span class="uniform-value">0.0</span>
+            </button>
+        </div>
+        <div class="interactive-note">Click tabs to interact • <span>Progress bar fills on active</span></div>
+    </div>
+
+    <!-- Style 10: Register/Memory Cells -->
+    <div class="prototype-section">
+        <div class="prototype-title">Style 10: Register / Memory Cells</div>
+        <div class="prototype-desc">GPU register-inspired with memory addresses and hex values. Very technical.</div>
+        <div class="tabs-container register-tabs">
+            <button class="register-tab loaded" data-style="register">
+                <span class="reg-addr">0x00</span>
+                <span class="reg-label">About</span>
+                <span class="reg-hex">0xFF</span>
+            </button>
+            <button class="register-tab loaded" data-style="register">
+                <span class="reg-addr">0x01</span>
+                <span class="reg-label">Experience</span>
+                <span class="reg-hex">0xFF</span>
+            </button>
+            <button class="register-tab active" data-style="register">
+                <span class="reg-addr">0x02</span>
+                <span class="reg-label">Skills</span>
+                <span class="reg-hex">0xFF</span>
+            </button>
+            <button class="register-tab" data-style="register">
+                <span class="reg-addr">0x03</span>
+                <span class="reg-label">Portfolio</span>
+                <span class="reg-hex">0x00</span>
+            </button>
+            <button class="register-tab" data-style="register">
+                <span class="reg-addr">0x04</span>
+                <span class="reg-label">Blog</span>
+                <span class="reg-hex">0x00</span>
+            </button>
+            <button class="register-tab" data-style="register">
+                <span class="reg-addr">0x05</span>
+                <span class="reg-label">Contact</span>
+                <span class="reg-hex">0x00</span>
+            </button>
+        </div>
+        <div class="interactive-note">Click tabs to interact • <span>Hex value flickers on active</span></div>
+    </div>
+
+    <!-- Style 11: Waveform/Audio -->
+    <div class="prototype-section">
+        <div class="prototype-title">Style 11: Waveform / Audio</div>
+        <div class="prototype-desc">Audio visualizer style with animated bars. Active tab pulses like an equalizer.</div>
+        <div class="tabs-container wave-tabs">
+            <button class="wave-tab loaded" data-style="wave">
+                <span class="wave-bars"><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span></span>
+                <span class="wave-label">About</span>
+            </button>
+            <button class="wave-tab loaded" data-style="wave">
+                <span class="wave-bars"><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span></span>
+                <span class="wave-label">Experience</span>
+            </button>
+            <button class="wave-tab active" data-style="wave">
+                <span class="wave-bars"><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span></span>
+                <span class="wave-label">Skills</span>
+            </button>
+            <button class="wave-tab" data-style="wave">
+                <span class="wave-bars"><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span></span>
+                <span class="wave-label">Portfolio</span>
+            </button>
+            <button class="wave-tab" data-style="wave">
+                <span class="wave-bars"><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span></span>
+                <span class="wave-label">Blog</span>
+            </button>
+            <button class="wave-tab" data-style="wave">
+                <span class="wave-bars"><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span></span>
+                <span class="wave-label">Contact</span>
+            </button>
+        </div>
+        <div class="interactive-note">Click tabs to interact • <span>Bars animate on active</span></div>
+    </div>
+
+    <!-- Style 12: Blueprint/Technical -->
+    <div class="prototype-section">
+        <div class="prototype-title">Style 12: Blueprint / Technical Drawing</div>
+        <div class="prototype-desc">Engineering blueprint aesthetic with grid background and corner registration marks.</div>
+        <div class="tabs-container blueprint-tabs">
+            <button class="blueprint-tab loaded" data-style="blueprint">About</button>
+            <button class="blueprint-tab loaded" data-style="blueprint">Experience</button>
+            <button class="blueprint-tab active" data-style="blueprint">Skills</button>
+            <button class="blueprint-tab" data-style="blueprint">Portfolio</button>
+            <button class="blueprint-tab" data-style="blueprint">Blog</button>
+            <button class="blueprint-tab" data-style="blueprint">Contact</button>
+        </div>
+        <div class="interactive-note">Click tabs to interact • <span>Corner marks grow on active</span></div>
+    </div>
+
+    <script>
+        // Make tabs interactive
+        document.querySelectorAll('[data-style]').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const style = this.dataset.style;
+                const container = this.parentElement;
+                const tabs = container.querySelectorAll(`[data-style="${style}"]`);
+                const currentIndex = Array.from(tabs).indexOf(this);
+
+                // Remove active from all tabs in this group
+                tabs.forEach((t, i) => {
+                    t.classList.remove('active');
+                    // Set loaded state for tabs up to and including clicked
+                    if (i <= currentIndex) {
+                        t.classList.add('loaded');
+                    } else {
+                        t.classList.remove('loaded');
+                    }
+                });
+
+                // Set this tab as active
+                this.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>
