@@ -257,60 +257,60 @@ var postProcessParams = {
 var glassParams = {
     // Blur settings
     enabled: true,
-    blurRadius: 2.5,           // Blur kernel radius multiplier
-    blurPasses: 3,             // Number of blur iterations (more = smoother)
-    blurDownscale: 4,          // Downscale factor for blur FBO (2, 4, or 8)
+    blurRadius: 2,             // Blur kernel radius multiplier
+    blurPasses: 6,             // Number of blur iterations (more = smoother)
+    blurDownscale: 2,          // Downscale factor for blur FBO (2, 4, or 8)
 
     // Glass material
-    cornerRadius: 16.0,        // Rounded corner radius in pixels
-    edgeSoftness: 1.5,         // Edge anti-aliasing
-    refractStrength: 8.0,      // How much edges bend light (lens curvature)
-    squircleN: 4.0,            // Squircle exponent: 2=ellipse, 4=Apple squircle, 8+=more rectangular
+    cornerRadius: 32,          // Rounded corner radius in pixels
+    edgeSoftness: 0.7,         // Edge anti-aliasing
+    refractStrength: 20,       // How much edges bend light (lens curvature)
+    squircleN: 4,              // Squircle exponent: 2=ellipse, 4=Apple squircle, 8+=more rectangular
 
     // Glass appearance
-    glassOpacity: 0.12,        // Base glass tint opacity
-    glassTintR: 1.0,           // Glass tint color R
-    glassTintG: 1.0,           // Glass tint color G
-    glassTintB: 1.0,           // Glass tint color B
+    glassOpacity: 0,           // Base glass tint opacity
+    glassTintR: 1,             // Glass tint color R
+    glassTintG: 1.05,          // Glass tint color G
+    glassTintB: 1.05,          // Glass tint color B
 
     // Effects
-    chromaticAberration: 2.0,  // RGB split amount at edges
+    chromaticAberration: 1,    // RGB split amount at edges
 
     // Edge bevel controls
-    edgeWidth: 2.0,            // How far effects extend from edge (multiplier of corner radius)
-    bevelDepth: 0.5,           // How pronounced the 3D bevel effect is (0-1)
+    edgeWidth: 5,              // How far effects extend from edge (multiplier of corner radius)
+    bevelDepth: 1,             // How pronounced the 3D bevel effect is (0-1)
 
     // Caustics (light focusing through curved edges)
-    causticsIntensity: 0.3,    // Brightness of caustic bands (0-2)
-    causticsScale: 1.0,        // Size/width of caustic pattern (0.5-3)
+    causticsIntensity: 0.15,   // Brightness of caustic bands (0-2)
+    causticsScale: 3,          // Size/width of caustic pattern (0.5-3)
 
     // Specular highlights (LiquidGlass rim lighting)
-    specularIntensity: 0.6,    // Overall specular brightness
-    specularSharpness: 24.0,   // Specular highlight sharpness (higher = tighter highlights)
-    fresnelPower: 2.0,         // Fresnel falloff (higher = more edge-focused)
+    specularIntensity: 0.05,   // Overall specular brightness
+    specularSharpness: 128,    // Specular highlight sharpness (higher = tighter highlights)
+    fresnelPower: 4.5,         // Fresnel falloff (higher = more edge-focused)
 
     // Panel padding (pixels added around hierarchy)
-    paddingX: 12,
-    paddingY: 10,
+    paddingX: 0,
+    paddingY: 0,
 
     // Panel position and scale
-    offsetX: 0,                // Horizontal offset in pixels
+    offsetX: 560,              // Horizontal offset in pixels
     offsetY: 0,                // Vertical offset in pixels
-    scaleX: 1.0,               // Horizontal scale multiplier
-    scaleY: 1.0                // Vertical scale multiplier
+    scaleX: 4.8,               // Horizontal scale multiplier
+    scaleY: 0.9                // Vertical scale multiplier
 };
 
 // Space particle parameters
 var spaceParticleParams = {
     // Star count
-    starCount: 97000,
+    starCount: 68000,
 
     // Spawning distance from center (world units)
     startDistance: 4.1,
     endDistance: 71,
 
     // Appearance
-    particleSize: 5,
+    particleSize: 7,
     brightness: 0.5,
 
     // Star colors (hex)
@@ -332,11 +332,20 @@ window.spaceParticleParams = spaceParticleParams;
 // Render feature toggles (enable/disable individual renderers)
 window.renderToggles = {
     volumetric: true,       // Volumetric light (screen-space)
-    planets: true,          // Planet/moon spheres
+    planets: false,         // Planet/moon spheres
     suns: true,             // Sun/star rendering
     spaceParticles: true,   // Space dust particles
-    orbits: true            // Orbital path lines
+    orbits: false           // Orbital path lines
 };
+
+// Camera parameters
+var cameraParams = {
+    moveSpeed: 50,
+    orbitSpeed: 0.4,
+    rotationSpeed: 0.003,
+    smoothing: 12
+};
+window.cameraParams = cameraParams;
 
 // ============================================
 // PERSISTED SETTINGS REGISTRY
