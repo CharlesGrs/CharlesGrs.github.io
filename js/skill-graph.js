@@ -1098,39 +1098,22 @@
         const canvasRect = glCanvas.getBoundingClientRect();
         const dpr = window.devicePixelRatio || 1;
 
-        // Collect all glass panels to render
-        const panels = [];
+        // Create centered square glass quad
+        // Base size is the smaller dimension to ensure square aspect
+        const baseSize = Math.min(canvasWidth, canvasHeight) * 0.5;
+        const quadWidth = baseSize * gp.scaleX;
+        const quadHeight = baseSize * gp.scaleY;
 
-        // 1. Hierarchy panel
-        const hierarchyPanel = document.getElementById('hierarchy-panel');
-        if (hierarchyPanel) {
-            const rect = hierarchyPanel.getBoundingClientRect();
-            if (rect.width >= 1 && rect.height >= 1) {
-                panels.push({
-                    left: rect.left - canvasRect.left - gp.paddingX,
-                    top: rect.top - canvasRect.top - gp.paddingY,
-                    width: rect.width + gp.paddingX * 2,
-                    height: rect.height + gp.paddingY * 2
-                });
-            }
-        }
+        // Center position with offset (negative = left, positive = right)
+        const centerX = (canvasWidth - quadWidth) / 2 + gp.offsetX;
+        const centerY = (canvasHeight - quadHeight) / 2 + gp.offsetY;
 
-        // 2. Go-back button (only if visible)
-        const goBackBtn = document.getElementById('go-back-btn');
-        if (goBackBtn && goBackBtn.classList.contains('visible')) {
-            const rect = goBackBtn.getBoundingClientRect();
-            if (rect.width >= 1 && rect.height >= 1) {
-                panels.push({
-                    left: rect.left - canvasRect.left,
-                    top: rect.top - canvasRect.top,
-                    width: rect.width,
-                    height: rect.height
-                });
-            }
-        }
-
-        // Skip if no panels to render
-        if (panels.length === 0) return;
+        const panels = [{
+            left: centerX,
+            top: centerY,
+            width: quadWidth,
+            height: quadHeight
+        }];
 
         // Ensure blur FBOs exist at correct size
         ensureGlassBlurFBOs(canvasWidth, canvasHeight);

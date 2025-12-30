@@ -218,11 +218,11 @@
                         { type: 'slider', id: 'glass-squircle-n', label: 'Squircle N', param: 'glassParams.squircleN', min: 2, max: 8, step: 0.5, decimals: 1 },
                         { type: 'slider', id: 'glass-chromatic', label: 'Chromatic Aberration', param: 'glassParams.chromaticAberration', min: 0, max: 10, step: 0.5, decimals: 1 },
                         { type: 'subheader', label: 'Specular' },
-                        { type: 'slider', id: 'glass-spec-intensity', label: 'Intensity', param: 'glassParams.specularIntensity', min: 0, max: 1, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'glass-spec-intensity', label: 'Intensity', param: 'glassParams.specularIntensity', min: 0, max: 0.5, step: 0.01, decimals: 2 },
                         { type: 'slider', id: 'glass-spec-sharpness', label: 'Sharpness', param: 'glassParams.specularSharpness', min: 4, max: 128, step: 4, decimals: 0 },
                         { type: 'slider', id: 'glass-fresnel', label: 'Fresnel Power', param: 'glassParams.fresnelPower', min: 1, max: 8, step: 0.5, decimals: 1 },
                         { type: 'subheader', label: 'Caustics' },
-                        { type: 'slider', id: 'glass-caustics-intensity', label: 'Intensity', param: 'glassParams.causticsIntensity', min: 0, max: 2, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'glass-caustics-intensity', label: 'Intensity', param: 'glassParams.causticsIntensity', min: 0, max: 0.5, step: 0.01, decimals: 2 },
                         { type: 'slider', id: 'glass-caustics-scale', label: 'Scale', param: 'glassParams.causticsScale', min: 0.5, max: 3, step: 0.1, decimals: 1 },
                         { type: 'subheader', label: 'Tint' },
                         { type: 'slider', id: 'glass-opacity', label: 'Tint Strength', param: 'glassParams.glassOpacity', min: 0, max: 0.5, step: 0.01, decimals: 2 },
@@ -586,7 +586,7 @@
     }
 
     function createSection(section) {
-        const isExpanded = expandedSections[section.id] !== false;
+        const isExpanded = expandedSections[section.id] === true;
         let controlsHtml = '';
 
         section.controls.forEach(function(ctrl) {
@@ -731,6 +731,10 @@
                 activeTab = this.dataset.tab;
                 panel.querySelectorAll('.sp-tab').forEach(function(t) { t.classList.remove('active'); });
                 this.classList.add('active');
+                // Reset all sections to collapsed when switching tabs
+                Object.keys(expandedSections).forEach(function(key) {
+                    expandedSections[key] = false;
+                });
                 document.getElementById('sp-content').innerHTML = createTabContent(activeTab);
                 bindControlEvents();
             });
@@ -752,14 +756,26 @@
 
     function bindControlEvents() {
         // Section expand/collapse (click on header but not on toggle)
+        // Accordion behavior: only one section open at a time
         panel.querySelectorAll('.sp-section-header').forEach(function(header) {
             header.addEventListener('click', function(e) {
                 // Don't toggle section if clicking the enable/disable switch
                 if (e.target.closest('.sp-toggle-switch')) return;
                 const section = this.parentElement;
                 const sectionId = section.dataset.section;
-                const isExpanded = section.classList.toggle('expanded');
-                expandedSections[sectionId] = isExpanded;
+                const wasExpanded = section.classList.contains('expanded');
+
+                // Close all sections in the current tab
+                panel.querySelectorAll('.sp-section.expanded').forEach(function(openSection) {
+                    openSection.classList.remove('expanded');
+                    expandedSections[openSection.dataset.section] = false;
+                });
+
+                // If it wasn't expanded, expand it now
+                if (!wasExpanded) {
+                    section.classList.add('expanded');
+                    expandedSections[sectionId] = true;
+                }
             });
         });
 
@@ -943,10 +959,10 @@
             panel.style.display = 'none';
         }
 
-        // Initialize all sections as expanded
+        // Initialize all sections as collapsed
         Object.keys(CONTROLS).forEach(function(tabId) {
             CONTROLS[tabId].sections.forEach(function(section) {
-                expandedSections[section.id] = true;
+                expandedSections[section.id] = false;
             });
         });
 

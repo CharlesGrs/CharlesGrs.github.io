@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDF Text Generator</title>
+    <style>
+        :root {
+            --bg-primary: #0a0f14;
+            --bg-secondary: #111820;
+            --bg-tertiary: #1a2330;
+            --accent-gold: #e8b923;
+            --accent-teal: #2dd4bf;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --border-color: #2d3a4a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            color: var(--accent-gold);
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+        }
+
+        .panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .panel h2 {
+            font-size: 0.875rem;
+            color: var(--accent-teal);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        select, input[type="text"], input[type="number"], textarea {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            font-family: inherit;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        select:focus, input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent-teal);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-upload {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .file-upload-btn {
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+
+        .file-upload-btn:hover {
+            border-color: var(--accent-teal);
+        }
+
+        .file-name {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--accent-gold);
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            background: #f5c842;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-teal);
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .preview-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .sdf-preview {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 300px;
+            position: relative;
+        }
+
+        .sdf-preview canvas {
+            max-width: 100%;
+            max-height: 500px;
+            image-rendering: pixelated;
+        }
+
+        .shader-preview {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+            aspect-ratio: 1 / 1;
+            max-width: 400px;
+        }
+
+        .shader-preview canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .range-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .range-group input[type="range"] {
+            flex: 1;
+            -webkit-appearance: none;
+            background: var(--bg-tertiary);
+            height: 4px;
+            border-radius: 2px;
+        }
+
+        .range-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--accent-teal);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .range-value {
+            min-width: 50px;
+            text-align: right;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .status {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            padding: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+        }
+
+        .status.success {
+            color: var(--accent-teal);
+        }
+
+        .status.error {
+            color: #ef4444;
+        }
+
+        .google-fonts-search {
+            position: relative;
+        }
+
+        .google-fonts-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 0 0 4px 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+        }
+
+        .google-fonts-dropdown.show {
+            display: block;
+        }
+
+        .google-font-option {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+
+        .google-font-option:hover {
+            background: var(--bg-secondary);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 8px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .tab.active {
+            background: var(--accent-teal);
+            color: var(--bg-primary);
+            border-color: var(--accent-teal);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 0.75rem;
+        }
+
+        .info-grid dt {
+            color: var(--text-secondary);
+        }
+
+        .info-grid dd {
+            color: var(--text-primary);
+            text-align: right;
+        }
+
+        @media (max-width: 900px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>SDF Text Generator</h1>
+
+    <div class="container">
+        <!-- Left Panel: Controls -->
+        <div class="panel">
+            <h2>Text Input</h2>
+
+            <div class="form-group">
+                <label>Text to Render</label>
+                <textarea id="textInput" placeholder="Enter your text...">Hello World</textarea>
+            </div>
+
+            <h2>Font Selection</h2>
+
+            <div class="tabs">
+                <div class="tab active" data-tab="system">System</div>
+                <div class="tab" data-tab="google">Google</div>
+                <div class="tab" data-tab="custom">Upload</div>
+            </div>
+
+            <div class="tab-content active" data-tab="system">
+                <div class="form-group">
+                    <label>System Font</label>
+                    <select id="systemFont">
+                        <option value="Arial">Arial</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Courier New">Courier New</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Trebuchet MS">Trebuchet MS</option>
+                        <option value="Impact">Impact</option>
+                        <option value="Palatino Linotype">Palatino Linotype</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="tab-content" data-tab="google">
+                <div class="form-group google-fonts-search">
+                    <label>Google Font</label>
+                    <input type="text" id="googleFontSearch" placeholder="Search fonts...">
+                    <div class="google-fonts-dropdown" id="googleFontsDropdown"></div>
+                </div>
+                <div class="status" id="googleFontStatus">Type to search Google Fonts</div>
+            </div>
+
+            <div class="tab-content" data-tab="custom">
+                <div class="form-group">
+                    <label>Upload Font File</label>
+                    <div class="file-upload">
+                        <label class="file-upload-btn" for="customFontFile">Choose File</label>
+                        <input type="file" id="customFontFile" accept=".ttf,.woff,.woff2,.otf">
+                        <span class="file-name" id="customFileName">No file chosen</span>
+                    </div>
+                </div>
+            </div>
+
+            <h2 style="margin-top: 24px;">Settings</h2>
+
+            <div class="form-group">
+                <label>Texture Size</label>
+                <select id="textureSize">
+                    <option value="128">128 x 128</option>
+                    <option value="256">256 x 256</option>
+                    <option value="512" selected>512 x 512</option>
+                    <option value="1024">1024 x 1024</option>
+                    <option value="2048">2048 x 2048</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Font Size (Auto-fit)</label>
+                <div class="range-group">
+                    <input type="range" id="fontScale" min="10" max="100" value="80">
+                    <span class="range-value" id="fontScaleValue">80%</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>SDF Spread (Radius)</label>
+                <div class="range-group">
+                    <input type="range" id="sdfSpread" min="2" max="64" value="16">
+                    <span class="range-value" id="sdfSpreadValue">16</span>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" id="generateBtn">Generate SDF</button>
+            </div>
+
+            <h2 style="margin-top: 24px;">Export</h2>
+
+            <div class="form-group">
+                <label>File Name</label>
+                <input type="text" id="fileName" value="text-sdf">
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-secondary" id="exportPng">Export PNG</button>
+                <button class="btn btn-secondary" id="exportJson">Export JSON (metadata)</button>
+            </div>
+
+            <div class="status" id="exportStatus"></div>
+        </div>
+
+        <!-- Right Panel: Preview -->
+        <div class="panel preview-container">
+            <h2>SDF Preview</h2>
+            <div class="sdf-preview">
+                <canvas id="sdfCanvas"></canvas>
+            </div>
+
+            <h2>Shader Preview</h2>
+            <div class="shader-preview">
+                <canvas id="shaderCanvas"></canvas>
+            </div>
+
+            <h2>Info</h2>
+            <div class="status">
+                <dl class="info-grid" id="infoGrid">
+                    <dt>Status</dt>
+                    <dd>Ready</dd>
+                </dl>
+            </div>
+
+            <h2>Shader Usage</h2>
+            <div class="status">
+                <pre style="font-size: 0.7rem; white-space: pre-wrap;">// Sample the SDF texture
+float dist = texture2D(sdfTexture, uv).r;
+
+// Anti-aliased edge
+float edge = 0.5;
+float delta = fwidth(dist) * 0.5;
+float alpha = smoothstep(edge - delta, edge + delta, dist);
+
+// Or for outline effect:
+float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        // State
+        let currentFont = 'Arial';
+        let sdfGenerated = false;
+        let textBounds = null;
+
+        // DOM Elements
+        const sdfCanvas = document.getElementById('sdfCanvas');
+        const sdfCtx = sdfCanvas.getContext('2d');
+        const shaderCanvas = document.getElementById('shaderCanvas');
+        let gl = null;
+        let shaderProgram = null;
+        let sdfTexture = null;
+
+        // Google Fonts (popular subset)
+        const googleFonts = [
+            'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Oswald',
+            'Source Sans Pro', 'Raleway', 'Poppins', 'Nunito', 'Ubuntu',
+            'Playfair Display', 'Merriweather', 'PT Sans', 'Rubik', 'Work Sans',
+            'Fira Sans', 'Barlow', 'Inter', 'Quicksand', 'Karla',
+            'Inconsolata', 'Source Code Pro', 'Fira Code', 'JetBrains Mono', 'Roboto Mono',
+            'Bebas Neue', 'Anton', 'Archivo Black', 'Righteous', 'Russo One'
+        ];
+
+        function init() {
+            setupTabs();
+            setupRangeInputs();
+            setupGoogleFonts();
+            setupCustomFont();
+            setupGenerate();
+            setupExport();
+            setupShaderPreview();
+        }
+
+        function setupTabs() {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.querySelector(`.tab-content[data-tab="${tab.dataset.tab}"]`).classList.add('active');
+                });
+            });
+        }
+
+        function setupRangeInputs() {
+            const ranges = [
+                { input: 'fontScale', display: 'fontScaleValue', suffix: '%' },
+                { input: 'sdfSpread', display: 'sdfSpreadValue', suffix: '' }
+            ];
+
+            ranges.forEach(({ input, display, suffix }) => {
+                const inputEl = document.getElementById(input);
+                const displayEl = document.getElementById(display);
+                inputEl.addEventListener('input', () => {
+                    displayEl.textContent = inputEl.value + suffix;
+                });
+            });
+        }
+
+        function setupGoogleFonts() {
+            const searchInput = document.getElementById('googleFontSearch');
+            const dropdown = document.getElementById('googleFontsDropdown');
+            const status = document.getElementById('googleFontStatus');
+
+            searchInput.addEventListener('input', () => {
+                const query = searchInput.value.toLowerCase();
+                if (query.length < 1) {
+                    dropdown.classList.remove('show');
+                    return;
+                }
+
+                const matches = googleFonts.filter(f => f.toLowerCase().includes(query));
+                if (matches.length > 0) {
+                    dropdown.innerHTML = matches.map(f =>
+                        `<div class="google-font-option" data-font="${f}">${f}</div>`
+                    ).join('');
+                    dropdown.classList.add('show');
+                } else {
+                    dropdown.classList.remove('show');
+                }
+            });
+
+            dropdown.addEventListener('click', async (e) => {
+                if (e.target.classList.contains('google-font-option')) {
+                    const fontName = e.target.dataset.font;
+                    searchInput.value = fontName;
+                    dropdown.classList.remove('show');
+                    status.textContent = `Loading ${fontName}...`;
+                    status.className = 'status';
+
+                    try {
+                        await loadGoogleFont(fontName);
+                        currentFont = fontName;
+                        status.textContent = `${fontName} loaded`;
+                        status.classList.add('success');
+                    } catch (err) {
+                        status.textContent = `Failed to load ${fontName}`;
+                        status.classList.add('error');
+                    }
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.google-fonts-search')) {
+                    dropdown.classList.remove('show');
+                }
+            });
+        }
+
+        async function loadGoogleFont(fontName) {
+            const url = `https://fonts.googleapis.com/css2?family=${fontName.replace(/ /g, '+')}&display=swap`;
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = url;
+            document.head.appendChild(link);
+            await document.fonts.load(`48px "${fontName}"`);
+        }
+
+        function setupCustomFont() {
+            const fileInput = document.getElementById('customFontFile');
+            const fileName = document.getElementById('customFileName');
+
+            fileInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                fileName.textContent = file.name;
+
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const fontFace = new FontFace('CustomFont', arrayBuffer);
+                    await fontFace.load();
+                    document.fonts.add(fontFace);
+                    currentFont = 'CustomFont';
+                    fileName.textContent = file.name + ' (loaded)';
+                } catch (err) {
+                    console.error('Failed to load font:', err);
+                    fileName.textContent = 'Error loading font';
+                }
+            });
+        }
+
+        function setupGenerate() {
+            document.getElementById('generateBtn').addEventListener('click', generateSDF);
+            document.getElementById('systemFont').addEventListener('change', (e) => {
+                currentFont = e.target.value;
+            });
+        }
+
+        function generateSDF() {
+            const text = document.getElementById('textInput').value;
+            if (!text.trim()) {
+                alert('Please enter some text');
+                return;
+            }
+
+            const textureSize = parseInt(document.getElementById('textureSize').value);
+            const fontScale = parseInt(document.getElementById('fontScale').value) / 100;
+            const spread = parseInt(document.getElementById('sdfSpread').value);
+
+            // Get current font based on active tab
+            const activeTab = document.querySelector('.tab.active').dataset.tab;
+            if (activeTab === 'system') {
+                currentFont = document.getElementById('systemFont').value;
+            } else if (activeTab === 'google') {
+                const searchVal = document.getElementById('googleFontSearch').value;
+                if (searchVal) currentFont = searchVal;
+            }
+
+            // Setup canvas
+            sdfCanvas.width = textureSize;
+            sdfCanvas.height = textureSize;
+
+            // Clear canvas
+            sdfCtx.fillStyle = 'black';
+            sdfCtx.fillRect(0, 0, textureSize, textureSize);
+
+            // Calculate font size to fit text centered with padding
+            const padding = spread * 2;
+            const availableWidth = textureSize - padding * 2;
+            const availableHeight = textureSize - padding * 2;
+
+            // Find optimal font size
+            let fontSize = availableHeight * fontScale;
+            sdfCtx.font = `${fontSize}px "${currentFont}"`;
+            let metrics = sdfCtx.measureText(text);
+
+            // Scale down if text is too wide
+            if (metrics.width > availableWidth) {
+                fontSize = fontSize * (availableWidth / metrics.width);
+                sdfCtx.font = `${fontSize}px "${currentFont}"`;
+                metrics = sdfCtx.measureText(text);
+            }
+
+            // Get proper text metrics
+            const textWidth = metrics.width;
+            const textHeight = fontSize; // Approximate
+
+            // Create high-res canvas for text rendering (for better SDF quality)
+            const scale = 2; // Supersampling
+            const hiResCanvas = document.createElement('canvas');
+            hiResCanvas.width = textureSize * scale;
+            hiResCanvas.height = textureSize * scale;
+            const hiResCtx = hiResCanvas.getContext('2d');
+
+            // Clear
+            hiResCtx.fillStyle = 'black';
+            hiResCtx.fillRect(0, 0, hiResCanvas.width, hiResCanvas.height);
+
+            // Draw text centered
+            hiResCtx.fillStyle = 'white';
+            hiResCtx.font = `${fontSize * scale}px "${currentFont}"`;
+            hiResCtx.textBaseline = 'middle';
+            hiResCtx.textAlign = 'center';
+            hiResCtx.fillText(text, hiResCanvas.width / 2, hiResCanvas.height / 2);
+
+            // Get image data
+            const hiResData = hiResCtx.getImageData(0, 0, hiResCanvas.width, hiResCanvas.height);
+
+            // Generate SDF at target resolution
+            const sdfData = generateSDFFromImage(hiResData, hiResCanvas.width, hiResCanvas.height, textureSize, spread * scale);
+
+            // Draw SDF to canvas
+            sdfCtx.putImageData(sdfData, 0, 0);
+
+            // Store bounds for JSON export
+            textBounds = {
+                text: text,
+                font: currentFont,
+                fontSize: Math.round(fontSize),
+                textureSize: textureSize,
+                spread: spread,
+                // Normalized coordinates (0-1)
+                centerX: 0.5,
+                centerY: 0.5,
+                width: textWidth / textureSize,
+                height: textHeight / textureSize
+            };
+
+            // Update info
+            updateInfo();
+
+            sdfGenerated = true;
+            updateShaderPreview();
+        }
+
+        function generateSDFFromImage(imageData, srcWidth, srcHeight, dstSize, radius) {
+            const srcData = imageData.data;
+            const srcSize = srcWidth * srcHeight;
+
+            // Extract alpha/luminance as binary
+            const src = new Float64Array(srcSize);
+            for (let i = 0; i < srcSize; i++) {
+                // Use red channel (text is white)
+                src[i] = srcData[i * 4] / 255;
+            }
+
+            // Compute distance fields at source resolution
+            const outside = edt(src, srcWidth, srcHeight);
+            const inside = edt(src.map(v => 1 - v), srcWidth, srcHeight);
+
+            // Create output at destination size
+            const dst = new Uint8ClampedArray(dstSize * dstSize * 4);
+            const scale = srcWidth / dstSize;
+
+            for (let y = 0; y < dstSize; y++) {
+                for (let x = 0; x < dstSize; x++) {
+                    // Sample from high-res SDF (bilinear would be better but nearest is fine)
+                    const srcX = Math.floor(x * scale);
+                    const srcY = Math.floor(y * scale);
+                    const srcIdx = srcY * srcWidth + srcX;
+
+                    const dist = outside[srcIdx] - inside[srcIdx];
+                    const normalized = 0.5 + 0.5 * (dist / radius);
+                    const value = Math.round(Math.max(0, Math.min(255, normalized * 255)));
+
+                    const dstIdx = (y * dstSize + x) * 4;
+                    dst[dstIdx] = value;     // R
+                    dst[dstIdx + 1] = value; // G
+                    dst[dstIdx + 2] = value; // B
+                    dst[dstIdx + 3] = 255;   // A (fully opaque)
+                }
+            }
+
+            return new ImageData(dst, dstSize, dstSize);
+        }
+
+        // Euclidean Distance Transform (1D)
+        function edt1d(f, n) {
+            const d = new Float64Array(n);
+            const v = new Int32Array(n);
+            const z = new Float64Array(n + 1);
+
+            let k = 0;
+            v[0] = 0;
+            z[0] = -Infinity;
+            z[1] = Infinity;
+
+            for (let q = 1; q < n; q++) {
+                let s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
+                while (s <= z[k]) {
+                    k--;
+                    s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
+                }
+                k++;
+                v[k] = q;
+                z[k] = s;
+                z[k + 1] = Infinity;
+            }
+
+            k = 0;
+            for (let q = 0; q < n; q++) {
+                while (z[k + 1] < q) k++;
+                d[q] = (q - v[k]) * (q - v[k]) + f[v[k]];
+            }
+
+            return d;
+        }
+
+        // 2D Euclidean Distance Transform
+        function edt(data, width, height) {
+            const INF = 1e20;
+            const f = new Float64Array(Math.max(width, height));
+            const result = new Float64Array(width * height);
+
+            // Transform along columns
+            for (let x = 0; x < width; x++) {
+                for (let y = 0; y < height; y++) {
+                    f[y] = data[y * width + x] > 0.5 ? 0 : INF;
+                }
+                const d = edt1d(f, height);
+                for (let y = 0; y < height; y++) {
+                    result[y * width + x] = d[y];
+                }
+            }
+
+            // Transform along rows
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    f[x] = result[y * width + x];
+                }
+                const d = edt1d(f, width);
+                for (let x = 0; x < width; x++) {
+                    result[y * width + x] = Math.sqrt(d[x]);
+                }
+            }
+
+            return result;
+        }
+
+        function updateInfo() {
+            const info = document.getElementById('infoGrid');
+            if (textBounds) {
+                info.innerHTML = `
+                    <dt>Text</dt><dd>${textBounds.text}</dd>
+                    <dt>Font</dt><dd>${textBounds.font}</dd>
+                    <dt>Font Size</dt><dd>${textBounds.fontSize}px</dd>
+                    <dt>Texture</dt><dd>${textBounds.textureSize}x${textBounds.textureSize}</dd>
+                    <dt>Spread</dt><dd>${textBounds.spread}px</dd>
+                `;
+            }
+        }
+
+        // WebGL Shader Preview
+        function setupShaderPreview() {
+            gl = shaderCanvas.getContext('webgl');
+            if (!gl) {
+                console.error('WebGL not supported');
+                return;
+            }
+
+            // Enable derivatives extension for fwidth
+            const ext = gl.getExtension('OES_standard_derivatives');
+
+            const vsSource = `
+                attribute vec2 aPosition;
+                varying vec2 vTexCoord;
+                void main() {
+                    gl_Position = vec4(aPosition, 0.0, 1.0);
+                    vTexCoord = aPosition * 0.5 + 0.5;
+                }
+            `;
+
+            const fsSource = `
+                #extension GL_OES_standard_derivatives : enable
+                precision mediump float;
+                varying vec2 vTexCoord;
+                uniform sampler2D uTexture;
+                uniform vec3 uColor;
+
+                void main() {
+                    vec2 uv = vTexCoord;
+                    uv.y = 1.0 - uv.y; // Flip Y
+
+                    float dist = texture2D(uTexture, uv).r;
+
+                    // Anti-aliased edge
+                    float edge = 0.5;
+                    float smoothing = 0.05; // Fixed smoothing fallback
+                    #ifdef GL_OES_standard_derivatives
+                        smoothing = fwidth(dist) * 0.75;
+                    #endif
+                    float alpha = smoothstep(edge - smoothing, edge + smoothing, dist);
+
+                    // Optional: slight glow
+                    float glow = smoothstep(0.3, 0.5, dist) * 0.3;
+
+                    vec3 color = uColor + glow * vec3(0.2, 0.1, 0.0);
+                    gl_FragColor = vec4(color, alpha);
+                }
+            `;
+
+            const vs = compileShader(gl, gl.VERTEX_SHADER, vsSource);
+            const fs = compileShader(gl, gl.FRAGMENT_SHADER, fsSource);
+
+            shaderProgram = gl.createProgram();
+            gl.attachShader(shaderProgram, vs);
+            gl.attachShader(shaderProgram, fs);
+            gl.linkProgram(shaderProgram);
+
+            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+                console.error('Shader program failed to link');
+                return;
+            }
+
+            gl.useProgram(shaderProgram);
+
+            // Create fullscreen quad
+            const quadBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 1, -1, -1, 1,
+                -1, 1, 1, -1, 1, 1
+            ]), gl.STATIC_DRAW);
+
+            const posLoc = gl.getAttribLocation(shaderProgram, 'aPosition');
+            gl.enableVertexAttribArray(posLoc);
+            gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+            // Create texture
+            sdfTexture = gl.createTexture();
+
+            gl.enable(gl.BLEND);
+            gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        }
+
+        function compileShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+
+            return shader;
+        }
+
+        function updateShaderPreview() {
+            if (!gl || !sdfGenerated) return;
+
+            shaderCanvas.width = shaderCanvas.clientWidth * window.devicePixelRatio;
+            shaderCanvas.height = shaderCanvas.clientHeight * window.devicePixelRatio;
+            gl.viewport(0, 0, shaderCanvas.width, shaderCanvas.height);
+
+            gl.clearColor(0.04, 0.06, 0.08, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            // Update texture
+            gl.bindTexture(gl.TEXTURE_2D, sdfTexture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sdfCanvas);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+            // Set uniforms
+            const colorLoc = gl.getUniformLocation(shaderProgram, 'uColor');
+            gl.uniform3f(colorLoc, 0.91, 0.73, 0.14); // Gold
+
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+        }
+
+        function setupExport() {
+            document.getElementById('exportPng').addEventListener('click', exportPng);
+            document.getElementById('exportJson').addEventListener('click', exportJson);
+        }
+
+        function exportPng() {
+            if (!sdfGenerated) {
+                showExportStatus('Generate SDF first', true);
+                return;
+            }
+
+            const name = document.getElementById('fileName').value || 'text-sdf';
+            const link = document.createElement('a');
+            link.download = `${name}.png`;
+            link.href = sdfCanvas.toDataURL('image/png');
+            link.click();
+
+            showExportStatus('PNG exported');
+        }
+
+        function exportJson() {
+            if (!sdfGenerated || !textBounds) {
+                showExportStatus('Generate SDF first', true);
+                return;
+            }
+
+            const name = document.getElementById('fileName').value || 'text-sdf';
+
+            const json = {
+                ...textBounds,
+                // Add UV info for shader usage
+                uv: {
+                    // Since text is centered, these are the bounds
+                    minU: 0,
+                    maxU: 1,
+                    minV: 0,
+                    maxV: 1
+                }
+            };
+
+            const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.download = `${name}.json`;
+            link.href = URL.createObjectURL(blob);
+            link.click();
+
+            showExportStatus('JSON exported');
+        }
+
+        function showExportStatus(message, isError = false) {
+            const status = document.getElementById('exportStatus');
+            status.textContent = message;
+            status.className = 'status ' + (isError ? 'error' : 'success');
+        }
+
+        init();
+    })();
+    </script>
+</body>
+</html>

@@ -138,7 +138,7 @@ var orbitParams = {
     planetSizeFactor: 0.7,
     subMoonSize: 0.15,
     // Orbit display
-    orbitLineOpacity: 0.03,
+    orbitLineOpacity: 0.06,
     orbitLineWidth: 1,
     showOrbits: 1
 };
@@ -241,7 +241,7 @@ var postProcessParams = {
     grainSize: 0.5,
     // Bloom (multi-pass, anamorphic)
     bloomThreshold: 1,
-    bloomIntensity: 0.5,
+    bloomIntensity: 0.2,
     bloomRadius: 0.5,
     bloomSoftKnee: 1,
     bloomTint: 0,
@@ -257,12 +257,12 @@ var postProcessParams = {
 var glassParams = {
     // Blur settings
     enabled: true,
-    blurRadius: 2,             // Blur kernel radius multiplier
+    blurRadius: 0.5,           // Blur kernel radius multiplier
     blurPasses: 6,             // Number of blur iterations (more = smoother)
     blurDownscale: 2,          // Downscale factor for blur FBO (2, 4, or 8)
 
     // Glass material
-    cornerRadius: 32,          // Rounded corner radius in pixels
+    cornerRadius: 19,          // Rounded corner radius in pixels
     edgeSoftness: 0.7,         // Edge anti-aliasing
     refractStrength: 20,       // How much edges bend light (lens curvature)
     squircleN: 4,              // Squircle exponent: 2=ellipse, 4=Apple squircle, 8+=more rectangular
@@ -289,15 +289,15 @@ var glassParams = {
     specularSharpness: 128,    // Specular highlight sharpness (higher = tighter highlights)
     fresnelPower: 4.5,         // Fresnel falloff (higher = more edge-focused)
 
-    // Panel padding (pixels added around hierarchy)
+    // Panel padding (pixels added around quad)
     paddingX: 0,
     paddingY: 0,
 
-    // Panel position and scale
-    offsetX: 560,              // Horizontal offset in pixels
-    offsetY: 0,                // Vertical offset in pixels
-    scaleX: 4.8,               // Horizontal scale multiplier
-    scaleY: 0.9                // Vertical scale multiplier
+    // Panel position and scale (centered square quad)
+    offsetX: 0,                // Horizontal offset in pixels (negative = left, positive = right)
+    offsetY: 0,                // Vertical offset in pixels (negative = up, positive = down)
+    scaleX: 1,                 // Horizontal scale multiplier (1 = square base)
+    scaleY: 1                  // Vertical scale multiplier (1 = square base)
 };
 
 // Space particle parameters
@@ -332,10 +332,10 @@ window.spaceParticleParams = spaceParticleParams;
 // Render feature toggles (enable/disable individual renderers)
 window.renderToggles = {
     volumetric: true,       // Volumetric light (screen-space)
-    planets: false,         // Planet/moon spheres
+    planets: true,          // Planet/moon spheres
     suns: true,             // Sun/star rendering
     spaceParticles: true,   // Space dust particles
-    orbits: false           // Orbital path lines
+    orbits: true            // Orbital path lines
 };
 
 // Camera parameters
