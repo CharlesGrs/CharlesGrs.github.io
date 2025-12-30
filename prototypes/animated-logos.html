@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animated Logo Prototypes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0f14;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            font-family: 'JetBrains Mono', monospace;
+            color: #8b9cab;
+        }
+
+        h1 {
+            color: #e8b923;
+            margin-bottom: 40px;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+        }
+
+        .logo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .logo-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            transition: border-color 0.3s;
+        }
+
+        .logo-card:hover {
+            border-color: rgba(232, 185, 35, 0.3);
+        }
+
+        .logo-card svg {
+            width: 120px;
+            height: 120px;
+        }
+
+        .logo-card h3 {
+            color: #2dd4bf;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .logo-card p {
+            font-size: 0.65rem;
+            color: #5a6a7a;
+            text-align: center;
+        }
+
+        /* ============================================
+           UNITY - Isometric Cube Assembly
+           ============================================ */
+        .unity-logo .face {
+            fill: none;
+            stroke: #e8b923;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 200;
+            stroke-dashoffset: 200;
+            animation: unity-draw 2s ease-out forwards;
+        }
+
+        .unity-logo .face-1 { animation-delay: 0s; }
+        .unity-logo .face-2 { animation-delay: 0.3s; }
+        .unity-logo .face-3 { animation-delay: 0.6s; }
+
+        .unity-logo .inner {
+            fill: #e8b923;
+            opacity: 0;
+            animation: unity-fill 0.5s ease-out 1.5s forwards;
+        }
+
+        @keyframes unity-draw {
+            to { stroke-dashoffset: 0; }
+        }
+
+        @keyframes unity-fill {
+            to { opacity: 0.15; }
+        }
+
+        /* Continuous subtle rotation */
+        .unity-logo .cube-group {
+            transform-origin: 60px 60px;
+            animation: unity-float 8s ease-in-out infinite;
+        }
+
+        @keyframes unity-float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-3px) rotate(2deg); }
+        }
+
+        /* ============================================
+           UBISOFT - Swirl Logo
+           ============================================ */
+        .ubisoft-logo .swirl-path {
+            fill: none;
+            stroke: #2dd4bf;
+            stroke-linecap: round;
+            stroke-dasharray: 500;
+            stroke-dashoffset: 500;
+            animation: swirl-draw 2s ease-out forwards;
+        }
+
+        .ubisoft-logo .outer-swirl {
+            stroke-width: 6;
+        }
+
+        .ubisoft-logo .inner-swirl {
+            stroke-width: 5;
+            animation-delay: 0.4s;
+        }
+
+        .ubisoft-logo .core-dot {
+            fill: #2dd4bf;
+            opacity: 0;
+            animation: core-appear 0.3s ease-out 1.5s forwards;
+        }
+
+        @keyframes swirl-draw {
+            to { stroke-dashoffset: 0; }
+        }
+
+        @keyframes core-appear {
+            to { opacity: 1; }
+        }
+
+        /* Subtle pulse */
+        .ubisoft-logo .swirl-group {
+            transform-origin: 60px 60px;
+            animation: swirl-pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes swirl-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        /* ============================================
+           NEXUS STUDIOS - Bunny/Headphone Shape
+           ============================================ */
+        .nexus-logo .ear-stripe {
+            fill: none;
+            stroke: #e8b923;
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-dasharray: 50;
+            stroke-dashoffset: 50;
+            animation: nexus-stripe 0.3s ease-out forwards;
+        }
+
+        .nexus-logo .left-ear .ear-stripe:nth-child(1) { animation-delay: 0s; }
+        .nexus-logo .left-ear .ear-stripe:nth-child(2) { animation-delay: 0.08s; }
+        .nexus-logo .left-ear .ear-stripe:nth-child(3) { animation-delay: 0.16s; }
+        .nexus-logo .left-ear .ear-stripe:nth-child(4) { animation-delay: 0.24s; }
+        .nexus-logo .left-ear .ear-stripe:nth-child(5) { animation-delay: 0.32s; }
+        .nexus-logo .left-ear .ear-stripe:nth-child(6) { animation-delay: 0.40s; }
+
+        .nexus-logo .right-ear .ear-stripe:nth-child(1) { animation-delay: 0.1s; }
+        .nexus-logo .right-ear .ear-stripe:nth-child(2) { animation-delay: 0.18s; }
+        .nexus-logo .right-ear .ear-stripe:nth-child(3) { animation-delay: 0.26s; }
+        .nexus-logo .right-ear .ear-stripe:nth-child(4) { animation-delay: 0.34s; }
+        .nexus-logo .right-ear .ear-stripe:nth-child(5) { animation-delay: 0.42s; }
+        .nexus-logo .right-ear .ear-stripe:nth-child(6) { animation-delay: 0.50s; }
+
+        .nexus-logo .bottom-arc {
+            fill: #e8b923;
+            clip-path: inset(100% 0 0 0);
+            animation: nexus-reveal 0.6s ease-out 0.6s forwards;
+        }
+
+        @keyframes nexus-stripe {
+            to { stroke-dashoffset: 0; }
+        }
+
+        @keyframes nexus-reveal {
+            to { clip-path: inset(0 0 0 0); }
+        }
+
+        /* Subtle bounce */
+        .nexus-logo .nexus-group {
+            transform-origin: 60px 60px;
+            animation: nexus-bounce 3s ease-in-out infinite;
+        }
+
+        @keyframes nexus-bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-2px); }
+        }
+
+        /* ============================================
+           22CANS - Tilted Cube with Light Ray
+           ============================================ */
+        .cans22-logo .cube-face {
+            stroke: none;
+        }
+
+        .cans22-logo .face-shadow {
+            fill: rgba(45, 212, 191, 0.15);
+            opacity: 0;
+            animation: face-appear 0.4s ease-out 0s forwards;
+        }
+
+        .cans22-logo .face-left {
+            fill: rgba(45, 212, 191, 0.4);
+            opacity: 0;
+            animation: face-appear 0.4s ease-out 0.15s forwards;
+        }
+
+        .cans22-logo .face-top {
+            fill: rgba(45, 212, 191, 0.7);
+            opacity: 0;
+            animation: face-appear 0.4s ease-out 0.3s forwards;
+        }
+
+        .cans22-logo .face-right {
+            fill: #2dd4bf;
+            opacity: 0;
+            animation: face-appear 0.4s ease-out 0.45s forwards;
+        }
+
+        .cans22-logo .checkmark {
+            fill: none;
+            stroke: #ffffff;
+            stroke-width: 5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 50;
+            stroke-dashoffset: 50;
+            animation: check-draw 0.4s ease-out 0.8s forwards;
+        }
+
+        .cans22-logo .light-ray {
+            fill: rgba(255, 255, 255, 0.85);
+            clip-path: polygon(0 100%, 100% 100%, 100% 100%, 0 100%);
+            animation: ray-sweep 0.6s ease-out 1s forwards;
+        }
+
+        @keyframes face-appear {
+            to { opacity: 1; }
+        }
+
+        @keyframes check-draw {
+            to { stroke-dashoffset: 0; }
+        }
+
+        @keyframes ray-sweep {
+            to { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+        }
+
+        /* Subtle float */
+        .cans22-logo .cans-group {
+            transform-origin: 55px 60px;
+            animation: cans-float 4s ease-in-out infinite;
+        }
+
+        @keyframes cans-float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-3px) rotate(1deg); }
+        }
+
+        /* ============================================
+           THE SANDBOX - Blocky S
+           ============================================ */
+        .sandbox-logo .pixel {
+            fill: #e8b923;
+            opacity: 0;
+            transform-origin: center;
+            animation: block-slide 0.3s ease-out forwards;
+        }
+
+        /* Stagger blocks for S reveal - top to bottom */
+        .sandbox-logo .pixel-row-1 .pixel { animation-delay: 0s; }
+        .sandbox-logo .pixel-row-2 .pixel { animation-delay: 0.1s; }
+        .sandbox-logo .pixel-row-3 .pixel { animation-delay: 0.2s; }
+        .sandbox-logo .pixel-row-4 .pixel { animation-delay: 0.3s; }
+        .sandbox-logo .pixel-row-5 .pixel { animation-delay: 0.4s; }
+
+        @keyframes block-slide {
+            0% {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Pixel bounce */
+        .sandbox-logo .sandbox-group {
+            transform-origin: 60px 60px;
+            animation: sandbox-bounce 2s ease-in-out infinite;
+            animation-delay: 0.6s;
+        }
+
+        @keyframes sandbox-bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+
+        /* ============================================
+           Replay button
+           ============================================ */
+        .replay-btn {
+            margin-top: 40px;
+            padding: 12px 24px;
+            background: transparent;
+            border: 1px solid #e8b923;
+            color: #e8b923;
+            font-family: inherit;
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .replay-btn:hover {
+            background: #e8b923;
+            color: #0a0f14;
+        }
+    </style>
+</head>
+<body>
+    <h1>ANIMATED CLIENT LOGOS // PROTOTYPE</h1>
+
+    <div class="logo-grid">
+
+        <!-- UNITY -->
+        <div class="logo-card">
+            <svg class="unity-logo" viewBox="0 0 120 120">
+                <g class="cube-group">
+                    <!-- Isometric cube made of 3 faces -->
+                    <!-- Top face -->
+                    <polygon class="face face-1 inner" points="60,20 95,40 60,60 25,40"/>
+                    <polygon class="face face-1" points="60,20 95,40 60,60 25,40"/>
+
+                    <!-- Left face -->
+                    <polygon class="face face-2 inner" points="25,40 60,60 60,100 25,80"/>
+                    <polygon class="face face-2" points="25,40 60,60 60,100 25,80"/>
+
+                    <!-- Right face -->
+                    <polygon class="face face-3 inner" points="95,40 60,60 60,100 95,80"/>
+                    <polygon class="face face-3" points="95,40 60,60 60,100 95,80"/>
+
+                    <!-- Inner cutouts (the Unity look) -->
+                    <polygon class="face face-1" points="60,35 75,44 60,53 45,44" style="stroke-dasharray: 60;"/>
+                    <polygon class="face face-2" points="45,50 55,56 55,75 45,69" style="stroke-dasharray: 60; animation-delay: 0.9s;"/>
+                    <polygon class="face face-3" points="75,50 65,56 65,75 75,69" style="stroke-dasharray: 60; animation-delay: 1.2s;"/>
+                </g>
+            </svg>
+            <h3>Unity</h3>
+            <p>Isometric cube assembly</p>
+        </div>
+
+        <!-- UBISOFT -->
+        <div class="logo-card">
+            <svg class="ubisoft-logo" viewBox="0 0 120 120">
+                <g class="swirl-group">
+                    <!-- Outer ring - nearly complete circle with gap at bottom-left -->
+                    <path class="swirl-path outer-swirl" d="
+                        M 28 85
+                        A 40 40 0 1 1 95 50
+                        A 40 40 0 0 1 60 100
+                        A 40 40 0 0 1 28 85
+                    "/>
+
+                    <!-- Inner spiral tail - curves from the gap inward toward center -->
+                    <path class="swirl-path inner-swirl" d="
+                        M 28 80
+                        Q 20 60 35 45
+                        Q 50 30 70 40
+                        Q 85 50 75 65
+                        Q 65 78 55 70
+                        Q 48 64 55 58
+                    "/>
+
+                    <!-- Core dot -->
+                    <circle class="core-dot" cx="60" cy="60" r="4"/>
+                </g>
+            </svg>
+            <h3>Ubisoft</h3>
+            <p>Swirl draw-in animation</p>
+        </div>
+
+        <!-- NEXUS STUDIOS -->
+        <div class="logo-card">
+            <svg class="nexus-logo" viewBox="0 0 120 120">
+                <g class="nexus-group">
+                    <!-- Left ear with stripes -->
+                    <g class="left-ear">
+                        <line class="ear-stripe" x1="22" y1="28" x2="42" y2="28"/>
+                        <line class="ear-stripe" x1="20" y1="35" x2="44" y2="35"/>
+                        <line class="ear-stripe" x1="18" y1="42" x2="46" y2="42"/>
+                        <line class="ear-stripe" x1="20" y1="49" x2="44" y2="49"/>
+                        <line class="ear-stripe" x1="24" y1="56" x2="40" y2="56"/>
+                        <line class="ear-stripe" x1="28" y1="63" x2="36" y2="63"/>
+                    </g>
+
+                    <!-- Right ear with stripes -->
+                    <g class="right-ear">
+                        <line class="ear-stripe" x1="78" y1="28" x2="98" y2="28"/>
+                        <line class="ear-stripe" x1="76" y1="35" x2="100" y2="35"/>
+                        <line class="ear-stripe" x1="74" y1="42" x2="102" y2="42"/>
+                        <line class="ear-stripe" x1="76" y1="49" x2="100" y2="49"/>
+                        <line class="ear-stripe" x1="80" y1="56" x2="96" y2="56"/>
+                        <line class="ear-stripe" x1="84" y1="63" x2="92" y2="63"/>
+                    </g>
+
+                    <!-- Bottom solid arc (like a smile/chin) -->
+                    <path class="bottom-arc" d="
+                        M 25 68
+                        Q 25 100 60 100
+                        Q 95 100 95 68
+                        L 80 68
+                        Q 80 85 60 85
+                        Q 40 85 40 68
+                        Z
+                    "/>
+                </g>
+            </svg>
+            <h3>Nexus Studios</h3>
+            <p>Striped ears with arc</p>
+        </div>
+
+        <!-- 22CANS -->
+        <div class="logo-card">
+            <svg class="cans22-logo" viewBox="0 0 120 120">
+                <g class="cans-group">
+                    <!-- Shadow on ground -->
+                    <ellipse class="cube-face face-shadow" cx="52" cy="105" rx="28" ry="7"/>
+
+                    <!-- 3D Cube - slight tilt, more upright like reference -->
+                    <!-- Left face (darker green) -->
+                    <polygon class="cube-face face-left" points="18,42 52,22 52,82 18,97"/>
+
+                    <!-- Top face (medium green) -->
+                    <polygon class="cube-face face-top" points="18,42 52,22 88,38 52,55"/>
+
+                    <!-- Right face (brightest green - lit) -->
+                    <polygon class="cube-face face-right" points="52,55 88,38 88,95 52,82"/>
+
+                    <!-- White checkmark on the right face -->
+                    <polyline class="checkmark" points="60,58 70,72 85,48"/>
+
+                    <!-- Light beam - triangular ray shooting from top-right -->
+                    <polygon class="light-ray" points="88,38 88,50 115,10 108,8"/>
+                </g>
+            </svg>
+            <h3>22Cans</h3>
+            <p>Lit cube with light ray</p>
+        </div>
+
+        <!-- THE SANDBOX -->
+        <div class="logo-card">
+            <svg class="sandbox-logo" viewBox="0 0 120 120">
+                <g class="sandbox-group">
+                    <!-- Blocky S shape - like their pixel-art logo -->
+                    <!-- The S is made of connected rectangular blocks -->
+
+                    <!-- Top horizontal bar of S -->
+                    <g class="pixel-row-1">
+                        <rect class="pixel" x="30" y="20" width="60" height="18" rx="4"/>
+                    </g>
+
+                    <!-- Left vertical (top part of S) -->
+                    <g class="pixel-row-2">
+                        <rect class="pixel" x="30" y="38" width="22" height="16" rx="2"/>
+                    </g>
+
+                    <!-- Middle horizontal bar of S -->
+                    <g class="pixel-row-3">
+                        <rect class="pixel" x="30" y="52" width="60" height="16" rx="2"/>
+                    </g>
+
+                    <!-- Right vertical (bottom part of S) -->
+                    <g class="pixel-row-4">
+                        <rect class="pixel" x="68" y="66" width="22" height="16" rx="2"/>
+                    </g>
+
+                    <!-- Bottom horizontal bar of S -->
+                    <g class="pixel-row-5">
+                        <rect class="pixel" x="30" y="82" width="60" height="18" rx="4"/>
+                    </g>
+                </g>
+            </svg>
+            <h3>The Sandbox</h3>
+            <p>Blocky S reveal</p>
+        </div>
+
+    </div>
+
+    <button class="replay-btn" onclick="replayAnimations()">REPLAY ANIMATIONS</button>
+
+    <script>
+        function replayAnimations() {
+            const logos = document.querySelectorAll('.logo-card svg');
+            logos.forEach(svg => {
+                // Clone and replace to restart animations
+                const clone = svg.cloneNode(true);
+                svg.parentNode.replaceChild(clone, svg);
+            });
+        }
+
+        // Stagger initial load
+        document.addEventListener('DOMContentLoaded', () => {
+            const cards = document.querySelectorAll('.logo-card');
+            cards.forEach((card, i) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    card.style.transition = 'all 0.5s ease-out';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, i * 150);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1437,345 +1437,6 @@
         },
 
         // ============================================
-        // FROSTED GLASS SDF DIAGRAMS
-        // ============================================
-
-        'glass-effect-overview': function(container, w, h) {
-            var svg = createSvg(w, h);
-            var stages = [
-                {label: 'Scene', sub: 'Render'},
-                {label: 'Downsample', sub: '1/2 or 1/4'},
-                {label: 'H-Blur', sub: 'Gaussian'},
-                {label: 'V-Blur', sub: 'Gaussian'},
-                {label: 'SDF Mask', sub: 'Rounded Rect'},
-                {label: 'Refract', sub: 'Edge Warp'},
-                {label: 'Composite', sub: 'Final'}
-            ];
-            var stageWidth = 80;
-            var startX = 30;
-            var y = 85;
-
-            stages.forEach(function(stage, i) {
-                var x = startX + i * (stageWidth + 12);
-                var color = i < 4 ? 'rgba(45, 212, 191, 0.5)' : 'rgba(232, 185, 35, 0.5)';
-                var fill = i < 4 ? 'rgba(45, 212, 191, 0.1)' : 'rgba(232, 185, 35, 0.1)';
-                var rect = createRect(x, y, stageWidth, 55, 6, fill, color, 1);
-                rect.innerHTML = '<animate attributeName="fill-opacity" values="0.1;0.25;0.1" dur="3s" begin="' + (i * 0.3) + 's" repeatCount="indefinite"/>';
-                svg.appendChild(rect);
-
-                svg.appendChild(createText(x + stageWidth/2, y + 22, stage.label, 'diagram-label-small'));
-                svg.appendChild(createText(x + stageWidth/2, y + 40, stage.sub, 'diagram-label-tiny'));
-
-                if (i < stages.length - 1) {
-                    var arrowX = x + stageWidth + 2;
-                    svg.appendChild(createArrow(arrowX, y + 27, arrowX + 8, y + 27, 'rgba(255, 255, 255, 0.4)'));
-                }
-            });
-
-            svg.appendChild(createText(w/2, 30, 'Frosted Glass Pipeline', 'diagram-title'));
-            svg.appendChild(createText(w/2, 170, 'Blur passes (teal) + SDF compositing (gold)', 'diagram-label-tiny'));
-
-            container.appendChild(svg);
-        },
-
-        'sdf-distance-field': function(container, w, h) {
-            var svg = createSvg(w, h);
-
-            // Draw rounded rectangle outline
-            var rectX = 120;
-            var rectY = 60;
-            var rectW = 200;
-            var rectH = 140;
-            var radius = 25;
-
-            // Rounded rect path
-            var rectPath = 'M' + (rectX + radius) + ',' + rectY +
-                ' L' + (rectX + rectW - radius) + ',' + rectY +
-                ' Q' + (rectX + rectW) + ',' + rectY + ' ' + (rectX + rectW) + ',' + (rectY + radius) +
-                ' L' + (rectX + rectW) + ',' + (rectY + rectH - radius) +
-                ' Q' + (rectX + rectW) + ',' + (rectY + rectH) + ' ' + (rectX + rectW - radius) + ',' + (rectY + rectH) +
-                ' L' + (rectX + radius) + ',' + (rectY + rectH) +
-                ' Q' + rectX + ',' + (rectY + rectH) + ' ' + rectX + ',' + (rectY + rectH - radius) +
-                ' L' + rectX + ',' + (rectY + radius) +
-                ' Q' + rectX + ',' + rectY + ' ' + (rectX + radius) + ',' + rectY + ' Z';
-            svg.appendChild(createPath(rectPath, 'rgba(45, 212, 191, 0.2)', '#2dd4bf', 2));
-
-            // Distance field visualization - concentric outlines
-            var distances = [20, 40, 60];
-            distances.forEach(function(d, i) {
-                var opacity = 0.4 - i * 0.1;
-                var outerPath = 'M' + (rectX + radius - d) + ',' + (rectY - d) +
-                    ' L' + (rectX + rectW - radius + d) + ',' + (rectY - d) +
-                    ' Q' + (rectX + rectW + d) + ',' + (rectY - d) + ' ' + (rectX + rectW + d) + ',' + (rectY + radius - d) +
-                    ' L' + (rectX + rectW + d) + ',' + (rectY + rectH - radius + d) +
-                    ' Q' + (rectX + rectW + d) + ',' + (rectY + rectH + d) + ' ' + (rectX + rectW - radius + d) + ',' + (rectY + rectH + d) +
-                    ' L' + (rectX + radius - d) + ',' + (rectY + rectH + d) +
-                    ' Q' + (rectX - d) + ',' + (rectY + rectH + d) + ' ' + (rectX - d) + ',' + (rectY + rectH - radius + d) +
-                    ' L' + (rectX - d) + ',' + (rectY + radius - d) +
-                    ' Q' + (rectX - d) + ',' + (rectY - d) + ' ' + (rectX + radius - d) + ',' + (rectY - d) + ' Z';
-                var path = createPath(outerPath, 'none', 'rgba(232, 185, 35, ' + opacity + ')', 1);
-                path.setAttribute('stroke-dasharray', '4,4');
-                svg.appendChild(path);
-            });
-
-            // Sample points with distance labels
-            var points = [
-                {x: rectX + rectW/2, y: rectY + rectH/2, d: -70, label: 'd = -70'},
-                {x: rectX + rectW + 30, y: rectY + rectH/2, d: 30, label: 'd = +30'},
-                {x: rectX + rectW - 10, y: rectY - 25, d: 25, label: 'd = +25'}
-            ];
-            points.forEach(function(p, i) {
-                var color = p.d < 0 ? '#2dd4bf' : '#e8b923';
-                var dot = createCircle(p.x, p.y, 5, color, 'none');
-                dot.innerHTML = '<animate attributeName="r" values="4;6;4" dur="2s" begin="' + (i * 0.3) + 's" repeatCount="indefinite"/>';
-                svg.appendChild(dot);
-                svg.appendChild(createText(p.x + 15, p.y + 5, p.label, 'diagram-label-tiny'));
-            });
-
-            // Legend
-            var legendX = 450;
-            svg.appendChild(createText(legendX, 80, 'SDF Values:', 'diagram-label'));
-            svg.appendChild(createCircle(legendX - 50, 110, 6, '#2dd4bf', 'none'));
-            svg.appendChild(createText(legendX, 114, 'd < 0  Inside', 'diagram-label-small'));
-            svg.appendChild(createCircle(legendX - 50, 140, 6, '#e8b923', 'none'));
-            svg.appendChild(createText(legendX, 144, 'd > 0  Outside', 'diagram-label-small'));
-            svg.appendChild(createText(legendX, 180, 'd = 0  On edge', 'diagram-label-tiny'));
-
-            svg.appendChild(createText(w/2, 25, 'Signed Distance Field: Negative Inside, Positive Outside', 'diagram-title'));
-
-            container.appendChild(svg);
-        },
-
-        'sdf-gradient-refraction': function(container, w, h) {
-            var svg = createSvg(w, h);
-
-            // Rounded corner detail
-            var cornerX = 150;
-            var cornerY = 130;
-            var cornerR = 50;
-
-            // Arc for corner
-            var arcPath = 'M' + cornerX + ',' + (cornerY - cornerR) +
-                ' A' + cornerR + ',' + cornerR + ' 0 0 0 ' + (cornerX - cornerR) + ',' + cornerY;
-            svg.appendChild(createPath(arcPath, 'none', '#2dd4bf', 2));
-
-            // Extending lines
-            svg.appendChild(createLine(cornerX, cornerY - cornerR, cornerX, cornerY - cornerR - 40, 'rgba(45, 212, 191, 0.4)', 1));
-            svg.appendChild(createLine(cornerX - cornerR, cornerY, cornerX - cornerR - 40, cornerY, 'rgba(45, 212, 191, 0.4)', 1));
-
-            // Sample point on corner
-            var angle = Math.PI * 0.25;
-            var sampleX = cornerX - cornerR * Math.sin(angle) * 0.7;
-            var sampleY = cornerY - cornerR * Math.cos(angle) * 0.7;
-
-            var sampleDot = createCircle(sampleX, sampleY, 6, '#e8b923', 'none');
-            sampleDot.innerHTML = '<animate attributeName="r" values="5;7;5" dur="1.5s" repeatCount="indefinite"/>';
-            svg.appendChild(sampleDot);
-
-            // Gradient samples (finite differences)
-            var eps = 20;
-            svg.appendChild(createCircle(sampleX + eps, sampleY, 4, 'rgba(232, 185, 35, 0.5)', 'none'));
-            svg.appendChild(createCircle(sampleX - eps, sampleY, 4, 'rgba(232, 185, 35, 0.5)', 'none'));
-            svg.appendChild(createCircle(sampleX, sampleY + eps, 4, 'rgba(232, 185, 35, 0.5)', 'none'));
-            svg.appendChild(createCircle(sampleX, sampleY - eps, 4, 'rgba(232, 185, 35, 0.5)', 'none'));
-
-            // Dashed lines to sample points
-            var dashLine1 = createLine(sampleX, sampleY, sampleX + eps, sampleY, 'rgba(255,255,255,0.3)', 1);
-            dashLine1.setAttribute('stroke-dasharray', '3,3');
-            svg.appendChild(dashLine1);
-            var dashLine2 = createLine(sampleX, sampleY, sampleX - eps, sampleY, 'rgba(255,255,255,0.3)', 1);
-            dashLine2.setAttribute('stroke-dasharray', '3,3');
-            svg.appendChild(dashLine2);
-
-            // Gradient arrow (pointing away from surface)
-            var gradLen = 40;
-            var gradX = sampleX + gradLen * Math.sin(angle);
-            var gradY = sampleY + gradLen * Math.cos(angle);
-            svg.appendChild(createArrow(sampleX, sampleY, gradX, gradY, '#ff6b6b'));
-            svg.appendChild(createText(gradX + 10, gradY, 'gradient', 'diagram-label-tiny'));
-
-            // Refraction arrow (offset sampling direction)
-            var refractX = sampleX - gradLen * 0.7 * Math.sin(angle);
-            var refractY = sampleY - gradLen * 0.7 * Math.cos(angle);
-            svg.appendChild(createArrow(sampleX, sampleY, refractX, refractY, '#60a5fa'));
-            svg.appendChild(createText(refractX - 30, refractY - 5, 'refract', 'diagram-label-tiny'));
-
-            // Formula side
-            var formulaX = 420;
-            svg.appendChild(createText(formulaX, 50, 'Finite Differences:', 'diagram-label'));
-            svg.appendChild(createText(formulaX, 80, 'dx = SDF(p+eps) - SDF(p-eps)', 'diagram-label-small'));
-            svg.appendChild(createText(formulaX, 100, 'dy = SDF(p+eps) - SDF(p-eps)', 'diagram-label-small'));
-            svg.appendChild(createText(formulaX, 130, 'gradient = vec2(dx, dy) / 2eps', 'diagram-label-small'));
-
-            svg.appendChild(createText(formulaX, 170, 'Refraction:', 'diagram-label'));
-            svg.appendChild(createText(formulaX, 200, 'offset = -gradient * strength', 'diagram-label-small'));
-            svg.appendChild(createText(formulaX, 220, 'uv_sample = uv + offset', 'diagram-label-small'));
-
-            svg.appendChild(createText(w/2, 20, 'SDF Gradient = Refraction Direction', 'diagram-title'));
-
-            container.appendChild(svg);
-        },
-
-        'separable-blur-pipeline': function(container, w, h) {
-            var svg = createSvg(w, h);
-
-            // Input image
-            var imgX = 50;
-            var imgY = 70;
-            var imgSize = 80;
-            svg.appendChild(createRect(imgX, imgY, imgSize, imgSize, 4, 'rgba(45, 212, 191, 0.2)', 'rgba(45, 212, 191, 0.5)', 1));
-            svg.appendChild(createText(imgX + imgSize/2, imgY + imgSize/2, 'Input', 'diagram-label-small'));
-
-            // H-blur pass
-            var hPassX = 200;
-            svg.appendChild(createRect(hPassX, imgY, imgSize, imgSize, 4, 'rgba(232, 185, 35, 0.2)', 'rgba(232, 185, 35, 0.5)', 1));
-            svg.appendChild(createText(hPassX + imgSize/2, imgY + imgSize/2 - 8, 'H-Blur', 'diagram-label-small'));
-            svg.appendChild(createText(hPassX + imgSize/2, imgY + imgSize/2 + 10, '(9 taps)', 'diagram-label-tiny'));
-
-            // Arrow with horizontal kernel visualization
-            svg.appendChild(createArrow(imgX + imgSize + 10, imgY + imgSize/2, hPassX - 10, imgY + imgSize/2, 'rgba(255,255,255,0.5)'));
-            // Horizontal kernel dots
-            for (var i = -2; i <= 2; i++) {
-                var kx = (imgX + imgSize + hPassX) / 2 + i * 8;
-                var ky = imgY + imgSize/2 - 20;
-                var size = 4 - Math.abs(i) * 0.8;
-                svg.appendChild(createCircle(kx, ky, size, '#e8b923', 'none'));
-            }
-
-            // V-blur pass
-            var vPassX = 350;
-            svg.appendChild(createRect(vPassX, imgY, imgSize, imgSize, 4, 'rgba(232, 185, 35, 0.2)', 'rgba(232, 185, 35, 0.5)', 1));
-            svg.appendChild(createText(vPassX + imgSize/2, imgY + imgSize/2 - 8, 'V-Blur', 'diagram-label-small'));
-            svg.appendChild(createText(vPassX + imgSize/2, imgY + imgSize/2 + 10, '(9 taps)', 'diagram-label-tiny'));
-
-            // Arrow with vertical kernel visualization
-            svg.appendChild(createArrow(hPassX + imgSize + 10, imgY + imgSize/2, vPassX - 10, imgY + imgSize/2, 'rgba(255,255,255,0.5)'));
-            // Vertical kernel dots
-            for (var j = -2; j <= 2; j++) {
-                var kx2 = (hPassX + imgSize + vPassX) / 2;
-                var ky2 = imgY + imgSize/2 - 20 + j * 8;
-                var size2 = 4 - Math.abs(j) * 0.8;
-                svg.appendChild(createCircle(kx2, ky2, size2, '#e8b923', 'none'));
-            }
-
-            // Output
-            var outX = 500;
-            svg.appendChild(createRect(outX, imgY, imgSize, imgSize, 4, 'rgba(45, 212, 191, 0.3)', '#2dd4bf', 2));
-            svg.appendChild(createText(outX + imgSize/2, imgY + imgSize/2, 'Blurred', 'diagram-label-small'));
-
-            svg.appendChild(createArrow(vPassX + imgSize + 10, imgY + imgSize/2, outX - 10, imgY + imgSize/2, 'rgba(255,255,255,0.5)'));
-
-            // Complexity comparison
-            svg.appendChild(createText(w/2, 180, '2D blur: N\u00B2 samples  |  Separable: 2N samples  (N=9: 81 vs 18)', 'diagram-label-small'));
-
-            svg.appendChild(createText(w/2, 25, 'Separable Gaussian Blur', 'diagram-title'));
-
-            container.appendChild(svg);
-        },
-
-        'linear-sampling-trick': function(container, w, h) {
-            var svg = createSvg(w, h);
-
-            // Left side: standard sampling
-            var leftX = 120;
-            var y = 100;
-
-            svg.appendChild(createText(leftX, 40, 'Standard Sampling', 'diagram-label'));
-
-            // Texel grid
-            for (var i = 0; i < 5; i++) {
-                var tx = leftX - 60 + i * 30;
-                svg.appendChild(createRect(tx, y, 28, 28, 2, 'rgba(45, 212, 191, 0.15)', 'rgba(45, 212, 191, 0.4)', 1));
-                svg.appendChild(createText(tx + 14, y + 18, 'T' + i, 'diagram-label-tiny'));
-            }
-
-            // Sample points at texel centers
-            var sampleY = y - 25;
-            for (var j = 0; j < 5; j++) {
-                var sx = leftX - 60 + j * 30 + 14;
-                var dot = createCircle(sx, sampleY, 4, '#e8b923', 'none');
-                svg.appendChild(dot);
-                svg.appendChild(createLine(sx, sampleY + 4, sx, y, 'rgba(232, 185, 35, 0.3)', 1));
-            }
-            svg.appendChild(createText(leftX, sampleY - 15, '5 fetches', 'diagram-label-tiny'));
-
-            // Right side: linear sampling
-            var rightX = 480;
-
-            svg.appendChild(createText(rightX, 40, 'Linear Sampling', 'diagram-label'));
-
-            // Texel grid
-            for (var k = 0; k < 5; k++) {
-                var tx2 = rightX - 60 + k * 30;
-                svg.appendChild(createRect(tx2, y, 28, 28, 2, 'rgba(45, 212, 191, 0.15)', 'rgba(45, 212, 191, 0.4)', 1));
-                svg.appendChild(createText(tx2 + 14, y + 18, 'T' + k, 'diagram-label-tiny'));
-            }
-
-            // Sample points BETWEEN texels (fewer samples)
-            var sampleY2 = y - 25;
-            var linearSamples = [0, 1.38, 3.23]; // Optimized offsets
-            linearSamples.forEach(function(offset, idx) {
-                var sx2 = rightX - 60 + 14 + 60 + offset * 20;
-                var dot2 = createCircle(sx2, sampleY2, 5, '#2dd4bf', 'none');
-                dot2.innerHTML = '<animate attributeName="r" values="4;6;4" dur="1.5s" begin="' + (idx * 0.2) + 's" repeatCount="indefinite"/>';
-                svg.appendChild(dot2);
-
-                // Bilinear fetch visualization
-                if (idx > 0) {
-                    var fetchLine = createLine(sx2, sampleY2 + 5, sx2, y, '#2dd4bf', 1);
-                    fetchLine.setAttribute('stroke-dasharray', '3,2');
-                    svg.appendChild(fetchLine);
-                } else {
-                    svg.appendChild(createLine(sx2, sampleY2 + 5, sx2, y, '#2dd4bf', 1));
-                }
-            });
-            svg.appendChild(createText(rightX, sampleY2 - 15, '3 fetches!', 'diagram-label-tiny'));
-
-            // Explanation
-            svg.appendChild(createText(w/2, 165, 'Sample between texels: GPU bilinear filter gives weighted average for free', 'diagram-label-small'));
-
-            svg.appendChild(createText(w/2, 20, 'Linear Sampling: 2 Texels per Fetch', 'diagram-title'));
-
-            container.appendChild(svg);
-        },
-
-        'glass-complete-pipeline': function(container, w, h) {
-            var svg = createSvg(w, h);
-
-            var stages = [
-                {label: 'Scene FBO', color: '#2dd4bf'},
-                {label: 'Downsample', color: '#2dd4bf'},
-                {label: 'Blur H+V', color: '#e8b923'},
-                {label: 'Kawase x2', color: '#e8b923'},
-                {label: 'SDF Mask', color: '#ff6b6b'},
-                {label: 'Refract UV', color: '#ff6b6b'},
-                {label: 'Composite', color: '#2dd4bf'}
-            ];
-
-            var stageW = 85;
-            var stageH = 45;
-            var startX = 20;
-            var y = 70;
-
-            stages.forEach(function(stage, i) {
-                var x = startX + i * (stageW + 10);
-                var rect = createRect(x, y, stageW, stageH, 6, 'rgba(255,255,255,0.05)', stage.color, 1.5);
-                rect.innerHTML = '<animate attributeName="stroke-opacity" values="0.6;1;0.6" dur="2s" begin="' + (i * 0.2) + 's" repeatCount="indefinite"/>';
-                svg.appendChild(rect);
-                svg.appendChild(createText(x + stageW/2, y + stageH/2 + 4, stage.label, 'diagram-label-tiny'));
-
-                if (i < stages.length - 1) {
-                    svg.appendChild(createArrow(x + stageW + 2, y + stageH/2, x + stageW + 8, y + stageH/2, 'rgba(255,255,255,0.4)'));
-                }
-            });
-
-            svg.appendChild(createText(w/2, 25, 'Complete Frosted Glass Pipeline', 'diagram-title'));
-            svg.appendChild(createText(w/2, 145, 'Teal = texture ops | Gold = blur | Red = SDF compositing', 'diagram-label-tiny'));
-
-            container.appendChild(svg);
-        },
-
-        // ============================================
         // GPU CACHE HIERARCHY DIAGRAMS
         // ============================================
 
@@ -1785,8 +1446,8 @@
             // Pyramid layers representing memory hierarchy
             var levels = [
                 { name: 'Registers', size: '~256KB/SM', latency: '~1 cycle', y: 40, width: 120, color: '#2dd4bf' },
-                { name: 'L1 Cache', size: '32-128KB/SM', latency: '~20-30 cycles', y: 90, width: 200, color: '#2dd4bf' },
-                { name: 'L2 Cache', size: '2-6MB shared', latency: '~100-200 cycles', y: 140, width: 320, color: '#e8b923' },
+                { name: 'L1 Cache', size: '128-192KB/SM', latency: '~28-35 cycles', y: 90, width: 200, color: '#2dd4bf' },
+                { name: 'L2 Cache', size: '4-40MB shared', latency: '~150-200 cycles', y: 140, width: 320, color: '#e8b923' },
                 { name: 'VRAM (GDDR6/HBM)', size: '8-24GB', latency: '~400-800 cycles', y: 200, width: 500, color: '#ff6b6b' }
             ];
 
@@ -1839,9 +1500,9 @@
                 '<animate attributeName="fill" values="#2dd4bf;#2dd4bf;#e8b923;#ff6b6b;#ff6b6b;#e8b923;#2dd4bf;#2dd4bf" dur="4s" repeatCount="indefinite"/>';
             svg.appendChild(dataPath);
 
-            svg.appendChild(createText(centerX + 230, 280, 'Texture fetch travels down until data is found', 'diagram-label-small'));
+            svg.appendChild(createText(centerX, 260, 'Texture fetch travels down until data is found', 'diagram-label-small'));
 
-            svg.appendChild(createText(centerX, 285, 'GPU Memory Hierarchy', 'diagram-title'));
+            svg.appendChild(createText(centerX, 300, 'GPU Memory Hierarchy', 'diagram-title'));
 
             container.appendChild(svg);
         },
@@ -1851,12 +1512,12 @@
 
             var bars = [
                 { name: 'Registers', cycles: 1, color: '#2dd4bf' },
-                { name: 'L1 Cache', cycles: 25, color: '#2dd4bf' },
+                { name: 'L1 Cache', cycles: 30, color: '#2dd4bf' },
                 { name: 'L2 Cache', cycles: 150, color: '#e8b923' },
-                { name: 'VRAM', cycles: 600, color: '#ff6b6b' }
+                { name: 'VRAM', cycles: 500, color: '#ff6b6b' }
             ];
 
-            var maxCycles = 600;
+            var maxCycles = 500;
             var barHeight = 35;
             var startX = 120;
             var maxWidth = w - 180;
@@ -1885,7 +1546,7 @@
             });
 
             // Scale reference
-            svg.appendChild(createText(startX + maxWidth/2, 215, '10-20x faster to hit L1 than VRAM', 'diagram-label'));
+            svg.appendChild(createText(startX + maxWidth/2, 215, '~15x faster to hit L1 than VRAM (30 vs 500 cycles)', 'diagram-label'));
 
             svg.appendChild(createText(w/2, 25, 'Memory Access Latency (GPU Cycles)', 'diagram-title'));
 
@@ -2004,19 +1665,23 @@
                 svg.appendChild(createText(tx2 + 8, threadY + 15, 'T' + t2, 'diagram-label-tiny'));
             }
 
-            // Scattered cache lines
-            var scatterOffsets = [-30, 50, -60, 80, 20, -40, 60, -20];
+            // Scattered cache lines - arranged in a 2x4 grid pattern to avoid overlap
+            var cacheLinePositions = [
+                { x: -75, y: 0 }, { x: -45, y: 0 }, { x: -15, y: 0 }, { x: 15, y: 0 },
+                { x: 45, y: 35 }, { x: 75, y: 35 }, { x: -60, y: 35 }, { x: -30, y: 35 }
+            ];
             for (var s = 0; s < 8; s++) {
                 var sx = rightX - 62 + s * 20;
-                var cacheX = rightX + scatterOffsets[s];
-                svg.appendChild(createLine(sx, threadY + 28, cacheX, cacheY, 'rgba(255, 107, 107, 0.4)', 1));
+                var cacheX = rightX + cacheLinePositions[s].x;
+                var cacheYOffset = cacheY + cacheLinePositions[s].y;
+                svg.appendChild(createLine(sx, threadY + 28, cacheX, cacheYOffset, 'rgba(255, 107, 107, 0.4)', 1));
 
-                var miniCache = createRect(cacheX - 10, cacheY, 20, 30, 2, 'rgba(255, 107, 107, 0.2)', '#ff6b6b', 1);
+                var miniCache = createRect(cacheX - 12, cacheYOffset, 24, 28, 2, 'rgba(255, 107, 107, 0.2)', '#ff6b6b', 1);
                 miniCache.innerHTML = '<animate attributeName="stroke-opacity" values="0.3;0.8;0.3" dur="1s" begin="' + (s * 0.1) + 's" repeatCount="indefinite"/>';
                 svg.appendChild(miniCache);
             }
 
-            svg.appendChild(createText(rightX, cacheY + 55, '8 fetches', 'diagram-label'));
+            svg.appendChild(createText(rightX, cacheY + 85, '8 fetches', 'diagram-label'));
 
             // VS divider
             svg.appendChild(createLine(w/2, 25, w/2, 200, 'rgba(255,255,255,0.1)', 1));
@@ -2236,15 +1901,15 @@
             var svg = createSvg(w, h);
 
             var lanes = 4;
-            var laneHeight = 40;
-            var laneY = 70;
-            var timelineWidth = 550;
-            var startX = 120;
+            var laneHeight = 35;
+            var laneY = 55;
+            var timelineWidth = 520;
+            var startX = 100;
 
             // Lane labels
             for (var lane = 0; lane < lanes; lane++) {
-                var ly = laneY + lane * (laneHeight + 10);
-                svg.appendChild(createText(60, ly + laneHeight/2, 'Warp ' + lane, 'diagram-label-small'));
+                var ly = laneY + lane * (laneHeight + 8);
+                svg.appendChild(createText(50, ly + laneHeight/2, 'Warp ' + lane, 'diagram-label-small'));
                 svg.appendChild(createRect(startX, ly, timelineWidth, laneHeight, 4, 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.1)', 0.5));
             }
 
@@ -2257,34 +1922,37 @@
             ];
 
             warpSchedule.forEach(function(warp, wi) {
-                var wy = laneY + wi * (laneHeight + 10);
+                var wy = laneY + wi * (laneHeight + 8);
                 warp.forEach(function(block, bi) {
                     var bx = startX + block.start * timelineWidth;
                     var bw = block.dur * timelineWidth;
                     var color = block.type === 'exec' ? '#2dd4bf' : 'rgba(255, 107, 107, 0.3)';
                     var strokeColor = block.type === 'exec' ? '#2dd4bf' : '#ff6b6b';
 
-                    var blockRect = createRect(bx, wy + 5, bw, laneHeight - 10, 3, color + '40', strokeColor, 1);
+                    var blockRect = createRect(bx, wy + 4, bw, laneHeight - 8, 3, color + '40', strokeColor, 1);
                     if (block.type === 'exec') {
                         blockRect.innerHTML = '<animate attributeName="fill-opacity" values="0.3;0.6;0.3" dur="1s" begin="' + (block.start * 2) + 's" repeatCount="indefinite"/>';
                     }
                     svg.appendChild(blockRect);
 
-                    if (block.type === 'wait' && bw > 40) {
-                        svg.appendChild(createText(bx + bw/2, wy + laneHeight/2 + 2, 'waiting...', 'diagram-label-tiny'));
+                    if (block.type === 'wait' && bw > 50) {
+                        svg.appendChild(createText(bx + bw/2, wy + laneHeight/2 + 1, 'waiting...', 'diagram-label-tiny'));
                     }
                 });
             });
 
-            // Time arrow
-            svg.appendChild(createArrow(startX, laneY + lanes * (laneHeight + 10) + 15, startX + timelineWidth, laneY + lanes * (laneHeight + 10) + 15, 'rgba(255,255,255,0.4)'));
-            svg.appendChild(createText(startX + timelineWidth/2, laneY + lanes * (laneHeight + 10) + 35, 'Time →', 'diagram-label-tiny'));
+            // Time arrow - positioned below the lanes with more space
+            var arrowY = laneY + lanes * (laneHeight + 8) + 20;
+            svg.appendChild(createArrow(startX, arrowY, startX + timelineWidth, arrowY, 'rgba(255,255,255,0.4)'));
+            svg.appendChild(createText(startX + timelineWidth/2, arrowY + 18, 'Time', 'diagram-label-tiny'));
 
-            // Legend
-            svg.appendChild(createRect(startX + 380, 240, 15, 15, 2, 'rgba(45, 212, 191, 0.4)', '#2dd4bf', 1));
-            svg.appendChild(createText(startX + 420, 250, 'Execute', 'diagram-label-tiny'));
-            svg.appendChild(createRect(startX + 470, 240, 15, 15, 2, 'rgba(255, 107, 107, 0.3)', '#ff6b6b', 1));
-            svg.appendChild(createText(startX + 520, 250, 'Stalled', 'diagram-label-tiny'));
+            // Legend - positioned to the right side, vertically aligned
+            var legendX = startX + timelineWidth + 30;
+            var legendY = laneY + 30;
+            svg.appendChild(createRect(legendX, legendY, 12, 12, 2, 'rgba(45, 212, 191, 0.4)', '#2dd4bf', 1));
+            svg.appendChild(createText(legendX + 50, legendY + 9, 'Execute', 'diagram-label-tiny'));
+            svg.appendChild(createRect(legendX, legendY + 25, 12, 12, 2, 'rgba(255, 107, 107, 0.3)', '#ff6b6b', 1));
+            svg.appendChild(createText(legendX + 50, legendY + 34, 'Stalled', 'diagram-label-tiny'));
 
             svg.appendChild(createText(w/2, 25, 'Latency Hiding: While One Warp Waits, Others Execute', 'diagram-title'));
 
@@ -2410,9 +2078,9 @@
                 }
             });
 
-            // Total time
-            svg.appendChild(createRect(w/2 - 100, 160, 200, 30, 6, 'rgba(255, 107, 107, 0.1)', '#ff6b6b', 1));
-            svg.appendChild(createText(w/2, 178, 'Total: ~804 cycles (serialized!)', 'diagram-label-small'));
+            // Total time - wider rectangle to fit text
+            svg.appendChild(createRect(w/2 - 145, 160, 290, 35, 6, 'rgba(255, 107, 107, 0.1)', '#ff6b6b', 1));
+            svg.appendChild(createText(w/2, 182, 'Total: ~804 cycles (serialized!)', 'diagram-label'));
 
             svg.appendChild(createText(w/2, 30, 'Dependent Texture Read Latency', 'diagram-title'));
 
@@ -2427,49 +2095,49 @@
                     name: 'NVIDIA (Ampere)',
                     x: 130,
                     levels: [
-                        { name: 'L1/Shared', size: '128KB', y: 65 },
-                        { name: 'L2', size: '6MB', y: 115 },
-                        { name: 'GDDR6X', size: '24GB', y: 165 }
+                        { name: 'L1/Shared', size: '128KB', y: 60, width: 95 },
+                        { name: 'L2', size: '6MB', y: 105, width: 85 },
+                        { name: 'GDDR6X', size: '24GB', y: 150, width: 75 }
                     ]
                 },
                 {
                     name: 'AMD (RDNA 3)',
                     x: 375,
                     levels: [
-                        { name: 'L0 Vector', size: '32KB', y: 55 },
-                        { name: 'L1 Scalar', size: '16KB', y: 85 },
-                        { name: 'L2', size: '6MB', y: 125 },
-                        { name: 'Infinity Cache', size: '96MB', y: 165 },
-                        { name: 'GDDR6', size: '24GB', y: 200 }
+                        { name: 'L0 Vector', size: '32KB/CU', y: 45, width: 90 },
+                        { name: 'L1', size: '256KB/SA', y: 80, width: 85 },
+                        { name: 'L2', size: '6MB', y: 115, width: 80 },
+                        { name: 'Infinity Cache', size: '96MB', y: 150, width: 110 },
+                        { name: 'GDDR6', size: '24GB', y: 185, width: 70 }
                     ]
                 },
                 {
                     name: 'Mobile (Adreno)',
                     x: 620,
                     levels: [
-                        { name: 'L1', size: '16KB', y: 65 },
-                        { name: 'L2', size: '512KB', y: 115 },
-                        { name: 'LPDDR5', size: 'Shared', y: 165 }
+                        { name: 'L1', size: '16KB', y: 60, width: 80 },
+                        { name: 'L2', size: '512KB', y: 105, width: 75 },
+                        { name: 'LPDDR5', size: 'Shared', y: 150, width: 70 }
                     ]
                 }
             ];
 
             archs.forEach(function(arch) {
-                svg.appendChild(createText(arch.x, 30, arch.name, 'diagram-label'));
+                svg.appendChild(createText(arch.x, 25, arch.name, 'diagram-label'));
 
                 arch.levels.forEach(function(level, li) {
-                    var levelWidth = 100 - li * 10;
+                    var levelWidth = level.width;
                     var color = li < 2 ? '#2dd4bf' : (li < 4 ? '#e8b923' : '#ff6b6b');
 
-                    var rect = createRect(arch.x - levelWidth/2, level.y, levelWidth, 25, 4,
+                    var rect = createRect(arch.x - levelWidth/2, level.y, levelWidth, 28, 4,
                         color + '20', color, 1);
                     svg.appendChild(rect);
-                    svg.appendChild(createText(arch.x, level.y + 14, level.name, 'diagram-label-tiny'));
-                    svg.appendChild(createText(arch.x + levelWidth/2 + 25, level.y + 14, level.size, 'diagram-label-tiny'));
+                    svg.appendChild(createText(arch.x, level.y + 16, level.name, 'diagram-label-tiny'));
+                    svg.appendChild(createText(arch.x + levelWidth/2 + 30, level.y + 16, level.size, 'diagram-label-tiny'));
                 });
             });
 
-            svg.appendChild(createText(w/2, 245, 'Cache architectures vary significantly—profile on target hardware', 'diagram-label-small'));
+            svg.appendChild(createText(w/2, 235, 'Cache architectures vary significantly—profile on target hardware', 'diagram-label-small'));
 
             container.appendChild(svg);
         },
@@ -3115,6 +2783,229 @@
             svg.appendChild(createText(startX + 6.5 * (stageWidth + 8), 145, 'Glass Effects', 'diagram-label-tiny'));
 
             svg.appendChild(createText(w/2, 25, 'Complete Liquid Glass Render Pipeline', 'diagram-label'));
+
+            container.appendChild(svg);
+        },
+
+        // ============================================
+        // SCREEN-SPACE SPHERE SELECTION DIAGRAMS
+        // ============================================
+
+        // Raycast precision problem visualization
+        'raycast-precision-problem': function(container, w, h) {
+            var svg = createSvg(w, h);
+
+            // Camera (eye)
+            var camX = 80, camY = h/2;
+            var eyeOuter = createCircle(camX, camY, 18, 'none', '#2dd4bf');
+            eyeOuter.setAttribute('stroke-width', '2');
+            var eyeInner = createCircle(camX, camY, 8, '#2dd4bf', 'none');
+            svg.appendChild(eyeOuter);
+            svg.appendChild(eyeInner);
+            svg.appendChild(createText(camX, camY + 35, 'Camera', 'diagram-label-small'));
+
+            // Distant small sphere (hard to hit)
+            var sphereX = 550, sphereY = h/2 - 30;
+            var sphereR = 12;
+            var sphere = createCircle(sphereX, sphereY, sphereR, 'rgba(232,185,35,0.3)', '#e8b923');
+            sphere.setAttribute('stroke-width', '2');
+            svg.appendChild(sphere);
+            svg.appendChild(createText(sphereX, sphereY + 30, 'Target (12px)', 'diagram-label-tiny'));
+
+            // Ray that barely misses
+            var rayEnd1X = sphereX + 40, rayEnd1Y = sphereY - 18;
+            var ray1 = createLine(camX + 20, camY, rayEnd1X, rayEnd1Y, 'rgba(255,107,107,0.6)', 2);
+            ray1.setAttribute('stroke-dasharray', '6,4');
+            ray1.innerHTML = '<animate attributeName="stroke-dashoffset" from="0" to="20" dur="1s" repeatCount="indefinite"/>';
+            svg.appendChild(ray1);
+
+            // Ray that hits
+            var ray2 = createLine(camX + 20, camY + 5, sphereX, sphereY, 'rgba(45,212,191,0.6)', 2);
+            ray2.setAttribute('stroke-dasharray', '6,4');
+            ray2.innerHTML = '<animate attributeName="stroke-dashoffset" from="0" to="20" dur="1s" repeatCount="indefinite"/>';
+            svg.appendChild(ray2);
+
+            // Miss indicator
+            var missX = createText(sphereX + 50, sphereY - 25, 'Miss!', 'diagram-label-small');
+            missX.setAttribute('fill', '#ff6b6b');
+            missX.innerHTML += '<animate attributeName="opacity" values="1;0.5;1" dur="1s" repeatCount="indefinite"/>';
+            svg.appendChild(missX);
+
+            // Problem annotations
+            svg.appendChild(createText(w/2, 40, 'Raycasting Precision Issues', 'diagram-title'));
+
+            // Issue callouts
+            var issues = [
+                {x: 200, y: 180, text: 'Floating-point error'},
+                {x: 380, y: 180, text: 'Sub-pixel target'},
+                {x: 540, y: 180, text: 'Depth ambiguity'}
+            ];
+            issues.forEach(function(issue, i) {
+                var rect = createRect(issue.x - 60, issue.y - 12, 120, 24, 4, 'rgba(255,107,107,0.1)', '#ff6b6b', 1);
+                svg.appendChild(rect);
+                svg.appendChild(createText(issue.x, issue.y, issue.text, 'diagram-label-tiny'));
+            });
+
+            container.appendChild(svg);
+        },
+
+        // Screen-space distance selection
+        'screen-space-selection': function(container, w, h) {
+            var svg = createSvg(w, h);
+
+            // Screen boundary
+            var screenX = 100, screenY = 40, screenW = 500, screenH = 200;
+            svg.appendChild(createRect(screenX, screenY, screenW, screenH, 8, 'rgba(45,212,191,0.05)', 'rgba(45,212,191,0.3)', 1));
+            svg.appendChild(createText(screenX + screenW/2, screenY - 15, 'Screen Space', 'diagram-label'));
+
+            // Projected spheres (varying sizes based on distance)
+            var spheres = [
+                {x: 200, y: 120, r: 25, label: 'Near'},
+                {x: 350, y: 150, r: 15, label: 'Mid'},
+                {x: 500, y: 100, r: 8, label: 'Far'}
+            ];
+
+            spheres.forEach(function(s) {
+                // Hit zone (larger than visual)
+                var hitZone = createCircle(s.x, s.y, s.r + 20, 'none', 'rgba(45,212,191,0.3)');
+                hitZone.setAttribute('stroke-dasharray', '4,4');
+                svg.appendChild(hitZone);
+
+                // Visual sphere
+                var sphere = createCircle(s.x, s.y, s.r, 'rgba(232,185,35,0.4)', '#e8b923');
+                sphere.setAttribute('stroke-width', '2');
+                svg.appendChild(sphere);
+
+                svg.appendChild(createText(s.x, s.y + s.r + 35, s.label, 'diagram-label-tiny'));
+            });
+
+            // Mouse cursor
+            var mouseX = 510, mouseY = 105;
+            var cursorPath = 'M' + mouseX + ',' + mouseY + ' l0,16 l4,-4 l6,10 l3,-2 l-6,-10 l5,-1 z';
+            var cursor = createPath(cursorPath, '#fff', 'none');
+            cursor.innerHTML = '<animate attributeName="opacity" values="1;0.7;1" dur="0.8s" repeatCount="indefinite"/>';
+            svg.appendChild(cursor);
+
+            // Distance line from mouse to nearest sphere center
+            var distLine = createLine(mouseX, mouseY, 500, 100, '#2dd4bf', 2);
+            distLine.setAttribute('stroke-dasharray', '3,3');
+            svg.appendChild(distLine);
+
+            // Distance label
+            svg.appendChild(createText(505, 85, 'd < hitRadius', 'diagram-label-tiny'));
+
+            // Selected indicator
+            var selected = createCircle(500, 100, 8, '#2dd4bf', 'none');
+            selected.innerHTML = '<animate attributeName="r" values="8;12;8" dur="1s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;0.5;1" dur="1s" repeatCount="indefinite"/>';
+            svg.appendChild(selected);
+
+            // Legend
+            svg.appendChild(createCircle(120, screenY + screenH + 25, 6, 'rgba(232,185,35,0.4)', '#e8b923'));
+            svg.appendChild(createText(170, screenY + screenH + 25, 'Visual size', 'diagram-label-tiny'));
+
+            svg.appendChild(createCircle(280, screenY + screenH + 25, 6, 'none', 'rgba(45,212,191,0.5)'));
+            svg.appendChild(createText(330, screenY + screenH + 25, 'Hit zone', 'diagram-label-tiny'));
+
+            container.appendChild(svg);
+        },
+
+        // 3D to screen projection pipeline
+        'projection-pipeline': function(container, w, h) {
+            var svg = createSvg(w, h);
+
+            var stages = [
+                {x: 70, label: 'World Pos', sub: '(x, y, z)'},
+                {x: 210, label: 'Camera Space', sub: 'pos - cam'},
+                {x: 350, label: 'View Space', sub: 'dot(forward)'},
+                {x: 490, label: 'NDC', sub: '/ viewZ'},
+                {x: 630, label: 'Screen', sub: 'pixels'}
+            ];
+
+            var stageY = h/2 - 15;
+            var stageW = 100;
+            var stageH = 50;
+
+            stages.forEach(function(stage, i) {
+                var color = i === stages.length - 1 ? '#2dd4bf' : 'rgba(45,212,191,0.5)';
+                var fillColor = i === stages.length - 1 ? 'rgba(45,212,191,0.2)' : 'rgba(45,212,191,0.05)';
+
+                var rect = createRect(stage.x - stageW/2, stageY, stageW, stageH, 6, fillColor, color, 1);
+                svg.appendChild(rect);
+
+                svg.appendChild(createText(stage.x, stageY + 18, stage.label, 'diagram-label-small'));
+                var subText = createText(stage.x, stageY + 35, stage.sub, 'diagram-label-tiny');
+                subText.setAttribute('fill', 'rgba(255,255,255,0.5)');
+                svg.appendChild(subText);
+
+                // Arrow to next stage
+                if (i < stages.length - 1) {
+                    svg.appendChild(createArrow(stage.x + stageW/2 + 5, stageY + stageH/2, stages[i+1].x - stageW/2 - 5, stageY + stageH/2, 'rgba(255,255,255,0.4)'));
+                }
+            });
+
+            // Key insight callout
+            var calloutY = stageY + stageH + 30;
+            svg.appendChild(createRect(200, calloutY, 300, 24, 4, 'rgba(232,185,35,0.1)', '#e8b923', 1));
+            svg.appendChild(createText(350, calloutY + 12, 'viewZ < 0 = behind camera, skip!', 'diagram-label-tiny'));
+
+            svg.appendChild(createText(w/2, 25, 'Perspective Projection Pipeline', 'diagram-title'));
+
+            container.appendChild(svg);
+        },
+
+        // Visual vs hit zone radius comparison
+        'hit-zone-expansion': function(container, w, h) {
+            var svg = createSvg(w, h);
+
+            // Two comparison panels
+            var leftX = w * 0.25, rightX = w * 0.75;
+            var centerY = h/2 + 10;
+
+            // Left: Tight hit zone (bad)
+            svg.appendChild(createText(leftX, 30, 'Tight Hit Zone', 'diagram-label'));
+
+            var smallSphere = createCircle(leftX, centerY, 12, 'rgba(255,107,107,0.3)', '#ff6b6b');
+            smallSphere.setAttribute('stroke-width', '2');
+            svg.appendChild(smallSphere);
+
+            // Cursor missing
+            var missPath = 'M' + (leftX + 18) + ',' + (centerY - 5) + ' l0,14 l3,-3 l5,8 l2,-1 l-5,-8 l4,-1 z';
+            svg.appendChild(createPath(missPath, 'rgba(255,255,255,0.6)', 'none'));
+
+            svg.appendChild(createText(leftX, centerY + 50, 'Hard to click!', 'diagram-label-tiny'));
+
+            // X mark
+            svg.appendChild(createLine(leftX - 8, centerY + 70, leftX + 8, centerY + 86, '#ff6b6b', 2));
+            svg.appendChild(createLine(leftX + 8, centerY + 70, leftX - 8, centerY + 86, '#ff6b6b', 2));
+
+            // Right: Expanded hit zone (good)
+            svg.appendChild(createText(rightX, 30, 'Expanded Hit Zone', 'diagram-label'));
+
+            // Hit zone circle (dashed)
+            var hitZone = createCircle(rightX, centerY, 40, 'none', 'rgba(45,212,191,0.4)');
+            hitZone.setAttribute('stroke-width', '2');
+            hitZone.setAttribute('stroke-dasharray', '6,4');
+            hitZone.innerHTML = '<animate attributeName="r" values="38;42;38" dur="2s" repeatCount="indefinite"/>';
+            svg.appendChild(hitZone);
+
+            var goodSphere = createCircle(rightX, centerY, 12, 'rgba(45,212,191,0.3)', '#2dd4bf');
+            goodSphere.setAttribute('stroke-width', '2');
+            svg.appendChild(goodSphere);
+
+            // Cursor inside hit zone
+            var hitPath = 'M' + (rightX + 25) + ',' + (centerY + 10) + ' l0,14 l3,-3 l5,8 l2,-1 l-5,-8 l4,-1 z';
+            var hitCursor = createPath(hitPath, '#fff', 'none');
+            hitCursor.innerHTML = '<animate attributeName="opacity" values="1;0.7;1" dur="0.8s" repeatCount="indefinite"/>';
+            svg.appendChild(hitCursor);
+
+            svg.appendChild(createText(rightX, centerY + 50, 'Easy to click!', 'diagram-label-tiny'));
+
+            // Check mark
+            svg.appendChild(createPath('M' + (rightX - 10) + ',' + (centerY + 78) + ' l8,8 l16,-16', 'none', '#2dd4bf', 2));
+
+            // Divider
+            svg.appendChild(createLine(w/2, 50, w/2, h - 20, 'rgba(255,255,255,0.1)', 1));
+            svg.appendChild(createText(w/2, h/2, 'VS', 'diagram-label-small'));
 
             container.appendChild(svg);
         }

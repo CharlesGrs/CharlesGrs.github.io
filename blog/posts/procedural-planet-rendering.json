@@ -7,7 +7,7 @@
     "tags": ["pbr", "procedural", "glsl", "atmosphere", "terrain", "lighting"],
     "readTime": "18 min",
     "featured": true,
-    "thumbnail": null,
+    "thumbnail": "procedural-planet-thumb.png",
     "excerpt": "A deep dive into rendering procedurally-generated planets with physically-based materials, multi-octave terrain noise, subsurface scattering, and real-time atmospheric effects.",
     "sections": [
         {

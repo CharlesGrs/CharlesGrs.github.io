@@ -1,15 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-5KEDPWV47H"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-5KEDPWV47H');
-    </script>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -456,6 +447,23 @@
 
             <div class="article-content">
                 <p class="article-section section-intro">Every texture sample in your shader triggers a memory request. Whether that request takes 4 cycles or 400+ cycles depends entirely on where the data lives in the GPU&#39;s memory hierarchy. Understanding cache behavior isn&#39;t just academic—it&#39;s the difference between 60fps and 30fps in texture-heavy shaders.</p>
+<h3 class="article-section section-heading">TL;DR — Quick Reference</h3>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">GPU Memory Hierarchy At a Glance</span>
+                    <span class="code-language">text</span>
+                </div>
+                <div class="code-content"><pre>┌──────────────────┬─────────────┬──────────────────┬───────────────┐
+│ Memory Level     │ Latency     │ Size (per SM)    │ Bandwidth     │
+├──────────────────┼─────────────┼──────────────────┼───────────────┤
+│ Registers        │ ~<span class="number">1</span> cycle    │ 256KB            │ ~<span class="number">20</span> TB/s      │
+│ L1 Cache         │ ~<span class="number">30</span> cycles  │ <span class="number">128</span>-192KB        │ ~<span class="number">12</span> TB/s      │
+│ L2 Cache         │ ~<span class="number">150</span> cycles │ <span class="number">4</span>-40MB (shared)  │ ~<span class="number">3</span> TB/s       │
+│ VRAM (GDDR6)     │ ~<span class="number">500</span> cycles │ <span class="number">8</span>-24GB           │ ~<span class="number">1</span> TB/s       │
+└──────────────────┴─────────────┴──────────────────┴───────────────┘
+
+Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span class="number">500</span> cycles → 15x difference!</pre></div>
+            </div>
 <figure class="article-section section-svg-diagram" data-diagram-id="cache-hierarchy-overview">
                 <div class="svg-container" style="max-width: 750px;">
                     <div class="svg-placeholder" data-width="750" data-height="320">
@@ -467,8 +475,8 @@
 <h2 class="article-section section-heading">The Memory Hierarchy</h2>
 <p class="article-section section-paragraph">Modern GPUs organize memory into a hierarchy of increasingly larger but slower storage. At the top sit registers—blazingly fast but severely limited. Below them, L1 and L2 caches act as staging areas for frequently accessed data. At the bottom, VRAM holds all your textures, buffers, and render targets.</p>
 <ul class="article-section section-list"><li>Registers: ~1 cycle access, 256KB total per SM (shared across thousands of threads)</li>
-<li>L1 Cache: ~20-30 cycles, 32-128KB per SM, dedicated to each streaming multiprocessor</li>
-<li>L2 Cache: ~100-200 cycles, 2-6MB shared across all SMs, unified memory controller</li>
+<li>L1 Cache: ~28-35 cycles, 128-192KB per SM, dedicated to each streaming multiprocessor</li>
+<li>L2 Cache: ~150-200 cycles, 4-40MB shared across all SMs, unified memory controller</li>
 <li>VRAM (GDDR6/HBM): ~400-800 cycles, 8-24GB, massive bandwidth but high latency</li></ul>
 <figure class="article-section section-svg-diagram" data-diagram-id="cache-latency-comparison">
                 <div class="svg-container" style="max-width: 700px;">
@@ -574,7 +582,7 @@
             </figure>
 <h2 class="article-section section-heading">Interactive Demo: Cache Access Patterns</h2>
 <p class="article-section section-paragraph">This demo visualizes how different sampling patterns affect cache efficiency. Coherent access (left) keeps samples within cache lines, while random access (right) causes cache thrashing. Watch how the &#39;heat&#39; of memory access spreads differently.</p>
-<figure class="article-section section-shader-demo" data-demo-id="cache-pattern-demo" data-shader-config='{"vertexShader":"attribute vec2 a_position;\nvarying vec2 v_texCoord;\nvoid main() {\n    v_texCoord = a_position * 0.5 + 0.5;\n    gl_Position = vec4(a_position, 0.0, 1.0);\n}","fragmentShader":"precision highp float;\nvarying vec2 v_texCoord;\nuniform float u_time;\nuniform float u_pattern;\nuniform float u_cacheLineSize;\n\n// Simple hash for visualization\nfloat hash(vec2 p) {\n    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);\n}\n\nvoid main() {\n    vec2 uv = v_texCoord;\n    \n    // Simulate a texture grid (16x16 &#39;texels&#39;)\n    vec2 texelCoord = floor(uv * 16.0);\n    \n    // Cache line: 4 texels wide (simulated)\n    vec2 cacheLine = floor(texelCoord / u_cacheLineSize);\n    \n    // Current &#39;fetch&#39; position animated over time\n    float t = u_time * 0.5;\n    vec2 fetchPos;\n    \n    if (u_pattern < 0.5) {\n        // Coherent: scan left-to-right, top-to-bottom\n        float scanLine = floor(mod(t * 4.0, 16.0));\n        float scanCol = mod(t * 64.0, 16.0);\n        fetchPos = vec2(scanCol, scanLine);\n    } else {\n        // Random: jump around unpredictably\n        float frame = floor(t * 8.0);\n        fetchPos = vec2(\n            hash(vec2(frame, 0.0)) * 16.0,\n            hash(vec2(0.0, frame)) * 16.0\n        );\n    }\n    \n    vec2 fetchCacheLine = floor(fetchPos / u_cacheLineSize);\n    \n    // Visualize cache line hit\n    float isActiveCacheLine = step(0.5, 1.0 - length(cacheLine - fetchCacheLine));\n    float isActiveTexel = step(length(texelCoord - floor(fetchPos)), 0.5);\n    \n    // Color: texel grid with cache line highlighting\n    vec3 gridColor = vec3(0.1, 0.12, 0.15);\n    vec3 texelColor = mix(gridColor, vec3(0.15, 0.18, 0.22), \n        step(0.5, mod(texelCoord.x + texelCoord.y, 2.0)));\n    \n    // Cache line border\n    vec2 withinCache = mod(texelCoord, u_cacheLineSize);\n    float isCacheBorder = step(withinCache.x, 0.5) + step(withinCache.y, 0.5);\n    texelColor = mix(texelColor, vec3(0.2, 0.25, 0.3), min(isCacheBorder, 1.0) * 0.5);\n    \n    // Highlight active cache line (what we&#39;d fetch)\n    vec3 cacheHitColor = u_pattern < 0.5 ? vec3(0.18, 0.83, 0.75) : vec3(0.91, 0.73, 0.14);\n    texelColor = mix(texelColor, cacheHitColor * 0.4, isActiveCacheLine * 0.8);\n    \n    // Highlight the actual sampled texel\n    texelColor = mix(texelColor, vec3(1.0), isActiveTexel);\n    \n    // Grid lines\n    vec2 grid = abs(fract(uv * 16.0) - 0.5);\n    float gridLine = step(0.45, max(grid.x, grid.y));\n    texelColor = mix(texelColor, vec3(0.3), gridLine * 0.3);\n    \n    gl_FragColor = vec4(texelColor, 1.0);\n}","uniforms":{"u_time":{"type":"float","value":0},"u_pattern":{"type":"float","value":0},"u_cacheLineSize":{"type":"float","value":4},"u_resolution":{"type":"vec2","value":[700,350]}}}'>
+<figure class="article-section section-shader-demo" data-demo-id="cache-pattern-demo" data-shader-config='{"vertexShader":"attribute vec2 a_position;\nvarying vec2 v_texCoord;\nvoid main() {\n    v_texCoord = a_position * 0.5 + 0.5;\n    gl_Position = vec4(a_position, 0.0, 1.0);\n}","fragmentShader":"precision highp float;\nvarying vec2 v_texCoord;\nuniform float u_time;\nuniform float u_pattern;\nuniform float u_cacheLineSize;\nuniform vec2 u_resolution;\n\n// Simple hash for visualization\nfloat hash(vec2 p) {\n    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);\n}\n\nvoid main() {\n    // Correct for aspect ratio - make grid square\n    float aspect = u_resolution.x / u_resolution.y;\n    vec2 uv = v_texCoord;\n    uv.x *= aspect;\n    \n    // Center the grid\n    float gridSize = 16.0;\n    float totalWidth = gridSize * aspect;\n    float offset = (totalWidth - gridSize) * 0.5;\n    uv.x -= offset / gridSize;\n    \n    // Simulate a texture grid (16x16 &#39;texels&#39;)\n    vec2 texelCoord = floor(uv * gridSize);\n    \n    // Out of bounds check\n    if (texelCoord.x < 0.0 || texelCoord.x >= gridSize || texelCoord.y < 0.0 || texelCoord.y >= gridSize) {\n        gl_FragColor = vec4(vec3(0.05, 0.06, 0.08), 1.0);\n        return;\n    }\n    \n    // Cache line: 4 texels wide (simulated)\n    vec2 cacheLine = floor(texelCoord / u_cacheLineSize);\n    \n    // Current &#39;fetch&#39; position animated over time\n    float t = u_time * 0.5;\n    vec2 fetchPos;\n    \n    if (u_pattern < 0.5) {\n        // Coherent: scan left-to-right, top-to-bottom\n        float scanLine = floor(mod(t * 4.0, gridSize));\n        float scanCol = mod(t * 64.0, gridSize);\n        fetchPos = vec2(scanCol, scanLine);\n    } else {\n        // Random: jump around unpredictably\n        float frame = floor(t * 8.0);\n        fetchPos = vec2(\n            hash(vec2(frame, 0.0)) * gridSize,\n            hash(vec2(0.0, frame)) * gridSize\n        );\n    }\n    \n    vec2 fetchCacheLine = floor(fetchPos / u_cacheLineSize);\n    \n    // Visualize cache line hit\n    float isActiveCacheLine = step(0.5, 1.0 - length(cacheLine - fetchCacheLine));\n    float isActiveTexel = step(length(texelCoord - floor(fetchPos)), 0.5);\n    \n    // Color: texel grid with cache line highlighting\n    vec3 gridColor = vec3(0.1, 0.12, 0.15);\n    vec3 texelColor = mix(gridColor, vec3(0.15, 0.18, 0.22), \n        step(0.5, mod(texelCoord.x + texelCoord.y, 2.0)));\n    \n    // Cache line border\n    vec2 withinCache = mod(texelCoord, u_cacheLineSize);\n    float isCacheBorder = step(withinCache.x, 0.5) + step(withinCache.y, 0.5);\n    texelColor = mix(texelColor, vec3(0.2, 0.25, 0.3), min(isCacheBorder, 1.0) * 0.5);\n    \n    // Highlight active cache line (what we&#39;d fetch)\n    vec3 cacheHitColor = u_pattern < 0.5 ? vec3(0.18, 0.83, 0.75) : vec3(0.91, 0.73, 0.14);\n    texelColor = mix(texelColor, cacheHitColor * 0.4, isActiveCacheLine * 0.8);\n    \n    // Highlight the actual sampled texel\n    texelColor = mix(texelColor, vec3(1.0), isActiveTexel);\n    \n    // Grid lines\n    vec2 grid = abs(fract(uv * gridSize) - 0.5);\n    float gridLine = step(0.42, max(grid.x, grid.y));\n    texelColor = mix(texelColor, vec3(0.3), gridLine * 0.3);\n    \n    gl_FragColor = vec4(texelColor, 1.0);\n}","uniforms":{"u_time":{"type":"float","value":0},"u_pattern":{"type":"float","value":0},"u_cacheLineSize":{"type":"float","value":4},"u_resolution":{"type":"vec2","value":[700,350]}}}'>
                 <div class="shader-canvas-container" style="max-width: 700px;">
                     <canvas class="shader-canvas" width="700" height="350"></canvas>
                     <div class="shader-loading">Initializing WebGL...</div>
@@ -687,38 +695,6 @@
             </figure>
 <h3 class="article-section section-heading">4. Bindless Textures</h3>
 <p class="article-section section-paragraph">Traditional texture binding forces driver overhead and limits cache utilization across draw calls. Bindless textures (via GL_ARB_bindless_texture or Vulkan descriptor indexing) keep all textures resident and accessible, improving cache reuse across the frame.</p>
-<h2 class="article-section section-heading">Interactive Demo: Cache Miss Cost</h2>
-<p class="article-section section-paragraph">This demo simulates the visual impact of cache misses by artificially delaying &#39;uncached&#39; samples. Coherent patterns render smoothly; incoherent patterns show temporal artifacts as we simulate fetch latency.</p>
-<figure class="article-section section-shader-demo" data-demo-id="cache-miss-cost-demo" data-shader-config='{"vertexShader":"attribute vec2 a_position;\nvarying vec2 v_texCoord;\nvoid main() {\n    v_texCoord = a_position * 0.5 + 0.5;\n    gl_Position = vec4(a_position, 0.0, 1.0);\n}","fragmentShader":"precision highp float;\nvarying vec2 v_texCoord;\nuniform float u_time;\nuniform float u_incoherence;\nuniform float u_showLatency;\n\n// Noise functions for procedural texture\nfloat hash(vec2 p) {\n    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);\n}\n\nfloat noise(vec2 p) {\n    vec2 i = floor(p);\n    vec2 f = fract(p);\n    f = f * f * (3.0 - 2.0 * f);\n    return mix(\n        mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),\n        mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),\n        f.y\n    );\n}\n\nfloat fbm(vec2 p) {\n    float v = 0.0;\n    float a = 0.5;\n    for (int i = 0; i < 4; i++) {\n        v += a * noise(p);\n        p *= 2.0;\n        a *= 0.5;\n    }\n    return v;\n}\n\nvoid main() {\n    vec2 uv = v_texCoord;\n    \n    // Add incoherence: random UV offset per pixel\n    vec2 offset = vec2(\n        hash(gl_FragCoord.xy + u_time),\n        hash(gl_FragCoord.yx - u_time)\n    ) * u_incoherence * 0.5;\n    \n    vec2 sampleUV = uv + offset;\n    \n    // Simulate cache miss latency by temporal jitter\n    float cacheMiss = step(0.5, hash(floor(sampleUV * 8.0) + floor(u_time * 10.0)));\n    float latencyNoise = hash(gl_FragCoord.xy + u_time * 100.0);\n    \n    // Sample our &#39;texture&#39; (procedural pattern)\n    float pattern = fbm(sampleUV * 8.0);\n    pattern += fbm(sampleUV * 16.0) * 0.5;\n    \n    // Apply simulated latency artifacts\n    float latencyArtifact = cacheMiss * u_showLatency * latencyNoise * u_incoherence;\n    pattern = mix(pattern, pattern * (1.0 - latencyArtifact * 0.5), u_showLatency);\n    \n    // Color based on cache efficiency\n    vec3 coherentColor = vec3(0.18, 0.83, 0.75); // Teal\n    vec3 missColor = vec3(0.91, 0.73, 0.14);     // Gold  \n    vec3 color = mix(coherentColor, missColor, u_incoherence) * pattern;\n    \n    // Show &#39;stall&#39; indicator\n    if (u_showLatency > 0.5 && cacheMiss > 0.5 && u_incoherence > 0.3) {\n        color = mix(color, vec3(0.8, 0.2, 0.1), latencyNoise * 0.3);\n    }\n    \n    gl_FragColor = vec4(color, 1.0);\n}","uniforms":{"u_time":{"type":"float","value":0},"u_incoherence":{"type":"float","value":0},"u_showLatency":{"type":"float","value":0},"u_resolution":{"type":"vec2","value":[700,350]}}}'>
-                <div class="shader-canvas-container" style="max-width: 700px;">
-                    <canvas class="shader-canvas" width="700" height="350"></canvas>
-                    <div class="shader-loading">Initializing WebGL...</div>
-                </div>
-                <div class="shader-controls">
-                <div class="shader-control">
-                    <label>UV Incoherence (0=Coherent, 1=Random)</label>
-                    <input type="range"
-                        data-uniform="u_incoherence"
-                        min="0"
-                        max="1"
-                        step="0.01"
-                        value="0.5">
-                    <span class="control-value">0.5</span>
-                </div>
-            
-                <div class="shader-control">
-                    <label>Show Latency Artifacts (0=Off, 1=On)</label>
-                    <input type="range"
-                        data-uniform="u_showLatency"
-                        min="0"
-                        max="1"
-                        step="1"
-                        value="0.5">
-                    <span class="control-value">0.5</span>
-                </div>
-            </div>
-                <figcaption>Simulated Cache Miss Impact</figcaption>
-            </figure>
 <h2 class="article-section section-heading">Architecture Differences</h2>
 <p class="article-section section-paragraph">Cache behavior varies significantly between GPU vendors and generations. NVIDIA&#39;s L1 is tightly coupled with shared memory, AMD&#39;s Infinity Cache adds another hierarchy level, and mobile GPUs often have smaller but more specialized caches optimized for tiled rendering.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="architecture-comparison">
@@ -732,8 +708,80 @@
 <aside class="article-section section-callout tip">
                 <p>Profile on your target hardware. Desktop optimizations may hurt mobile performance and vice versa. AMD&#39;s cache hierarchy differs enough from NVIDIA that vendor-specific tuning often pays off.</p>
             </aside>
+<h2 class="article-section section-heading">Quick Wins: Copy-Paste Patterns</h2>
+<p class="article-section section-paragraph">Here are battle-tested patterns you can apply immediately to improve cache efficiency in your shaders.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Pattern 1: ORM Texture Packing</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// Pack Occlusion, Roughness, Metallic into one texture</span>
+<span class="comment">// BEFORE: <span class="number">3</span> texture fetches (wasteful)</span>
+<span class="keyword">float</span> ao = <span class="function">texture</span>(uAO, uv).r;        <span class="comment">// Only uses R channel</span>
+<span class="keyword">float</span> rough = <span class="function">texture</span>(uRough, uv).r;  <span class="comment">// Only uses R channel</span>
+<span class="keyword">float</span> metal = <span class="function">texture</span>(uMetal, uv).r;  <span class="comment">// Only uses R channel</span>
+
+<span class="comment">// AFTER: <span class="number">1</span> texture fetch (3x faster)</span>
+<span class="keyword">vec3</span> orm = <span class="function">texture</span>(uORM, uv).rgb;
+<span class="keyword">float</span> ao = orm.r;
+<span class="keyword">float</span> rough = orm.g;
+<span class="keyword">float</span> metal = orm.b;</pre></div>
+            </div>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Pattern 2: Early Texture Prefetch</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// Issue ALL texture fetches first, then do math</span>
+<span class="keyword">void</span> <span class="function">main</span>() {
+    <span class="comment">// === FETCH PHASE (non-blocking) ===</span>
+    <span class="keyword">vec4</span> albedo   = <span class="function">texture</span>(uAlbedo, vUV);
+    <span class="keyword">vec4</span> normal   = <span class="function">texture</span>(uNormal, vUV);
+    <span class="keyword">vec4</span> orm      = <span class="function">texture</span>(uORM, vUV);
+    <span class="keyword">vec4</span> emissive = <span class="function">texture</span>(uEmissive, vUV);
+    
+    <span class="comment">// === COMPUTE PHASE (hides latency) ===</span>
+    <span class="keyword">vec3</span> N = decodeNormal(normal.xy);
+    <span class="keyword">vec3</span> V = <span class="function">normalize</span>(uCameraPos - vWorldPos);
+    <span class="keyword">vec3</span> L = <span class="function">normalize</span>(uLightDir);
+    <span class="keyword">vec3</span> H = <span class="function">normalize</span>(V + L);
+    
+    <span class="keyword">float</span> NdotL = <span class="function">max</span>(<span class="function">dot</span>(N, L), <span class="number">0.0</span>);
+    <span class="keyword">float</span> NdotV = <span class="function">max</span>(<span class="function">dot</span>(N, V), <span class="number">0.0</span>);
+    <span class="keyword">float</span> NdotH = <span class="function">max</span>(<span class="function">dot</span>(N, H), <span class="number">0.0</span>);
+    <span class="keyword">float</span> VdotH = <span class="function">max</span>(<span class="function">dot</span>(V, H), <span class="number">0.0</span>);
+    
+    <span class="comment">// === USE PHASE (textures ready by now) ===</span>
+    <span class="keyword">vec3</span> F0 = <span class="function">mix</span>(<span class="keyword">vec3</span>(<span class="number">0.04</span>), albedo.rgb, orm.b);
+    <span class="comment">// ... rest of PBR calculation</span>
+}</pre></div>
+            </div>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Pattern 3: Mip Bias for Blur Passes</span>
+                    <span class="code-language">glsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// When doing blur/downsample, use higher mip levels</span>
+<span class="comment">// This saves bandwidth since you&#<span class="number">39</span>;re averaging anyway</span>
+
+<span class="comment">// Standard blur (fetches full-res texels)</span>
+<span class="keyword">vec4</span> blur = <span class="keyword">vec4</span>(<span class="number">0.0</span>);
+<span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">9</span>; i++) {
+    blur += <span class="function">texture</span>(uTexture, uv + offsets[i]) * weights[i];
+}
+
+<span class="comment">// Cache-friendly blur (uses lower mip = fewer cache lines)</span>
+<span class="keyword">vec4</span> blur = <span class="keyword">vec4</span>(<span class="number">0.0</span>);
+<span class="keyword">float</span> mipBias = <span class="number">1.0</span>; <span class="comment">// Use mip level <span class="number">1</span> (half res)</span>
+<span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">9</span>; i++) {
+    blur += <span class="function">texture</span>(uTexture, uv + offsets[i], mipBias) * weights[i];
+}</pre></div>
+            </div>
+<aside class="article-section section-callout tip">
+                <p>Combine these patterns: Pack your PBR textures into ORM format, prefetch all at shader start, and use mip bias in post-processing passes. This alone can yield 20-40% improvement in texture-heavy shaders.</p>
+            </aside>
 <h2 class="article-section section-heading">Key Takeaways</h2>
-<ul class="article-section section-list"><li>Cache hits are 10-20x faster than VRAM fetches. Coherent access patterns are critical for performance.</li>
+<ul class="article-section section-list"><li>Cache hits are ~15x faster than VRAM fetches (30 vs 500 cycles). Coherent access patterns are critical for performance.</li>
 <li>Mipmapping isn&#39;t optional—it&#39;s a cache optimization that keeps your working set manageable.</li>
 <li>Pack related data into fewer textures. Four 1-channel fetches cost more than one 4-channel fetch.</li>
 <li>Issue texture fetches early and do math while waiting. GPUs hide latency through parallelism.</li>

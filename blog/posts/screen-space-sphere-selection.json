@@ -1,0 +1,188 @@
+{
+    "id": "screen-space-sphere-selection",
+    "title": "Screen-Space Sphere Selection",
+    "subtitle": "Why raycasting fails for small objects and how dot product saves the day",
+    "date": "2025-12-30",
+    "category": "optimization",
+    "tags": ["picking", "selection", "optimization", "dot-product", "ui"],
+    "readTime": "5 min",
+    "featured": false,
+    "thumbnail": "screen-space-sphere-selection-thumb.png",
+    "excerpt": "Raycasting against small objects in 3D space is surprisingly unreliable. Here's why projecting to screen-space and using simple 2D distance produces better UX and faster code.",
+    "sections": [
+        {
+            "type": "intro",
+            "content": "Click a planet on screen. Simple, right? You might reach for a ray-sphere intersection test, but that's actually the wrong tool. Small spheres, floating-point precision, and camera perspective conspire to make true 3D picking unreliable. Screen-space distance is simpler, faster, and more user-friendly."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "The Raycasting Problem"
+        },
+        {
+            "type": "paragraph",
+            "content": "Raycasting computes where a ray from the camera through the mouse position intersects scene geometry. For a sphere, you solve a quadratic equation. The math is elegant but creates practical issues when objects are small."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "raycast-precision-problem",
+            "title": "Raycasting Precision Issues",
+            "width": 700,
+            "height": 250
+        },
+        {
+            "type": "list",
+            "items": [
+                "Sub-pixel targets: A distant sphere might render as 3 pixels. Your mouse must land exactly on those pixels.",
+                "Floating-point drift: The ray origin, direction, and sphere position accumulate error. Small targets amplify tiny inaccuracies.",
+                "Touch unfriendly: Mobile users have fat fingers. Requiring pixel-perfect accuracy creates frustration.",
+                "Depth ambiguity: When spheres overlap in screen space, raycasting picks the frontmost—not necessarily the one the user intended."
+            ]
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "The Screen-Space Solution"
+        },
+        {
+            "type": "paragraph",
+            "content": "Instead of casting rays into 3D space, project your spheres to screen coordinates and compute 2D distance from the mouse. If the mouse is within a threshold of a projected center, that object is selected."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "screen-space-selection",
+            "title": "Screen-Space Distance Selection",
+            "width": 700,
+            "height": 280
+        },
+        {
+            "type": "code",
+            "language": "javascript",
+            "title": "Screen-Space Selection",
+            "content": "function getSelectedSphere(mouseX, mouseY, spheres, camera) {\n    let closest = null;\n    let closestDist = Infinity;\n    \n    for (const sphere of spheres) {\n        // Project sphere center to screen\n        const screen = projectToScreen(sphere.position, camera);\n        if (!screen) continue; // Behind camera\n        \n        // 2D distance: mouse to projected center\n        const dx = mouseX - screen.x;\n        const dy = mouseY - screen.y;\n        const dist = Math.sqrt(dx * dx + dy * dy);\n        \n        // Effective radius includes visual size + touch margin\n        const visualRadius = sphere.radius * screen.scale;\n        const hitRadius = Math.max(visualRadius + 15, 40); // Min 40px\n        \n        if (dist < hitRadius && dist < closestDist) {\n            closest = sphere;\n            closestDist = dist;\n        }\n    }\n    return closest;\n}"
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "The Projection Math"
+        },
+        {
+            "type": "paragraph",
+            "content": "To project 3D to 2D, transform the world position to camera space, then apply perspective division. The key insight: points in front of the camera have positive Z in view space."
+        },
+        {
+            "type": "code",
+            "language": "javascript",
+            "title": "Projecting to Screen Coordinates",
+            "content": "function projectToScreen(worldPos, camera) {\n    // Transform to camera space\n    const dx = worldPos.x - camera.x;\n    const dy = worldPos.y - camera.y;\n    const dz = worldPos.z - camera.z;\n    \n    // Dot with camera basis vectors\n    const viewZ = dx * camera.forward.x + dy * camera.forward.y + dz * camera.forward.z;\n    \n    // Behind camera? Skip it\n    if (viewZ < 0.01) return null;\n    \n    // Perspective divide\n    const scale = 1.0 / viewZ;\n    const viewX = (dx * camera.right.x + dy * camera.right.y + dz * camera.right.z) * scale;\n    const viewY = (dx * camera.up.x + dy * camera.up.y + dz * camera.up.z) * scale;\n    \n    // Map to screen pixels\n    return {\n        x: screenCenterX + viewX * screenWidth,\n        y: screenCenterY - viewY * screenHeight,\n        scale: scale\n    };\n}"
+        },
+        {
+            "type": "svg-diagram",
+            "id": "projection-pipeline",
+            "title": "3D to Screen Projection",
+            "width": 700,
+            "height": 220
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Touch-Friendly Hit Zones"
+        },
+        {
+            "type": "paragraph",
+            "content": "The real win: you can decouple visual size from interaction size. A 5-pixel sphere can have a 40-pixel hit zone. Users don't need to be surgeons to click your UI."
+        },
+        {
+            "type": "svg-diagram",
+            "id": "hit-zone-expansion",
+            "title": "Visual vs Hit Zone Radius",
+            "width": 700,
+            "height": 220
+        },
+        {
+            "type": "callout",
+            "variant": "tip",
+            "content": "For mobile, enforce a minimum hit zone of ~44px (Apple's recommendation). Desktop can be smaller but never less than visual radius + padding."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Optimizations"
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "content": "1. Early Rejection"
+        },
+        {
+            "type": "paragraph",
+            "content": "Skip spheres behind the camera before doing any math. A single dot product tells you if an object is in front or behind."
+        },
+        {
+            "type": "code",
+            "language": "javascript",
+            "title": "Early Camera Culling",
+            "content": "// Dot product of (object - camera) with camera forward\nconst toObject = subtract(sphere.position, camera.position);\nconst dot = dot3(toObject, camera.forward);\n\nif (dot < 0) continue; // Behind camera, skip entirely"
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "content": "2. Squared Distance"
+        },
+        {
+            "type": "paragraph",
+            "content": "sqrt() is expensive. Compare squared distances against squared thresholds to skip the square root entirely."
+        },
+        {
+            "type": "code",
+            "language": "javascript",
+            "title": "Avoiding sqrt()",
+            "content": "const distSq = dx * dx + dy * dy;\nconst hitRadiusSq = hitRadius * hitRadius;\n\nif (distSq < hitRadiusSq && distSq < closestDistSq) {\n    closest = sphere;\n    closestDistSq = distSq;\n}"
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "content": "3. Spatial Partitioning"
+        },
+        {
+            "type": "paragraph",
+            "content": "For thousands of objects, divide screen space into a grid. Only test objects in the cell containing the mouse (plus neighbors). O(n) becomes O(1) average case."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "content": "4. Unity-Specific: BurstCompiler + Jobs"
+        },
+        {
+            "type": "paragraph",
+            "content": "In Unity, NativeArrays with Burst-compiled jobs can process thousands of sphere projections in parallel. The selection loop becomes vectorized SIMD operations."
+        },
+        {
+            "type": "code",
+            "language": "cpp",
+            "title": "Burst-Compiled Selection Job (Unity)",
+            "content": "[BurstCompile]\npublic struct SelectionJob : IJobParallelFor {\n    [ReadOnly] public NativeArray<float3> positions;\n    [ReadOnly] public NativeArray<float> radii;\n    [ReadOnly] public float4x4 viewProj;\n    [ReadOnly] public float2 mousePos;\n    [ReadOnly] public float2 screenSize;\n    \n    public NativeArray<float> distancesSq; // Output\n    \n    public void Execute(int i) {\n        float4 clip = math.mul(viewProj, new float4(positions[i], 1));\n        if (clip.w < 0.01f) { distancesSq[i] = float.MaxValue; return; }\n        \n        float2 ndc = clip.xy / clip.w;\n        float2 screen = (ndc * 0.5f + 0.5f) * screenSize;\n        \n        float2 delta = screen - mousePos;\n        distancesSq[i] = math.dot(delta, delta);\n    }\n}"
+        },
+        {
+            "type": "callout",
+            "variant": "info",
+            "content": "With Burst, 10,000 sphere projections complete in under 0.1ms on a modern CPU. The bottleneck shifts to memory bandwidth, not compute."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Key Takeaways"
+        },
+        {
+            "type": "list",
+            "items": [
+                "Raycasting small spheres is unreliable—floating-point errors and sub-pixel targets hurt UX",
+                "Project to screen space, measure 2D distance. Simpler math, better results",
+                "Expand hit zones beyond visual radius for touch-friendly interaction",
+                "Skip sqrt() by comparing squared distances",
+                "For large object counts, use spatial partitioning or Burst-compiled parallel jobs"
+            ]
+        }
+    ],
+    "related": ["gpu-cache-hierarchy", "procedural-planet-rendering"]
+}

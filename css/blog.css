@@ -1210,3 +1210,228 @@ h3.section-heading {
         min-width: 100%;
     }
 }
+
+/* ============================================
+   ARTICLE TABLE OF CONTENTS - Vertical Navigation
+   Elegant chapter/subchapter menu
+   ============================================ */
+
+/* Article wrapper with TOC layout - Grid for proper back button placement */
+.blog-panel.article-view .blog-post-view {
+    display: grid;
+    grid-template-columns: minmax(0, 800px) auto;
+    grid-template-rows: auto 1fr;
+    justify-content: center;
+    gap: 0 var(--space-xl);
+    max-width: none;
+    padding: 0 var(--space-lg);
+}
+
+/* Back button - compact, sticky at top */
+.blog-panel.article-view .back-to-list {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+    position: sticky;
+    top: var(--space-sm);
+    z-index: 10;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.75rem;
+    margin-bottom: var(--space-sm);
+    background: rgba(20, 28, 38, 0.8);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.blog-panel.article-view .blog-article {
+    grid-column: 1;
+    grid-row: 2;
+    max-width: 800px;
+}
+
+/* TOC Container */
+.article-toc {
+    grid-column: 2;
+    grid-row: 2;
+    position: sticky;
+    top: var(--space-lg);
+    align-self: start;
+    width: 220px;
+    max-height: calc(100vh - 180px);
+    opacity: 0;
+    transform: translateX(20px);
+    animation: tocReveal 0.5s ease-out 0.3s forwards;
+}
+
+@keyframes tocReveal {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* TOC Header */
+.toc-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: var(--space-sm);
+    padding-bottom: var(--space-xs);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.toc-header-icon {
+    width: 14px;
+    height: 14px;
+    color: var(--accent-teal);
+    opacity: 0.7;
+}
+
+.toc-header-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+/* TOC Navigation List */
+.toc-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+    max-height: calc(100vh - 240px);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(45, 212, 191, 0.2) transparent;
+    padding-right: 4px;
+}
+
+.toc-nav::-webkit-scrollbar {
+    width: 3px;
+}
+
+.toc-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.toc-nav::-webkit-scrollbar-thumb {
+    background: rgba(45, 212, 191, 0.2);
+    border-radius: 2px;
+}
+
+/* TOC Item - Chapter (h2) */
+.toc-item {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-decoration: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    line-height: 1.35;
+}
+
+/* Hover state - subtle highlight */
+.toc-item:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* TOC Item - Subchapter (h3) */
+.toc-item.toc-subchapter {
+    padding-left: 1.5rem;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.toc-item.toc-subchapter:hover {
+    color: var(--text-secondary);
+}
+
+/* Crossing state (during scroll) - Cyan, no line */
+.toc-item.active {
+    color: var(--accent-teal);
+    background: rgba(45, 212, 191, 0.04);
+}
+
+.toc-item.toc-subchapter.active {
+    color: var(--accent-teal);
+}
+
+/* Settled state (selection reached destination) - Gold */
+.toc-item.active.settled {
+    color: var(--accent-gold);
+    background: rgba(232, 185, 35, 0.06);
+}
+
+.toc-item.toc-subchapter.active.settled {
+    color: var(--accent-gold);
+}
+
+/* Hover on settled - brighten */
+.toc-item.active.settled:hover {
+    background: rgba(232, 185, 35, 0.1);
+}
+
+/* TOC Progress indicator (optional visual) */
+.toc-progress {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 1px;
+    overflow: hidden;
+}
+
+.toc-progress-bar {
+    width: 100%;
+    height: 0%;
+    background: linear-gradient(180deg, var(--accent-teal) 0%, rgba(45, 212, 191, 0.3) 100%);
+    transition: height 0.15s ease;
+}
+
+/* Responsive - Hide TOC on smaller screens */
+@media (max-width: 1200px) {
+    .article-toc {
+        display: none;
+    }
+
+    .blog-panel.article-view .blog-post-view {
+        grid-template-columns: minmax(0, 900px);
+        padding: 0 var(--space-md);
+    }
+
+    .blog-panel.article-view .blog-article {
+        max-width: 900px;
+    }
+}
+
+/* Large screens - more space */
+@media (min-width: 1600px) {
+    .blog-panel.article-view .blog-post-view {
+        gap: 0 3rem;
+    }
+
+    .article-toc {
+        width: 260px;
+    }
+
+    .toc-item {
+        font-size: 0.85rem;
+    }
+
+    .toc-item.toc-subchapter {
+        font-size: 0.78rem;
+    }
+}

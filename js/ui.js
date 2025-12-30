@@ -653,56 +653,6 @@
 })();
 
 // ============================================
-// STATIC FAVICON - STYLIZED "CG" MONOGRAM
-// ============================================
-(function initFavicon() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 32; canvas.height = 32;
-    const ctx = canvas.getContext('2d');
-    const link = document.getElementById('favicon');
-    const gold = '#e8b923';
-    const darkBg = '#0a0f14';
-
-    // Draw background
-    ctx.fillStyle = darkBg;
-    ctx.fillRect(0, 0, 32, 32);
-
-    // Draw outer glow
-    const glowGradient = ctx.createRadialGradient(16, 16, 8, 16, 16, 16);
-    glowGradient.addColorStop(0, 'rgba(232, 185, 35, 0.3)');
-    glowGradient.addColorStop(1, 'transparent');
-    ctx.fillStyle = glowGradient;
-    ctx.fillRect(0, 0, 32, 32);
-
-    // Draw hexagon shape
-    ctx.beginPath();
-    const sides = 6;
-    const radius = 12;
-    const centerX = 16, centerY = 16;
-    for (let i = 0; i < sides; i++) {
-        const angle = (Math.PI / 3) * i - Math.PI / 2;
-        const x = centerX + radius * Math.cos(angle);
-        const y = centerY + radius * Math.sin(angle);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.strokeStyle = gold;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Draw "C" letter stylized
-    ctx.font = 'bold 14px JetBrains Mono, monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = gold;
-    ctx.fillText('C', 16, 17);
-
-    // Set favicon
-    link.href = canvas.toDataURL('image/png');
-})();
-
-// ============================================
 // FPS PERFORMANCE COUNTER WITH RENDER TIME
 // ============================================
 (function initFPS() {

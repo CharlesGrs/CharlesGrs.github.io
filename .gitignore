@@ -5,3 +5,15 @@ CLAUDE.md
 node_modules/
 tools/output/
 nul
+tools/diagram-screenshots/all-diagrams.png
+tools/diagram-screenshots/architecture-comparison.png
+tools/diagram-screenshots/cache-hierarchy-overview.png
+tools/diagram-screenshots/cache-hit-rate-gauge.png
+tools/diagram-screenshots/cache-latency-comparison.png
+tools/diagram-screenshots/cache-line-fetch.png
+tools/diagram-screenshots/cache-miss-patterns.png
+tools/diagram-screenshots/dependent-read-chain.png
+tools/diagram-screenshots/latency-hiding.png
+tools/diagram-screenshots/mipmap-cache-benefit.png
+tools/diagram-screenshots/morton-order.png
+tools/diagram-screenshots/warp-coalescing.png

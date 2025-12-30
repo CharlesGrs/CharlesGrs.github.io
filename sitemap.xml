@@ -37,8 +37,14 @@
         <priority>0.8</priority>
     </url>
     <url>
-        <loc>https://charlesgrassi.dev/blog/frosted-glass-sdf/</loc>
-        <lastmod>2025-12-29</lastmod>
+        <loc>https://charlesgrassi.dev/blog/apple-liquid-glass/</loc>
+        <lastmod>2025-12-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://charlesgrassi.dev/blog/screen-space-sphere-selection/</loc>
+        <lastmod>2025-12-30</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>

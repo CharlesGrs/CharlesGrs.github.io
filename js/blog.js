@@ -177,6 +177,9 @@
     function closePost() {
         if (!listView || !postView) return;
 
+        // Remove TOC
+        removeToc();
+
         // Remove article-view class from blog panel
         var blogPanel = document.querySelector('.blog-panel');
         if (blogPanel) blogPanel.classList.remove('article-view');
@@ -213,12 +216,15 @@
 
         // Build content sections
         var contentHtml = '<div class="article-content">';
-        (post.sections || []).forEach(function(section) {
-            contentHtml += renderSection(section);
+        (post.sections || []).forEach(function(section, index) {
+            contentHtml += renderSection(section, index);
         });
         contentHtml += '</div>';
 
         articleContainer.innerHTML = headerHtml + contentHtml;
+
+        // Generate and insert Table of Contents
+        generateTableOfContents();
 
         // Apply syntax highlighting to code blocks
         applySyntaxHighlighting();
@@ -230,14 +236,15 @@
         initShaderDemos();
     }
 
-    function renderSection(section) {
+    function renderSection(section, index) {
         switch (section.type) {
             case 'intro':
                 return '<p class="article-section section-intro">' + section.content + '</p>';
 
             case 'heading':
                 var tag = 'h' + (section.level || 2);
-                return '<' + tag + ' class="article-section section-heading">' + section.content + '</' + tag + '>';
+                var headingId = 'section-' + index + '-' + slugify(section.content);
+                return '<' + tag + ' id="' + headingId + '" class="article-section section-heading" data-toc-level="' + (section.level || 2) + '">' + section.content + '</' + tag + '>';
 
             case 'paragraph':
                 return '<p class="article-section section-paragraph">' + section.content + '</p>';
@@ -589,6 +596,173 @@
         var div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // ============================================
+    // SLUGIFY - Generate URL-friendly IDs
+    // ============================================
+
+    function slugify(text) {
+        return text
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/--+/g, '-')
+            .trim()
+            .substring(0, 50);
+    }
+
+    // ============================================
+    // TABLE OF CONTENTS
+    // Generates navigation from headings
+    // ============================================
+
+    var tocObserver = null;
+    var tocContainer = null;
+
+    function generateTableOfContents() {
+        // Find all headings in the article
+        var headings = articleContainer.querySelectorAll('.section-heading[id]');
+
+        // Need at least 2 headings for a TOC
+        if (headings.length < 2) {
+            removeToc();
+            return;
+        }
+
+        // Remove existing TOC if any
+        removeToc();
+
+        // Create TOC container
+        tocContainer = document.createElement('aside');
+        tocContainer.className = 'article-toc';
+        tocContainer.innerHTML =
+            '<div class="toc-header">' +
+                '<svg class="toc-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                    '<path d="M4 6h16M4 12h16M4 18h10"/>' +
+                '</svg>' +
+                '<span class="toc-header-title">Contents</span>' +
+            '</div>' +
+            '<nav class="toc-nav"></nav>';
+
+        var tocNav = tocContainer.querySelector('.toc-nav');
+
+        // Build TOC items from headings
+        headings.forEach(function(heading) {
+            var level = parseInt(heading.getAttribute('data-toc-level')) || 2;
+            var item = document.createElement('a');
+            item.className = 'toc-item' + (level >= 3 ? ' toc-subchapter' : '');
+            item.href = '#' + heading.id;
+            item.textContent = heading.textContent.replace(/^\/\/\s*/, ''); // Remove // prefix
+            item.setAttribute('data-target', heading.id);
+
+            // Smooth scroll on click
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                var target = document.getElementById(heading.id);
+                if (target) {
+                    // Get the scroll container
+                    var scrollContainer = postView;
+                    var targetOffset = target.offsetTop - 80;
+
+                    scrollContainer.scrollTo({
+                        top: targetOffset,
+                        behavior: 'smooth'
+                    });
+
+                    // Update active state - let scroll tracking handle settled
+                    setActiveTocItem(heading.id, false);
+                }
+            });
+
+            tocNav.appendChild(item);
+        });
+
+        // Insert TOC after the article in the post view
+        postView.appendChild(tocContainer);
+
+        // Initialize scroll tracking
+        initScrollTracking(headings);
+    }
+
+    function removeToc() {
+        if (tocContainer && tocContainer.parentNode) {
+            tocContainer.parentNode.removeChild(tocContainer);
+            tocContainer = null;
+        }
+        if (tocObserver) {
+            tocObserver.disconnect();
+            tocObserver = null;
+        }
+    }
+
+    var settleTimeout = null;
+    var currentActiveId = null;
+
+    function setActiveTocItem(activeId, immediate) {
+        if (!tocContainer) return;
+
+        // Clear any pending settle timeout
+        if (settleTimeout) {
+            clearTimeout(settleTimeout);
+            settleTimeout = null;
+        }
+
+        // Remove settled class from all items immediately
+        var items = tocContainer.querySelectorAll('.toc-item');
+        items.forEach(function(item) {
+            item.classList.remove('settled');
+        });
+
+        // Update active state
+        items.forEach(function(item) {
+            var isActive = item.getAttribute('data-target') === activeId;
+            item.classList.toggle('active', isActive);
+        });
+
+        currentActiveId = activeId;
+
+        // Set settled state after delay (when scrolling stops)
+        var delay = immediate ? 0 : 150;
+        settleTimeout = setTimeout(function() {
+            if (!tocContainer) return;
+            var activeItem = tocContainer.querySelector('.toc-item[data-target="' + currentActiveId + '"]');
+            if (activeItem) {
+                activeItem.classList.add('settled');
+            }
+        }, delay);
+    }
+
+    function initScrollTracking(headings) {
+        // Disconnect existing observer
+        if (tocObserver) {
+            tocObserver.disconnect();
+        }
+
+        // Use IntersectionObserver to track which section is visible
+        var observerOptions = {
+            root: postView,
+            rootMargin: '-80px 0px -60% 0px',
+            threshold: 0
+        };
+
+        tocObserver = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    setActiveTocItem(entry.target.id, false);
+                }
+            });
+        }, observerOptions);
+
+        // Observe all headings
+        headings.forEach(function(heading) {
+            tocObserver.observe(heading);
+        });
+
+        // Set initial active state (first heading) - immediate settle
+        if (headings.length > 0) {
+            setActiveTocItem(headings[0].id, true);
+        }
     }
 
     // ============================================

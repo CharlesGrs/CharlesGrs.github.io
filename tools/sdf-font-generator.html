@@ -2,11 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-5KEDPWV47H"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-5KEDPWV47H');
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SDF Text Generator | Charles Grassi Tools</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="../assets/favicon/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicon/apple-touch-icon.png">
     <style>
         :root {
             --bg-primary: #0a0f14;
@@ -889,8 +901,8 @@
                                 <span class="preview-label">Shader Usage</span>
                             </div>
                             <div class="code-block">
-                                <pre><span class="comment">// Sample the SDF texture</span>
-<span class="keyword">float</span> dist = <span class="function">texture2D</span>(sdfTexture, uv).<span class="keyword">r</span>;
+                                <pre><span class="comment">// Sample and invert SDF (white=inside)</span>
+<span class="keyword">float</span> dist = <span class="number">1.0</span> - <span class="function">texture2D</span>(sdfTexture, uv).<span class="keyword">r</span>;
 
 <span class="comment">// Anti-aliased edge</span>
 <span class="keyword">float</span> edge = <span class="number">0.5</span>;
@@ -898,7 +910,7 @@
 <span class="keyword">float</span> alpha = <span class="function">smoothstep</span>(edge - delta, edge + delta, dist);
 
 <span class="comment">// Outline effect</span>
-<span class="keyword">float</span> outline = <span class="function">smoothstep</span>(<span class="number">0.4</span>, <span class="number">0.45</span>, dist)
+<span class="keyword">float</span> outline = <span class="function">smoothstep</span>(<span class="number">0.45</span>, <span class="number">0.5</span>, dist)
              - <span class="function">smoothstep</span>(<span class="number">0.5</span>, <span class="number">0.55</span>, dist);</pre>
                             </div>
                         </div>
@@ -1290,13 +1302,14 @@
                         vec2 uvG = uv + vec2(sliceOffset, 0.0);
                         vec2 uvB = uv + vec2(sliceOffset - rgbSplit, 0.0);
 
-                        float distR = texture2D(uTexture, uvR).r;
-                        float distG = texture2D(uTexture, uvG).r;
-                        float distB = texture2D(uTexture, uvB).r;
+                        // Invert SDF: 1.0 - dist makes high values = inside text
+                        float distR = 1.0 - texture2D(uTexture, uvR).r;
+                        float distG = 1.0 - texture2D(uTexture, uvG).r;
+                        float distB = 1.0 - texture2D(uTexture, uvB).r;
 
-                        float textR = smoothstep(0.55, 0.45, distR);
-                        float textG = smoothstep(0.55, 0.45, distG);
-                        float textB = smoothstep(0.55, 0.45, distB);
+                        float textR = smoothstep(0.45, 0.55, distR);
+                        float textG = smoothstep(0.45, 0.55, distG);
+                        float textB = smoothstep(0.45, 0.55, distB);
 
                         // Scanline effect
                         float scanline = sin(uv.y * 400.0) * 0.04 * glitchIntensity;
@@ -1328,19 +1341,20 @@
 
                     void main() {
                         vec2 uv = vec2(vTexCoord.x, 1.0 - vTexCoord.y);
-                        float dist = texture2D(uTexture, uv).r;
+                        // Invert SDF: high values = inside text
+                        float dist = 1.0 - texture2D(uTexture, uv).r;
 
                         // Black background
                         vec3 bgColor = vec3(0.0);
 
-                        // Text core (inverted SDF: high values = inside text)
+                        // Text core
                         float text = smoothstep(0.48, 0.52, dist);
 
-                        // Glow using 1/distance falloff (now dist > 0.5 is inside)
+                        // Glow using 1/distance falloff
                         float glowDist = max(dist - 0.5, 0.001);
                         float glow = 0.08 / glowDist;
                         glow = clamp(glow, 0.0, 1.0);
-                        glow *= smoothstep(0.5, 1.0, dist); // Fade at edges
+                        glow *= smoothstep(0.5, 1.0, dist);
 
                         // Animated hue
                         float hue = fract(uTime * 0.1);
@@ -1369,21 +1383,22 @@
 
                     void main() {
                         vec2 uv = vec2(vTexCoord.x, 1.0 - vTexCoord.y);
-                        float dist = texture2D(uTexture, uv).r;
+                        // Invert SDF: high values = inside text
+                        float dist = 1.0 - texture2D(uTexture, uv).r;
 
                         // Animated thickness
                         float thickness = 0.08 + 0.06 * sin(uTime * 1.5);
 
-                        // Multiple outline layers with animated thickness (inverted: > 0.5 is inside)
+                        // Multiple outline layers with animated thickness
                         float innerEdge = 0.5;
-                        float outline1Start = innerEdge + thickness;
-                        float outline2Start = outline1Start + thickness;
-                        float outline3Start = outline2Start + thickness;
+                        float outline1Start = innerEdge - thickness;
+                        float outline2Start = outline1Start - thickness;
+                        float outline3Start = outline2Start - thickness;
 
-                        float core = smoothstep(innerEdge + 0.02, innerEdge - 0.02, dist);
-                        float outline1 = smoothstep(outline1Start + 0.02, outline1Start - 0.02, dist) - core;
-                        float outline2 = smoothstep(outline2Start + 0.02, outline2Start - 0.02, dist) - smoothstep(outline1Start + 0.02, outline1Start - 0.02, dist);
-                        float outline3 = smoothstep(outline3Start + 0.02, outline3Start - 0.02, dist) - smoothstep(outline2Start + 0.02, outline2Start - 0.02, dist);
+                        float core = smoothstep(innerEdge - 0.02, innerEdge + 0.02, dist);
+                        float outline1 = smoothstep(outline1Start - 0.02, outline1Start + 0.02, dist) - core;
+                        float outline2 = smoothstep(outline2Start - 0.02, outline2Start + 0.02, dist) - smoothstep(outline1Start - 0.02, outline1Start + 0.02, dist);
+                        float outline3 = smoothstep(outline3Start - 0.02, outline3Start + 0.02, dist) - smoothstep(outline2Start - 0.02, outline2Start + 0.02, dist);
 
                         // Color palette
                         vec3 coreColor = vec3(1.0, 1.0, 1.0);
@@ -1416,15 +1431,15 @@
                         float angle = uTime * 0.8;
                         vec2 shadowOffset = vec2(cos(angle), sin(angle)) * 0.04;
 
-                        // Sample for shadow (offset UV means shadow appears shifted)
-                        float shadowDist = texture2D(uTexture, uv - shadowOffset).r;
-                        float dist = texture2D(uTexture, uv).r;
+                        // Invert SDF: high values = inside text
+                        float shadowDist = 1.0 - texture2D(uTexture, uv - shadowOffset).r;
+                        float dist = 1.0 - texture2D(uTexture, uv).r;
 
-                        // Soft shadow with blur simulation (inverted: > 0.5 is inside)
-                        float shadow = smoothstep(0.65, 0.45, shadowDist);
+                        // Soft shadow with blur simulation
+                        float shadow = smoothstep(0.35, 0.55, shadowDist);
 
                         // Main text
-                        float text = smoothstep(0.53, 0.47, dist);
+                        float text = smoothstep(0.47, 0.53, dist);
 
                         // Colors
                         vec3 shadowColor = vec3(0.0, 0.0, 0.0);
@@ -1454,10 +1469,11 @@
 
                     void main() {
                         vec2 uv = vec2(vTexCoord.x, 1.0 - vTexCoord.y);
-                        float dist = texture2D(uTexture, uv).r;
+                        // Invert SDF: high values = inside text
+                        float dist = 1.0 - texture2D(uTexture, uv).r;
 
-                        // Text mask (inverted: > 0.5 is inside)
-                        float text = smoothstep(0.55, 0.45, dist);
+                        // Text mask
+                        float text = smoothstep(0.45, 0.55, dist);
 
                         // Rainbow color cycling on the TEXT only, based on UV position + time
                         float hue = fract(uv.x * 0.8 - uv.y * 0.5 + uTime * 0.3);
@@ -1473,7 +1489,7 @@
                         shimmer = pow(shimmer, 8.0) * 0.5;
 
                         // Edge highlight (fresnel-like)
-                        float edge = smoothstep(0.6, 0.5, dist) - smoothstep(0.5, 0.4, dist);
+                        float edge = smoothstep(0.4, 0.5, dist) - smoothstep(0.5, 0.6, dist);
 
                         vec3 color = holoColor * text * scanline;
                         color += vec3(1.0) * edge * 0.4;
@@ -1501,7 +1517,8 @@
                         float wave3 = sin((uv.x + uv.y) * 8.0 + uTime * 2.5) * 0.006;
 
                         vec2 distortedUV = uv + vec2(wave1 + wave3, wave2 + wave3);
-                        float dist = texture2D(uTexture, distortedUV).r;
+                        // Invert SDF: high values = inside text
+                        float dist = 1.0 - texture2D(uTexture, distortedUV).r;
 
                         // Chrome-like gradient based on distortion
                         float chromaShift = (wave1 + wave2) * 25.0;
@@ -1509,9 +1526,8 @@
                         vec3 color2 = vec3(1.0, 0.4, 0.8);
                         vec3 textColor = mix(color1, color2, 0.5 + chromaShift);
 
-                        // Inverted: > 0.5 is inside
-                        float text = smoothstep(0.55, 0.45, dist);
-                        float glow = smoothstep(0.75, 0.5, dist) * 0.35;
+                        float text = smoothstep(0.45, 0.55, dist);
+                        float glow = smoothstep(0.25, 0.5, dist) * 0.35;
 
                         vec3 color = textColor * text + textColor * glow * 0.4;
                         float alpha = max(text, glow);
@@ -1545,7 +1561,8 @@
 
                     void main() {
                         vec2 uv = vec2(vTexCoord.x, 1.0 - vTexCoord.y);
-                        float dist = texture2D(uTexture, uv).r;
+                        // Invert SDF: high values = inside text
+                        float dist = 1.0 - texture2D(uTexture, uv).r;
 
                         // Animated fire noise
                         float fireNoise = 0.0;
@@ -1553,19 +1570,18 @@
                         fireNoise += smoothNoise(uv * 16.0 + vec2(0.0, -uTime * 4.0)) * 0.25;
                         fireNoise += smoothNoise(uv * 32.0 + vec2(0.0, -uTime * 5.0)) * 0.125;
 
-                        // Extend flames upward from text (inverted: subtract to expand outward)
+                        // Extend flames upward from text (add to expand outward)
                         float flameHeight = (1.0 - uv.y) * fireNoise * 0.18;
-                        float flameDist = dist - flameHeight;
+                        float flameDist = dist + flameHeight;
 
                         // Fire gradient colors
                         vec3 fireColor1 = vec3(1.0, 0.95, 0.4);  // Yellow core
                         vec3 fireColor2 = vec3(1.0, 0.5, 0.1);   // Orange
                         vec3 fireColor3 = vec3(0.9, 0.15, 0.0);  // Red edge
 
-                        // Inverted thresholds
-                        float core = smoothstep(0.55, 0.45, flameDist);
-                        float mid = smoothstep(0.7, 0.5, flameDist);
-                        float outer = smoothstep(0.9, 0.6, flameDist);
+                        float core = smoothstep(0.45, 0.55, flameDist);
+                        float mid = smoothstep(0.3, 0.5, flameDist);
+                        float outer = smoothstep(0.1, 0.4, flameDist);
 
                         vec3 color = fireColor1 * core;
                         color = mix(color, fireColor2, (mid - core) * 2.0);

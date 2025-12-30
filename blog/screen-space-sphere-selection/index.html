@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Primary Meta Tags -->
+    <title>Screen-Space Sphere Selection | Charles Grassi</title>
+    <meta name="title" content="Screen-Space Sphere Selection | Charles Grassi">
+    <meta name="description" content="Raycasting against small objects in 3D space is surprisingly unreliable. Here&#39;s why projecting to screen-space and using simple 2D distance produces better UX and faster code.">
+    <meta name="author" content="Charles Grassi">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://charlesgrs.github.io/blog/screen-space-sphere-selection/">
+    <meta property="og:title" content="Screen-Space Sphere Selection">
+    <meta property="og:description" content="Raycasting against small objects in 3D space is surprisingly unreliable. Here&#39;s why projecting to screen-space and using simple 2D distance produces better UX and faster code.">
+    <meta property="og:image" content="https://charlesgrs.github.io/blog/images/screen-space-sphere-selection-thumb.png">
+    <meta property="og:site_name" content="Charles Grassi">
+    <meta property="article:published_time" content="2025-12-30T00:00:00.000Z">
+    <meta property="article:author" content="Charles Grassi">
+    <meta property="article:section" content="Optimization">
+    <meta property="article:tag" content="picking">
+    <meta property="article:tag" content="selection">
+    <meta property="article:tag" content="optimization">
+    <meta property="article:tag" content="dot-product">
+    <meta property="article:tag" content="ui">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@charles_grassi">
+    <meta name="twitter:creator" content="@charles_grassi">
+    <meta name="twitter:title" content="Screen-Space Sphere Selection">
+    <meta name="twitter:description" content="Raycasting against small objects in 3D space is surprisingly unreliable. Here&#39;s why projecting to screen-space and using simple 2D distance produces better UX and faster code.">
+    <meta name="twitter:image" content="https://charlesgrs.github.io/blog/images/screen-space-sphere-selection-thumb.png">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://charlesgrs.github.io/blog/screen-space-sphere-selection/">
+
+    <!-- Theme -->
+    <meta name="theme-color" content="#0a0f14">
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="../../assets/favicon/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="../../assets/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../../assets/favicon/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="../../assets/favicon/apple-touch-icon.png">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        "headline": "Screen-Space Sphere Selection",
+        "description": "Raycasting against small objects in 3D space is surprisingly unreliable. Here&#39;s why projecting to screen-space and using simple 2D distance produces better UX and faster code.",
+        "image": "https://charlesgrs.github.io/blog/images/screen-space-sphere-selection-thumb.png",
+        "datePublished": "2025-12-30T00:00:00.000Z",
+        "dateModified": "2025-12-30T00:00:00.000Z",
+        "author": {
+            "@type": "Person",
+            "name": "Charles Grassi",
+            "url": "https://charlesgrs.github.io"
+        },
+        "publisher": {
+            "@type": "Person",
+            "name": "Charles Grassi",
+            "url": "https://charlesgrs.github.io"
+        },
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https://charlesgrs.github.io/blog/screen-space-sphere-selection/"
+        },
+        "articleSection": "Optimization",
+        "keywords": "picking, selection, optimization, dot-product, ui"
+    }
+    </script>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/blog.css">
+
+    <style>
+        /* Static page specific styles */
+        body {
+            background: var(--bg-primary);
+            min-height: 100vh;
+        }
+
+        /* Top header bar - fixed */
+        .site-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(10, 15, 20, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 0.75rem 1.5rem;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+
+        .header-brand {
+            margin-right: auto;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .brand-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .brand-separator {
+            color: rgba(255, 255, 255, 0.2);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .brand-section {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent-teal);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .header-cta {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .cta-demos {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(45, 212, 191, 0.1);
+            border: 1px solid rgba(45, 212, 191, 0.3);
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent-teal);
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+
+        .cta-demos:hover {
+            background: rgba(45, 212, 191, 0.2);
+            border-color: rgba(45, 212, 191, 0.5);
+            box-shadow: 0 0 20px rgba(45, 212, 191, 0.15);
+        }
+
+        .cta-hire {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1.25rem;
+            background: linear-gradient(135deg, var(--accent-gold) 0%, #d4a520 100%);
+            border: none;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #0a0f14;
+            text-decoration: none;
+            transition: all 0.25s ease;
+            box-shadow: 0 2px 8px rgba(232, 185, 35, 0.3);
+        }
+
+        .cta-hire:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(232, 185, 35, 0.4);
+        }
+
+        .static-blog-page {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: var(--space-lg);
+            padding-top: 5rem; /* Account for fixed header */
+        }
+
+        .article-nav {
+            margin-bottom: var(--space-lg);
+        }
+
+        .nav-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.8rem;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+
+        .nav-back:hover {
+            border-color: var(--accent-teal);
+            color: var(--accent-teal);
+        }
+
+        .nav-back svg {
+            width: 14px;
+            height: 14px;
+            transition: transform 0.25s ease;
+        }
+
+        .nav-back:hover svg {
+            transform: translateX(-3px);
+        }
+
+        /* CTA Banner after article */
+        .article-cta-banner {
+            margin-top: var(--space-xl);
+            padding: var(--space-lg);
+            background: linear-gradient(145deg, rgba(20, 28, 38, 0.9) 0%, rgba(15, 22, 30, 0.95) 100%);
+            border: 1px solid rgba(232, 185, 35, 0.2);
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .cta-banner-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: var(--text-xl);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 0.5rem 0;
+        }
+
+        .cta-banner-subtitle {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+            margin: 0 0 var(--space-md) 0;
+        }
+
+        .cta-banner-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .cta-banner-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+
+        .cta-banner-btn.primary {
+            background: linear-gradient(135deg, var(--accent-gold) 0%, #d4a520 100%);
+            color: #0a0f14;
+            box-shadow: 0 2px 12px rgba(232, 185, 35, 0.3);
+        }
+
+        .cta-banner-btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(232, 185, 35, 0.4);
+        }
+
+        .cta-banner-btn.secondary {
+            background: rgba(45, 212, 191, 0.1);
+            border: 1px solid rgba(45, 212, 191, 0.3);
+            color: var(--accent-teal);
+        }
+
+        .cta-banner-btn.secondary:hover {
+            background: rgba(45, 212, 191, 0.2);
+            border-color: rgba(45, 212, 191, 0.5);
+        }
+
+        .static-footer {
+            margin-top: var(--space-xl);
+            padding-top: var(--space-lg);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            text-align: center;
+        }
+
+        .footer-author {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-xs);
+            margin-bottom: var(--space-md);
+        }
+
+        .footer-author-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: var(--text-base);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .footer-author-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: var(--text-xs);
+            color: var(--text-secondary);
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: var(--space-md);
+        }
+
+        .footer-link {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: var(--text-xs);
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.25s;
+        }
+
+        .footer-link:hover {
+            color: var(--accent-teal);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .site-header {
+                padding: 0.5rem 1rem;
+            }
+
+            .header-content {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+
+            .brand-separator, .brand-section {
+                display: none;
+            }
+
+            .header-cta {
+                gap: 0.5rem;
+            }
+
+            .cta-demos span,
+            .cta-hire span {
+                display: none;
+            }
+
+            .cta-demos,
+            .cta-hire {
+                padding: 0.5rem;
+            }
+
+            .static-blog-page {
+                padding: var(--space-md);
+                padding-top: 4.5rem;
+            }
+
+            .cta-banner-buttons {
+                flex-direction: column;
+            }
+
+            .cta-banner-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Fixed Header -->
+    <header class="site-header">
+        <div class="header-content">
+            <a href="../../" class="header-brand">
+                <span class="brand-name">Charles Grassi</span>
+                <span class="brand-separator">//</span>
+                <span class="brand-section">Blog</span>
+            </a>
+            <div class="header-cta">
+                <a href="../../?tab=skills" class="cta-demos">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                    <span>Live Demos</span>
+                </a>
+                <a href="../../?tab=contact" class="cta-hire">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <span>Hire Me</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="static-blog-page">
+        <!-- Back Navigation -->
+        <nav class="article-nav">
+            <a href="../../blog/" class="nav-back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                All Posts
+            </a>
+        </nav>
+
+        <!-- Article -->
+        <article class="blog-article">
+            <header class="article-header">
+                <div class="article-meta">
+                    <span class="article-category">Optimization</span>
+                    <span>December 30, 2025</span>
+                    <span>5 min read</span>
+                </div>
+                <h1 class="article-title">Screen-Space Sphere Selection</h1>
+                <p class="article-subtitle">Why raycasting fails for small objects and how dot product saves the day</p>
+                <div class="card-tags" style="margin-top: var(--space-sm);"><span class="card-tag">picking</span><span class="card-tag">selection</span><span class="card-tag">optimization</span><span class="card-tag">dot-product</span><span class="card-tag">ui</span></div>
+            </header>
+
+            <div class="article-content">
+                <p class="article-section section-intro">Click a planet on screen. Simple, right? You might reach for a ray-sphere intersection test, but that&#39;s actually the wrong tool. Small spheres, floating-point precision, and camera perspective conspire to make true 3D picking unreliable. Screen-space distance is simpler, faster, and more user-friendly.</p>
+<h2 class="article-section section-heading">The Raycasting Problem</h2>
+<p class="article-section section-paragraph">Raycasting computes where a ray from the camera through the mouse position intersects scene geometry. For a sphere, you solve a quadratic equation. The math is elegant but creates practical issues when objects are small.</p>
+<figure class="article-section section-svg-diagram" data-diagram-id="raycast-precision-problem">
+                <div class="svg-container" style="max-width: 700px;">
+                    <div class="svg-placeholder" data-width="700" data-height="250">
+                        <noscript>Diagram: Raycasting Precision Issues</noscript>
+                    </div>
+                </div>
+                <figcaption>Raycasting Precision Issues</figcaption>
+            </figure>
+<ul class="article-section section-list"><li>Sub-pixel targets: A distant sphere might render as 3 pixels. Your mouse must land exactly on those pixels.</li>
+<li>Floating-point drift: The ray origin, direction, and sphere position accumulate error. Small targets amplify tiny inaccuracies.</li>
+<li>Touch unfriendly: Mobile users have fat fingers. Requiring pixel-perfect accuracy creates frustration.</li>
+<li>Depth ambiguity: When spheres overlap in screen space, raycasting picks the frontmost—not necessarily the one the user intended.</li></ul>
+<h2 class="article-section section-heading">The Screen-Space Solution</h2>
+<p class="article-section section-paragraph">Instead of casting rays into 3D space, project your spheres to screen coordinates and compute 2D distance from the mouse. If the mouse is within a threshold of a projected center, that object is selected.</p>
+<figure class="article-section section-svg-diagram" data-diagram-id="screen-space-selection">
+                <div class="svg-container" style="max-width: 700px;">
+                    <div class="svg-placeholder" data-width="700" data-height="280">
+                        <noscript>Diagram: Screen-Space Distance Selection</noscript>
+                    </div>
+                </div>
+                <figcaption>Screen-Space Distance Selection</figcaption>
+            </figure>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Screen-Space Selection</span>
+                    <span class="code-language">javascript</span>
+                </div>
+                <div class="code-content"><pre><span class="keyword">function</span> getSelectedSphere(mouseX, mouseY, spheres, camera) {
+    <span class="keyword">let</span> closest = null;
+    <span class="keyword">let</span> closestDist = Infinity;
+    
+    <span class="keyword">for</span> (<span class="keyword">const</span> sphere of spheres) {
+        <span class="comment">// Project sphere center to screen</span>
+        <span class="keyword">const</span> screen = projectToScreen(sphere.position, camera);
+        <span class="keyword">if</span> (!screen) continue; <span class="comment">// Behind camera</span>
+        
+        <span class="comment">// 2D distance: mouse to projected center</span>
+        <span class="keyword">const</span> dx = mouseX - screen.x;
+        <span class="keyword">const</span> dy = mouseY - screen.y;
+        <span class="keyword">const</span> dist = Math.<span class="function">sqrt</span>(dx * dx + dy * dy);
+        
+        <span class="comment">// Effective radius includes visual size + touch margin</span>
+        <span class="keyword">const</span> visualRadius = sphere.radius * screen.scale;
+        <span class="keyword">const</span> hitRadius = Math.<span class="function">max</span>(visualRadius + <span class="number">15</span>, <span class="number">40</span>); <span class="comment">// Min 40px</span>
+        
+        <span class="keyword">if</span> (dist &lt; hitRadius &amp;&amp; dist &lt; closestDist) {
+            closest = sphere;
+            closestDist = dist;
+        }
+    }
+    <span class="keyword">return</span> closest;
+}</pre></div>
+            </div>
+<h2 class="article-section section-heading">The Projection Math</h2>
+<p class="article-section section-paragraph">To project 3D to 2D, transform the world position to camera space, then apply perspective division. The key insight: points in front of the camera have positive Z in view space.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Projecting to Screen Coordinates</span>
+                    <span class="code-language">javascript</span>
+                </div>
+                <div class="code-content"><pre><span class="keyword">function</span> projectToScreen(worldPos, camera) {
+    <span class="comment">// Transform to camera space</span>
+    <span class="keyword">const</span> dx = worldPos.x - camera.x;
+    <span class="keyword">const</span> dy = worldPos.y - camera.y;
+    <span class="keyword">const</span> dz = worldPos.z - camera.z;
+    
+    <span class="comment">// Dot with camera basis vectors</span>
+    <span class="keyword">const</span> viewZ = dx * camera.forward.x + dy * camera.forward.y + dz * camera.forward.z;
+    
+    <span class="comment">// Behind camera? Skip it</span>
+    <span class="keyword">if</span> (viewZ &lt; <span class="number">0.01</span>) <span class="keyword">return</span> null;
+    
+    <span class="comment">// Perspective divide</span>
+    <span class="keyword">const</span> scale = <span class="number">1.0</span> / viewZ;
+    <span class="keyword">const</span> viewX = (dx * camera.right.x + dy * camera.right.y + dz * camera.right.z) * scale;
+    <span class="keyword">const</span> viewY = (dx * camera.up.x + dy * camera.up.y + dz * camera.up.z) * scale;
+    
+    <span class="comment">// Map to screen pixels</span>
+    <span class="keyword">return</span> {
+        x: screenCenterX + viewX * screenWidth,
+        y: screenCenterY - viewY * screenHeight,
+        scale: scale
+    };
+}</pre></div>
+            </div>
+<figure class="article-section section-svg-diagram" data-diagram-id="projection-pipeline">
+                <div class="svg-container" style="max-width: 700px;">
+                    <div class="svg-placeholder" data-width="700" data-height="220">
+                        <noscript>Diagram: 3D to Screen Projection</noscript>
+                    </div>
+                </div>
+                <figcaption>3D to Screen Projection</figcaption>
+            </figure>
+<h2 class="article-section section-heading">Touch-Friendly Hit Zones</h2>
+<p class="article-section section-paragraph">The real win: you can decouple visual size from interaction size. A 5-pixel sphere can have a 40-pixel hit zone. Users don&#39;t need to be surgeons to click your UI.</p>
+<figure class="article-section section-svg-diagram" data-diagram-id="hit-zone-expansion">
+                <div class="svg-container" style="max-width: 700px;">
+                    <div class="svg-placeholder" data-width="700" data-height="220">
+                        <noscript>Diagram: Visual vs Hit Zone Radius</noscript>
+                    </div>
+                </div>
+                <figcaption>Visual vs Hit Zone Radius</figcaption>
+            </figure>
+<aside class="article-section section-callout tip">
+                <p>For mobile, enforce a minimum hit zone of ~44px (Apple&#39;s recommendation). Desktop can be smaller but never less than visual radius + padding.</p>
+            </aside>
+<h2 class="article-section section-heading">Optimizations</h2>
+<h3 class="article-section section-heading">1. Early Rejection</h3>
+<p class="article-section section-paragraph">Skip spheres behind the camera before doing any math. A single dot product tells you if an object is in front or behind.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Early Camera Culling</span>
+                    <span class="code-language">javascript</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// Dot product of (object - camera) with camera forward</span>
+<span class="keyword">const</span> toObject = subtract(sphere.position, camera.position);
+<span class="keyword">const</span> dot = dot3(toObject, camera.forward);
+
+<span class="keyword">if</span> (dot &lt; <span class="number">0</span>) continue; <span class="comment">// Behind camera, skip entirely</span></pre></div>
+            </div>
+<h3 class="article-section section-heading">2. Squared Distance</h3>
+<p class="article-section section-paragraph">sqrt() is expensive. Compare squared distances against squared thresholds to skip the square root entirely.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Avoiding sqrt()</span>
+                    <span class="code-language">javascript</span>
+                </div>
+                <div class="code-content"><pre><span class="keyword">const</span> distSq = dx * dx + dy * dy;
+<span class="keyword">const</span> hitRadiusSq = hitRadius * hitRadius;
+
+<span class="keyword">if</span> (distSq &lt; hitRadiusSq &amp;&amp; distSq &lt; closestDistSq) {
+    closest = sphere;
+    closestDistSq = distSq;
+}</pre></div>
+            </div>
+<h3 class="article-section section-heading">3. Spatial Partitioning</h3>
+<p class="article-section section-paragraph">For thousands of objects, divide screen space into a grid. Only test objects in the cell containing the mouse (plus neighbors). O(n) becomes O(1) average case.</p>
+<h3 class="article-section section-heading">4. Unity-Specific: BurstCompiler + Jobs</h3>
+<p class="article-section section-paragraph">In Unity, NativeArrays with Burst-compiled jobs can process thousands of sphere projections in parallel. The selection loop becomes vectorized SIMD operations.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Burst-Compiled Selection Job (Unity)</span>
+                    <span class="code-language">cpp</span>
+                </div>
+                <div class="code-content"><pre>[BurstCompile]
+public <span class="keyword">struct</span> SelectionJob : IJobParallelFor {
+    [ReadOnly] public NativeArray&lt;float3&gt; positions;
+    [ReadOnly] public NativeArray&lt;<span class="keyword">float</span>&gt; radii;
+    [ReadOnly] public float4x4 viewProj;
+    [ReadOnly] public float2 mousePos;
+    [ReadOnly] public float2 screenSize;
+    
+    public NativeArray&lt;<span class="keyword">float</span>&gt; distancesSq; <span class="comment">// Output</span>
+    
+    public <span class="keyword">void</span> Execute(<span class="keyword">int</span> i) {
+        float4 clip = math.mul(viewProj, <span class="keyword">new</span> float4(positions[i], <span class="number">1</span>));
+        <span class="keyword">if</span> (clip.w &lt; <span class="number">0.01f</span>) { distancesSq[i] = <span class="keyword">float</span>.MaxValue; <span class="keyword">return</span>; }
+        
+        float2 ndc = clip.xy / clip.w;
+        float2 screen = (ndc * <span class="number">0.5f</span> + <span class="number">0.5f</span>) * screenSize;
+        
+        float2 delta = screen - mousePos;
+        distancesSq[i] = math.<span class="function">dot</span>(delta, delta);
+    }
+}</pre></div>
+            </div>
+<aside class="article-section section-callout info">
+                <p>With Burst, 10,000 sphere projections complete in under 0.1ms on a modern CPU. The bottleneck shifts to memory bandwidth, not compute.</p>
+            </aside>
+<h2 class="article-section section-heading">Key Takeaways</h2>
+<ul class="article-section section-list"><li>Raycasting small spheres is unreliable—floating-point errors and sub-pixel targets hurt UX</li>
+<li>Project to screen space, measure 2D distance. Simpler math, better results</li>
+<li>Expand hit zones beyond visual radius for touch-friendly interaction</li>
+<li>Skip sqrt() by comparing squared distances</li>
+<li>For large object counts, use spatial partitioning or Burst-compiled parallel jobs</li></ul>
+            </div>
+        </article>
+
+        <!-- CTA Banner -->
+        <div class="article-cta-banner">
+            <h2 class="cta-banner-title">Want to see more?</h2>
+            <p class="cta-banner-subtitle">Check out my interactive portfolio with live shader demos</p>
+            <div class="cta-banner-buttons">
+                <a href="../../?tab=contact" class="cta-banner-btn primary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22,6 12,13 2,6"/>
+                    </svg>
+                    Get in Touch
+                </a>
+                <a href="../../?tab=skills" class="cta-banner-btn secondary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                    Live Demos
+                </a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="static-footer">
+            <div class="footer-author">
+                <span class="footer-author-name">Charles Grassi</span>
+                <span class="footer-author-title">Graphics Programmer & Technical Artist</span>
+            </div>
+            <div class="footer-links">
+                <a href="../../" class="footer-link">Portfolio</a>
+                <a href="../../blog/" class="footer-link">Blog</a>
+                <a href="https://twitter.com/charles_grassi" class="footer-link" target="_blank" rel="noopener">Twitter</a>
+                <a href="https://www.linkedin.com/in/charles-grassi/" class="footer-link" target="_blank" rel="noopener">LinkedIn</a>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Optional: Load JS for interactive diagrams/demos -->
+    <script src="../../js/blog-diagrams.js" defer></script>
+    <script>
+        // Initialize SVG diagrams if blog-diagrams.js is available
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof window.blogSvgDiagrams !== 'undefined') {
+                var diagrams = document.querySelectorAll('.section-svg-diagram');
+                diagrams.forEach(function(container) {
+                    var id = container.getAttribute('data-diagram-id');
+                    var placeholder = container.querySelector('.svg-placeholder');
+                    if (placeholder && window.blogSvgDiagrams[id]) {
+                        var w = parseInt(placeholder.getAttribute('data-width')) || 600;
+                        var h = parseInt(placeholder.getAttribute('data-height')) || 200;
+                        var svgContainer = container.querySelector('.svg-container');
+                        svgContainer.innerHTML = '';
+                        try {
+                            window.blogSvgDiagrams[id](svgContainer, w, h);
+                        } catch (e) {
+                            console.error('Diagram error:', id, e);
+                        }
+                    }
+                });
+            }
+
+            // Initialize shader demos
+            var demos = document.querySelectorAll('.section-shader-demo');
+            demos.forEach(function(container) {
+                var canvas = container.querySelector('.shader-canvas');
+                var loadingEl = container.querySelector('.shader-loading');
+                var configStr = container.getAttribute('data-shader-config');
+
+                if (!canvas || !configStr) return;
+
+                try {
+                    var config = JSON.parse(configStr);
+                    initShaderDemo(canvas, config, container, loadingEl);
+                } catch (e) {
+                    if (loadingEl) {
+                        loadingEl.textContent = 'Shader error: ' + e.message;
+                        loadingEl.classList.add('error');
+                    }
+                }
+            });
+        });
+
+        function initShaderDemo(canvas, config, container, loadingEl) {
+            var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (!gl) throw new Error('WebGL not supported');
+
+            var vertShader = gl.createShader(gl.VERTEX_SHADER);
+            gl.shaderSource(vertShader, config.vertexShader);
+            gl.compileShader(vertShader);
+            if (!gl.getShaderParameter(vertShader, gl.COMPILE_STATUS)) {
+                throw new Error(gl.getShaderInfoLog(vertShader));
+            }
+
+            var fragShader = gl.createShader(gl.FRAGMENT_SHADER);
+            gl.shaderSource(fragShader, config.fragmentShader);
+            gl.compileShader(fragShader);
+            if (!gl.getShaderParameter(fragShader, gl.COMPILE_STATUS)) {
+                throw new Error(gl.getShaderInfoLog(fragShader));
+            }
+
+            var program = gl.createProgram();
+            gl.attachShader(program, vertShader);
+            gl.attachShader(program, fragShader);
+            gl.linkProgram(program);
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                throw new Error(gl.getProgramInfoLog(program));
+            }
+
+            gl.useProgram(program);
+
+            var posBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1
+            ]), gl.STATIC_DRAW);
+
+            var posLoc = gl.getAttribLocation(program, 'a_position');
+            gl.enableVertexAttribArray(posLoc);
+            gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+            var uniformLocs = {};
+            var uniformValues = {};
+            for (var name in config.uniforms) {
+                uniformLocs[name] = gl.getUniformLocation(program, name);
+                uniformValues[name] = config.uniforms[name].value;
+            }
+
+            // Setup controls
+            var controls = container.querySelectorAll('input[type="range"]');
+            controls.forEach(function(input) {
+                var uniformName = input.getAttribute('data-uniform');
+                var valueDisplay = input.parentElement.querySelector('.control-value');
+                input.addEventListener('input', function() {
+                    uniformValues[uniformName] = parseFloat(input.value);
+                    if (valueDisplay) valueDisplay.textContent = parseFloat(input.value).toFixed(2);
+                });
+            });
+
+            var startTime = performance.now();
+
+            function render() {
+                var elapsed = (performance.now() - startTime) / 1000;
+                gl.viewport(0, 0, canvas.width, canvas.height);
+                gl.clearColor(0.04, 0.06, 0.08, 1.0);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                gl.useProgram(program);
+
+                for (var name in uniformLocs) {
+                    var loc = uniformLocs[name];
+                    if (!loc) continue;
+                    if (name === 'u_time') gl.uniform1f(loc, elapsed);
+                    else if (name === 'u_resolution') gl.uniform2f(loc, canvas.width, canvas.height);
+                    else {
+                        var val = uniformValues[name];
+                        if (typeof val === 'number') gl.uniform1f(loc, val);
+                        else if (Array.isArray(val) && val.length === 2) gl.uniform2f(loc, val[0], val[1]);
+                        else if (Array.isArray(val) && val.length === 3) gl.uniform3f(loc, val[0], val[1], val[2]);
+                    }
+                }
+
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+                requestAnimationFrame(render);
+            }
+
+            if (loadingEl) loadingEl.style.display = 'none';
+            render();
+        }
+    </script>
+</body>
+</html>

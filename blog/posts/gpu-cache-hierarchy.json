@@ -15,6 +15,17 @@
             "content": "Every texture sample in your shader triggers a memory request. Whether that request takes 4 cycles or 400+ cycles depends entirely on where the data lives in the GPU's memory hierarchy. Understanding cache behavior isn't just academic—it's the difference between 60fps and 30fps in texture-heavy shaders."
         },
         {
+            "type": "heading",
+            "level": 3,
+            "content": "TL;DR — Quick Reference"
+        },
+        {
+            "type": "code",
+            "language": "text",
+            "title": "GPU Memory Hierarchy At a Glance",
+            "content": "┌──────────────────┬─────────────┬──────────────────┬───────────────┐\n│ Memory Level     │ Latency     │ Size (per SM)    │ Bandwidth     │\n├──────────────────┼─────────────┼──────────────────┼───────────────┤\n│ Registers        │ ~1 cycle    │ 256KB            │ ~20 TB/s      │\n│ L1 Cache         │ ~30 cycles  │ 128-192KB        │ ~12 TB/s      │\n│ L2 Cache         │ ~150 cycles │ 4-40MB (shared)  │ ~3 TB/s       │\n│ VRAM (GDDR6)     │ ~500 cycles │ 8-24GB           │ ~1 TB/s       │\n└──────────────────┴─────────────┴──────────────────┴───────────────┘\n\nKey insight: L1 hit = ~30 cycles, VRAM miss = ~500 cycles → 15x difference!"
+        },
+        {
             "type": "svg-diagram",
             "id": "cache-hierarchy-overview",
             "title": "GPU Memory Hierarchy Overview",
@@ -34,8 +45,8 @@
             "type": "list",
             "items": [
                 "Registers: ~1 cycle access, 256KB total per SM (shared across thousands of threads)",
-                "L1 Cache: ~20-30 cycles, 32-128KB per SM, dedicated to each streaming multiprocessor",
-                "L2 Cache: ~100-200 cycles, 2-6MB shared across all SMs, unified memory controller",
+                "L1 Cache: ~28-35 cycles, 128-192KB per SM, dedicated to each streaming multiprocessor",
+                "L2 Cache: ~150-200 cycles, 4-40MB shared across all SMs, unified memory controller",
                 "VRAM (GDDR6/HBM): ~400-800 cycles, 8-24GB, massive bandwidth but high latency"
             ]
         },
@@ -173,7 +184,7 @@
             "width": 700,
             "height": 350,
             "vertexShader": "attribute vec2 a_position;\nvarying vec2 v_texCoord;\nvoid main() {\n    v_texCoord = a_position * 0.5 + 0.5;\n    gl_Position = vec4(a_position, 0.0, 1.0);\n}",
-            "fragmentShader": "precision highp float;\nvarying vec2 v_texCoord;\nuniform float u_time;\nuniform float u_pattern;\nuniform float u_cacheLineSize;\n\n// Simple hash for visualization\nfloat hash(vec2 p) {\n    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);\n}\n\nvoid main() {\n    vec2 uv = v_texCoord;\n    \n    // Simulate a texture grid (16x16 'texels')\n    vec2 texelCoord = floor(uv * 16.0);\n    \n    // Cache line: 4 texels wide (simulated)\n    vec2 cacheLine = floor(texelCoord / u_cacheLineSize);\n    \n    // Current 'fetch' position animated over time\n    float t = u_time * 0.5;\n    vec2 fetchPos;\n    \n    if (u_pattern < 0.5) {\n        // Coherent: scan left-to-right, top-to-bottom\n        float scanLine = floor(mod(t * 4.0, 16.0));\n        float scanCol = mod(t * 64.0, 16.0);\n        fetchPos = vec2(scanCol, scanLine);\n    } else {\n        // Random: jump around unpredictably\n        float frame = floor(t * 8.0);\n        fetchPos = vec2(\n            hash(vec2(frame, 0.0)) * 16.0,\n            hash(vec2(0.0, frame)) * 16.0\n        );\n    }\n    \n    vec2 fetchCacheLine = floor(fetchPos / u_cacheLineSize);\n    \n    // Visualize cache line hit\n    float isActiveCacheLine = step(0.5, 1.0 - length(cacheLine - fetchCacheLine));\n    float isActiveTexel = step(length(texelCoord - floor(fetchPos)), 0.5);\n    \n    // Color: texel grid with cache line highlighting\n    vec3 gridColor = vec3(0.1, 0.12, 0.15);\n    vec3 texelColor = mix(gridColor, vec3(0.15, 0.18, 0.22), \n        step(0.5, mod(texelCoord.x + texelCoord.y, 2.0)));\n    \n    // Cache line border\n    vec2 withinCache = mod(texelCoord, u_cacheLineSize);\n    float isCacheBorder = step(withinCache.x, 0.5) + step(withinCache.y, 0.5);\n    texelColor = mix(texelColor, vec3(0.2, 0.25, 0.3), min(isCacheBorder, 1.0) * 0.5);\n    \n    // Highlight active cache line (what we'd fetch)\n    vec3 cacheHitColor = u_pattern < 0.5 ? vec3(0.18, 0.83, 0.75) : vec3(0.91, 0.73, 0.14);\n    texelColor = mix(texelColor, cacheHitColor * 0.4, isActiveCacheLine * 0.8);\n    \n    // Highlight the actual sampled texel\n    texelColor = mix(texelColor, vec3(1.0), isActiveTexel);\n    \n    // Grid lines\n    vec2 grid = abs(fract(uv * 16.0) - 0.5);\n    float gridLine = step(0.45, max(grid.x, grid.y));\n    texelColor = mix(texelColor, vec3(0.3), gridLine * 0.3);\n    \n    gl_FragColor = vec4(texelColor, 1.0);\n}",
+            "fragmentShader": "precision highp float;\nvarying vec2 v_texCoord;\nuniform float u_time;\nuniform float u_pattern;\nuniform float u_cacheLineSize;\nuniform vec2 u_resolution;\n\n// Simple hash for visualization\nfloat hash(vec2 p) {\n    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);\n}\n\nvoid main() {\n    // Correct for aspect ratio - make grid square\n    float aspect = u_resolution.x / u_resolution.y;\n    vec2 uv = v_texCoord;\n    uv.x *= aspect;\n    \n    // Center the grid\n    float gridSize = 16.0;\n    float totalWidth = gridSize * aspect;\n    float offset = (totalWidth - gridSize) * 0.5;\n    uv.x -= offset / gridSize;\n    \n    // Simulate a texture grid (16x16 'texels')\n    vec2 texelCoord = floor(uv * gridSize);\n    \n    // Out of bounds check\n    if (texelCoord.x < 0.0 || texelCoord.x >= gridSize || texelCoord.y < 0.0 || texelCoord.y >= gridSize) {\n        gl_FragColor = vec4(vec3(0.05, 0.06, 0.08), 1.0);\n        return;\n    }\n    \n    // Cache line: 4 texels wide (simulated)\n    vec2 cacheLine = floor(texelCoord / u_cacheLineSize);\n    \n    // Current 'fetch' position animated over time\n    float t = u_time * 0.5;\n    vec2 fetchPos;\n    \n    if (u_pattern < 0.5) {\n        // Coherent: scan left-to-right, top-to-bottom\n        float scanLine = floor(mod(t * 4.0, gridSize));\n        float scanCol = mod(t * 64.0, gridSize);\n        fetchPos = vec2(scanCol, scanLine);\n    } else {\n        // Random: jump around unpredictably\n        float frame = floor(t * 8.0);\n        fetchPos = vec2(\n            hash(vec2(frame, 0.0)) * gridSize,\n            hash(vec2(0.0, frame)) * gridSize\n        );\n    }\n    \n    vec2 fetchCacheLine = floor(fetchPos / u_cacheLineSize);\n    \n    // Visualize cache line hit\n    float isActiveCacheLine = step(0.5, 1.0 - length(cacheLine - fetchCacheLine));\n    float isActiveTexel = step(length(texelCoord - floor(fetchPos)), 0.5);\n    \n    // Color: texel grid with cache line highlighting\n    vec3 gridColor = vec3(0.1, 0.12, 0.15);\n    vec3 texelColor = mix(gridColor, vec3(0.15, 0.18, 0.22), \n        step(0.5, mod(texelCoord.x + texelCoord.y, 2.0)));\n    \n    // Cache line border\n    vec2 withinCache = mod(texelCoord, u_cacheLineSize);\n    float isCacheBorder = step(withinCache.x, 0.5) + step(withinCache.y, 0.5);\n    texelColor = mix(texelColor, vec3(0.2, 0.25, 0.3), min(isCacheBorder, 1.0) * 0.5);\n    \n    // Highlight active cache line (what we'd fetch)\n    vec3 cacheHitColor = u_pattern < 0.5 ? vec3(0.18, 0.83, 0.75) : vec3(0.91, 0.73, 0.14);\n    texelColor = mix(texelColor, cacheHitColor * 0.4, isActiveCacheLine * 0.8);\n    \n    // Highlight the actual sampled texel\n    texelColor = mix(texelColor, vec3(1.0), isActiveTexel);\n    \n    // Grid lines\n    vec2 grid = abs(fract(uv * gridSize) - 0.5);\n    float gridLine = step(0.42, max(grid.x, grid.y));\n    texelColor = mix(texelColor, vec3(0.3), gridLine * 0.3);\n    \n    gl_FragColor = vec4(texelColor, 1.0);\n}",
             "uniforms": {
                 "u_time": { "type": "float", "value": 0.0 },
                 "u_pattern": { "type": "float", "value": 0.0 },
@@ -295,48 +306,6 @@
         {
             "type": "heading",
             "level": 2,
-            "content": "Interactive Demo: Cache Miss Cost"
-        },
-        {
-            "type": "paragraph",
-            "content": "This demo simulates the visual impact of cache misses by artificially delaying 'uncached' samples. Coherent patterns render smoothly; incoherent patterns show temporal artifacts as we simulate fetch latency."
-        },
-        {
-            "type": "shader-demo",
-            "id": "cache-miss-cost-demo",
-            "title": "Simulated Cache Miss Impact",
-            "width": 700,
-            "height": 350,
-            "vertexShader": "attribute vec2 a_position;\nvarying vec2 v_texCoord;\nvoid main() {\n    v_texCoord = a_position * 0.5 + 0.5;\n    gl_Position = vec4(a_position, 0.0, 1.0);\n}",
-            "fragmentShader": "precision highp float;\nvarying vec2 v_texCoord;\nuniform float u_time;\nuniform float u_incoherence;\nuniform float u_showLatency;\n\n// Noise functions for procedural texture\nfloat hash(vec2 p) {\n    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);\n}\n\nfloat noise(vec2 p) {\n    vec2 i = floor(p);\n    vec2 f = fract(p);\n    f = f * f * (3.0 - 2.0 * f);\n    return mix(\n        mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),\n        mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),\n        f.y\n    );\n}\n\nfloat fbm(vec2 p) {\n    float v = 0.0;\n    float a = 0.5;\n    for (int i = 0; i < 4; i++) {\n        v += a * noise(p);\n        p *= 2.0;\n        a *= 0.5;\n    }\n    return v;\n}\n\nvoid main() {\n    vec2 uv = v_texCoord;\n    \n    // Add incoherence: random UV offset per pixel\n    vec2 offset = vec2(\n        hash(gl_FragCoord.xy + u_time),\n        hash(gl_FragCoord.yx - u_time)\n    ) * u_incoherence * 0.5;\n    \n    vec2 sampleUV = uv + offset;\n    \n    // Simulate cache miss latency by temporal jitter\n    float cacheMiss = step(0.5, hash(floor(sampleUV * 8.0) + floor(u_time * 10.0)));\n    float latencyNoise = hash(gl_FragCoord.xy + u_time * 100.0);\n    \n    // Sample our 'texture' (procedural pattern)\n    float pattern = fbm(sampleUV * 8.0);\n    pattern += fbm(sampleUV * 16.0) * 0.5;\n    \n    // Apply simulated latency artifacts\n    float latencyArtifact = cacheMiss * u_showLatency * latencyNoise * u_incoherence;\n    pattern = mix(pattern, pattern * (1.0 - latencyArtifact * 0.5), u_showLatency);\n    \n    // Color based on cache efficiency\n    vec3 coherentColor = vec3(0.18, 0.83, 0.75); // Teal\n    vec3 missColor = vec3(0.91, 0.73, 0.14);     // Gold  \n    vec3 color = mix(coherentColor, missColor, u_incoherence) * pattern;\n    \n    // Show 'stall' indicator\n    if (u_showLatency > 0.5 && cacheMiss > 0.5 && u_incoherence > 0.3) {\n        color = mix(color, vec3(0.8, 0.2, 0.1), latencyNoise * 0.3);\n    }\n    \n    gl_FragColor = vec4(color, 1.0);\n}",
-            "uniforms": {
-                "u_time": { "type": "float", "value": 0.0 },
-                "u_incoherence": { "type": "float", "value": 0.0 },
-                "u_showLatency": { "type": "float", "value": 0.0 },
-                "u_resolution": { "type": "vec2", "value": [700, 350] }
-            },
-            "controls": [
-                {
-                    "uniform": "u_incoherence",
-                    "label": "UV Incoherence (0=Coherent, 1=Random)",
-                    "min": 0,
-                    "max": 1,
-                    "step": 0.01,
-                    "default": 0
-                },
-                {
-                    "uniform": "u_showLatency",
-                    "label": "Show Latency Artifacts (0=Off, 1=On)",
-                    "min": 0,
-                    "max": 1,
-                    "step": 1,
-                    "default": 0
-                }
-            ]
-        },
-        {
-            "type": "heading",
-            "level": 2,
             "content": "Architecture Differences"
         },
         {
@@ -358,12 +327,44 @@
         {
             "type": "heading",
             "level": 2,
+            "content": "Quick Wins: Copy-Paste Patterns"
+        },
+        {
+            "type": "paragraph",
+            "content": "Here are battle-tested patterns you can apply immediately to improve cache efficiency in your shaders."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Pattern 1: ORM Texture Packing",
+            "content": "// Pack Occlusion, Roughness, Metallic into one texture\n// BEFORE: 3 texture fetches (wasteful)\nfloat ao = texture(uAO, uv).r;        // Only uses R channel\nfloat rough = texture(uRough, uv).r;  // Only uses R channel\nfloat metal = texture(uMetal, uv).r;  // Only uses R channel\n\n// AFTER: 1 texture fetch (3x faster)\nvec3 orm = texture(uORM, uv).rgb;\nfloat ao = orm.r;\nfloat rough = orm.g;\nfloat metal = orm.b;"
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Pattern 2: Early Texture Prefetch",
+            "content": "// Issue ALL texture fetches first, then do math\nvoid main() {\n    // === FETCH PHASE (non-blocking) ===\n    vec4 albedo   = texture(uAlbedo, vUV);\n    vec4 normal   = texture(uNormal, vUV);\n    vec4 orm      = texture(uORM, vUV);\n    vec4 emissive = texture(uEmissive, vUV);\n    \n    // === COMPUTE PHASE (hides latency) ===\n    vec3 N = decodeNormal(normal.xy);\n    vec3 V = normalize(uCameraPos - vWorldPos);\n    vec3 L = normalize(uLightDir);\n    vec3 H = normalize(V + L);\n    \n    float NdotL = max(dot(N, L), 0.0);\n    float NdotV = max(dot(N, V), 0.0);\n    float NdotH = max(dot(N, H), 0.0);\n    float VdotH = max(dot(V, H), 0.0);\n    \n    // === USE PHASE (textures ready by now) ===\n    vec3 F0 = mix(vec3(0.04), albedo.rgb, orm.b);\n    // ... rest of PBR calculation\n}"
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Pattern 3: Mip Bias for Blur Passes",
+            "content": "// When doing blur/downsample, use higher mip levels\n// This saves bandwidth since you're averaging anyway\n\n// Standard blur (fetches full-res texels)\nvec4 blur = vec4(0.0);\nfor (int i = 0; i < 9; i++) {\n    blur += texture(uTexture, uv + offsets[i]) * weights[i];\n}\n\n// Cache-friendly blur (uses lower mip = fewer cache lines)\nvec4 blur = vec4(0.0);\nfloat mipBias = 1.0; // Use mip level 1 (half res)\nfor (int i = 0; i < 9; i++) {\n    blur += texture(uTexture, uv + offsets[i], mipBias) * weights[i];\n}"
+        },
+        {
+            "type": "callout",
+            "variant": "tip",
+            "content": "Combine these patterns: Pack your PBR textures into ORM format, prefetch all at shader start, and use mip bias in post-processing passes. This alone can yield 20-40% improvement in texture-heavy shaders."
+        },
+        {
+            "type": "heading",
+            "level": 2,
             "content": "Key Takeaways"
         },
         {
             "type": "list",
             "items": [
-                "Cache hits are 10-20x faster than VRAM fetches. Coherent access patterns are critical for performance.",
+                "Cache hits are ~15x faster than VRAM fetches (30 vs 500 cycles). Coherent access patterns are critical for performance.",
                 "Mipmapping isn't optional—it's a cache optimization that keeps your working set manageable.",
                 "Pack related data into fewer textures. Four 1-channel fetches cost more than one 4-channel fetch.",
                 "Issue texture fetches early and do math while waiting. GPUs hide latency through parallelism.",
