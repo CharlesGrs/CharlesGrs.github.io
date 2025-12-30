@@ -30,6 +30,7 @@ uniform float uMinDim;      // Minimum dimension for consistent world scale
 uniform float uCameraRotX;  // Camera rotation around X axis (pitch)
 uniform float uCameraRotY;  // Camera rotation around Y axis (yaw)
 uniform vec3 uCameraPos;    // Camera position XYZ (free camera)
+uniform float uQuadExpand;  // Quad expansion multiplier (default 3.0 for planets)
 
 void main() {
     vUV = aPos;
@@ -95,8 +96,9 @@ void main() {
     // Scale the radius by perspective
     float scaledRadius = aRadius * perspectiveScale;
 
-    // Build quad vertices
-    vec2 quadPos = projectedCenter + aPos * scaledRadius * 3.0;
+    // Build quad vertices (uQuadExpand controls how much larger quad is than radius)
+    float quadMult = uQuadExpand > 0.0 ? uQuadExpand : 3.0;
+    vec2 quadPos = projectedCenter + aPos * scaledRadius * quadMult;
 
     // Convert to clip space
     vec2 clipPos = (quadPos / uRes) * 2.0 - 1.0;

@@ -84,7 +84,8 @@
                     controls: [
                         { type: 'slider', id: 'sun-core-size', label: 'Core Size', param: 'sunParams.coreSize', min: 0.2, max: 1.0, step: 0.05, decimals: 2 },
                         { type: 'slider', id: 'sun-glow-size', label: 'Glow Size', param: 'sunParams.glowSize', min: 0.5, max: 2.0, step: 0.1, decimals: 1 },
-                        { type: 'slider', id: 'sun-glow-intensity', label: 'Glow Intensity', param: 'sunParams.glowIntensity', min: 0, max: 3, step: 0.1, decimals: 1 }
+                        { type: 'slider', id: 'sun-glow-intensity', label: 'Glow Intensity', param: 'sunParams.glowIntensity', min: 0, max: 3, step: 0.1, decimals: 1 },
+                        { type: 'slider', id: 'sun-quad-scale', label: 'Quad Scale', param: 'sunParams.quadScale', min: 0.2, max: 1.0, step: 0.05, decimals: 2 }
                     ]
                 },
                 {
@@ -197,10 +198,10 @@
                     controls: [
                         { type: 'checkbox', id: 'glass-enabled', label: 'Enabled', param: 'glassParams.enabled' },
                         { type: 'subheader', label: 'Position' },
-                        { type: 'slider', id: 'glass-offset-x', label: 'Offset X', param: 'glassParams.offsetX', min: -1000, max: 1000, step: 5, decimals: 0 },
-                        { type: 'slider', id: 'glass-offset-y', label: 'Offset Y', param: 'glassParams.offsetY', min: -1000, max: 1000, step: 5, decimals: 0 },
-                        { type: 'slider', id: 'glass-scale-x', label: 'Scale X', param: 'glassParams.scaleX', min: 0.1, max: 5.0, step: 0.05, decimals: 2 },
-                        { type: 'slider', id: 'glass-scale-y', label: 'Scale Y', param: 'glassParams.scaleY', min: 0.1, max: 5.0, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'glass-offset-x', label: 'Offset X', param: 'glassParams.offsetX', min: -500, max: 500, step: 5, decimals: 0 },
+                        { type: 'slider', id: 'glass-offset-y', label: 'Offset Y', param: 'glassParams.offsetY', min: -500, max: 500, step: 5, decimals: 0 },
+                        { type: 'slider', id: 'glass-scale-x', label: 'Scale X', param: 'glassParams.scaleX', min: 0.1, max: 2.0, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'glass-scale-y', label: 'Scale Y', param: 'glassParams.scaleY', min: 0.1, max: 2.0, step: 0.05, decimals: 2 },
                         { type: 'subheader', label: 'Blur' },
                         { type: 'slider', id: 'glass-blur-radius', label: 'Blur Radius', param: 'glassParams.blurRadius', min: 0.5, max: 8, step: 0.1, decimals: 1 },
                         { type: 'slider', id: 'glass-blur-passes', label: 'Blur Passes', param: 'glassParams.blurPasses', min: 1, max: 6, step: 1, decimals: 0 },
@@ -228,7 +229,15 @@
                         { type: 'slider', id: 'glass-opacity', label: 'Tint Strength', param: 'glassParams.glassOpacity', min: 0, max: 0.5, step: 0.01, decimals: 2 },
                         { type: 'slider', id: 'glass-tint-r', label: 'Tint Red', param: 'glassParams.glassTintR', min: 0, max: 2, step: 0.05, decimals: 2 },
                         { type: 'slider', id: 'glass-tint-g', label: 'Tint Green', param: 'glassParams.glassTintG', min: 0, max: 2, step: 0.05, decimals: 2 },
-                        { type: 'slider', id: 'glass-tint-b', label: 'Tint Blue', param: 'glassParams.glassTintB', min: 0, max: 2, step: 0.05, decimals: 2 }
+                        { type: 'slider', id: 'glass-tint-b', label: 'Tint Blue', param: 'glassParams.glassTintB', min: 0, max: 2, step: 0.05, decimals: 2 },
+                        { type: 'subheader', label: 'SDF Bump (Logo)' },
+                        { type: 'checkbox', id: 'glass-sdf-enabled', label: 'Enabled', param: 'glassParams.sdfBumpEnabled' },
+                        { type: 'slider', id: 'glass-sdf-strength', label: 'Bump Strength', param: 'glassParams.sdfBumpStrength', min: -1, max: 1, step: 0.01, decimals: 2 },
+                        { type: 'slider', id: 'glass-sdf-pow', label: 'SDF Power', param: 'glassParams.sdfBumpPow', min: 0.1, max: 4, step: 0.1, decimals: 1 },
+                        { type: 'slider', id: 'glass-sdf-distance', label: 'Distance', param: 'glassParams.sdfDistance', min: 0, max: 1, step: 0.01, decimals: 2 },
+                        { type: 'slider', id: 'glass-sdf-scale', label: 'Scale', param: 'glassParams.sdfScale', min: 0.1, max: 3, step: 0.05, decimals: 2 },
+                        { type: 'slider', id: 'glass-sdf-offset-x', label: 'Offset X', param: 'glassParams.sdfOffsetX', min: -1, max: 1, step: 0.01, decimals: 2 },
+                        { type: 'slider', id: 'glass-sdf-offset-y', label: 'Offset Y', param: 'glassParams.sdfOffsetY', min: -1, max: 1, step: 0.01, decimals: 2 }
                     ]
                 }
             ]

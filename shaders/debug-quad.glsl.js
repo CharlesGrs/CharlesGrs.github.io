@@ -1,4 +1,4 @@
-// Debug Quad Vertex Shader - Matches planet shader projection
+// Selection Quad Vertex Shader - Animated selection indicator for skill nodes
 window.DEBUG_QUAD_VERTEX_SHADER = `
 attribute vec2 aPosition;
 uniform vec2 uCenter;
@@ -9,12 +9,16 @@ uniform float uCameraRotX;
 uniform float uCameraRotY;
 uniform float uWorldZ;
 uniform float uMinDim;
+uniform float uTime;
+uniform float uQuadExpand; // Must match planet/sun shader quad expansion
 
 varying vec2 vUV;
-varying float vScreenSize;  // Scaled radius in pixels for constant border width
+varying float vScreenSize;
+varying float vTime;
 
 void main() {
     vUV = aPosition;
+    vTime = uTime;
 
     // Camera rotation
     float cosRotX = cos(uCameraRotX);
@@ -31,7 +35,7 @@ void main() {
     vec2 screenCenter = uResolution * 0.5;
     vec2 offsetFromCenter = uCenter - screenCenter;
 
-    // Scale factor to convert screen pixels to world units (same as planet shader)
+    // Scale factor to convert screen pixels to world units
     float worldScale = 1.0 / uMinDim;
 
     // Node position in world space
@@ -50,7 +54,7 @@ void main() {
         return;
     }
 
-    // Perspective projection (1/distance)
+    // Perspective projection
     float perspectiveScale = 1.0 / zDist;
 
     // Project node position onto screen
@@ -62,10 +66,11 @@ void main() {
 
     // Scale the radius by perspective
     float scaledRadius = uSize * perspectiveScale;
-    vScreenSize = scaledRadius * 3.0;  // Pass screen-space size to fragment shader
+    float quadMult = uQuadExpand > 0.0 ? uQuadExpand : 3.0;
+    vScreenSize = scaledRadius * quadMult;
 
     // Build quad vertices
-    vec2 quadPos = projectedCenter + aPosition * scaledRadius * 3.0;
+    vec2 quadPos = projectedCenter + aPosition * scaledRadius * quadMult;
 
     // Convert to clip space
     vec2 clipPos = (quadPos / uResolution) * 2.0 - 1.0;
@@ -76,17 +81,92 @@ window.DEBUG_QUAD_FRAGMENT_SHADER = `
 precision highp float;
 varying vec2 vUV;
 varying float vScreenSize;
+varying float vTime;
+
+// Cyan accent color
+const vec3 SELECTION_COLOR = vec3(0.18, 0.83, 0.75); // #2dd4bf teal/cyan
+const vec3 HIGHLIGHT_COLOR = vec3(0.6, 1.0, 0.95);
 
 void main() {
-    // Constant screen-space border width in pixels
-    float borderPixels = 1.5;
-    // Convert to UV space based on current quad size
-    float w = borderPixels / vScreenSize;
+    vec2 absUV = abs(vUV);
+    float edgeDist = max(absUV.x, absUV.y);
 
-    float e = max(abs(vUV.x), abs(vUV.y));
-    float border = smoothstep(1.0 - w * 2.0, 1.0, e);
-    float diag = 1.0 - smoothstep(0.0, w * 2.0, abs(vUV.x - vUV.y));
-    float a = max(border, diag) * 0.9;
-    if (a < 0.01) discard;
-    gl_FragColor = vec4(1.0, 0.5, 0.0, a);
+    // Adaptive line width based on screen size (thicker when small/distant)
+    float baseWidth = 2.0 / vScreenSize;
+    float lineWidth = max(baseWidth, 0.03); // Minimum width for visibility
+
+    // Smooth edge falloff for anti-aliasing
+    float aa = 1.5 / vScreenSize;
+
+    // Main border - simple clean line
+    float border = smoothstep(1.0 - lineWidth - aa, 1.0 - lineWidth, edgeDist)
+                 * smoothstep(1.0 + aa, 1.0, edgeDist);
+
+    // Animated marching ants effect
+    // Calculate position along perimeter (0-4 for each edge)
+    vec2 p = vUV * 0.5 + 0.5; // 0 to 1
+    float perim;
+
+    // Determine which edge and position along it
+    float distTop = p.y;
+    float distRight = 1.0 - p.x;
+    float distBottom = 1.0 - p.y;
+    float distLeft = p.x;
+    float minDist = min(min(distTop, distRight), min(distBottom, distLeft));
+
+    // Smooth edge selection to avoid discontinuities
+    if (minDist == distTop) {
+        perim = p.x;
+    } else if (minDist == distRight) {
+        perim = 1.0 + p.y;
+    } else if (minDist == distBottom) {
+        perim = 2.0 + (1.0 - p.x);
+    } else {
+        perim = 3.0 + (1.0 - p.y);
+    }
+
+    // Marching dash pattern - scale frequency with size for consistency
+    float dashScale = max(vScreenSize / 80.0, 1.0);
+    float dashFreq = 8.0 * dashScale;
+    float dashPhase = perim * dashFreq - vTime * 1.2;
+
+    // Soft dash shape (no hard edges)
+    float dash = smoothstep(0.3, 0.5, fract(dashPhase)) * smoothstep(0.8, 0.6, fract(dashPhase));
+
+    // Breathing pulse
+    float pulse = 0.7 + 0.3 * sin(vTime * 2.0);
+
+    // Corner accents - brighter at corners
+    float cornerDist = min(absUV.x, absUV.y);
+    float cornerBoost = smoothstep(0.3, 0.0, cornerDist) * 0.3;
+
+    // Combine: solid border with animated intensity
+    float intensity = border * (0.5 + 0.5 * dash) * pulse;
+    intensity += border * 0.3; // Base visibility
+    intensity += cornerBoost * border; // Brighter corners
+
+    // Soft outer glow
+    float glow = smoothstep(1.0 + lineWidth * 3.0, 1.0, edgeDist)
+               * smoothstep(0.85, 1.0, edgeDist) * 0.2 * pulse;
+    intensity += glow;
+
+    // Spherical radial gradient - squared falloff for sphere-like shading
+    float r = length(vUV); // 0 at center, 1 at edge of inscribed circle
+    float sphereShade = 1.0 - r * r; // Quadratic falloff simulates sphere surface
+    sphereShade = max(sphereShade, 0.0);
+    float innerFill = sphereShade * 0.15 * pulse;
+
+    if (intensity < 0.01 && innerFill < 0.005) discard;
+
+    // Color with slight highlight on bright parts
+    vec3 color = mix(SELECTION_COLOR, HIGHLIGHT_COLOR, intensity * 0.3);
+
+    // Inner fill color - brighter in center like a lit sphere
+    vec3 fillColor = mix(SELECTION_COLOR, HIGHLIGHT_COLOR, sphereShade * 0.5);
+
+    // Blend border and inner fill
+    float totalAlpha = intensity + innerFill * (1.0 - intensity);
+    vec3 finalColor = color * intensity + fillColor * innerFill * (1.0 - intensity);
+
+    gl_FragColor = vec4(finalColor, totalAlpha);
 }`;

@@ -444,44 +444,6 @@ body.canvas-fullscreen .contact-btn {
     opacity: 0.7;
 }
 
-/* Camera Position Label */
-.camera-label {
-    position: fixed;
-    bottom: 1.5rem;
-    left: 7.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.5rem 0.75rem;
-    background: rgba(21, 29, 38, 0.85);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--text-muted);
-    z-index: 100;
-    transition: all 0.3s ease;
-    cursor: default;
-    user-select: none;
-}
-
-.camera-label:hover {
-    border-color: var(--accent-gold);
-    color: var(--text-secondary);
-}
-
-.camera-label .camera-icon {
-    color: var(--accent-gold);
-    font-size: 0.7rem;
-}
-
-.camera-label .camera-coords {
-    color: var(--text-secondary);
-    letter-spacing: 0.02em;
-}
-
 @media (max-width: 900px) {
     .fps-badge {
         bottom: 1rem;
@@ -489,15 +451,10 @@ body.canvas-fullscreen .contact-btn {
         padding: 0.4rem 0.6rem;
         font-size: 0.6rem;
     }
-
-    .camera-label {
-        display: none;
-    }
 }
 
 @media print {
-    .fps-badge,
-    .camera-label {
+    .fps-badge {
         display: none !important;
     }
 }

@@ -203,6 +203,15 @@ uniform float uAspectRatio;    // Width / Height for correct light directions
 uniform float uExposure;
 uniform int uToneMapping;
 
+// SDF bump mapping
+uniform sampler2D uSdfTexture;
+uniform int uSdfBumpEnabled;
+uniform float uSdfBumpStrength;
+uniform float uSdfBumpPow;
+uniform vec2 uSdfOffset;
+uniform float uSdfScale;
+uniform float uSdfDistance;
+
 varying vec2 vUV;
 varying vec2 vLocalUV;
 varying vec2 vScreenUV;
@@ -688,6 +697,70 @@ vec3 computeCaustics(BevelGeometry bevel, vec2 screenUV) {
 // This creates seamless sampling at edges without hard cutoffs
 #define mirrorUV(uv) abs(mod(uv + 1.0, 2.0) - 1.0)
 
+// ============================================================================
+// SDF BUMP MAPPING - Normal perturbation from SDF texture
+// ============================================================================
+// The SDF texture stores distance-to-edge values. We compute gradients
+// from this field to perturb the surface normal, creating a bump/emboss effect.
+// This makes the logo/text appear etched into or raised from the glass surface.
+
+struct SdfBump {
+    vec2 gradient;      // 2D gradient direction from SDF
+    float bumpAmount;   // Strength of the bump at this point
+};
+
+SdfBump computeSdfBump(vec2 localUV) {
+    SdfBump result;
+    result.gradient = vec2(0.0);
+    result.bumpAmount = 0.0;
+
+    if (uSdfBumpEnabled == 0) return result;
+
+    // Transform UV based on scale and offset
+    // Only flip Y to correct orientation (X was correct)
+    vec2 flippedUV = vec2(localUV.x, 1.0 - localUV.y);
+    vec2 sdfUV = (flippedUV - 0.5) / uSdfScale + 0.5 + uSdfOffset;
+
+    // Check if UV is within texture bounds
+    if (sdfUV.x < 0.0 || sdfUV.x > 1.0 || sdfUV.y < 0.0 || sdfUV.y > 1.0) {
+        return result;
+    }
+
+    // Sample SDF texture - the R channel contains the distance field
+    float sdfValue = texture2D(uSdfTexture, sdfUV).r;
+
+    // Distance controls the edge width of the bump effect
+    // Lower distance = thinner edge, higher = wider edge
+    float edgeWidth = uSdfDistance * 0.5;
+    float distMask = 1.0 - smoothstep(0.0, edgeWidth, abs(sdfValue - 0.5));
+
+    // Compute gradient using central differences
+    float eps = 0.005 / uSdfScale;  // Scale epsilon with texture scale
+    float dx = texture2D(uSdfTexture, sdfUV + vec2(eps, 0.0)).r -
+               texture2D(uSdfTexture, sdfUV - vec2(eps, 0.0)).r;
+    float dy = texture2D(uSdfTexture, sdfUV + vec2(0.0, eps)).r -
+               texture2D(uSdfTexture, sdfUV - vec2(0.0, eps)).r;
+
+    // Apply power curve to gradient for sharpness control
+    dx = sign(dx) * pow(abs(dx), uSdfBumpPow);
+    dy = sign(dy) * pow(abs(dy), uSdfBumpPow);
+
+    // Flip gradient Y to match flipped UV Y
+    result.gradient = vec2(dx, -dy);
+
+    // Apply strength (can be negative for inverted bump) and distance mask
+    float strength = abs(uSdfBumpStrength);
+    float signDir = sign(uSdfBumpStrength);
+    result.bumpAmount = length(result.gradient) * strength * distMask;
+
+    // Normalize gradient for direction (keep magnitude separate)
+    if (length(result.gradient) > 0.001) {
+        result.gradient = normalize(result.gradient) * signDir;
+    }
+
+    return result;
+}
+
 void main() {
     vec2 pixelSize = uPanelSize;
     vec2 p = (vLocalUV - 0.5) * pixelSize;
@@ -707,6 +780,25 @@ void main() {
     // Compute bevel geometry ONCE and use for both refraction and specular
     // This ensures both effects use identical surface normal calculations
     BevelGeometry bevel = computeBevelGeometry(vLocalUV, pixelSize, uCornerRadius, uSquircleN, uEdgeWidth, uBevelDepth);
+
+    // ========================================
+    // SDF BUMP MAPPING
+    // ========================================
+    // Compute bump from SDF texture to add embossed logo effect
+    SdfBump sdfBump = computeSdfBump(vLocalUV);
+
+    // Add SDF bump to bevel geometry for combined effect
+    // This perturbs the normal direction based on the SDF gradient
+    if (sdfBump.bumpAmount > 0.001) {
+        // Combine bevel gradient with SDF gradient
+        // SDF bump adds to/modifies the edge bevel effect
+        vec2 combinedGrad = bevel.gradDir * bevel.bevelAmount + sdfBump.gradient * sdfBump.bumpAmount;
+        float combinedAmount = length(combinedGrad);
+        if (combinedAmount > 0.001) {
+            bevel.gradDir = normalize(combinedGrad);
+            bevel.bevelAmount = combinedAmount;
+        }
+    }
 
     // Get UV offset for refraction from unified bevel geometry
     vec2 lensRefract = computeRefraction(bevel);

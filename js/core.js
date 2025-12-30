@@ -111,7 +111,8 @@ var lightParams = {
 var sunParams = {
     coreSize: 0.75,
     glowSize: 1.0,
-    glowIntensity: 1.0
+    glowIntensity: 1.0,
+    quadScale: 1.0  // Multiplier for sun size (adjusts radius passed to shader)
 };
 
 // Orbital system parameters
@@ -297,7 +298,16 @@ var glassParams = {
     offsetX: 0,                // Horizontal offset in pixels (negative = left, positive = right)
     offsetY: 0,                // Vertical offset in pixels (negative = up, positive = down)
     scaleX: 1,                 // Horizontal scale multiplier (1 = square base)
-    scaleY: 1                  // Vertical scale multiplier (1 = square base)
+    scaleY: 1,                 // Vertical scale multiplier (1 = square base)
+
+    // SDF Bump Mapping (logo/text embossing)
+    sdfBumpEnabled: true,      // Enable SDF-based bump mapping
+    sdfBumpStrength: 0.3,      // Normal perturbation strength (-1 to 1, negative = invert bump)
+    sdfBumpPow: 1.0,           // Power curve on SDF distance (affects sharpness)
+    sdfOffsetX: 0,             // Horizontal offset of SDF texture (UV space, -1 to 1)
+    sdfOffsetY: 0,             // Vertical offset of SDF texture (UV space, -1 to 1)
+    sdfScale: 1.0,             // Scale of SDF texture (1 = fill panel)
+    sdfDistance: 0.5           // Distance threshold for SDF (0-1, controls edge detection)
 };
 
 // Space particle parameters

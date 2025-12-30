@@ -14,25 +14,25 @@ uniform float uSunGlowSize;
 uniform float uSunGlowIntensity;
 
 void main() {
-    vec2 uv = vUV * 0.4;
+    vec2 uv = vUV;
     float d = length(uv);
     float ap = clamp(vAppear, 0.0, 1.0);
 
-    // Discard outside quad
-    if (d > 0.4) discard;
+    // Discard outside circular bounds (corners of quad)
+    if (d > 1.42) discard;
 
-    // Core size
-    float coreSize = uSunCoreSize * 0.1;
+    // Core fills center of quad
+    float coreSize = uSunCoreSize * 0.5;
 
-    // Bright core
+    // Bright core with smooth falloff
     float core = 1.0 - smoothstep(0.0, coreSize, d);
 
-    // Soft glow falloff
-    float glowSize = uSunGlowSize * 0.15;
+    // Glow extends to edge of quad
+    float glowSize = uSunGlowSize * 0.8;
     float glow = exp(-d * d / (glowSize * glowSize));
 
-    // Outer halo
-    float halo = 0.02 / (d + 0.02);
+    // Outer halo for soft edge
+    float halo = 0.15 / (d + 0.15);
 
     // Subtle pulse
     float pulse = sin(uTime * 0.5 + vIndex) * 0.05 + 1.0;

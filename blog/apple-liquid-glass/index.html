@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-5KEDPWV47H"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-5KEDPWV47H');
+    </script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -16,7 +25,7 @@
     <meta property="og:url" content="https://charlesgrs.github.io/blog/apple-liquid-glass/">
     <meta property="og:title" content="Recreating Apple Liquid Glass in Real-Time">
     <meta property="og:description" content="A deep dive into recreating Apple&#39;s Liquid Glass effect with physically-based light simulation: squircle SDFs, lens-curve bevels, wavelength-dependent dispersion, Fresnel reflections, and caustic focusing.">
-    <meta property="og:image" content="https://charlesgrs.github.io/og-image.png">
+    <meta property="og:image" content="https://charlesgrs.github.io/blog/images/apple-liquid-glass-thumb.png">
     <meta property="og:site_name" content="Charles Grassi">
     <meta property="article:published_time" content="2024-12-30T00:00:00.000Z">
     <meta property="article:author" content="Charles Grassi">
@@ -35,13 +44,19 @@
     <meta name="twitter:creator" content="@charles_grassi">
     <meta name="twitter:title" content="Recreating Apple Liquid Glass in Real-Time">
     <meta name="twitter:description" content="A deep dive into recreating Apple&#39;s Liquid Glass effect with physically-based light simulation: squircle SDFs, lens-curve bevels, wavelength-dependent dispersion, Fresnel reflections, and caustic focusing.">
-    <meta name="twitter:image" content="https://charlesgrs.github.io/og-image.png">
+    <meta name="twitter:image" content="https://charlesgrs.github.io/blog/images/apple-liquid-glass-thumb.png">
 
     <!-- Canonical URL -->
     <link rel="canonical" href="https://charlesgrs.github.io/blog/apple-liquid-glass/">
 
     <!-- Theme -->
     <meta name="theme-color" content="#0a0f14">
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="../../assets/favicon/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="../../assets/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../../assets/favicon/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="../../assets/favicon/apple-touch-icon.png">
 
     <!-- JSON-LD Structured Data -->
     <script type="application/ld+json">
@@ -50,7 +65,7 @@
         "@type": "TechArticle",
         "headline": "Recreating Apple Liquid Glass in Real-Time",
         "description": "A deep dive into recreating Apple&#39;s Liquid Glass effect with physically-based light simulation: squircle SDFs, lens-curve bevels, wavelength-dependent dispersion, Fresnel reflections, and caustic focusing.",
-        "image": "https://charlesgrs.github.io/og-image.png",
+        "image": "https://charlesgrs.github.io/blog/images/apple-liquid-glass-thumb.png",
         "datePublished": "2024-12-30T00:00:00.000Z",
         "dateModified": "2024-12-30T00:00:00.000Z",
         "author": {

@@ -57,7 +57,7 @@
     // Gaze-based hover detection (screen-space proximity to planet)
     let gazedNode = null;           // Node the mouse is currently pointing at
     let gazedNodeProximity = 0;     // How close mouse is to the gazed node (0-1, 1=on top)
-    let gazeRadius = 150;           // Screen pixels - detection radius around planet center
+    let gazeRadius = 80;            // Screen pixels - detection radius around planet center
     let gazeSmoothProximity = 0;    // Smoothed proximity for UI fade
     let gazeTransitionSpeed = 0.3;  // Speed of hover UI transitions (faster)
 
@@ -78,6 +78,11 @@
     let lastFrameTime = performance.now();
     let deltaTime = 16.67;  // Default to 60fps (in milliseconds)
 
+    // FPS counter for canvas overlay
+    let fpsFrameCount = 0;
+    let fpsLastTime = performance.now();
+    let currentFPS = 60;
+
     // Camera parameters (exposed for settings panel) - speeds are per second
     window.cameraParams = {
         moveSpeed: 50.0,         // Movement speed per second (WASD)
@@ -90,7 +95,12 @@
     let isFocusing = false;           // True while camera is transitioning to focus target
     let focusTarget = null;           // The node being focused on
     let focusProgress = 0;            // 0 to 1 progress of the focus transition
-    const focusDuration = 1.0;        // Seconds to complete focus transition (snappy)
+    const focusDuration = 1.5;        // Seconds to complete focus transition (smooth)
+    // Starting state for smooth interpolation
+    let focusStartPosX = 0, focusStartPosY = 0, focusStartPosZ = 0;
+    let focusStartRotX = 0, focusStartRotY = 0;
+    let focusEndPosX = 0, focusEndPosY = 0, focusEndPosZ = 0;
+    let focusEndRotX = 0, focusEndRotY = 0;
 
     // Camera follow system - continuously track a selected planet
     let isFollowing = false;          // True while camera is following a planet
@@ -191,14 +201,60 @@
     // Expose reset function globally
     window.resetCameraToDefault = resetCameraToDefault;
 
+    // Initialize focus transition with start/end positions
+    function initializeFocusTransition(node) {
+        if (!node) return;
+
+        // Capture starting camera state
+        focusStartPosX = cameraPosX;
+        focusStartPosY = cameraPosY;
+        focusStartPosZ = cameraPosZ;
+        focusStartRotX = cameraRotX;
+        focusStartRotY = cameraRotY;
+
+        // Calculate target world position
+        const targetWorldX = node.worldX || 0;
+        const targetWorldY = node.worldY || 0;
+        const targetWorldZ = node.worldZ || 0;
+
+        // Calculate direction from camera to target
+        const dx = targetWorldX - cameraPosX;
+        const dy = targetWorldY - cameraPosY;
+        const dz = targetWorldZ - cameraPosZ;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        // Calculate target rotation to look at the node
+        const targetYaw = Math.atan2(dx, dz);
+        const horizontalDist = Math.sqrt(dx * dx + dz * dz);
+        const targetPitch = -Math.atan2(dy, horizontalDist);
+
+        // Calculate end position (stop at lockDistance from node)
+        const stopDist = lockDistance + (node.size || node.baseSize || 20) * 0.0003;
+        const approachT = Math.max(0, 1 - stopDist / dist);
+
+        focusEndPosX = cameraPosX + dx * approachT;
+        focusEndPosY = cameraPosY + dy * approachT;
+        focusEndPosZ = cameraPosZ + dz * approachT;
+
+        // Handle yaw wraparound for shortest rotation path
+        let yawDiff = targetYaw - focusStartRotY;
+        while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
+        while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
+        focusEndRotY = focusStartRotY + yawDiff;
+        focusEndRotX = targetPitch;
+
+        // Start the focus
+        isFocusing = true;
+        focusTarget = node;
+        focusProgress = 0;
+    }
+
     // Select and follow a planet (called when clicking on gazedNode)
     function selectAndFollowPlanet(node) {
         if (!node) return;
 
-        // Start focusing on the planet (will transition to following when complete)
-        isFocusing = true;
-        focusTarget = node;
-        focusProgress = 0;
+        // Initialize focus transition with smooth interpolation
+        initializeFocusTransition(node);
 
         // Mark that we want to follow after focus completes
         isFollowing = true;
@@ -270,10 +326,8 @@
         orbitYaw = Math.atan2(dx, dz);
         orbitPitch = Math.atan2(dy, Math.sqrt(dx * dx + dz * dz));
 
-        // Start focus animation (reuse existing system)
-        isFocusing = true;
-        focusTarget = node;
-        focusProgress = 0;
+        // Initialize focus transition with smooth interpolation
+        initializeFocusTransition(node);
 
         // Mark for following after focus completes
         isFollowing = true;
@@ -328,10 +382,8 @@
             orbitYaw = Math.atan2(dx, dz);
             orbitPitch = Math.atan2(dy, Math.sqrt(dx * dx + dz * dz));
 
-            // Start focus animation to parent
-            isFocusing = true;
-            focusTarget = parent;
-            focusProgress = 0;
+            // Initialize focus transition with smooth interpolation
+            initializeFocusTransition(parent);
             isFollowing = true;
             followTarget = parent;
 
@@ -550,6 +602,7 @@
     let glassBlurFBOs = [];  // Ping-pong FBOs for blur passes
     let glassQuadBuffer = null;
     let glassCurrentWidth = 0, glassCurrentHeight = 0;
+    let glassSdfTexture = null;  // SDF texture for bump mapping
 
     // HDR rendering configuration (set in initSphereGL)
     let hdrConfig = {
@@ -1029,6 +1082,14 @@
                 // Tone mapping
                 glassPanelProgram.uExposure = gl.getUniformLocation(glassPanelProgram, 'uExposure');
                 glassPanelProgram.uToneMapping = gl.getUniformLocation(glassPanelProgram, 'uToneMapping');
+                // SDF bump mapping uniforms
+                glassPanelProgram.uSdfTexture = gl.getUniformLocation(glassPanelProgram, 'uSdfTexture');
+                glassPanelProgram.uSdfBumpEnabled = gl.getUniformLocation(glassPanelProgram, 'uSdfBumpEnabled');
+                glassPanelProgram.uSdfBumpStrength = gl.getUniformLocation(glassPanelProgram, 'uSdfBumpStrength');
+                glassPanelProgram.uSdfBumpPow = gl.getUniformLocation(glassPanelProgram, 'uSdfBumpPow');
+                glassPanelProgram.uSdfOffset = gl.getUniformLocation(glassPanelProgram, 'uSdfOffset');
+                glassPanelProgram.uSdfScale = gl.getUniformLocation(glassPanelProgram, 'uSdfScale');
+                glassPanelProgram.uSdfDistance = gl.getUniformLocation(glassPanelProgram, 'uSdfDistance');
                 console.log('Glass panel program initialized');
             } else {
                 console.error('Glass panel program link failed:', gl.getProgramInfoLog(glassPanelProgram));
@@ -1043,6 +1104,23 @@
             -1, -1,  1, -1,  1, 1,
             -1, -1,  1, 1,  -1, 1
         ]), gl.STATIC_DRAW);
+
+        // Load SDF texture for bump mapping
+        const sdfImage = new Image();
+        sdfImage.onload = function() {
+            glassSdfTexture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, glassSdfTexture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sdfImage);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            console.log('SDF texture loaded for glass bump mapping');
+        };
+        sdfImage.onerror = function() {
+            console.warn('Failed to load SDF texture');
+        };
+        sdfImage.src = 'assets/shaderAssets/charlesgrassi.dev.sdf.png';
 
         console.log('Glass blur system initialized');
     }
@@ -1289,6 +1367,22 @@
         gl.uniform1f(glassPanelProgram.uExposure, pp.exposure !== undefined ? pp.exposure : 1.0);
         gl.uniform1i(glassPanelProgram.uToneMapping, pp.toneMapping !== undefined ? Math.floor(pp.toneMapping) : 1);
 
+        // SDF bump mapping uniforms
+        const sdfEnabled = gp.sdfBumpEnabled !== undefined ? gp.sdfBumpEnabled : true;
+        gl.uniform1i(glassPanelProgram.uSdfBumpEnabled, sdfEnabled && glassSdfTexture ? 1 : 0);
+        gl.uniform1f(glassPanelProgram.uSdfBumpStrength, gp.sdfBumpStrength !== undefined ? gp.sdfBumpStrength : 0.3);
+        gl.uniform1f(glassPanelProgram.uSdfBumpPow, gp.sdfBumpPow !== undefined ? gp.sdfBumpPow : 1.0);
+        gl.uniform2f(glassPanelProgram.uSdfOffset, gp.sdfOffsetX || 0, gp.sdfOffsetY || 0);
+        gl.uniform1f(glassPanelProgram.uSdfScale, gp.sdfScale !== undefined ? gp.sdfScale : 1.0);
+        gl.uniform1f(glassPanelProgram.uSdfDistance, gp.sdfDistance !== undefined ? gp.sdfDistance : 0.5);
+
+        // Bind SDF texture to texture unit 1
+        if (glassSdfTexture) {
+            gl.activeTexture(gl.TEXTURE1);
+            gl.bindTexture(gl.TEXTURE_2D, glassSdfTexture);
+            gl.uniform1i(glassPanelProgram.uSdfTexture, 1);
+        }
+
         gl.bindBuffer(gl.ARRAY_BUFFER, glassQuadBuffer);
         gl.enableVertexAttribArray(glassPanelProgram.aPosition);
         gl.vertexAttribPointer(glassPanelProgram.aPosition, 2, gl.FLOAT, false, 0, 0);
@@ -1482,6 +1576,7 @@
         sphereProgram.uCameraRotX = gl.getUniformLocation(sphereProgram, 'uCameraRotX');
         sphereProgram.uCameraRotY = gl.getUniformLocation(sphereProgram, 'uCameraRotY');
         sphereProgram.uCameraPos = gl.getUniformLocation(sphereProgram, 'uCameraPos');
+        sphereProgram.uQuadExpand = gl.getUniformLocation(sphereProgram, 'uQuadExpand');
         // Background texture for fog sampling
         sphereProgram.uBackgroundTexture = gl.getUniformLocation(sphereProgram, 'uBackgroundTexture');
         sphereProgram.uUseBackgroundTexture = gl.getUniformLocation(sphereProgram, 'uUseBackgroundTexture');
@@ -1552,6 +1647,7 @@
         sunProgram.uCameraRotX = gl.getUniformLocation(sunProgram, 'uCameraRotX');
         sunProgram.uCameraRotY = gl.getUniformLocation(sunProgram, 'uCameraRotY');
         sunProgram.uCameraPos = gl.getUniformLocation(sunProgram, 'uCameraPos');
+        sunProgram.uQuadExpand = gl.getUniformLocation(sunProgram, 'uQuadExpand');
 
         // Sun parameter uniforms (simplified)
         sunProgram.uSunCoreSize = gl.getUniformLocation(sunProgram, 'uSunCoreSize');
@@ -1745,6 +1841,8 @@
                     debugQuadProgram.uCameraPos = gl.getUniformLocation(debugQuadProgram, 'uCameraPos');
                     debugQuadProgram.uWorldZ = gl.getUniformLocation(debugQuadProgram, 'uWorldZ');
                     debugQuadProgram.uMinDim = gl.getUniformLocation(debugQuadProgram, 'uMinDim');
+                    debugQuadProgram.uTime = gl.getUniformLocation(debugQuadProgram, 'uTime');
+                    debugQuadProgram.uQuadExpand = gl.getUniformLocation(debugQuadProgram, 'uQuadExpand');
 
                     // Quad buffer (2 triangles)
                     debugQuadBuffer = gl.createBuffer();
@@ -2576,6 +2674,7 @@
         gl.uniform1f(sphereProgram.uCameraRotX, cameraRotX);
         gl.uniform1f(sphereProgram.uCameraRotY, cameraRotY);
         gl.uniform3f(sphereProgram.uCameraPos, cameraPosX, cameraPosY, cameraPosZ);
+        gl.uniform1f(sphereProgram.uQuadExpand, 3.0); // Planets use 3x quad expansion
 
         // Bind background texture for fog sampling
         if (volumetricTexture) {
@@ -2636,7 +2735,11 @@
 
             const g = n.glowIntensity || 0;
             const p = Math.sin(time * n.pulseSpeed + n.pulsePhase);
-            const r = n.size + p * 0.5 + g * 3;
+            let r = n.size + p * 0.5 + g * 3;
+            // Apply quadScale to suns (smaller quad, sun fills more of it)
+            if (n.isLight && window.sunParams && window.sunParams.quadScale) {
+                r *= window.sunParams.quadScale;
+            }
             const ap = globalFadeIn * alphaMultiplier;
             const a = alphaMultiplier * globalFadeIn;
             const isLight = n.isLight ? 1.0 : 0.0;
@@ -2761,6 +2864,7 @@
                     gl.uniform1f(sunProgram.uCameraRotX, cameraRotX);
                     gl.uniform1f(sunProgram.uCameraRotY, cameraRotY);
                     gl.uniform3f(sunProgram.uCameraPos, cameraPosX, cameraPosY, cameraPosZ);
+                    gl.uniform1f(sunProgram.uQuadExpand, 1.0); // Suns use tight quad (shader fills it)
 
                     // Sun uniforms (simplified)
                     gl.uniform1f(sunProgram.uSunCoreSize, sunParams.coreSize);
@@ -2806,6 +2910,7 @@
             gl.uniform1f(debugQuadProgram.uCameraRotY, cameraRotY);
             gl.uniform3f(debugQuadProgram.uCameraPos, cameraPosX, cameraPosY, cameraPosZ);
             gl.uniform1f(debugQuadProgram.uMinDim, minDim);
+            gl.uniform1f(debugQuadProgram.uTime, time);
 
             gl.bindBuffer(gl.ARRAY_BUFFER, debugQuadBuffer);
             gl.enableVertexAttribArray(debugQuadProgram.aPosition);
@@ -2817,6 +2922,7 @@
                     gl.uniform2f(debugQuadProgram.uCenter, n.x, n.y);
                     gl.uniform1f(debugQuadProgram.uSize, n.size);
                     gl.uniform1f(debugQuadProgram.uWorldZ, n.z || 0.0);
+                    gl.uniform1f(debugQuadProgram.uQuadExpand, n.isLight ? 1.0 : 3.0);
                     gl.drawArrays(gl.TRIANGLES, 0, 6);
                 }
             } else if (gazedNode) {
@@ -2824,6 +2930,7 @@
                 gl.uniform2f(debugQuadProgram.uCenter, gazedNode.x, gazedNode.y);
                 gl.uniform1f(debugQuadProgram.uSize, gazedNode.size);
                 gl.uniform1f(debugQuadProgram.uWorldZ, gazedNode.z || 0.0);
+                gl.uniform1f(debugQuadProgram.uQuadExpand, gazedNode.isLight ? 1.0 : 3.0);
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
             }
 
@@ -3397,50 +3504,53 @@
 
         // Camera focus transition - smooth look-at and approach a node
         if (isFocusing && focusTarget) {
-            // Get target world position
+            // Update end position to track moving targets (planets orbit)
             const targetWorldX = focusTarget.worldX || 0;
             const targetWorldY = focusTarget.worldY || 0;
             const targetWorldZ = focusTarget.worldZ || 0;
 
-            // Calculate direction from camera to target
-            const dx = targetWorldX - cameraPosX;
-            const dy = targetWorldY - cameraPosY;
-            const dz = targetWorldZ - cameraPosZ;
+            // Recalculate end position based on current target location
+            const dx = targetWorldX - focusStartPosX;
+            const dy = targetWorldY - focusStartPosY;
+            const dz = targetWorldZ - focusStartPosZ;
             const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-            // Calculate target rotation to look at the node
-            // Yaw: angle in XZ plane
-            const targetYaw = Math.atan2(dx, dz);
-            // Pitch: angle up/down
-            const horizontalDist = Math.sqrt(dx * dx + dz * dz);
-            const targetPitch = -Math.atan2(dy, horizontalDist);
-
-            // Calculate target position (approach but stop at lockDistance)
             const stopDist = lockDistance + (focusTarget.size || focusTarget.baseSize || 20) * 0.0003;
             const approachT = Math.max(0, 1 - stopDist / dist);
-            const targetPosX = cameraPosX + dx * approachT;
-            const targetPosY = cameraPosY + dy * approachT;
-            const targetPosZ = cameraPosZ + dz * approachT;
 
-            // Smooth easing (ease-out cubic) - faster interpolation
-            focusProgress += 0.016 / focusDuration;
-            const t = Math.min(1, focusProgress);
-            const ease = 1 - Math.pow(1 - t, 3);
+            // Update end position to track the moving planet
+            focusEndPosX = focusStartPosX + dx * approachT;
+            focusEndPosY = focusStartPosY + dy * approachT;
+            focusEndPosZ = focusStartPosZ + dz * approachT;
 
-            // Strong interpolation for snappy feel
-            const lerpFactor = 0.15 + ease * 0.15;  // 0.15 to 0.30
+            // Recalculate end rotation to look at current target position
+            const endDx = targetWorldX - focusEndPosX;
+            const endDy = targetWorldY - focusEndPosY;
+            const endDz = targetWorldZ - focusEndPosZ;
+            const targetYaw = Math.atan2(endDx, endDz);
+            const horizontalDist = Math.sqrt(endDx * endDx + endDz * endDz);
+            const targetPitch = -Math.atan2(endDy, horizontalDist);
 
-            // Interpolate rotation toward target
-            let yawDiff = targetYaw - cameraRotY;
+            // Update end rotation (handle yaw wraparound)
+            let yawDiff = targetYaw - focusStartRotY;
             while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
             while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
-            cameraRotY += yawDiff * lerpFactor;
-            cameraRotX += (targetPitch - cameraRotX) * lerpFactor;
+            focusEndRotY = focusStartRotY + yawDiff;
+            focusEndRotX = targetPitch;
 
-            // Interpolate position toward target
-            cameraPosX += (targetPosX - cameraPosX) * lerpFactor;
-            cameraPosY += (targetPosY - cameraPosY) * lerpFactor;
-            cameraPosZ += (targetPosZ - cameraPosZ) * lerpFactor;
+            // Progress the animation
+            focusProgress += 0.016 / focusDuration;
+            const t = Math.min(1, focusProgress);
+
+            // Smooth ease-in-out curve (accelerate then decelerate)
+            // Using smoothstep for natural feel: 3t² - 2t³
+            const ease = t * t * (3 - 2 * t);
+
+            // Directly interpolate from start to end using eased t
+            cameraPosX = focusStartPosX + (focusEndPosX - focusStartPosX) * ease;
+            cameraPosY = focusStartPosY + (focusEndPosY - focusStartPosY) * ease;
+            cameraPosZ = focusStartPosZ + (focusEndPosZ - focusStartPosZ) * ease;
+            cameraRotX = focusStartRotX + (focusEndRotX - focusStartRotX) * ease;
+            cameraRotY = focusStartRotY + (focusEndRotY - focusStartRotY) * ease;
 
             // Update targets to match current (prevents snapping when focus ends)
             targetCameraPosX = cameraPosX;
@@ -3449,11 +3559,18 @@
             targetCameraRotX = cameraRotX;
             targetCameraRotY = cameraRotY;
 
-            // Check if focus transition is complete (close enough to target)
-            if (t >= 1 || dist < stopDist * 1.2) {
+            // Check if focus transition is complete
+            if (t >= 1) {
                 isFocusing = false;
                 focusProgress = 0;
                 container.style.cursor = 'grab';
+
+                // Snap to final position
+                cameraPosX = focusEndPosX;
+                cameraPosY = focusEndPosY;
+                cameraPosZ = focusEndPosZ;
+                cameraRotX = focusEndRotX;
+                cameraRotY = focusEndRotY;
 
                 // Sync orbit angles from final camera position for seamless handoff
                 if (focusTarget) {
@@ -3733,15 +3850,6 @@
         window.globalCameraPosY = cameraPosY;
         window.globalCameraPosZ = cameraPosZ;
 
-        // Update camera position label (throttled to avoid layout thrashing)
-        if (!window._lastCameraLabelUpdate || Date.now() - window._lastCameraLabelUpdate > 100) {
-            const camLabel = document.getElementById('camera-coords');
-            if (camLabel) {
-                camLabel.textContent = cameraPosX.toFixed(2) + ', ' + cameraPosY.toFixed(2) + ', ' + cameraPosZ.toFixed(2);
-            }
-            window._lastCameraLabelUpdate = Date.now();
-        }
-
         // 3D perspective camera (FPS-style free camera)
         const screenCenterX = width * 0.5;
         const screenCenterY = height * 0.5;
@@ -3859,7 +3967,7 @@
 
             // Scale detection radius based on node's rendered size
             const nodeVisualRadius = (node.size || 10) * (node.renderScale || 1) * 2;
-            const effectiveRadius = Math.max(gazeRadius, nodeVisualRadius + 30);
+            const effectiveRadius = Math.max(gazeRadius, nodeVisualRadius + 15);
 
             // Skip if mouse is too far from this node
             if (screenDist > effectiveRadius) return;
@@ -4123,6 +4231,51 @@
         }
 
         // Restore canvas state after zoom transform
+        ctx.restore();
+
+        // ============================================
+        // FPS OVERLAY - Rendered directly on canvas
+        // ============================================
+        // Update FPS counter (every 500ms)
+        fpsFrameCount++;
+        const fpsNow = performance.now();
+        if (fpsNow - fpsLastTime >= 500) {
+            currentFPS = Math.round((fpsFrameCount * 1000) / (fpsNow - fpsLastTime));
+            fpsFrameCount = 0;
+            fpsLastTime = fpsNow;
+        }
+
+        // Draw FPS in bottom-right corner with debug font
+        ctx.save();
+        ctx.font = '11px Consolas, "Courier New", monospace';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillStyle = 'rgba(45, 212, 191, 0.4)';  // Subtle teal
+        ctx.fillText(currentFPS + ' FPS', width - 12, height - 12);
+        ctx.restore();
+
+        // Draw controls hint in bottom-right corner (above FPS)
+        ctx.save();
+        ctx.font = '9px Consolas, "Courier New", monospace';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';  // Very subtle white
+
+        const controls = [
+            'WASD/ZQSD - Move',
+            'Drag - Rotate',
+            'Space - Up',
+            'Shift - Down',
+            'Esc - Go Back',
+            'Click - Navigate'
+        ];
+
+        const lineHeight = 13;
+        const startY = height - 30;  // Start above FPS display
+
+        for (let i = 0; i < controls.length; i++) {
+            ctx.fillText(controls[controls.length - 1 - i], width - 12, startY - (i * lineHeight));
+        }
         ctx.restore();
     }
 

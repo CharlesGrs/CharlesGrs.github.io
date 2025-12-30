@@ -3,17 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SDF Text Generator</title>
+    <title>SDF Text Generator | Charles Grassi Tools</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-primary: #0a0f14;
-            --bg-secondary: #111820;
-            --bg-tertiary: #1a2330;
+            --bg-secondary: #111921;
+            --bg-card: #151d26;
+            --bg-input: #0d1218;
             --accent-gold: #e8b923;
+            --accent-gold-dim: #c49a1a;
             --accent-teal: #2dd4bf;
-            --text-primary: #e2e8f0;
-            --text-secondary: #94a3b8;
-            --border-color: #2d3a4a;
+            --text-primary: #e8eaed;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --border-color: #1f2937;
+            --border-subtle: rgba(255, 255, 255, 0.06);
         }
 
         * {
@@ -23,286 +30,266 @@
         }
 
         body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-family: 'Outfit', sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
-            padding: 20px;
+            line-height: 1.5;
         }
 
-        h1 {
-            color: var(--accent-gold);
-            margin-bottom: 20px;
-            font-size: 1.5rem;
+        /* Noise overlay */
+        .noise-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.03;
+            z-index: 10000;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
         }
 
-        .container {
-            max-width: 1200px;
+        /* Main container */
+        .app-container {
+            max-width: 1400px;
             margin: 0 auto;
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            gap: 20px;
+            padding: 16px;
+            position: relative;
+            z-index: 1;
         }
 
-        .panel {
+        /* Window Chrome */
+        .main-window {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 16px;
+            border-radius: 12px;
+            overflow: hidden;
         }
 
-        .panel h2 {
-            font-size: 0.875rem;
-            color: var(--accent-teal);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 16px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid var(--border-color);
+        .window-chrome {
+            display: flex;
+            align-items: center;
+            padding: 10px 14px;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid var(--border-subtle);
+            gap: 10px;
         }
 
-        .form-group {
-            margin-bottom: 16px;
+        .chrome-dots {
+            display: flex;
+            gap: 6px;
         }
 
-        label {
-            display: block;
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            margin-bottom: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+        .chrome-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
         }
 
-        select, input[type="text"], input[type="number"], textarea {
-            width: 100%;
-            padding: 8px 12px;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
+        .chrome-dot.red { background: #ff5f57; }
+        .chrome-dot.yellow { background: #febc2e; }
+        .chrome-dot.green { background: #28c840; }
+
+        .chrome-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-left: 8px;
+        }
+
+        .tag-bracket { color: var(--accent-gold); opacity: 0.6; }
+        .tag-index { color: var(--accent-teal); }
+
+        .chrome-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
             color: var(--text-primary);
-            font-size: 0.875rem;
-            font-family: inherit;
+            margin-left: 4px;
+        }
+
+        .chrome-separator {
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+        }
+
+        .chrome-subtitle {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--accent-gold);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .chrome-spacer { flex: 1; }
+
+        .back-link {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: var(--accent-teal);
+        }
+
+        /* Content layout */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+        }
+
+        /* Left Panel */
+        .controls-panel {
+            background: var(--bg-card);
+            border-right: 1px solid var(--border-subtle);
+        }
+
+        .panel-section {
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            padding: 10px 14px;
+            background: rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        .section-header:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .section-icon {
+            width: 16px;
+            height: 16px;
+            margin-right: 10px;
+            color: var(--accent-gold);
+        }
+
+        .section-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--accent-gold);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            flex: 1;
+        }
+
+        .section-toggle {
+            width: 12px;
+            height: 12px;
+            color: var(--text-muted);
+            transition: transform 0.2s;
+        }
+
+        .section-header.collapsed .section-toggle {
+            transform: rotate(-90deg);
+        }
+
+        .section-content {
+            padding: 10px 14px;
+        }
+
+        .section-header.collapsed + .section-content {
+            display: none;
+        }
+
+        /* Form elements */
+        .form-row {
+            margin-bottom: 10px;
+        }
+
+        .form-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            display: block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        textarea, input[type="text"], select {
+            width: 100%;
+            padding: 8px 10px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         textarea {
             resize: vertical;
-            min-height: 60px;
+            min-height: 50px;
+            font-family: 'Outfit', sans-serif;
         }
 
-        select:focus, input:focus, textarea:focus {
+        textarea:focus, input:focus, select:focus {
             outline: none;
-            border-color: var(--accent-teal);
+            border-color: var(--accent-gold);
+            box-shadow: 0 0 0 2px rgba(232, 185, 35, 0.1);
         }
 
-        input[type="file"] {
-            display: none;
-        }
-
-        .file-upload {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .file-upload-btn {
-            padding: 8px 16px;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            color: var(--text-primary);
+        select {
             cursor: pointer;
-            font-size: 0.875rem;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 36px;
         }
 
-        .file-upload-btn:hover {
-            border-color: var(--accent-teal);
-        }
-
-        .file-name {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .btn {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 4px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-primary {
-            background: var(--accent-gold);
-            color: var(--bg-primary);
-        }
-
-        .btn-primary:hover {
-            background: #f5c842;
-        }
-
-        .btn-secondary {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-        }
-
-        .btn-secondary:hover {
-            border-color: var(--accent-teal);
-        }
-
-        .btn-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-top: 16px;
-        }
-
-        .preview-container {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .sdf-preview {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 300px;
-            position: relative;
-        }
-
-        .sdf-preview canvas {
-            max-width: 100%;
-            max-height: 500px;
-            image-rendering: pixelated;
-        }
-
-        .shader-preview {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            overflow: hidden;
-            aspect-ratio: 1 / 1;
-            max-width: 400px;
-        }
-
-        .shader-preview canvas {
-            width: 100%;
-            height: 100%;
-        }
-
-        .range-group {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .range-group input[type="range"] {
-            flex: 1;
-            -webkit-appearance: none;
-            background: var(--bg-tertiary);
-            height: 4px;
-            border-radius: 2px;
-        }
-
-        .range-group input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 16px;
-            height: 16px;
-            background: var(--accent-teal);
-            border-radius: 50%;
-            cursor: pointer;
-        }
-
-        .range-value {
-            min-width: 50px;
-            text-align: right;
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-
-        .status {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            margin-top: 8px;
-            padding: 8px;
-            background: var(--bg-tertiary);
-            border-radius: 4px;
-        }
-
-        .status.success {
-            color: var(--accent-teal);
-        }
-
-        .status.error {
-            color: #ef4444;
-        }
-
-        .google-fonts-search {
-            position: relative;
-        }
-
-        .google-fonts-dropdown {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: 0 0 4px 4px;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 100;
-            display: none;
-        }
-
-        .google-fonts-dropdown.show {
-            display: block;
-        }
-
-        .google-font-option {
-            padding: 8px 12px;
-            cursor: pointer;
-            font-size: 0.875rem;
-        }
-
-        .google-font-option:hover {
-            background: var(--bg-secondary);
-        }
-
-        .tabs {
+        /* Font tabs */
+        .font-tabs {
             display: flex;
             gap: 4px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
-        .tab {
+        .font-tab {
             flex: 1;
-            padding: 8px;
-            background: var(--bg-tertiary);
+            padding: 6px 8px;
+            background: var(--bg-input);
             border: 1px solid var(--border-color);
-            border-radius: 4px;
-            color: var(--text-secondary);
-            font-size: 0.75rem;
+            border-radius: 5px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
             cursor: pointer;
+            transition: all 0.2s;
             text-align: center;
         }
 
-        .tab.active {
-            background: var(--accent-teal);
-            color: var(--bg-primary);
-            border-color: var(--accent-teal);
+        .font-tab:hover {
+            border-color: var(--accent-gold);
+            color: var(--text-secondary);
+        }
+
+        .font-tab.active {
+            background: rgba(232, 185, 35, 0.15);
+            border-color: var(--accent-gold);
+            color: var(--accent-gold);
         }
 
         .tab-content {
@@ -313,167 +300,610 @@
             display: block;
         }
 
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            font-size: 0.75rem;
+        /* Google fonts dropdown */
+        .google-search-wrap {
+            position: relative;
         }
 
-        .info-grid dt {
+        .google-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 180px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+        }
+
+        .google-dropdown.show {
+            display: block;
+        }
+
+        .google-option {
+            padding: 10px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .google-option:hover {
+            background: rgba(232, 185, 35, 0.1);
+            color: var(--accent-gold);
+        }
+
+        /* File upload */
+        .file-upload-wrap {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .file-btn {
+            padding: 8px 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
             color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
-        .info-grid dd {
-            color: var(--text-primary);
+        .file-btn:hover {
+            border-color: var(--accent-teal);
+            color: var(--accent-teal);
+        }
+
+        .file-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            color: var(--text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Range slider */
+        .range-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            -webkit-appearance: none;
+            background: var(--bg-input);
+            height: 4px;
+            border-radius: 2px;
+            border: 1px solid var(--border-color);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: var(--accent-gold);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            transition: transform 0.15s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        .range-value {
+            min-width: 40px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--accent-teal);
             text-align: right;
         }
 
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 10px 14px;
+            border: none;
+            border-radius: 5px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-dim) 100%);
+            color: var(--bg-primary);
+            box-shadow: 0 4px 12px rgba(232, 185, 35, 0.25);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(232, 185, 35, 0.35);
+        }
+
+        .btn-secondary {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-teal);
+            color: var(--accent-teal);
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        /* Status message */
+        .status-msg {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            padding: 6px 8px;
+            background: var(--bg-input);
+            border-radius: 4px;
+            margin-top: 6px;
+            color: var(--text-muted);
+        }
+
+        .status-msg.success {
+            color: var(--accent-teal);
+            background: rgba(45, 212, 191, 0.1);
+        }
+
+        .status-msg.error {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        /* Right Panel - Preview */
+        .preview-panel {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            background: var(--bg-secondary);
+            overflow-y: auto;
+        }
+
+        .preview-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .preview-header {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .preview-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            color: var(--accent-teal);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .preview-badge {
+            margin-left: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8px;
+            color: var(--text-muted);
+            padding: 2px 6px;
+            background: var(--bg-input);
+            border-radius: 3px;
+        }
+
+        .sdf-canvas-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 14px;
+            min-height: 200px;
+            background:
+                linear-gradient(45deg, #0d1218 25%, transparent 25%),
+                linear-gradient(-45deg, #0d1218 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #0d1218 75%),
+                linear-gradient(-45deg, transparent 75%, #0d1218 75%);
+            background-size: 12px 12px;
+            background-position: 0 0, 0 6px, 6px -6px, -6px 0px;
+            background-color: #0a0f14;
+        }
+
+        #sdfCanvas {
+            max-width: 100%;
+            max-height: 300px;
+            border: 1px solid var(--border-color);
+            image-rendering: pixelated;
+        }
+
+        .shader-canvas-wrap {
+            aspect-ratio: 1 / 1;
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #shaderCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Preview row layout */
+        .preview-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .preview-square {
+            flex: 1;
+        }
+
+        .preview-info {
+            flex: 1;
+        }
+
+        /* Info grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            padding: 10px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 8px;
+            background: var(--bg-input);
+            border-radius: 4px;
+        }
+
+        .info-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .info-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--accent-teal);
+        }
+
+        /* Shader code block */
+        .code-block {
+            padding: 10px;
+        }
+
+        .code-block pre {
+            background: var(--bg-input);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            overflow-x: auto;
+        }
+
+        .code-block .comment { color: var(--text-muted); }
+        .code-block .keyword { color: var(--accent-gold); }
+        .code-block .function { color: var(--accent-teal); }
+        .code-block .number { color: #f472b6; }
+
+        /* Effect indicator */
+        .effect-indicator {
+            display: flex;
+            justify-content: center;
+            padding: 10px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .effect-dots {
+            display: flex;
+            gap: 8px;
+        }
+
+        .effect-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--border-color);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .effect-dot:hover {
+            background: var(--text-muted);
+        }
+
+        .effect-dot.active {
+            background: var(--accent-gold);
+            box-shadow: 0 0 8px rgba(232, 185, 35, 0.5);
+        }
+
+        /* Responsive */
         @media (max-width: 900px) {
-            .container {
+            .content-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .controls-panel {
+                border-right: none;
+                border-bottom: 1px solid var(--border-subtle);
+                max-height: none;
             }
         }
     </style>
 </head>
 <body>
-    <h1>SDF Text Generator</h1>
+    <div class="noise-overlay"></div>
 
-    <div class="container">
-        <!-- Left Panel: Controls -->
-        <div class="panel">
-            <h2>Text Input</h2>
-
-            <div class="form-group">
-                <label>Text to Render</label>
-                <textarea id="textInput" placeholder="Enter your text...">Hello World</textarea>
-            </div>
-
-            <h2>Font Selection</h2>
-
-            <div class="tabs">
-                <div class="tab active" data-tab="system">System</div>
-                <div class="tab" data-tab="google">Google</div>
-                <div class="tab" data-tab="custom">Upload</div>
-            </div>
-
-            <div class="tab-content active" data-tab="system">
-                <div class="form-group">
-                    <label>System Font</label>
-                    <select id="systemFont">
-                        <option value="Arial">Arial</option>
-                        <option value="Helvetica">Helvetica</option>
-                        <option value="Times New Roman">Times New Roman</option>
-                        <option value="Georgia">Georgia</option>
-                        <option value="Courier New">Courier New</option>
-                        <option value="Verdana">Verdana</option>
-                        <option value="Trebuchet MS">Trebuchet MS</option>
-                        <option value="Impact">Impact</option>
-                        <option value="Palatino Linotype">Palatino Linotype</option>
-                    </select>
+    <div class="app-container">
+        <div class="main-window">
+            <!-- Window Chrome -->
+            <div class="window-chrome">
+                <div class="chrome-dots">
+                    <span class="chrome-dot red"></span>
+                    <span class="chrome-dot yellow"></span>
+                    <span class="chrome-dot green"></span>
                 </div>
+                <span class="chrome-tag"><span class="tag-bracket">[</span><span class="tag-index">TOOL_01</span><span class="tag-bracket">]</span></span>
+                <span class="chrome-title">SDF Text Generator</span>
+                <span class="chrome-separator">//</span>
+                <span class="chrome-subtitle">Shader-Ready Fonts</span>
+                <span class="chrome-spacer"></span>
+                <a href="../index.html" class="back-link">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                    Back to Portfolio
+                </a>
             </div>
 
-            <div class="tab-content" data-tab="google">
-                <div class="form-group google-fonts-search">
-                    <label>Google Font</label>
-                    <input type="text" id="googleFontSearch" placeholder="Search fonts...">
-                    <div class="google-fonts-dropdown" id="googleFontsDropdown"></div>
-                </div>
-                <div class="status" id="googleFontStatus">Type to search Google Fonts</div>
-            </div>
+            <!-- Content -->
+            <div class="content-grid">
+                <!-- Left: Controls -->
+                <div class="controls-panel">
+                    <!-- Text Input Section -->
+                    <div class="panel-section">
+                        <div class="section-header">
+                            <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 7V4h16v3M9 20h6M12 4v16"/>
+                            </svg>
+                            <span class="section-title">Text Input</span>
+                            <svg class="section-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                        </div>
+                        <div class="section-content">
+                            <div class="form-row">
+                                <label class="form-label">Text to Render</label>
+                                <textarea id="textInput" placeholder="Enter your text...">Hello World</textarea>
+                            </div>
+                        </div>
+                    </div>
 
-            <div class="tab-content" data-tab="custom">
-                <div class="form-group">
-                    <label>Upload Font File</label>
-                    <div class="file-upload">
-                        <label class="file-upload-btn" for="customFontFile">Choose File</label>
-                        <input type="file" id="customFontFile" accept=".ttf,.woff,.woff2,.otf">
-                        <span class="file-name" id="customFileName">No file chosen</span>
+                    <!-- Font Selection Section -->
+                    <div class="panel-section">
+                        <div class="section-header">
+                            <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 7h16M4 12h16M4 17h10"/>
+                            </svg>
+                            <span class="section-title">Font Selection</span>
+                            <svg class="section-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                        </div>
+                        <div class="section-content">
+                            <div class="font-tabs">
+                                <button class="font-tab active" data-tab="system">System</button>
+                                <button class="font-tab" data-tab="google">Google</button>
+                                <button class="font-tab" data-tab="custom">Upload</button>
+                            </div>
+
+                            <div class="tab-content active" data-tab="system">
+                                <div class="form-row">
+                                    <label class="form-label">System Font</label>
+                                    <select id="systemFont">
+                                        <option value="Arial">Arial</option>
+                                        <option value="Helvetica">Helvetica</option>
+                                        <option value="Times New Roman">Times New Roman</option>
+                                        <option value="Georgia">Georgia</option>
+                                        <option value="Courier New">Courier New</option>
+                                        <option value="Verdana">Verdana</option>
+                                        <option value="Trebuchet MS">Trebuchet MS</option>
+                                        <option value="Impact">Impact</option>
+                                        <option value="Palatino Linotype">Palatino Linotype</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="tab-content" data-tab="google">
+                                <div class="form-row">
+                                    <label class="form-label">Google Font</label>
+                                    <div class="google-search-wrap">
+                                        <input type="text" id="googleFontSearch" placeholder="Search fonts...">
+                                        <div class="google-dropdown" id="googleDropdown"></div>
+                                    </div>
+                                </div>
+                                <div class="status-msg" id="googleStatus">Type to search Google Fonts</div>
+                            </div>
+
+                            <div class="tab-content" data-tab="custom">
+                                <div class="form-row">
+                                    <label class="form-label">Upload Font File</label>
+                                    <div class="file-upload-wrap">
+                                        <label class="file-btn" for="customFontFile">Choose File</label>
+                                        <input type="file" id="customFontFile" accept=".ttf,.woff,.woff2,.otf">
+                                        <span class="file-name" id="fileName">No file chosen</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Settings Section -->
+                    <div class="panel-section">
+                        <div class="section-header">
+                            <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                            </svg>
+                            <span class="section-title">Settings</span>
+                            <svg class="section-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                        </div>
+                        <div class="section-content">
+                            <div class="form-row">
+                                <label class="form-label">Texture Size</label>
+                                <select id="textureSize">
+                                    <option value="128">128 × 128</option>
+                                    <option value="256">256 × 256</option>
+                                    <option value="512" selected>512 × 512</option>
+                                    <option value="1024">1024 × 1024</option>
+                                    <option value="2048">2048 × 2048</option>
+                                </select>
+                            </div>
+
+                            <div class="form-row">
+                                <label class="form-label">SDF Spread (Radius)</label>
+                                <div class="range-row">
+                                    <input type="range" id="sdfSpread" min="2" max="64" value="16">
+                                    <span class="range-value" id="sdfSpreadValue">16px</span>
+                                </div>
+                            </div>
+
+                            <div class="btn-group">
+                                <button class="btn btn-primary" id="generateBtn">Generate SDF</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Export Section -->
+                    <div class="panel-section">
+                        <div class="section-header">
+                            <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            <span class="section-title">Export</span>
+                            <svg class="section-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                        </div>
+                        <div class="section-content">
+                            <div class="form-row">
+                                <label class="form-label">File Name</label>
+                                <input type="text" id="fileName2" value="text-sdf">
+                            </div>
+
+                            <div class="btn-group">
+                                <button class="btn btn-secondary" id="exportPng">Export PNG</button>
+                                <button class="btn btn-secondary" id="exportJson">Export JSON (Metadata)</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <h2 style="margin-top: 24px;">Settings</h2>
+                <!-- Right: Preview -->
+                <div class="preview-panel">
+                    <div class="preview-row">
+                        <!-- SDF Preview -->
+                        <div class="preview-section preview-square">
+                            <div class="preview-header">
+                                <span class="preview-label">SDF Output</span>
+                                <span class="preview-badge" id="sizeBadge">512×512</span>
+                            </div>
+                            <div class="sdf-canvas-wrap">
+                                <canvas id="sdfCanvas"></canvas>
+                            </div>
+                        </div>
 
-            <div class="form-group">
-                <label>Texture Size</label>
-                <select id="textureSize">
-                    <option value="128">128 x 128</option>
-                    <option value="256">256 x 256</option>
-                    <option value="512" selected>512 x 512</option>
-                    <option value="1024">1024 x 1024</option>
-                    <option value="2048">2048 x 2048</option>
-                </select>
-            </div>
+                        <!-- Shader Preview -->
+                        <div class="preview-section preview-square">
+                            <div class="preview-header">
+                                <span class="preview-label">Shader Preview</span>
+                                <span class="preview-badge" id="effectBadge">Glitch</span>
+                            </div>
+                            <div class="shader-canvas-wrap">
+                                <canvas id="shaderCanvas"></canvas>
+                            </div>
+                            <div class="effect-indicator">
+                                <div class="effect-dots" id="effectDots"></div>
+                            </div>
+                        </div>
+                    </div>
 
-            <div class="form-group">
-                <label>Font Size (Auto-fit)</label>
-                <div class="range-group">
-                    <input type="range" id="fontScale" min="10" max="100" value="80">
-                    <span class="range-value" id="fontScaleValue">80%</span>
+                    <div class="preview-row">
+                        <!-- Info -->
+                        <div class="preview-section preview-info">
+                            <div class="preview-header">
+                                <span class="preview-label">Generation Info</span>
+                            </div>
+                            <div class="info-grid" id="infoGrid">
+                                <div class="info-item">
+                                    <span class="info-label">Status</span>
+                                    <span class="info-value">Ready</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Shader Usage -->
+                        <div class="preview-section preview-info">
+                            <div class="preview-header">
+                                <span class="preview-label">Shader Usage</span>
+                            </div>
+                            <div class="code-block">
+                                <pre><span class="comment">// Sample the SDF texture</span>
+<span class="keyword">float</span> dist = <span class="function">texture2D</span>(sdfTexture, uv).<span class="keyword">r</span>;
+
+<span class="comment">// Anti-aliased edge</span>
+<span class="keyword">float</span> edge = <span class="number">0.5</span>;
+<span class="keyword">float</span> delta = <span class="function">fwidth</span>(dist) * <span class="number">0.5</span>;
+<span class="keyword">float</span> alpha = <span class="function">smoothstep</span>(edge - delta, edge + delta, dist);
+
+<span class="comment">// Outline effect</span>
+<span class="keyword">float</span> outline = <span class="function">smoothstep</span>(<span class="number">0.4</span>, <span class="number">0.45</span>, dist)
+             - <span class="function">smoothstep</span>(<span class="number">0.5</span>, <span class="number">0.55</span>, dist);</pre>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-
-            <div class="form-group">
-                <label>SDF Spread (Radius)</label>
-                <div class="range-group">
-                    <input type="range" id="sdfSpread" min="2" max="64" value="16">
-                    <span class="range-value" id="sdfSpreadValue">16</span>
-                </div>
-            </div>
-
-            <div class="btn-group">
-                <button class="btn btn-primary" id="generateBtn">Generate SDF</button>
-            </div>
-
-            <h2 style="margin-top: 24px;">Export</h2>
-
-            <div class="form-group">
-                <label>File Name</label>
-                <input type="text" id="fileName" value="text-sdf">
-            </div>
-
-            <div class="btn-group">
-                <button class="btn btn-secondary" id="exportPng">Export PNG</button>
-                <button class="btn btn-secondary" id="exportJson">Export JSON (metadata)</button>
-            </div>
-
-            <div class="status" id="exportStatus"></div>
-        </div>
-
-        <!-- Right Panel: Preview -->
-        <div class="panel preview-container">
-            <h2>SDF Preview</h2>
-            <div class="sdf-preview">
-                <canvas id="sdfCanvas"></canvas>
-            </div>
-
-            <h2>Shader Preview</h2>
-            <div class="shader-preview">
-                <canvas id="shaderCanvas"></canvas>
-            </div>
-
-            <h2>Info</h2>
-            <div class="status">
-                <dl class="info-grid" id="infoGrid">
-                    <dt>Status</dt>
-                    <dd>Ready</dd>
-                </dl>
-            </div>
-
-            <h2>Shader Usage</h2>
-            <div class="status">
-                <pre style="font-size: 0.7rem; white-space: pre-wrap;">// Sample the SDF texture
-float dist = texture2D(sdfTexture, uv).r;
-
-// Anti-aliased edge
-float edge = 0.5;
-float delta = fwidth(dist) * 0.5;
-float alpha = smoothstep(edge - delta, edge + delta, dist);
-
-// Or for outline effect:
-float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
             </div>
         </div>
     </div>
@@ -485,7 +915,7 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
         let sdfGenerated = false;
         let textBounds = null;
 
-        // DOM Elements
+        // DOM
         const sdfCanvas = document.getElementById('sdfCanvas');
         const sdfCtx = sdfCanvas.getContext('2d');
         const shaderCanvas = document.getElementById('shaderCanvas');
@@ -493,7 +923,7 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
         let shaderProgram = null;
         let sdfTexture = null;
 
-        // Google Fonts (popular subset)
+        // Google Fonts
         const googleFonts = [
             'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Oswald',
             'Source Sans Pro', 'Raleway', 'Poppins', 'Nunito', 'Ubuntu',
@@ -504,7 +934,8 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
         ];
 
         function init() {
-            setupTabs();
+            setupSectionToggles();
+            setupFontTabs();
             setupRangeInputs();
             setupGoogleFonts();
             setupCustomFont();
@@ -513,10 +944,20 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
             setupShaderPreview();
         }
 
-        function setupTabs() {
-            document.querySelectorAll('.tab').forEach(tab => {
+        // Collapsible sections
+        function setupSectionToggles() {
+            document.querySelectorAll('.section-header').forEach(header => {
+                header.addEventListener('click', () => {
+                    header.classList.toggle('collapsed');
+                });
+            });
+        }
+
+        // Font tabs
+        function setupFontTabs() {
+            document.querySelectorAll('.font-tab').forEach(tab => {
                 tab.addEventListener('click', () => {
-                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.font-tab').forEach(t => t.classList.remove('active'));
                     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                     tab.classList.add('active');
                     document.querySelector(`.tab-content[data-tab="${tab.dataset.tab}"]`).classList.add('active');
@@ -524,25 +965,20 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
             });
         }
 
+        // Range inputs
         function setupRangeInputs() {
-            const ranges = [
-                { input: 'fontScale', display: 'fontScaleValue', suffix: '%' },
-                { input: 'sdfSpread', display: 'sdfSpreadValue', suffix: '' }
-            ];
-
-            ranges.forEach(({ input, display, suffix }) => {
-                const inputEl = document.getElementById(input);
-                const displayEl = document.getElementById(display);
-                inputEl.addEventListener('input', () => {
-                    displayEl.textContent = inputEl.value + suffix;
-                });
+            const sdfSpread = document.getElementById('sdfSpread');
+            const sdfSpreadValue = document.getElementById('sdfSpreadValue');
+            sdfSpread.addEventListener('input', () => {
+                sdfSpreadValue.textContent = sdfSpread.value + 'px';
             });
         }
 
+        // Google Fonts
         function setupGoogleFonts() {
             const searchInput = document.getElementById('googleFontSearch');
-            const dropdown = document.getElementById('googleFontsDropdown');
-            const status = document.getElementById('googleFontStatus');
+            const dropdown = document.getElementById('googleDropdown');
+            const status = document.getElementById('googleStatus');
 
             searchInput.addEventListener('input', () => {
                 const query = searchInput.value.toLowerCase();
@@ -554,7 +990,7 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
                 const matches = googleFonts.filter(f => f.toLowerCase().includes(query));
                 if (matches.length > 0) {
                     dropdown.innerHTML = matches.map(f =>
-                        `<div class="google-font-option" data-font="${f}">${f}</div>`
+                        `<div class="google-option" data-font="${f}">${f}</div>`
                     ).join('');
                     dropdown.classList.add('show');
                 } else {
@@ -563,12 +999,12 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
             });
 
             dropdown.addEventListener('click', async (e) => {
-                if (e.target.classList.contains('google-font-option')) {
+                if (e.target.classList.contains('google-option')) {
                     const fontName = e.target.dataset.font;
                     searchInput.value = fontName;
                     dropdown.classList.remove('show');
                     status.textContent = `Loading ${fontName}...`;
-                    status.className = 'status';
+                    status.className = 'status-msg';
 
                     try {
                         await loadGoogleFont(fontName);
@@ -583,7 +1019,7 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
             });
 
             document.addEventListener('click', (e) => {
-                if (!e.target.closest('.google-fonts-search')) {
+                if (!e.target.closest('.google-search-wrap')) {
                     dropdown.classList.remove('show');
                 }
             });
@@ -598,15 +1034,16 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
             await document.fonts.load(`48px "${fontName}"`);
         }
 
+        // Custom font
         function setupCustomFont() {
             const fileInput = document.getElementById('customFontFile');
-            const fileName = document.getElementById('customFileName');
+            const fileNameEl = document.getElementById('fileName');
 
             fileInput.addEventListener('change', async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
 
-                fileName.textContent = file.name;
+                fileNameEl.textContent = file.name;
 
                 try {
                     const arrayBuffer = await file.arrayBuffer();
@@ -614,14 +1051,15 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
                     await fontFace.load();
                     document.fonts.add(fontFace);
                     currentFont = 'CustomFont';
-                    fileName.textContent = file.name + ' (loaded)';
+                    fileNameEl.textContent = file.name + ' ✓';
                 } catch (err) {
                     console.error('Failed to load font:', err);
-                    fileName.textContent = 'Error loading font';
+                    fileNameEl.textContent = 'Error loading font';
                 }
             });
         }
 
+        // Generate
         function setupGenerate() {
             document.getElementById('generateBtn').addEventListener('click', generateSDF);
             document.getElementById('systemFont').addEventListener('change', (e) => {
@@ -637,11 +1075,10 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
             }
 
             const textureSize = parseInt(document.getElementById('textureSize').value);
-            const fontScale = parseInt(document.getElementById('fontScale').value) / 100;
             const spread = parseInt(document.getElementById('sdfSpread').value);
 
-            // Get current font based on active tab
-            const activeTab = document.querySelector('.tab.active').dataset.tab;
+            // Get font from active tab
+            const activeTab = document.querySelector('.font-tab.active').dataset.tab;
             if (activeTab === 'system') {
                 currentFont = document.getElementById('systemFont').value;
             } else if (activeTab === 'google') {
@@ -652,76 +1089,64 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
             // Setup canvas
             sdfCanvas.width = textureSize;
             sdfCanvas.height = textureSize;
+            document.getElementById('sizeBadge').textContent = `${textureSize}×${textureSize}`;
 
-            // Clear canvas
             sdfCtx.fillStyle = 'black';
             sdfCtx.fillRect(0, 0, textureSize, textureSize);
 
-            // Calculate font size to fit text centered with padding
+            // Calculate font size (auto-fit to available space)
             const padding = spread * 2;
             const availableWidth = textureSize - padding * 2;
             const availableHeight = textureSize - padding * 2;
 
-            // Find optimal font size
-            let fontSize = availableHeight * fontScale;
+            // Start with height-based font size, then scale down if needed for width
+            let fontSize = availableHeight * 0.8;
             sdfCtx.font = `${fontSize}px "${currentFont}"`;
             let metrics = sdfCtx.measureText(text);
 
-            // Scale down if text is too wide
             if (metrics.width > availableWidth) {
                 fontSize = fontSize * (availableWidth / metrics.width);
                 sdfCtx.font = `${fontSize}px "${currentFont}"`;
                 metrics = sdfCtx.measureText(text);
             }
 
-            // Get proper text metrics
             const textWidth = metrics.width;
-            const textHeight = fontSize; // Approximate
+            const textHeight = fontSize;
 
-            // Create high-res canvas for text rendering (for better SDF quality)
-            const scale = 2; // Supersampling
+            // High-res render
+            const scale = 2;
             const hiResCanvas = document.createElement('canvas');
             hiResCanvas.width = textureSize * scale;
             hiResCanvas.height = textureSize * scale;
             const hiResCtx = hiResCanvas.getContext('2d');
 
-            // Clear
             hiResCtx.fillStyle = 'black';
             hiResCtx.fillRect(0, 0, hiResCanvas.width, hiResCanvas.height);
 
-            // Draw text centered
             hiResCtx.fillStyle = 'white';
             hiResCtx.font = `${fontSize * scale}px "${currentFont}"`;
             hiResCtx.textBaseline = 'middle';
             hiResCtx.textAlign = 'center';
             hiResCtx.fillText(text, hiResCanvas.width / 2, hiResCanvas.height / 2);
 
-            // Get image data
             const hiResData = hiResCtx.getImageData(0, 0, hiResCanvas.width, hiResCanvas.height);
-
-            // Generate SDF at target resolution
             const sdfData = generateSDFFromImage(hiResData, hiResCanvas.width, hiResCanvas.height, textureSize, spread * scale);
 
-            // Draw SDF to canvas
             sdfCtx.putImageData(sdfData, 0, 0);
 
-            // Store bounds for JSON export
             textBounds = {
                 text: text,
                 font: currentFont,
                 fontSize: Math.round(fontSize),
                 textureSize: textureSize,
                 spread: spread,
-                // Normalized coordinates (0-1)
                 centerX: 0.5,
                 centerY: 0.5,
                 width: textWidth / textureSize,
                 height: textHeight / textureSize
             };
 
-            // Update info
             updateInfo();
-
             sdfGenerated = true;
             updateShaderPreview();
         }
@@ -730,44 +1155,38 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
             const srcData = imageData.data;
             const srcSize = srcWidth * srcHeight;
 
-            // Extract alpha/luminance as binary
             const src = new Float64Array(srcSize);
             for (let i = 0; i < srcSize; i++) {
-                // Use red channel (text is white)
                 src[i] = srcData[i * 4] / 255;
             }
 
-            // Compute distance fields at source resolution
             const outside = edt(src, srcWidth, srcHeight);
             const inside = edt(src.map(v => 1 - v), srcWidth, srcHeight);
 
-            // Create output at destination size
             const dst = new Uint8ClampedArray(dstSize * dstSize * 4);
             const scale = srcWidth / dstSize;
 
             for (let y = 0; y < dstSize; y++) {
                 for (let x = 0; x < dstSize; x++) {
-                    // Sample from high-res SDF (bilinear would be better but nearest is fine)
                     const srcX = Math.floor(x * scale);
                     const srcY = Math.floor(y * scale);
                     const srcIdx = srcY * srcWidth + srcX;
 
-                    const dist = outside[srcIdx] - inside[srcIdx];
+                    const dist = inside[srcIdx] - outside[srcIdx];
                     const normalized = 0.5 + 0.5 * (dist / radius);
                     const value = Math.round(Math.max(0, Math.min(255, normalized * 255)));
 
                     const dstIdx = (y * dstSize + x) * 4;
-                    dst[dstIdx] = value;     // R
-                    dst[dstIdx + 1] = value; // G
-                    dst[dstIdx + 2] = value; // B
-                    dst[dstIdx + 3] = 255;   // A (fully opaque)
+                    dst[dstIdx] = value;
+                    dst[dstIdx + 1] = value;
+                    dst[dstIdx + 2] = value;
+                    dst[dstIdx + 3] = 255;
                 }
             }
 
             return new ImageData(dst, dstSize, dstSize);
         }
 
-        // Euclidean Distance Transform (1D)
         function edt1d(f, n) {
             const d = new Float64Array(n);
             const v = new Int32Array(n);
@@ -799,13 +1218,11 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
             return d;
         }
 
-        // 2D Euclidean Distance Transform
         function edt(data, width, height) {
             const INF = 1e20;
             const f = new Float64Array(Math.max(width, height));
             const result = new Float64Array(width * height);
 
-            // Transform along columns
             for (let x = 0; x < width; x++) {
                 for (let y = 0; y < height; y++) {
                     f[y] = data[y * width + x] > 0.5 ? 0 : INF;
@@ -816,7 +1233,6 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
                 }
             }
 
-            // Transform along rows
             for (let y = 0; y < height; y++) {
                 for (let x = 0; x < width; x++) {
                     f[x] = result[y * width + x];
@@ -834,25 +1250,344 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
             const info = document.getElementById('infoGrid');
             if (textBounds) {
                 info.innerHTML = `
-                    <dt>Text</dt><dd>${textBounds.text}</dd>
-                    <dt>Font</dt><dd>${textBounds.font}</dd>
-                    <dt>Font Size</dt><dd>${textBounds.fontSize}px</dd>
-                    <dt>Texture</dt><dd>${textBounds.textureSize}x${textBounds.textureSize}</dd>
-                    <dt>Spread</dt><dd>${textBounds.spread}px</dd>
+                    <div class="info-item"><span class="info-label">Text</span><span class="info-value">${textBounds.text.substring(0, 12)}${textBounds.text.length > 12 ? '...' : ''}</span></div>
+                    <div class="info-item"><span class="info-label">Font</span><span class="info-value">${textBounds.font}</span></div>
+                    <div class="info-item"><span class="info-label">Size</span><span class="info-value">${textBounds.fontSize}px</span></div>
+                    <div class="info-item"><span class="info-label">Spread</span><span class="info-value">${textBounds.spread}px</span></div>
                 `;
             }
         }
 
-        // WebGL Shader Preview
+        // WebGL Preview with multiple effects
+        const SDF_EFFECTS = [
+            {
+                name: 'Glitch',
+                fragment: `
+                    precision highp float;
+                    varying vec2 vTexCoord;
+                    uniform sampler2D uTexture;
+                    uniform float uTime;
+
+                    float random(float x) {
+                        return fract(sin(x * 12.9898) * 43758.5453);
+                    }
+
+                    void main() {
+                        vec2 uv = vec2(vTexCoord.x, 1.0 - vTexCoord.y);
+
+                        // Glitch timing
+                        float glitchTime = floor(uTime * 8.0);
+                        float glitchIntensity = step(0.85, random(glitchTime));
+
+                        // Horizontal slice offset
+                        float sliceY = floor(uv.y * 15.0) / 15.0;
+                        float sliceOffset = (random(sliceY + glitchTime) - 0.5) * 0.1 * glitchIntensity;
+
+                        // RGB split
+                        float rgbSplit = 0.01 + glitchIntensity * 0.02;
+
+                        vec2 uvR = uv + vec2(sliceOffset + rgbSplit, 0.0);
+                        vec2 uvG = uv + vec2(sliceOffset, 0.0);
+                        vec2 uvB = uv + vec2(sliceOffset - rgbSplit, 0.0);
+
+                        float distR = texture2D(uTexture, uvR).r;
+                        float distG = texture2D(uTexture, uvG).r;
+                        float distB = texture2D(uTexture, uvB).r;
+
+                        float textR = smoothstep(0.55, 0.45, distR);
+                        float textG = smoothstep(0.55, 0.45, distG);
+                        float textB = smoothstep(0.55, 0.45, distB);
+
+                        // Scanline effect
+                        float scanline = sin(uv.y * 400.0) * 0.04 * glitchIntensity;
+
+                        vec3 color = vec3(textR, textG, textB);
+                        color *= 1.0 - scanline;
+
+                        // Add color tint
+                        color.r *= 1.1;
+                        color.b *= 0.9;
+
+                        float alpha = max(max(textR, textG), textB);
+                        gl_FragColor = vec4(color, alpha);
+                    }
+                `
+            },
+            {
+                name: 'Neon Glow',
+                fragment: `
+                    precision highp float;
+                    varying vec2 vTexCoord;
+                    uniform sampler2D uTexture;
+                    uniform float uTime;
+
+                    vec3 hsl2rgb(vec3 c) {
+                        vec3 rgb = clamp(abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+                        return c.z + c.y * (rgb - 0.5) * (1.0 - abs(2.0 * c.z - 1.0));
+                    }
+
+                    void main() {
+                        vec2 uv = vec2(vTexCoord.x, 1.0 - vTexCoord.y);
+                        float dist = texture2D(uTexture, uv).r;
+
+                        // Black background
+                        vec3 bgColor = vec3(0.0);
+
+                        // Text core (inverted SDF: high values = inside text)
+                        float text = smoothstep(0.48, 0.52, dist);
+
+                        // Glow using 1/distance falloff (now dist > 0.5 is inside)
+                        float glowDist = max(dist - 0.5, 0.001);
+                        float glow = 0.08 / glowDist;
+                        glow = clamp(glow, 0.0, 1.0);
+                        glow *= smoothstep(0.5, 1.0, dist); // Fade at edges
+
+                        // Animated hue
+                        float hue = fract(uTime * 0.1);
+                        vec3 glowColor = hsl2rgb(vec3(hue, 1.0, 0.6));
+                        vec3 coreColor = hsl2rgb(vec3(hue, 0.8, 0.9));
+
+                        // Pulsing
+                        float pulse = 0.8 + 0.2 * sin(uTime * 3.0);
+
+                        vec3 color = bgColor;
+                        color += glowColor * glow * pulse * 0.8;
+                        color += coreColor * text;
+
+                        float alpha = max(text, glow * pulse * 0.5);
+                        gl_FragColor = vec4(color, 1.0);
+                    }
+                `
+            },
+            {
+                name: 'Outline',
+                fragment: `
+                    precision highp float;
+                    varying vec2 vTexCoord;
+                    uniform sampler2D uTexture;
+                    uniform float uTime;
+
+                    void main() {
+                        vec2 uv = vec2(vTexCoord.x, 1.0 - vTexCoord.y);
+                        float dist = texture2D(uTexture, uv).r;
+
+                        // Animated thickness
+                        float thickness = 0.08 + 0.06 * sin(uTime * 1.5);
+
+                        // Multiple outline layers with animated thickness (inverted: > 0.5 is inside)
+                        float innerEdge = 0.5;
+                        float outline1Start = innerEdge + thickness;
+                        float outline2Start = outline1Start + thickness;
+                        float outline3Start = outline2Start + thickness;
+
+                        float core = smoothstep(innerEdge + 0.02, innerEdge - 0.02, dist);
+                        float outline1 = smoothstep(outline1Start + 0.02, outline1Start - 0.02, dist) - core;
+                        float outline2 = smoothstep(outline2Start + 0.02, outline2Start - 0.02, dist) - smoothstep(outline1Start + 0.02, outline1Start - 0.02, dist);
+                        float outline3 = smoothstep(outline3Start + 0.02, outline3Start - 0.02, dist) - smoothstep(outline2Start + 0.02, outline2Start - 0.02, dist);
+
+                        // Color palette
+                        vec3 coreColor = vec3(1.0, 1.0, 1.0);
+                        vec3 color1 = vec3(0.91, 0.73, 0.14); // Gold
+                        vec3 color2 = vec3(0.18, 0.83, 0.75); // Teal
+                        vec3 color3 = vec3(0.95, 0.3, 0.5);   // Pink
+
+                        vec3 color = coreColor * core;
+                        color += color1 * max(outline1, 0.0);
+                        color += color2 * max(outline2, 0.0);
+                        color += color3 * max(outline3, 0.0);
+
+                        float alpha = max(max(max(core, max(outline1, 0.0)), max(outline2, 0.0)), max(outline3, 0.0));
+                        gl_FragColor = vec4(color, alpha);
+                    }
+                `
+            },
+            {
+                name: 'Drop Shadow',
+                fragment: `
+                    precision highp float;
+                    varying vec2 vTexCoord;
+                    uniform sampler2D uTexture;
+                    uniform float uTime;
+
+                    void main() {
+                        vec2 uv = vec2(vTexCoord.x, 1.0 - vTexCoord.y);
+
+                        // Animated shadow offset - orbiting around text
+                        float angle = uTime * 0.8;
+                        vec2 shadowOffset = vec2(cos(angle), sin(angle)) * 0.04;
+
+                        // Sample for shadow (offset UV means shadow appears shifted)
+                        float shadowDist = texture2D(uTexture, uv - shadowOffset).r;
+                        float dist = texture2D(uTexture, uv).r;
+
+                        // Soft shadow with blur simulation (inverted: > 0.5 is inside)
+                        float shadow = smoothstep(0.65, 0.45, shadowDist);
+
+                        // Main text
+                        float text = smoothstep(0.53, 0.47, dist);
+
+                        // Colors
+                        vec3 shadowColor = vec3(0.0, 0.0, 0.0);
+                        vec3 textColor = mix(vec3(0.85, 0.65, 0.1), vec3(0.98, 0.85, 0.3), uv.y);
+
+                        // Compose: shadow behind, then text on top
+                        vec3 color = shadowColor * shadow * 0.6;
+                        color = mix(color, textColor, text);
+
+                        float alpha = max(shadow * 0.6, text);
+                        gl_FragColor = vec4(color, alpha);
+                    }
+                `
+            },
+            {
+                name: 'Holographic',
+                fragment: `
+                    precision highp float;
+                    varying vec2 vTexCoord;
+                    uniform sampler2D uTexture;
+                    uniform float uTime;
+
+                    vec3 hsl2rgb(vec3 c) {
+                        vec3 rgb = clamp(abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+                        return c.z + c.y * (rgb - 0.5) * (1.0 - abs(2.0 * c.z - 1.0));
+                    }
+
+                    void main() {
+                        vec2 uv = vec2(vTexCoord.x, 1.0 - vTexCoord.y);
+                        float dist = texture2D(uTexture, uv).r;
+
+                        // Text mask (inverted: > 0.5 is inside)
+                        float text = smoothstep(0.55, 0.45, dist);
+
+                        // Rainbow color cycling on the TEXT only, based on UV position + time
+                        float hue = fract(uv.x * 0.8 - uv.y * 0.5 + uTime * 0.3);
+                        vec3 holoColor = hsl2rgb(vec3(hue, 0.9, 0.65));
+
+                        // Scanlines on text
+                        float scanline = sin(uv.y * 150.0 + uTime * 8.0) * 0.5 + 0.5;
+                        scanline = mix(0.7, 1.0, scanline);
+
+                        // Shimmer/sparkle effect
+                        float shimmer = sin(uv.x * 50.0 + uTime * 5.0) * sin(uv.y * 50.0 - uTime * 3.0);
+                        shimmer = shimmer * 0.5 + 0.5;
+                        shimmer = pow(shimmer, 8.0) * 0.5;
+
+                        // Edge highlight (fresnel-like)
+                        float edge = smoothstep(0.6, 0.5, dist) - smoothstep(0.5, 0.4, dist);
+
+                        vec3 color = holoColor * text * scanline;
+                        color += vec3(1.0) * edge * 0.4;
+                        color += vec3(1.0) * shimmer * text;
+
+                        float alpha = text;
+                        gl_FragColor = vec4(color, alpha);
+                    }
+                `
+            },
+            {
+                name: 'Liquid',
+                fragment: `
+                    precision highp float;
+                    varying vec2 vTexCoord;
+                    uniform sampler2D uTexture;
+                    uniform float uTime;
+
+                    void main() {
+                        vec2 uv = vec2(vTexCoord.x, 1.0 - vTexCoord.y);
+
+                        // Liquid distortion
+                        float wave1 = sin(uv.x * 12.0 + uTime * 2.0) * 0.012;
+                        float wave2 = sin(uv.y * 10.0 + uTime * 1.7) * 0.008;
+                        float wave3 = sin((uv.x + uv.y) * 8.0 + uTime * 2.5) * 0.006;
+
+                        vec2 distortedUV = uv + vec2(wave1 + wave3, wave2 + wave3);
+                        float dist = texture2D(uTexture, distortedUV).r;
+
+                        // Chrome-like gradient based on distortion
+                        float chromaShift = (wave1 + wave2) * 25.0;
+                        vec3 color1 = vec3(0.2, 0.6, 1.0);
+                        vec3 color2 = vec3(1.0, 0.4, 0.8);
+                        vec3 textColor = mix(color1, color2, 0.5 + chromaShift);
+
+                        // Inverted: > 0.5 is inside
+                        float text = smoothstep(0.55, 0.45, dist);
+                        float glow = smoothstep(0.75, 0.5, dist) * 0.35;
+
+                        vec3 color = textColor * text + textColor * glow * 0.4;
+                        float alpha = max(text, glow);
+
+                        gl_FragColor = vec4(color, alpha);
+                    }
+                `
+            },
+            {
+                name: 'Fire',
+                fragment: `
+                    precision highp float;
+                    varying vec2 vTexCoord;
+                    uniform sampler2D uTexture;
+                    uniform float uTime;
+
+                    float noise(vec2 p) {
+                        return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+                    }
+
+                    float smoothNoise(vec2 p) {
+                        vec2 i = floor(p);
+                        vec2 f = fract(p);
+                        f = f * f * (3.0 - 2.0 * f);
+                        float a = noise(i);
+                        float b = noise(i + vec2(1.0, 0.0));
+                        float c = noise(i + vec2(0.0, 1.0));
+                        float d = noise(i + vec2(1.0, 1.0));
+                        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+                    }
+
+                    void main() {
+                        vec2 uv = vec2(vTexCoord.x, 1.0 - vTexCoord.y);
+                        float dist = texture2D(uTexture, uv).r;
+
+                        // Animated fire noise
+                        float fireNoise = 0.0;
+                        fireNoise += smoothNoise(uv * 8.0 + vec2(0.0, -uTime * 3.0)) * 0.5;
+                        fireNoise += smoothNoise(uv * 16.0 + vec2(0.0, -uTime * 4.0)) * 0.25;
+                        fireNoise += smoothNoise(uv * 32.0 + vec2(0.0, -uTime * 5.0)) * 0.125;
+
+                        // Extend flames upward from text (inverted: subtract to expand outward)
+                        float flameHeight = (1.0 - uv.y) * fireNoise * 0.18;
+                        float flameDist = dist - flameHeight;
+
+                        // Fire gradient colors
+                        vec3 fireColor1 = vec3(1.0, 0.95, 0.4);  // Yellow core
+                        vec3 fireColor2 = vec3(1.0, 0.5, 0.1);   // Orange
+                        vec3 fireColor3 = vec3(0.9, 0.15, 0.0);  // Red edge
+
+                        // Inverted thresholds
+                        float core = smoothstep(0.55, 0.45, flameDist);
+                        float mid = smoothstep(0.7, 0.5, flameDist);
+                        float outer = smoothstep(0.9, 0.6, flameDist);
+
+                        vec3 color = fireColor1 * core;
+                        color = mix(color, fireColor2, (mid - core) * 2.0);
+                        color += fireColor3 * (outer - mid) * 1.5;
+
+                        float alpha = outer;
+                        gl_FragColor = vec4(color, alpha);
+                    }
+                `
+            }
+        ];
+
+        let currentEffectIndex = 0;
+        let shaderPrograms = [];
+        let animationId = null;
+        let effectStartTime = 0;
+
         function setupShaderPreview() {
             gl = shaderCanvas.getContext('webgl');
-            if (!gl) {
-                console.error('WebGL not supported');
-                return;
-            }
+            if (!gl) return;
 
-            // Enable derivatives extension for fwidth
-            const ext = gl.getExtension('OES_standard_derivatives');
+            gl.getExtension('OES_standard_derivatives');
 
             const vsSource = `
                 attribute vec2 aPosition;
@@ -863,51 +1598,32 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
                 }
             `;
 
-            const fsSource = `
-                #extension GL_OES_standard_derivatives : enable
-                precision mediump float;
-                varying vec2 vTexCoord;
-                uniform sampler2D uTexture;
-                uniform vec3 uColor;
+            // Compile all effect shaders
+            SDF_EFFECTS.forEach((effect, index) => {
+                const vs = compileShader(gl, gl.VERTEX_SHADER, vsSource);
+                const fs = compileShader(gl, gl.FRAGMENT_SHADER, effect.fragment);
 
-                void main() {
-                    vec2 uv = vTexCoord;
-                    uv.y = 1.0 - uv.y; // Flip Y
-
-                    float dist = texture2D(uTexture, uv).r;
-
-                    // Anti-aliased edge
-                    float edge = 0.5;
-                    float smoothing = 0.05; // Fixed smoothing fallback
-                    #ifdef GL_OES_standard_derivatives
-                        smoothing = fwidth(dist) * 0.75;
-                    #endif
-                    float alpha = smoothstep(edge - smoothing, edge + smoothing, dist);
-
-                    // Optional: slight glow
-                    float glow = smoothstep(0.3, 0.5, dist) * 0.3;
-
-                    vec3 color = uColor + glow * vec3(0.2, 0.1, 0.0);
-                    gl_FragColor = vec4(color, alpha);
+                if (!vs || !fs) {
+                    console.error('Failed to compile shader:', effect.name);
+                    shaderPrograms.push(null);
+                    return;
                 }
-            `;
 
-            const vs = compileShader(gl, gl.VERTEX_SHADER, vsSource);
-            const fs = compileShader(gl, gl.FRAGMENT_SHADER, fsSource);
+                const program = gl.createProgram();
+                gl.attachShader(program, vs);
+                gl.attachShader(program, fs);
+                gl.linkProgram(program);
 
-            shaderProgram = gl.createProgram();
-            gl.attachShader(shaderProgram, vs);
-            gl.attachShader(shaderProgram, fs);
-            gl.linkProgram(shaderProgram);
+                if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                    console.error('Shader link error:', effect.name, gl.getProgramInfoLog(program));
+                    shaderPrograms.push(null);
+                    return;
+                }
 
-            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-                console.error('Shader program failed to link');
-                return;
-            }
+                shaderPrograms.push(program);
+            });
 
-            gl.useProgram(shaderProgram);
-
-            // Create fullscreen quad
+            // Setup geometry
             const quadBuffer = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
@@ -915,33 +1631,78 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
                 -1, 1, 1, -1, 1, 1
             ]), gl.STATIC_DRAW);
 
-            const posLoc = gl.getAttribLocation(shaderProgram, 'aPosition');
-            gl.enableVertexAttribArray(posLoc);
-            gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
-
-            // Create texture
             sdfTexture = gl.createTexture();
 
             gl.enable(gl.BLEND);
             gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+            // Setup effect dots
+            setupEffectDots();
+
+            // Start animation loop
+            effectStartTime = performance.now();
+            animatePreview();
+        }
+
+        function setupEffectDots() {
+            const dotsContainer = document.getElementById('effectDots');
+            dotsContainer.innerHTML = '';
+
+            SDF_EFFECTS.forEach((effect, index) => {
+                const dot = document.createElement('div');
+                dot.className = 'effect-dot' + (index === 0 ? ' active' : '');
+                dot.title = effect.name;
+                dot.addEventListener('click', () => {
+                    currentEffectIndex = index;
+                    effectStartTime = performance.now();
+                    updateEffectUI();
+                });
+                dotsContainer.appendChild(dot);
+            });
+        }
+
+        function updateEffectUI() {
+            // Update badge
+            document.getElementById('effectBadge').textContent = SDF_EFFECTS[currentEffectIndex].name;
+
+            // Update dots
+            document.querySelectorAll('.effect-dot').forEach((dot, index) => {
+                dot.classList.toggle('active', index === currentEffectIndex);
+            });
         }
 
         function compileShader(gl, type, source) {
             const shader = gl.createShader(type);
             gl.shaderSource(shader, source);
             gl.compileShader(shader);
-
             if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-                console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+                console.error('Shader error:', gl.getShaderInfoLog(shader));
                 gl.deleteShader(shader);
                 return null;
             }
-
             return shader;
         }
 
-        function updateShaderPreview() {
+        function animatePreview() {
+            const now = performance.now();
+
+            // Switch effect every 3 seconds
+            const elapsed = (now - effectStartTime) / 1000;
+            if (elapsed >= 3.0) {
+                currentEffectIndex = (currentEffectIndex + 1) % SDF_EFFECTS.length;
+                effectStartTime = now;
+                updateEffectUI();
+            }
+
+            renderPreview(now / 1000);
+            animationId = requestAnimationFrame(animatePreview);
+        }
+
+        function renderPreview(time) {
             if (!gl || !sdfGenerated) return;
+
+            const program = shaderPrograms[currentEffectIndex];
+            if (!program) return;
 
             shaderCanvas.width = shaderCanvas.clientWidth * window.devicePixelRatio;
             shaderCanvas.height = shaderCanvas.clientHeight * window.devicePixelRatio;
@@ -950,7 +1711,15 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
             gl.clearColor(0.04, 0.06, 0.08, 1.0);
             gl.clear(gl.COLOR_BUFFER_BIT);
 
-            // Update texture
+            gl.useProgram(program);
+
+            // Setup attributes
+            const posLoc = gl.getAttribLocation(program, 'aPosition');
+            gl.enableVertexAttribArray(posLoc);
+            gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+            // Setup texture
+            gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D, sdfTexture);
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sdfCanvas);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -958,13 +1727,22 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-            // Set uniforms
-            const colorLoc = gl.getUniformLocation(shaderProgram, 'uColor');
-            gl.uniform3f(colorLoc, 0.91, 0.73, 0.14); // Gold
+            const texLoc = gl.getUniformLocation(program, 'uTexture');
+            gl.uniform1i(texLoc, 0);
+
+            // Time uniform
+            const timeLoc = gl.getUniformLocation(program, 'uTime');
+            gl.uniform1f(timeLoc, time);
 
             gl.drawArrays(gl.TRIANGLES, 0, 6);
         }
 
+        function updateShaderPreview() {
+            if (!gl || !sdfGenerated) return;
+            // The animation loop handles rendering
+        }
+
+        // Export
         function setupExport() {
             document.getElementById('exportPng').addEventListener('click', exportPng);
             document.getElementById('exportJson').addEventListener('click', exportJson);
@@ -972,37 +1750,30 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
 
         function exportPng() {
             if (!sdfGenerated) {
-                showExportStatus('Generate SDF first', true);
+                showStatus('Generate SDF first', true);
                 return;
             }
 
-            const name = document.getElementById('fileName').value || 'text-sdf';
+            const name = document.getElementById('fileName2').value || 'text-sdf';
             const link = document.createElement('a');
             link.download = `${name}.png`;
             link.href = sdfCanvas.toDataURL('image/png');
             link.click();
 
-            showExportStatus('PNG exported');
+            showStatus('PNG exported');
         }
 
         function exportJson() {
             if (!sdfGenerated || !textBounds) {
-                showExportStatus('Generate SDF first', true);
+                showStatus('Generate SDF first', true);
                 return;
             }
 
-            const name = document.getElementById('fileName').value || 'text-sdf';
+            const name = document.getElementById('fileName2').value || 'text-sdf';
 
             const json = {
                 ...textBounds,
-                // Add UV info for shader usage
-                uv: {
-                    // Since text is centered, these are the bounds
-                    minU: 0,
-                    maxU: 1,
-                    minV: 0,
-                    maxV: 1
-                }
+                uv: { minU: 0, maxU: 1, minV: 0, maxV: 1 }
             };
 
             const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
@@ -1011,13 +1782,11 @@ float outline = smoothstep(0.4, 0.45, dist) - smoothstep(0.5, 0.55, dist);</pre>
             link.href = URL.createObjectURL(blob);
             link.click();
 
-            showExportStatus('JSON exported');
+            showStatus('JSON exported');
         }
 
-        function showExportStatus(message, isError = false) {
-            const status = document.getElementById('exportStatus');
-            status.textContent = message;
-            status.className = 'status ' + (isError ? 'error' : 'success');
+        function showStatus(message, isError = false) {
+            // Status display removed - silent operation
         }
 
         init();
