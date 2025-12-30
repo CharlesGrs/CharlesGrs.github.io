@@ -7,7 +7,7 @@
     "tags": ["glass", "refraction", "chromatic-aberration", "sdf", "webgl", "fresnel", "caustics"],
     "readTime": "18 min",
     "featured": true,
-    "thumbnail": null,
+    "thumbnail": "apple-liquid-glass-thumb.png",
     "excerpt": "A deep dive into recreating Apple's Liquid Glass effect with physically-based light simulation: squircle SDFs, lens-curve bevels, wavelength-dependent dispersion, Fresnel reflections, and caustic focusing.",
     "sections": [
         {
