@@ -46,6 +46,35 @@ function escapeHtml(text) {
 }
 
 /**
+ * Convert markdown-style links to HTML, escaping the rest
+ * [text](url) -> <a href="url" target="_blank" rel="noopener">text</a>
+ */
+function escapeHtmlWithLinks(text) {
+    if (!text) return '';
+    // Split by markdown links, process each part
+    const parts = [];
+    let lastIndex = 0;
+    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    let match;
+
+    while ((match = linkRegex.exec(text)) !== null) {
+        // Escape text before the link
+        if (match.index > lastIndex) {
+            parts.push(escapeHtml(text.slice(lastIndex, match.index)));
+        }
+        // Add the link (escape link text, not the URL)
+        parts.push(`<a href="${match[2]}" target="_blank" rel="noopener">${escapeHtml(match[1])}</a>`);
+        lastIndex = match.index + match[0].length;
+    }
+    // Escape remaining text after last link
+    if (lastIndex < text.length) {
+        parts.push(escapeHtml(text.slice(lastIndex)));
+    }
+
+    return parts.join('');
+}
+
+/**
  * Generate URL-friendly slug from text
  */
 function slugify(text) {
@@ -129,7 +158,7 @@ function renderSection(section, index) {
             </div>`;
 
         case 'list':
-            const items = (section.items || []).map(item => `<li>${escapeHtml(item)}</li>`).join('\n');
+            const items = (section.items || []).map(item => `<li>${escapeHtmlWithLinks(item)}</li>`).join('\n');
             return `<ul class="article-section section-list">${items}</ul>`;
 
         case 'image':

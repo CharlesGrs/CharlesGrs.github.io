@@ -252,15 +252,13 @@
             "height": 280
         },
         {
-            "type": "code",
-            "language": "glsl",
-            "title": "Prefetching Texture Data",
-            "content": "// Strategy: Issue all texture fetches early, do math while waiting\n\n// Issue fetches immediately (non-blocking)\nvec4 albedo = texture(uAlbedo, uv);       // Fetch 1\nvec4 normal = texture(uNormal, uv);       // Fetch 2\nvec4 roughness = texture(uRoughness, uv); // Fetch 3\nvec4 ao = texture(uAO, uv);               // Fetch 4\n\n// Do expensive math while waiting for textures\nvec3 N = normalize(vNormal);\nvec3 V = normalize(uCameraPos - vWorldPos);\nvec3 L = normalize(uLightPos - vWorldPos);\nvec3 H = normalize(V + L);\nfloat NdotL = max(dot(N, L), 0.0);\nfloat NdotV = max(dot(N, V), 0.0);\nfloat NdotH = max(dot(N, H), 0.0);\n\n// By now, texture fetches have likely completed\n// Using the data doesn't stall\nvec3 albedoColor = albedo.rgb;"
+            "type": "callout",
+            "variant": "warning",
+            "content": "You'll see old advice about \"grouping texture fetches at the top\" to let the GPU prefetch while doing math. On modern hardware, this is mostly cargo cult. The shader compiler reorders instructions aggressively, and the hardware scheduler interleaves warps to hide latency anyway. Write readable code—the compiler will figure out the scheduling."
         },
         {
-            "type": "callout",
-            "variant": "info",
-            "content": "Modern shader compilers reorder instructions automatically and balance prefetching against register pressure. The code order you write isn't necessarily the execution order—the compiler optimizes scheduling. This pattern is more about mental organization and ensuring fetches aren't blocked by dependent computations."
+            "type": "paragraph",
+            "content": "What actually matters: avoid dependent texture reads (where the UV comes from another texture), keep your working set small enough to fit in cache, and maintain high occupancy so the scheduler has warps to switch between."
         },
         {
             "type": "heading",
@@ -377,19 +375,13 @@
         {
             "type": "code",
             "language": "glsl",
-            "title": "Pattern 2: Early Texture Prefetch",
-            "content": "// Issue ALL texture fetches first, then do math\nvoid main() {\n    // === FETCH PHASE (non-blocking) ===\n    vec4 albedo   = texture(uAlbedo, vUV);\n    vec4 normal   = texture(uNormal, vUV);\n    vec4 orm      = texture(uORM, vUV);\n    vec4 emissive = texture(uEmissive, vUV);\n    \n    // === COMPUTE PHASE (hides latency) ===\n    vec3 N = decodeNormal(normal.xy);\n    vec3 V = normalize(uCameraPos - vWorldPos);\n    vec3 L = normalize(uLightDir);\n    vec3 H = normalize(V + L);\n    \n    float NdotL = max(dot(N, L), 0.0);\n    float NdotV = max(dot(N, V), 0.0);\n    float NdotH = max(dot(N, H), 0.0);\n    float VdotH = max(dot(V, H), 0.0);\n    \n    // === USE PHASE (textures ready by now) ===\n    vec3 F0 = mix(vec3(0.04), albedo.rgb, orm.b);\n    // ... rest of PBR calculation\n}"
-        },
-        {
-            "type": "code",
-            "language": "glsl",
-            "title": "Pattern 3: Mip Bias for Blur Passes",
+            "title": "Pattern 2: Mip Bias for Blur Passes",
             "content": "// When doing blur/downsample, use higher mip levels\n// This saves bandwidth since you're averaging anyway\n\n// Standard blur (fetches full-res texels)\nvec4 blur = vec4(0.0);\nfor (int i = 0; i < 9; i++) {\n    blur += texture(uTexture, uv + offsets[i]) * weights[i];\n}\n\n// Cache-friendly blur (uses lower mip = fewer cache lines)\nvec4 blur = vec4(0.0);\nfloat mipBias = 1.0; // Use mip level 1 (half res)\nfor (int i = 0; i < 9; i++) {\n    blur += texture(uTexture, uv + offsets[i], mipBias) * weights[i];\n}"
         },
         {
             "type": "callout",
             "variant": "tip",
-            "content": "Stack these together—ORM packing, early prefetch, mip bias in post—and you can often squeeze 20-40% more performance out of texture-heavy shaders without touching the algorithm."
+            "content": "ORM packing + mip bias in post-processing can get you 20-40% in texture-heavy shaders without changing the algorithm."
         },
         {
             "type": "heading",
@@ -399,12 +391,12 @@
         {
             "type": "list",
             "items": [
-                "Cache hits are ~15x faster than VRAM fetches (30 vs 500 cycles). Coherent access patterns are critical for performance.",
-                "Mipmapping isn't optional—it's a cache optimization that keeps your working set manageable.",
-                "Pack related data into fewer textures. Four 1-channel fetches cost more than one 4-channel fetch.",
-                "Issue texture fetches early and do math while waiting. GPUs hide latency through parallelism.",
-                "Avoid dependent texture reads when possible. Each dependency serializes memory access.",
-                "Profile with Nsight/RGP—cache hit rates reveal optimization opportunities invisible to frame timing alone."
+                "Cache hits are ~15x faster than VRAM fetches (30 vs 500 cycles). Coherent access patterns matter.",
+                "Mipmaps are a cache optimization, not just a visual quality thing.",
+                "Pack related data into fewer textures. One RGBA fetch beats four R fetches.",
+                "Avoid dependent texture reads—each one serializes memory access.",
+                "Don't manually \"prefetch\" textures. The compiler and hardware scheduler handle latency hiding.",
+                "Profile with Nsight/RGP. Cache hit rates reveal problems that frame timing won't."
             ]
         },
         {
@@ -420,13 +412,13 @@
         {
             "type": "list",
             "items": [
-                "<a href='https://docs.nvidia.com/cuda/ada-tuning-guide/index.html' target='_blank'>NVIDIA Ada GPU Architecture Tuning Guide</a> — Official L1/L2 cache sizes, shared memory configuration",
-                "<a href='https://docs.nvidia.com/cuda/ampere-tuning-guide/index.html' target='_blank'>NVIDIA Ampere GPU Architecture Tuning Guide</a> — A100 cache hierarchy details",
-                "<a href='https://chipsandcheese.com/p/measuring-gpu-memory-latency' target='_blank'>Chips and Cheese: Measuring GPU Memory Latency</a> — Empirical latency measurements for NVIDIA and AMD",
-                "<a href='https://chipsandcheese.com/p/microbenchmarking-nvidias-rtx-4090' target='_blank'>Chips and Cheese: Microbenchmarking NVIDIA's RTX 4090</a> — Ada Lovelace cache architecture analysis",
-                "<a href='https://developer.nvidia.com/blog/using-shared-memory-cuda-cc' target='_blank'>NVIDIA Developer Blog: Using Shared Memory in CUDA</a> — Bank conflicts and shared memory optimization",
-                "<a href='https://fgiesen.wordpress.com/2011/01/17/texture-tiling-and-swizzling/' target='_blank'>Fabian Giesen: Texture Tiling and Swizzling</a> — Morton order and GPU texture memory layout",
-                "<a href='https://www.rastergrid.com/blog/gpu-tech/2021/01/understanding-gpu-caches/' target='_blank'>RasterGrid: Understanding GPU Caches</a> — Cache line sizes and memory hierarchy overview"
+                "[NVIDIA Ada GPU Architecture Tuning Guide](https://docs.nvidia.com/cuda/ada-tuning-guide/index.html) — Official L1/L2 cache sizes, shared memory configuration",
+                "[NVIDIA Ampere GPU Architecture Tuning Guide](https://docs.nvidia.com/cuda/ampere-tuning-guide/index.html) — A100 cache hierarchy details",
+                "[Chips and Cheese: Measuring GPU Memory Latency](https://chipsandcheese.com/p/measuring-gpu-memory-latency) — Empirical latency measurements for NVIDIA and AMD",
+                "[Chips and Cheese: Microbenchmarking NVIDIA's RTX 4090](https://chipsandcheese.com/p/microbenchmarking-nvidias-rtx-4090) — Ada Lovelace cache architecture analysis",
+                "[NVIDIA Developer Blog: Using Shared Memory in CUDA](https://developer.nvidia.com/blog/using-shared-memory-cuda-cc) — Bank conflicts and shared memory optimization",
+                "[Fabian Giesen: Texture Tiling and Swizzling](https://fgiesen.wordpress.com/2011/01/17/texture-tiling-and-swizzling/) — Morton order and GPU texture memory layout",
+                "[RasterGrid: Understanding GPU Caches](https://www.rastergrid.com/blog/gpu-tech/2021/01/understanding-gpu-caches/) — Cache line sizes and memory hierarchy overview"
             ]
         }
     ],

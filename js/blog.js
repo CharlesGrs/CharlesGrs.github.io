@@ -260,7 +260,7 @@
 
             case 'list':
                 var itemsHtml = (section.items || []).map(function(item) {
-                    return '<li>' + item + '</li>';
+                    return '<li>' + escapeHtmlWithLinks(item) + '</li>';
                 }).join('');
                 return '<ul class="article-section section-list">' + itemsHtml + '</ul>';
 
@@ -1000,6 +1000,28 @@
         var div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // Convert markdown links to HTML, escaping the rest
+    function escapeHtmlWithLinks(text) {
+        if (!text) return '';
+        var parts = [];
+        var lastIndex = 0;
+        var linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+        var match;
+
+        while ((match = linkRegex.exec(text)) !== null) {
+            if (match.index > lastIndex) {
+                parts.push(escapeHtml(text.slice(lastIndex, match.index)));
+            }
+            parts.push('<a href="' + match[2] + '" target="_blank" rel="noopener">' + escapeHtml(match[1]) + '</a>');
+            lastIndex = match.index + match[0].length;
+        }
+        if (lastIndex < text.length) {
+            parts.push(escapeHtml(text.slice(lastIndex)));
+        }
+
+        return parts.join('');
     }
 
     // ============================================
