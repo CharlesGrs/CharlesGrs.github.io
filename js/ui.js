@@ -453,6 +453,13 @@
             });
             tab.classList.add('active');
 
+            // Track tab navigation in Google Analytics
+            if (typeof gtag === 'function') {
+                gtag('event', 'tab_switch', {
+                    'tab_name': panelId
+                });
+            }
+
             // Hide hero sections and show the selected panel
             if (container) {
                 container.classList.add('hero-hidden');
@@ -818,6 +825,26 @@
             });
         });
     }
+
+    // Track contact link clicks (email, LinkedIn)
+    const contactLinks = modal.querySelectorAll('.channel-link');
+    contactLinks.forEach(function(link) {
+        link.addEventListener('click', function() {
+            if (typeof gtag === 'function') {
+                const href = link.getAttribute('href');
+                let linkType = 'unknown';
+                if (href.startsWith('mailto:')) {
+                    linkType = 'email';
+                } else if (href.includes('linkedin.com')) {
+                    linkType = 'linkedin';
+                }
+                gtag('event', 'contact_click', {
+                    'link_type': linkType,
+                    'link_url': href
+                });
+            }
+        });
+    });
 })();
 
 // ============================================
@@ -932,3 +959,27 @@
     });
 })();
 
+// ============================================
+// ANALYTICS: HEADER CONTACT LINKS
+// ============================================
+(function initHeaderContactTracking() {
+    const headerLinks = document.querySelectorAll('.channel-port');
+    headerLinks.forEach(function(link) {
+        link.addEventListener('click', function() {
+            if (typeof gtag === 'function') {
+                const href = link.getAttribute('href');
+                let linkType = 'unknown';
+                if (href.startsWith('mailto:')) {
+                    linkType = 'email';
+                } else if (href.includes('linkedin.com')) {
+                    linkType = 'linkedin';
+                }
+                gtag('event', 'contact_click', {
+                    'link_type': linkType,
+                    'link_url': href,
+                    'location': 'header'
+                });
+            }
+        });
+    });
+})();
