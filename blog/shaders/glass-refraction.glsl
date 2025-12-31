@@ -147,9 +147,11 @@ vec2 dirToEquirectangular(vec3 dir) {
     float phi = asin(clamp(dir.y, -1.0, 1.0)); // -PI/2 to PI/2
 
     // Convert to UV (0-1 range)
+    // U: horizontal angle mapped to 0-1
+    // V: vertical angle - flip so up is top of texture
     vec2 uv;
-    uv.x = (theta / 3.14159265359) * 0.5 + 0.5; // 0 to 1
-    uv.y = (phi / 3.14159265359) + 0.5;         // 0 to 1
+    uv.x = (theta / 3.14159265359) * 0.5 + 0.5;
+    uv.y = 0.5 - (phi / 3.14159265359); // Flip vertical
 
     return uv;
 }
@@ -203,10 +205,13 @@ vec3 sampleEnvironment(vec3 dir, vec3 sunDir, vec3 sunColor) {
 
 // Background: what we see through the glass (looking into -Z)
 vec3 proceduralBackground(vec2 uv) {
-    // Convert screen UV to a direction looking behind the glass
+    // Convert screen UV to a direction using a proper view frustum
+    // This avoids the pole issues of the spherical projection
     vec2 centered = (uv - 0.5) * 2.0;
-    float z = sqrt(max(0.0, 1.0 - dot(centered, centered) * 0.5));
-    vec3 viewDir = normalize(vec3(centered.x, centered.y, -z));
+
+    // Use a fixed FOV projection - camera looking at -Z
+    float fov = 1.2; // ~70 degree FOV
+    vec3 viewDir = normalize(vec3(centered.x * fov, centered.y * fov, -1.0));
 
     vec3 color;
     if (u_multiLightEnabled > 0.5) {
