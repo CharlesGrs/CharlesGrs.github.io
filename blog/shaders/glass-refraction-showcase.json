@@ -1,0 +1,310 @@
+{
+  "shaders": [
+    {
+      "title": "Stage 1: Basic Squircle SDF",
+      "code": "precision highp float;\nvarying vec2 v_uv;\nuniform float u_time;\nuniform float u_n;\nuniform float u_bevelWidth;\nuniform float u_bevelDepth;\nuniform float u_ior;\nuniform float u_dispersion;\nuniform float u_specularEnabled;\nuniform float u_specularSharpness;\nuniform float u_fresnelEnabled;\nuniform float u_reflectionIntensity;\nuniform float u_sunAngle;\nuniform float u_causticsEnabled;\nuniform float u_causticsIntensity;\nuniform float u_absorptionEnabled;\nuniform float u_thickness;\nuniform float u_multiLightEnabled;\nuniform float u_light0Angle;\nuniform float u_light0Elevation;\nuniform vec3 u_light0Color;\nuniform float u_light0Intensity;\nuniform float u_light1Angle;\nuniform float u_light1Elevation;\nuniform vec3 u_light1Color;\nuniform float u_light1Intensity;\nuniform float u_light2Angle;\nuniform float u_light2Elevation;\nuniform vec3 u_light2Color;\nuniform float u_light2Intensity;\nuniform vec2 u_resolution;\nuniform sampler2D u_skybox;\nuniform sampler2D u_skyboxBlurred;\n\nvec3 ACESFilm(vec3 x) {\n    float a = 2.51; float b = 0.03; float c = 2.43; float d = 0.59; float e = 0.14;\n    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);\n}\n\nfloat sdSquircle(vec2 p, vec2 size, float n) {\n    vec2 d = abs(p) / size;\n    float dist = pow(pow(d.x, n) + pow(d.y, n), 1.0 / n);\n    return (dist - 1.0) * min(size.x, size.y);\n}\n\nstruct BevelGeometry { vec2 gradDir; float bevelAmount; float edgeFactor; };\n\nBevelGeometry computeBevelGeometry(vec2 p, vec2 shapeSize, float squircleN, float edgeWidth, float bevelDepth) {\n    BevelGeometry result;\n    float d = sdSquircle(p, shapeSize, squircleN);\n    float edgeDist = -d;\n    result.edgeFactor = 1.0 - smoothstep(0.0, edgeWidth, edgeDist);\n    float zonePos = clamp(1.0 - edgeDist / edgeWidth, 0.0, 1.0);\n    float x2 = zonePos * zonePos * bevelDepth;\n    float denom = max(1.0 - x2, 0.01);\n    float surfaceAngle = atan(zonePos * sqrt(bevelDepth) / sqrt(denom));\n    result.bevelAmount = surfaceAngle * result.edgeFactor;\n    float eps = max(2.0, edgeWidth * 0.05);\n    float dx = sdSquircle(p + vec2(eps, 0.0), shapeSize, squircleN) - sdSquircle(p - vec2(eps, 0.0), shapeSize, squircleN);\n    float dy = sdSquircle(p + vec2(0.0, eps), shapeSize, squircleN) - sdSquircle(p - vec2(0.0, eps), shapeSize, squircleN);\n    result.gradDir = normalize(vec2(dx, dy) + 0.0001);\n    return result;\n}\n\nvec2 computeRefraction(BevelGeometry bevel) { return bevel.gradDir * bevel.bevelAmount; }\n\nvec2 dirToEquirectangular(vec3 dir) {\n    float theta = atan(dir.x, dir.z);\n    float phi = asin(clamp(dir.y, -1.0, 1.0));\n    return vec2((theta / 3.14159265359) * 0.5 + 0.5, 0.5 - (phi / 3.14159265359));\n}\n\nvec3 sampleSkybox(vec3 dir) { return texture2D(u_skybox, dirToEquirectangular(dir)).rgb; }\nvec3 sampleSkyboxBlurred(vec3 dir) { return texture2D(u_skyboxBlurred, dirToEquirectangular(dir)).rgb; }\n\nvec3 uvToViewDir(vec2 uv) {\n    vec2 centered = (uv - 0.5) * 2.0;\n    return normalize(vec3(centered.x * 1.2, centered.y * 1.2, -1.0));\n}\n\nvec3 sharpBackground(vec2 uv) {\n    vec3 color = sampleSkybox(uvToViewDir(uv));\n    float vignette = 1.0 - length((uv - 0.5) * 1.2);\n    return color * (0.7 + 0.3 * smoothstep(0.0, 0.7, vignette));\n}\n\nvec3 proceduralBackground(vec2 uv) {\n    vec3 color = sampleSkyboxBlurred(uvToViewDir(uv));\n    float vignette = 1.0 - length((uv - 0.5) * 1.2);\n    return color * (0.7 + 0.3 * smoothstep(0.0, 0.7, vignette));\n}\n\nvoid main() {\n    vec2 uv = v_uv;\n    vec2 p = (uv - 0.5) * u_resolution;\n    float padding = 40.0;\n    float squareSize = (min(u_resolution.x, u_resolution.y) - padding) * 0.5;\n    vec2 size = vec2(squareSize);\n    float d = sdSquircle(p, size, u_n);\n    vec3 bg = sharpBackground(uv);\n    float mask = 1.0 - smoothstep(-1.5, 1.5, d);\n    vec3 glassColor = proceduralBackground(uv);\n    vec3 color = mix(bg, glassColor, mask);\n    color = ACESFilm(color);\n    gl_FragColor = vec4(color, 1.0);\n}",
+      "uniforms": {
+        "u_time": { "type": "float", "value": 0 },
+        "u_resolution": { "type": "vec2", "value": [1920, 1080] },
+        "u_n": { "type": "float", "value": 4.0 },
+        "u_bevelWidth": { "type": "float", "value": 60.0 },
+        "u_bevelDepth": { "type": "float", "value": 1.0 },
+        "u_ior": { "type": "float", "value": 1.5 },
+        "u_dispersion": { "type": "float", "value": 0.0 },
+        "u_specularEnabled": { "type": "float", "value": 0.0 },
+        "u_specularSharpness": { "type": "float", "value": 50.0 },
+        "u_fresnelEnabled": { "type": "float", "value": 0.0 },
+        "u_reflectionIntensity": { "type": "float", "value": 0.5 },
+         "value": 0.0 },
+        "u_causticsEnabled": { "type": "float", "value": 0.0 },
+        "u_causticsIntensity": { "type": "float", "value": 1.0 },
+        "u_absorptionEnabled": { "type": "float", "value": 0.0 },
+        "u_thickness": { "type": "float", "value": 2.0 },
+        "u_multiLightEnabled": { "type": "float", "value": 0.0 },
+        "u_light0Angle": { "type": "float", "value": 0.0 },
+        "u_light0Elevation": { "type": "float", "value": 0.5 },
+        "u_light0Color": { "type": "vec3", "value": [1.0, 0.9, 0.7] },
+        "u_light0Intensity": { "type": "float", "value": 1.0 },
+        "u_light1Angle": { "type": "float", "value": 2.1 },
+        "u_light1Elevation": { "type": "float", "value": 0.3 },
+        "u_light1Color": { "type": "vec3", "value": [0.4, 0.6, 1.0] },
+        "u_light1Intensity": { "type": "float", "value": 0.0 },
+        "u_light2Angle": { "type": "float", "value": 4.2 },
+        "u_light2Elevation": { "type": "float", "value": 0.4 },
+        "u_light2Color": { "type": "vec3", "value": [1.0, 0.4, 0.3] },
+        "u_light2Intensity": { "type": "float", "value": 0.0 },
+        "u_skybox": { "type": "sampler2D", "value": 0 },
+        "u_skyboxBlurred": { "type": "sampler2D", "value": 0 }
+      },
+      "textures": {
+        "u_skybox": { "url": "../blog/shaders/skybox.jpg", "name": "skybox.jpg" },
+        "u_skyboxBlurred": { "url": "../blog/shaders/skybox-blurred.jpg", "name": "skybox-blurred.jpg" }
+      },
+      "duration": 3000,
+      "animations": {
+        "u_n": { "from": 2.0, "to": 5.0, "easing": "easeInOut", "start": 0, "end": 100 }
+      },
+      "overlay": {
+        "position": "bottom-left",
+        "title": "Squircle SDF",
+        "code": "float sdSquircle(vec2 p, vec2 size, float n) {\n    vec2 d = abs(p) / size;\n    float dist = pow(pow(d.x,n) + pow(d.y,n), 1.0/n);\n    return (dist - 1.0) * min(size.x, size.y);\n}"
+      }
+    },
+    {
+      "title": "Stage 2: Bevel Refraction",
+      "code": "precision highp float;\nvarying vec2 v_uv;\nuniform float u_time;\nuniform float u_n;\nuniform float u_bevelWidth;\nuniform float u_bevelDepth;\nuniform float u_ior;\nuniform float u_dispersion;\nuniform float u_specularEnabled;\nuniform float u_specularSharpness;\nuniform float u_fresnelEnabled;\nuniform float u_reflectionIntensity;\nuniform float u_sunAngle;\nuniform float u_causticsEnabled;\nuniform float u_causticsIntensity;\nuniform float u_absorptionEnabled;\nuniform float u_thickness;\nuniform float u_multiLightEnabled;\nuniform float u_light0Angle;\nuniform float u_light0Elevation;\nuniform vec3 u_light0Color;\nuniform float u_light0Intensity;\nuniform float u_light1Angle;\nuniform float u_light1Elevation;\nuniform vec3 u_light1Color;\nuniform float u_light1Intensity;\nuniform float u_light2Angle;\nuniform float u_light2Elevation;\nuniform vec3 u_light2Color;\nuniform float u_light2Intensity;\nuniform vec2 u_resolution;\nuniform sampler2D u_skybox;\nuniform sampler2D u_skyboxBlurred;\n\nvec3 ACESFilm(vec3 x) {\n    float a = 2.51; float b = 0.03; float c = 2.43; float d = 0.59; float e = 0.14;\n    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);\n}\n\nfloat sdSquircle(vec2 p, vec2 size, float n) {\n    vec2 d = abs(p) / size;\n    float dist = pow(pow(d.x, n) + pow(d.y, n), 1.0 / n);\n    return (dist - 1.0) * min(size.x, size.y);\n}\n\nstruct BevelGeometry { vec2 gradDir; float bevelAmount; float edgeFactor; };\n\nBevelGeometry computeBevelGeometry(vec2 p, vec2 shapeSize, float squircleN, float edgeWidth, float bevelDepth) {\n    BevelGeometry result;\n    float d = sdSquircle(p, shapeSize, squircleN);\n    float edgeDist = -d;\n    result.edgeFactor = 1.0 - smoothstep(0.0, edgeWidth, edgeDist);\n    float zonePos = clamp(1.0 - edgeDist / edgeWidth, 0.0, 1.0);\n    float x2 = zonePos * zonePos * bevelDepth;\n    float denom = max(1.0 - x2, 0.01);\n    float surfaceAngle = atan(zonePos * sqrt(bevelDepth) / sqrt(denom));\n    result.bevelAmount = surfaceAngle * result.edgeFactor;\n    float eps = max(2.0, edgeWidth * 0.05);\n    float dx = sdSquircle(p + vec2(eps, 0.0), shapeSize, squircleN) - sdSquircle(p - vec2(eps, 0.0), shapeSize, squircleN);\n    float dy = sdSquircle(p + vec2(0.0, eps), shapeSize, squircleN) - sdSquircle(p - vec2(0.0, eps), shapeSize, squircleN);\n    result.gradDir = normalize(vec2(dx, dy) + 0.0001);\n    return result;\n}\n\nvec2 computeRefraction(BevelGeometry bevel) { return bevel.gradDir * bevel.bevelAmount; }\n\nvec2 dirToEquirectangular(vec3 dir) {\n    float theta = atan(dir.x, dir.z);\n    float phi = asin(clamp(dir.y, -1.0, 1.0));\n    return vec2((theta / 3.14159265359) * 0.5 + 0.5, 0.5 - (phi / 3.14159265359));\n}\n\nvec3 sampleSkybox(vec3 dir) { return texture2D(u_skybox, dirToEquirectangular(dir)).rgb; }\nvec3 sampleSkyboxBlurred(vec3 dir) { return texture2D(u_skyboxBlurred, dirToEquirectangular(dir)).rgb; }\n\nvec3 uvToViewDir(vec2 uv) {\n    vec2 centered = (uv - 0.5) * 2.0;\n    return normalize(vec3(centered.x * 1.2, centered.y * 1.2, -1.0));\n}\n\nvec3 sharpBackground(vec2 uv) {\n    vec3 color = sampleSkybox(uvToViewDir(uv));\n    float vignette = 1.0 - length((uv - 0.5) * 1.2);\n    return color * (0.7 + 0.3 * smoothstep(0.0, 0.7, vignette));\n}\n\nvec3 proceduralBackground(vec2 uv) {\n    vec3 color = sampleSkyboxBlurred(uvToViewDir(uv));\n    float vignette = 1.0 - length((uv - 0.5) * 1.2);\n    return color * (0.7 + 0.3 * smoothstep(0.0, 0.7, vignette));\n}\n\nvoid main() {\n    vec2 uv = v_uv;\n    vec2 p = (uv - 0.5) * u_resolution;\n    float padding = 40.0;\n    float squareSize = (min(u_resolution.x, u_resolution.y) - padding) * 0.5;\n    vec2 size = vec2(squareSize);\n    float d = sdSquircle(p, size, u_n);\n    BevelGeometry bevel = computeBevelGeometry(p, size, u_n, u_bevelWidth, u_bevelDepth);\n    vec2 lensRefract = computeRefraction(bevel);\n    float refractScale = u_ior - 1.0;\n    vec2 baseOffset = lensRefract * refractScale;\n    vec3 bg = sharpBackground(uv);\n    float mask = 1.0 - smoothstep(-1.5, 1.5, d);\n    vec3 glassColor = proceduralBackground(uv + baseOffset * 0.5);\n    vec3 color = mix(bg, glassColor, mask);\n    color = ACESFilm(color);\n    gl_FragColor = vec4(color, 1.0);\n}",
+      "uniforms": {
+        "u_time": { "type": "float", "value": 0 },
+        "u_resolution": { "type": "vec2", "value": [1920, 1080] },
+        "u_n": { "type": "float", "value": 5.0 },
+        "u_bevelWidth": { "type": "float", "value": 60.0 },
+        "u_bevelDepth": { "type": "float", "value": 1.0 },
+        "u_ior": { "type": "float", "value": 1.5 },
+        "u_dispersion": { "type": "float", "value": 0.0 },
+        "u_specularEnabled": { "type": "float", "value": 0.0 },
+        "u_specularSharpness": { "type": "float", "value": 50.0 },
+        "u_fresnelEnabled": { "type": "float", "value": 0.0 },
+        "u_reflectionIntensity": { "type": "float", "value": 0.5 },
+         "value": 0.0 },
+        "u_causticsEnabled": { "type": "float", "value": 0.0 },
+        "u_causticsIntensity": { "type": "float", "value": 1.0 },
+        "u_absorptionEnabled": { "type": "float", "value": 0.0 },
+        "u_thickness": { "type": "float", "value": 2.0 },
+        "u_multiLightEnabled": { "type": "float", "value": 0.0 },
+        "u_light0Angle": { "type": "float", "value": 0.0 },
+        "u_light0Elevation": { "type": "float", "value": 0.5 },
+        "u_light0Color": { "type": "vec3", "value": [1.0, 0.9, 0.7] },
+        "u_light0Intensity": { "type": "float", "value": 1.0 },
+        "u_light1Angle": { "type": "float", "value": 2.1 },
+        "u_light1Elevation": { "type": "float", "value": 0.3 },
+        "u_light1Color": { "type": "vec3", "value": [0.4, 0.6, 1.0] },
+        "u_light1Intensity": { "type": "float", "value": 0.0 },
+        "u_light2Angle": { "type": "float", "value": 4.2 },
+        "u_light2Elevation": { "type": "float", "value": 0.4 },
+        "u_light2Color": { "type": "vec3", "value": [1.0, 0.4, 0.3] },
+        "u_light2Intensity": { "type": "float", "value": 0.0 },
+        "u_skybox": { "type": "sampler2D", "value": 0 },
+        "u_skyboxBlurred": { "type": "sampler2D", "value": 0 }
+      },
+      "textures": {
+        "u_skybox": { "url": "../blog/shaders/skybox.jpg", "name": "skybox.jpg" },
+        "u_skyboxBlurred": { "url": "../blog/shaders/skybox-blurred.jpg", "name": "skybox-blurred.jpg" }
+      },
+      "duration": 3000,
+      "animations": {
+        "u_bevelWidth": { "from": 20.0, "to": 80.0, "easing": "easeInOut", "start": 0, "end": 50 },
+        "u_ior": { "from": 1.0, "to": 1.8, "easing": "easeOut", "start": 30, "end": 100 }
+      },
+      "overlay": {
+        "position": "bottom-left",
+        "title": "Bevel Refraction",
+        "code": "// Snell's law approximation\nvec2 lensRefract = computeRefraction(bevel);\nfloat refractScale = u_ior - 1.0;\nvec2 offset = lensRefract * refractScale;\n\nvec3 refracted = texture(u_skyboxBlurred,\n                         uv + offset * 0.5).rgb;"
+      }
+    },
+    {
+      "title": "Stage 3: Chromatic Dispersion",
+      "code": "precision highp float;\nvarying vec2 v_uv;\nuniform float u_time;\nuniform float u_n;\nuniform float u_bevelWidth;\nuniform float u_bevelDepth;\nuniform float u_ior;\nuniform float u_dispersion;\nuniform float u_specularEnabled;\nuniform float u_specularSharpness;\nuniform float u_fresnelEnabled;\nuniform float u_reflectionIntensity;\nuniform float u_sunAngle;\nuniform float u_causticsEnabled;\nuniform float u_causticsIntensity;\nuniform float u_absorptionEnabled;\nuniform float u_thickness;\nuniform float u_multiLightEnabled;\nuniform float u_light0Angle;\nuniform float u_light0Elevation;\nuniform vec3 u_light0Color;\nuniform float u_light0Intensity;\nuniform float u_light1Angle;\nuniform float u_light1Elevation;\nuniform vec3 u_light1Color;\nuniform float u_light1Intensity;\nuniform float u_light2Angle;\nuniform float u_light2Elevation;\nuniform vec3 u_light2Color;\nuniform float u_light2Intensity;\nuniform vec2 u_resolution;\nuniform sampler2D u_skybox;\nuniform sampler2D u_skyboxBlurred;\n\nvec3 ACESFilm(vec3 x) {\n    float a = 2.51; float b = 0.03; float c = 2.43; float d = 0.59; float e = 0.14;\n    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);\n}\n\nfloat sdSquircle(vec2 p, vec2 size, float n) {\n    vec2 d = abs(p) / size;\n    float dist = pow(pow(d.x, n) + pow(d.y, n), 1.0 / n);\n    return (dist - 1.0) * min(size.x, size.y);\n}\n\nstruct BevelGeometry { vec2 gradDir; float bevelAmount; float edgeFactor; };\n\nBevelGeometry computeBevelGeometry(vec2 p, vec2 shapeSize, float squircleN, float edgeWidth, float bevelDepth) {\n    BevelGeometry result;\n    float d = sdSquircle(p, shapeSize, squircleN);\n    float edgeDist = -d;\n    result.edgeFactor = 1.0 - smoothstep(0.0, edgeWidth, edgeDist);\n    float zonePos = clamp(1.0 - edgeDist / edgeWidth, 0.0, 1.0);\n    float x2 = zonePos * zonePos * bevelDepth;\n    float denom = max(1.0 - x2, 0.01);\n    float surfaceAngle = atan(zonePos * sqrt(bevelDepth) / sqrt(denom));\n    result.bevelAmount = surfaceAngle * result.edgeFactor;\n    float eps = max(2.0, edgeWidth * 0.05);\n    float dx = sdSquircle(p + vec2(eps, 0.0), shapeSize, squircleN) - sdSquircle(p - vec2(eps, 0.0), shapeSize, squircleN);\n    float dy = sdSquircle(p + vec2(0.0, eps), shapeSize, squircleN) - sdSquircle(p - vec2(0.0, eps), shapeSize, squircleN);\n    result.gradDir = normalize(vec2(dx, dy) + 0.0001);\n    return result;\n}\n\nvec2 computeRefraction(BevelGeometry bevel) { return bevel.gradDir * bevel.bevelAmount; }\n\nvec2 dirToEquirectangular(vec3 dir) {\n    float theta = atan(dir.x, dir.z);\n    float phi = asin(clamp(dir.y, -1.0, 1.0));\n    return vec2((theta / 3.14159265359) * 0.5 + 0.5, 0.5 - (phi / 3.14159265359));\n}\n\nvec3 sampleSkybox(vec3 dir) { return texture2D(u_skybox, dirToEquirectangular(dir)).rgb; }\nvec3 sampleSkyboxBlurred(vec3 dir) { return texture2D(u_skyboxBlurred, dirToEquirectangular(dir)).rgb; }\n\nvec3 uvToViewDir(vec2 uv) {\n    vec2 centered = (uv - 0.5) * 2.0;\n    return normalize(vec3(centered.x * 1.2, centered.y * 1.2, -1.0));\n}\n\nvec3 sharpBackground(vec2 uv) {\n    vec3 color = sampleSkybox(uvToViewDir(uv));\n    float vignette = 1.0 - length((uv - 0.5) * 1.2);\n    return color * (0.7 + 0.3 * smoothstep(0.0, 0.7, vignette));\n}\n\nvec3 proceduralBackground(vec2 uv) {\n    vec3 color = sampleSkyboxBlurred(uvToViewDir(uv));\n    float vignette = 1.0 - length((uv - 0.5) * 1.2);\n    return color * (0.7 + 0.3 * smoothstep(0.0, 0.7, vignette));\n}\n\nvec3 chromaticRefract(vec2 uv, vec2 dir, float amount) {\n    return vec3(\n        proceduralBackground(uv - dir * amount).r,\n        proceduralBackground(uv).g,\n        proceduralBackground(uv + dir * amount).b\n    );\n}\n\nvoid main() {\n    vec2 uv = v_uv;\n    vec2 p = (uv - 0.5) * u_resolution;\n    float padding = 40.0;\n    float squareSize = (min(u_resolution.x, u_resolution.y) - padding) * 0.5;\n    vec2 size = vec2(squareSize);\n    float d = sdSquircle(p, size, u_n);\n    BevelGeometry bevel = computeBevelGeometry(p, size, u_n, u_bevelWidth, u_bevelDepth);\n    vec2 lensRefract = computeRefraction(bevel);\n    float refractScale = u_ior - 1.0;\n    vec2 baseOffset = lensRefract * refractScale;\n    float dispersionAmount = u_dispersion * 0.02 * bevel.edgeFactor;\n    vec3 bg = sharpBackground(uv);\n    float mask = 1.0 - smoothstep(-1.5, 1.5, d);\n    vec3 glassColor = chromaticRefract(uv + baseOffset * 0.5, bevel.gradDir, dispersionAmount);\n    vec3 color = mix(bg, glassColor, mask);\n    color = ACESFilm(color);\n    gl_FragColor = vec4(color, 1.0);\n}",
+      "uniforms": {
+        "u_time": { "type": "float", "value": 0 },
+        "u_resolution": { "type": "vec2", "value": [1920, 1080] },
+        "u_n": { "type": "float", "value": 5.0 },
+        "u_bevelWidth": { "type": "float", "value": 80.0 },
+        "u_bevelDepth": { "type": "float", "value": 1.0 },
+        "u_ior": { "type": "float", "value": 1.8 },
+        "u_dispersion": { "type": "float", "value": 0.0 },
+        "u_specularEnabled": { "type": "float", "value": 0.0 },
+        "u_specularSharpness": { "type": "float", "value": 50.0 },
+        "u_fresnelEnabled": { "type": "float", "value": 0.0 },
+        "u_reflectionIntensity": { "type": "float", "value": 0.5 },
+         "value": 0.0 },
+        "u_causticsEnabled": { "type": "float", "value": 0.0 },
+        "u_causticsIntensity": { "type": "float", "value": 1.0 },
+        "u_absorptionEnabled": { "type": "float", "value": 0.0 },
+        "u_thickness": { "type": "float", "value": 2.0 },
+        "u_multiLightEnabled": { "type": "float", "value": 0.0 },
+        "u_light0Angle": { "type": "float", "value": 0.0 },
+        "u_light0Elevation": { "type": "float", "value": 0.5 },
+        "u_light0Color": { "type": "vec3", "value": [1.0, 0.9, 0.7] },
+        "u_light0Intensity": { "type": "float", "value": 1.0 },
+        "u_light1Angle": { "type": "float", "value": 2.1 },
+        "u_light1Elevation": { "type": "float", "value": 0.3 },
+        "u_light1Color": { "type": "vec3", "value": [0.4, 0.6, 1.0] },
+        "u_light1Intensity": { "type": "float", "value": 0.0 },
+        "u_light2Angle": { "type": "float", "value": 4.2 },
+        "u_light2Elevation": { "type": "float", "value": 0.4 },
+        "u_light2Color": { "type": "vec3", "value": [1.0, 0.4, 0.3] },
+        "u_light2Intensity": { "type": "float", "value": 0.0 },
+        "u_skybox": { "type": "sampler2D", "value": 0 },
+        "u_skyboxBlurred": { "type": "sampler2D", "value": 0 }
+      },
+      "textures": {
+        "u_skybox": { "url": "../blog/shaders/skybox.jpg", "name": "skybox.jpg" },
+        "u_skyboxBlurred": { "url": "../blog/shaders/skybox-blurred.jpg", "name": "skybox-blurred.jpg" }
+      },
+      "duration": 3000,
+      "animations": {
+        "u_dispersion": { "from": 0.0, "to": 0.5, "easing": "easeOut", "start": 0, "end": 70 }
+      },
+      "overlay": {
+        "position": "bottom-left",
+        "title": "Chromatic Dispersion",
+        "code": "// RGB channels refract differently\nvec3 chromaticRefract(vec2 uv, vec2 dir, float d) {\n    return vec3(\n        sample(uv - dir * d).r,  // Red bends less\n        sample(uv).g,            // Green center\n        sample(uv + dir * d).b   // Blue bends more\n    );\n}"
+      }
+    },
+    {
+      "title": "Stage 4: Fresnel Reflection",
+      "code": "precision highp float;\nvarying vec2 v_uv;\nuniform float u_time;\nuniform float u_n;\nuniform float u_bevelWidth;\nuniform float u_bevelDepth;\nuniform float u_ior;\nuniform float u_dispersion;\nuniform float u_specularEnabled;\nuniform float u_specularSharpness;\nuniform float u_fresnelEnabled;\nuniform float u_reflectionIntensity;\nuniform float u_sunAngle;\nuniform float u_causticsEnabled;\nuniform float u_causticsIntensity;\nuniform float u_absorptionEnabled;\nuniform float u_thickness;\nuniform float u_multiLightEnabled;\nuniform float u_light0Angle;\nuniform float u_light0Elevation;\nuniform vec3 u_light0Color;\nuniform float u_light0Intensity;\nuniform float u_light1Angle;\nuniform float u_light1Elevation;\nuniform vec3 u_light1Color;\nuniform float u_light1Intensity;\nuniform float u_light2Angle;\nuniform float u_light2Elevation;\nuniform vec3 u_light2Color;\nuniform float u_light2Intensity;\nuniform vec2 u_resolution;\nuniform sampler2D u_skybox;\nuniform sampler2D u_skyboxBlurred;\n\nvec3 ACESFilm(vec3 x) {\n    float a = 2.51; float b = 0.03; float c = 2.43; float d = 0.59; float e = 0.14;\n    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);\n}\n\nfloat sdSquircle(vec2 p, vec2 size, float n) {\n    vec2 d = abs(p) / size;\n    float dist = pow(pow(d.x, n) + pow(d.y, n), 1.0 / n);\n    return (dist - 1.0) * min(size.x, size.y);\n}\n\nstruct BevelGeometry { vec2 gradDir; float bevelAmount; float edgeFactor; };\n\nBevelGeometry computeBevelGeometry(vec2 p, vec2 shapeSize, float squircleN, float edgeWidth, float bevelDepth) {\n    BevelGeometry result;\n    float dd = sdSquircle(p, shapeSize, squircleN);\n    float edgeDist = -dd;\n    result.edgeFactor = 1.0 - smoothstep(0.0, edgeWidth, edgeDist);\n    float zonePos = clamp(1.0 - edgeDist / edgeWidth, 0.0, 1.0);\n    float x2 = zonePos * zonePos * bevelDepth;\n    float denom = max(1.0 - x2, 0.01);\n    float surfaceAngle = atan(zonePos * sqrt(bevelDepth) / sqrt(denom));\n    result.bevelAmount = surfaceAngle * result.edgeFactor;\n    float eps = max(2.0, edgeWidth * 0.05);\n    float dx = sdSquircle(p + vec2(eps, 0.0), shapeSize, squircleN) - sdSquircle(p - vec2(eps, 0.0), shapeSize, squircleN);\n    float dy = sdSquircle(p + vec2(0.0, eps), shapeSize, squircleN) - sdSquircle(p - vec2(0.0, eps), shapeSize, squircleN);\n    result.gradDir = normalize(vec2(dx, dy) + 0.0001);\n    return result;\n}\n\nvec2 computeRefraction(BevelGeometry bevel) { return bevel.gradDir * bevel.bevelAmount; }\n\nvec2 dirToEquirectangular(vec3 dir) {\n    float theta = atan(dir.x, dir.z);\n    float phi = asin(clamp(dir.y, -1.0, 1.0));\n    return vec2((theta / 3.14159265359) * 0.5 + 0.5, 0.5 - (phi / 3.14159265359));\n}\n\nvec3 sampleSkybox(vec3 dir) { return texture2D(u_skybox, dirToEquirectangular(dir)).rgb; }\nvec3 sampleSkyboxBlurred(vec3 dir) { return texture2D(u_skyboxBlurred, dirToEquirectangular(dir)).rgb; }\n\nvec3 uvToViewDir(vec2 uv) {\n    vec2 centered = (uv - 0.5) * 2.0;\n    return normalize(vec3(centered.x * 1.2, centered.y * 1.2, -1.0));\n}\n\nvec3 sharpBackground(vec2 uv) {\n    vec3 color = sampleSkybox(uvToViewDir(uv));\n    float vignette = 1.0 - length((uv - 0.5) * 1.2);\n    return color * (0.7 + 0.3 * smoothstep(0.0, 0.7, vignette));\n}\n\nvec3 proceduralBackground(vec2 uv) {\n    vec3 color = sampleSkyboxBlurred(uvToViewDir(uv));\n    float vignette = 1.0 - length((uv - 0.5) * 1.2);\n    return color * (0.7 + 0.3 * smoothstep(0.0, 0.7, vignette));\n}\n\nvec3 chromaticRefract(vec2 uv, vec2 dir, float amount) {\n    return vec3(\n        proceduralBackground(uv - dir * amount).r,\n        proceduralBackground(uv).g,\n        proceduralBackground(uv + dir * amount).b\n    );\n}\n\nfloat fresnelSchlick(float cosTheta, float F0) {\n    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);\n}\n\nvec3 computeSurfaceNormal(BevelGeometry bevel) {\n    vec3 panelNormal = vec3(0.0, 0.0, 1.0);\n    float bevelAngle = bevel.bevelAmount * 0.785398 * u_bevelDepth;\n    float sinB = sin(bevelAngle);\n    float cosB = cos(bevelAngle);\n    vec3 bevelDir = vec3(bevel.gradDir.x, bevel.gradDir.y, 0.0);\n    return normalize(panelNormal * cosB + bevelDir * sinB);\n}\n\nvec3 computeFresnelReflection(BevelGeometry bevel, vec3 refractedColor) {\n    vec3 normal = computeSurfaceNormal(bevel);\n    vec3 viewDir = vec3(0.0, 0.0, 1.0);\n    float NdotV = max(dot(normal, viewDir), 0.0);\n    float F0 = 0.04;\n    float fresnel = fresnelSchlick(NdotV, F0);\n    fresnel = fresnel + bevel.edgeFactor * 0.3;\n    fresnel = fresnel * u_reflectionIntensity;\n    vec3 reflectDir = reflect(-viewDir, normal);\n    vec3 reflected = sampleSkybox(reflectDir);\n    return mix(refractedColor, reflected, fresnel);\n}\n\nvoid main() {\n    vec2 uv = v_uv;\n    vec2 p = (uv - 0.5) * u_resolution;\n    float padding = 40.0;\n    float squareSize = (min(u_resolution.x, u_resolution.y) - padding) * 0.5;\n    vec2 size = vec2(squareSize);\n    float d = sdSquircle(p, size, u_n);\n    BevelGeometry bevel = computeBevelGeometry(p, size, u_n, u_bevelWidth, u_bevelDepth);\n    vec2 lensRefract = computeRefraction(bevel);\n    float refractScale = u_ior - 1.0;\n    vec2 baseOffset = lensRefract * refractScale;\n    float dispersionAmount = u_dispersion * 0.02 * bevel.edgeFactor;\n    vec3 bg = sharpBackground(uv);\n    float mask = 1.0 - smoothstep(-1.5, 1.5, d);\n    vec3 refracted = chromaticRefract(uv + baseOffset * 0.5, bevel.gradDir, dispersionAmount);\n    vec3 glassColor = u_fresnelEnabled > 0.5 ? computeFresnelReflection(bevel, refracted) : refracted;\n    vec3 color = mix(bg, glassColor, mask);\n    color = ACESFilm(color);\n    gl_FragColor = vec4(color, 1.0);\n}",
+      "uniforms": {
+        "u_time": { "type": "float", "value": 0 },
+        "u_resolution": { "type": "vec2", "value": [1920, 1080] },
+        "u_n": { "type": "float", "value": 5.0 },
+        "u_bevelWidth": { "type": "float", "value": 80.0 },
+        "u_bevelDepth": { "type": "float", "value": 1.0 },
+        "u_ior": { "type": "float", "value": 1.8 },
+        "u_dispersion": { "type": "float", "value": 0.5 },
+        "u_specularEnabled": { "type": "float", "value": 0.0 },
+        "u_specularSharpness": { "type": "float", "value": 50.0 },
+        "u_fresnelEnabled": { "type": "float", "value": 0.0 },
+        "u_reflectionIntensity": { "type": "float", "value": 0.5 },
+         "value": 0.0 },
+        "u_causticsEnabled": { "type": "float", "value": 0.0 },
+        "u_causticsIntensity": { "type": "float", "value": 1.0 },
+        "u_absorptionEnabled": { "type": "float", "value": 0.0 },
+        "u_thickness": { "type": "float", "value": 2.0 },
+        "u_multiLightEnabled": { "type": "float", "value": 0.0 },
+        "u_light0Angle": { "type": "float", "value": 0.0 },
+        "u_light0Elevation": { "type": "float", "value": 0.5 },
+        "u_light0Color": { "type": "vec3", "value": [1.0, 0.9, 0.7] },
+        "u_light0Intensity": { "type": "float", "value": 1.0 },
+        "u_light1Angle": { "type": "float", "value": 2.1 },
+        "u_light1Elevation": { "type": "float", "value": 0.3 },
+        "u_light1Color": { "type": "vec3", "value": [0.4, 0.6, 1.0] },
+        "u_light1Intensity": { "type": "float", "value": 0.0 },
+        "u_light2Angle": { "type": "float", "value": 4.2 },
+        "u_light2Elevation": { "type": "float", "value": 0.4 },
+        "u_light2Color": { "type": "vec3", "value": [1.0, 0.4, 0.3] },
+        "u_light2Intensity": { "type": "float", "value": 0.0 },
+        "u_skybox": { "type": "sampler2D", "value": 0 },
+        "u_skyboxBlurred": { "type": "sampler2D", "value": 0 }
+      },
+      "textures": {
+        "u_skybox": { "url": "../blog/shaders/skybox.jpg", "name": "skybox.jpg" },
+        "u_skyboxBlurred": { "url": "../blog/shaders/skybox-blurred.jpg", "name": "skybox-blurred.jpg" }
+      },
+      "duration": 3000,
+      "animations": {
+        "u_fresnelEnabled": { "from": 0.0, "to": 1.0, "easing": "linear", "start": 0, "end": 20 },
+        "u_reflectionIntensity": { "from": 0.3, "to": 0.8, "easing": "easeOut", "start": 20, "end": 100 }
+      },
+      "overlay": {
+        "position": "bottom-left",
+        "title": "Fresnel Reflection",
+        "code": "// Schlick approximation\nfloat fresnelSchlick(float cosTheta, float F0) {\n    return F0 + (1.0 - F0) *\n           pow(1.0 - cosTheta, 5.0);\n}\n\n// More reflection at grazing angles\nvec3 result = mix(refracted, reflected,\n                  fresnel);"
+      }
+    },
+    {
+      "title": "Stage 5: Specular Highlights",
+      "code": "precision highp float;\nvarying vec2 v_uv;\nuniform float u_time;\nuniform float u_n;\nuniform float u_bevelWidth;\nuniform float u_bevelDepth;\nuniform float u_ior;\nuniform float u_dispersion;\nuniform float u_specularEnabled;\nuniform float u_specularSharpness;\nuniform float u_fresnelEnabled;\nuniform float u_reflectionIntensity;\nuniform float u_sunAngle;\nuniform float u_causticsEnabled;\nuniform float u_causticsIntensity;\nuniform float u_absorptionEnabled;\nuniform float u_thickness;\nuniform float u_multiLightEnabled;\nuniform float u_light0Angle;\nuniform float u_light0Elevation;\nuniform vec3 u_light0Color;\nuniform float u_light0Intensity;\nuniform float u_light1Angle;\nuniform float u_light1Elevation;\nuniform vec3 u_light1Color;\nuniform float u_light1Intensity;\nuniform float u_light2Angle;\nuniform float u_light2Elevation;\nuniform vec3 u_light2Color;\nuniform float u_light2Intensity;\nuniform vec2 u_resolution;\nuniform sampler2D u_skybox;\nuniform sampler2D u_skyboxBlurred;\n\nvec3 ACESFilm(vec3 x) {\n    float a = 2.51; float b = 0.03; float c = 2.43; float d = 0.59; float e = 0.14;\n    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);\n}\n\nfloat sdSquircle(vec2 p, vec2 size, float n) {\n    vec2 d = abs(p) / size;\n    float dist = pow(pow(d.x, n) + pow(d.y, n), 1.0 / n);\n    return (dist - 1.0) * min(size.x, size.y);\n}\n\nstruct BevelGeometry { vec2 gradDir; float bevelAmount; float edgeFactor; };\n\nBevelGeometry computeBevelGeometry(vec2 p, vec2 shapeSize, float squircleN, float edgeWidth, float bevelDepth) {\n    BevelGeometry result;\n    float dd = sdSquircle(p, shapeSize, squircleN);\n    float edgeDist = -dd;\n    result.edgeFactor = 1.0 - smoothstep(0.0, edgeWidth, edgeDist);\n    float zonePos = clamp(1.0 - edgeDist / edgeWidth, 0.0, 1.0);\n    float x2 = zonePos * zonePos * bevelDepth;\n    float denom = max(1.0 - x2, 0.01);\n    float surfaceAngle = atan(zonePos * sqrt(bevelDepth) / sqrt(denom));\n    result.bevelAmount = surfaceAngle * result.edgeFactor;\n    float eps = max(2.0, edgeWidth * 0.05);\n    float dx = sdSquircle(p + vec2(eps, 0.0), shapeSize, squircleN) - sdSquircle(p - vec2(eps, 0.0), shapeSize, squircleN);\n    float dy = sdSquircle(p + vec2(0.0, eps), shapeSize, squircleN) - sdSquircle(p - vec2(0.0, eps), shapeSize, squircleN);\n    result.gradDir = normalize(vec2(dx, dy) + 0.0001);\n    return result;\n}\n\nvec2 computeRefraction(BevelGeometry bevel) { return bevel.gradDir * bevel.bevelAmount; }\n\nvec2 dirToEquirectangular(vec3 dir) {\n    float theta = atan(dir.x, dir.z);\n    float phi = asin(clamp(dir.y, -1.0, 1.0));\n    return vec2((theta / 3.14159265359) * 0.5 + 0.5, 0.5 - (phi / 3.14159265359));\n}\n\nvec3 sampleSkybox(vec3 dir) { return texture2D(u_skybox, dirToEquirectangular(dir)).rgb; }\nvec3 sampleSkyboxBlurred(vec3 dir) { return texture2D(u_skyboxBlurred, dirToEquirectangular(dir)).rgb; }\n\nvec3 uvToViewDir(vec2 uv) {\n    vec2 centered = (uv - 0.5) * 2.0;\n    return normalize(vec3(centered.x * 1.2, centered.y * 1.2, -1.0));\n}\n\nvec3 sharpBackground(vec2 uv) {\n    vec3 color = sampleSkybox(uvToViewDir(uv));\n    float vignette = 1.0 - length((uv - 0.5) * 1.2);\n    return color * (0.7 + 0.3 * smoothstep(0.0, 0.7, vignette));\n}\n\nvec3 proceduralBackground(vec2 uv) {\n    vec3 color = sampleSkyboxBlurred(uvToViewDir(uv));\n    float vignette = 1.0 - length((uv - 0.5) * 1.2);\n    return color * (0.7 + 0.3 * smoothstep(0.0, 0.7, vignette));\n}\n\nvec3 chromaticRefract(vec2 uv, vec2 dir, float amount) {\n    return vec3(\n        proceduralBackground(uv - dir * amount).r,\n        proceduralBackground(uv).g,\n        proceduralBackground(uv + dir * amount).b\n    );\n}\n\nfloat fresnelSchlick(float cosTheta, float F0) {\n    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);\n}\n\nvec3 computeSurfaceNormal(BevelGeometry bevel) {\n    vec3 panelNormal = vec3(0.0, 0.0, 1.0);\n    float bevelAngle = bevel.bevelAmount * 0.785398 * u_bevelDepth;\n    float sinB = sin(bevelAngle);\n    float cosB = cos(bevelAngle);\n    vec3 bevelDir = vec3(bevel.gradDir.x, bevel.gradDir.y, 0.0);\n    return normalize(panelNormal * cosB + bevelDir * sinB);\n}\n\nvec3 computeFresnelReflection(BevelGeometry bevel, vec3 refractedColor) {\n    vec3 normal = computeSurfaceNormal(bevel);\n    vec3 viewDir = vec3(0.0, 0.0, 1.0);\n    float NdotV = max(dot(normal, viewDir), 0.0);\n    float F0 = 0.04;\n    float fresnel = fresnelSchlick(NdotV, F0);\n    fresnel = fresnel + bevel.edgeFactor * 0.3;\n    fresnel = fresnel * u_reflectionIntensity;\n    vec3 reflectDir = reflect(-viewDir, normal);\n    vec3 reflected = sampleSkybox(reflectDir);\n    return mix(refractedColor, reflected, fresnel);\n}\n\nvec3 getLightDirFromAngles(float angle, float elevation) {\n    float cosElev = cos(elevation);\n    return normalize(vec3(sin(angle) * cosElev, sin(elevation), cos(angle) * cosElev));\n}\n\nvec3 computeSpecularFromLight(vec3 normal, vec3 viewDir, vec3 lightDir, vec3 lightColor, float intensity) {\n    float F0 = 0.04;\n    vec3 halfVec = normalize(viewDir + lightDir);\n    float NdotH = max(dot(normal, halfVec), 0.0);\n    float NdotL = max(dot(normal, lightDir), 0.0);\n    float fresnel = fresnelSchlick(NdotH, F0);\n    float exponent = u_specularSharpness * u_specularSharpness / 32.0;\n    float spec = pow(NdotH, exponent);\n    float norm = (exponent + 2.0) / 6.28318;\n    return lightColor * fresnel * spec * norm * NdotL * 2.0 * intensity;\n}\n\nvec3 computeSpecularHighlights(BevelGeometry bevel) {\n    vec3 normal = computeSurfaceNormal(bevel);\n    vec3 viewDir = vec3(0.0, 0.0, 1.0);\n    vec3 lightDir = getLightDirFromAngles(u_light0Angle, u_light0Elevation);\n    return computeSpecularFromLight(normal, viewDir, lightDir, u_light0Color, u_light0Intensity);\n}\n\nvoid main() {\n    vec2 uv = v_uv;\n    vec2 p = (uv - 0.5) * u_resolution;\n    float padding = 40.0;\n    float squareSize = (min(u_resolution.x, u_resolution.y) - padding) * 0.5;\n    vec2 size = vec2(squareSize);\n    float d = sdSquircle(p, size, u_n);\n    BevelGeometry bevel = computeBevelGeometry(p, size, u_n, u_bevelWidth, u_bevelDepth);\n    vec2 lensRefract = computeRefraction(bevel);\n    float refractScale = u_ior - 1.0;\n    vec2 baseOffset = lensRefract * refractScale;\n    float dispersionAmount = u_dispersion * 0.02 * bevel.edgeFactor;\n    vec3 bg = sharpBackground(uv);\n    float mask = 1.0 - smoothstep(-1.5, 1.5, d);\n    vec3 refracted = chromaticRefract(uv + baseOffset * 0.5, bevel.gradDir, dispersionAmount);\n    vec3 glassColor = u_fresnelEnabled > 0.5 ? computeFresnelReflection(bevel, refracted) : refracted;\n    if (u_specularEnabled > 0.5) {\n        vec3 specular = computeSpecularHighlights(bevel);\n        glassColor += specular;\n    }\n    vec3 color = mix(bg, glassColor, mask);\n    color = ACESFilm(color);\n    gl_FragColor = vec4(color, 1.0);\n}",
+      "uniforms": {
+        "u_time": { "type": "float", "value": 0 },
+        "u_resolution": { "type": "vec2", "value": [1920, 1080] },
+        "u_n": { "type": "float", "value": 5.0 },
+        "u_bevelWidth": { "type": "float", "value": 80.0 },
+        "u_bevelDepth": { "type": "float", "value": 1.0 },
+        "u_ior": { "type": "float", "value": 1.8 },
+        "u_dispersion": { "type": "float", "value": 0.5 },
+        "u_specularEnabled": { "type": "float", "value": 0.0 },
+        "u_specularSharpness": { "type": "float", "value": 50.0 },
+        "u_fresnelEnabled": { "type": "float", "value": 1.0 },
+        "u_reflectionIntensity": { "type": "float", "value": 0.8 },
+         "value": 0.0 },
+        "u_causticsEnabled": { "type": "float", "value": 0.0 },
+        "u_causticsIntensity": { "type": "float", "value": 1.0 },
+        "u_absorptionEnabled": { "type": "float", "value": 0.0 },
+        "u_thickness": { "type": "float", "value": 2.0 },
+        "u_multiLightEnabled": { "type": "float", "value": 0.0 },
+        "u_light0Angle": { "type": "float", "value": 0.5 },
+        "u_light0Elevation": { "type": "float", "value": 0.5 },
+        "u_light0Color": { "type": "vec3", "value": [1.0, 0.95, 0.85] },
+        "u_light0Intensity": { "type": "float", "value": 1.5 },
+        "u_light1Angle": { "type": "float", "value": 2.1 },
+        "u_light1Elevation": { "type": "float", "value": 0.3 },
+        "u_light1Color": { "type": "vec3", "value": [0.4, 0.6, 1.0] },
+        "u_light1Intensity": { "type": "float", "value": 0.0 },
+        "u_light2Angle": { "type": "float", "value": 4.2 },
+        "u_light2Elevation": { "type": "float", "value": 0.4 },
+        "u_light2Color": { "type": "vec3", "value": [1.0, 0.4, 0.3] },
+        "u_light2Intensity": { "type": "float", "value": 0.0 },
+        "u_skybox": { "type": "sampler2D", "value": 0 },
+        "u_skyboxBlurred": { "type": "sampler2D", "value": 0 }
+      },
+      "textures": {
+        "u_skybox": { "url": "../blog/shaders/skybox.jpg", "name": "skybox.jpg" },
+        "u_skyboxBlurred": { "url": "../blog/shaders/skybox-blurred.jpg", "name": "skybox-blurred.jpg" }
+      },
+      "duration": 4000,
+      "animations": {
+        "u_specularEnabled": { "from": 0.0, "to": 1.0, "easing": "linear", "start": 0, "end": 15 },
+        "u_light0Angle": { "from": 0.0, "to": 3.14, "easing": "linear", "start": 20, "end": 100 }
+      },
+      "overlay": {
+        "position": "bottom-left",
+        "title": "Specular Highlights",
+        "code": "// Blinn-Phong specular\nvec3 halfVec = normalize(viewDir + lightDir);\nfloat NdotH = max(dot(normal, halfVec), 0.0);\nfloat spec = pow(NdotH, shininess);\n\n// Fresnel-weighted specular\nfloat F = fresnelSchlick(NdotH, F0);\ncolor += lightColor * F * spec;"
+      }
+    },
+    {
+      "title": "Stage 6: Full Effect + Light Dance",
+      "code": "precision highp float;\nvarying vec2 v_uv;\nuniform float u_time;\nuniform float u_n;\nuniform float u_bevelWidth;\nuniform float u_bevelDepth;\nuniform float u_ior;\nuniform float u_dispersion;\nuniform float u_specularEnabled;\nuniform float u_specularSharpness;\nuniform float u_fresnelEnabled;\nuniform float u_reflectionIntensity;\nuniform float u_sunAngle;\nuniform float u_causticsEnabled;\nuniform float u_causticsIntensity;\nuniform float u_absorptionEnabled;\nuniform float u_thickness;\nuniform float u_multiLightEnabled;\nuniform float u_light0Angle;\nuniform float u_light0Elevation;\nuniform vec3 u_light0Color;\nuniform float u_light0Intensity;\nuniform float u_light1Angle;\nuniform float u_light1Elevation;\nuniform vec3 u_light1Color;\nuniform float u_light1Intensity;\nuniform float u_light2Angle;\nuniform float u_light2Elevation;\nuniform vec3 u_light2Color;\nuniform float u_light2Intensity;\nuniform vec2 u_resolution;\nuniform sampler2D u_skybox;\nuniform sampler2D u_skyboxBlurred;\n\nvec3 ACESFilm(vec3 x) {\n    float a = 2.51; float b = 0.03; float c = 2.43; float d = 0.59; float e = 0.14;\n    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);\n}\n\nfloat sdSquircle(vec2 p, vec2 size, float n) {\n    vec2 d = abs(p) / size;\n    float dist = pow(pow(d.x, n) + pow(d.y, n), 1.0 / n);\n    return (dist - 1.0) * min(size.x, size.y);\n}\n\nstruct BevelGeometry { vec2 gradDir; float bevelAmount; float edgeFactor; };\n\nBevelGeometry computeBevelGeometry(vec2 p, vec2 shapeSize, float squircleN, float edgeWidth, float bevelDepth) {\n    BevelGeometry result;\n    float dd = sdSquircle(p, shapeSize, squircleN);\n    float edgeDist = -dd;\n    result.edgeFactor = 1.0 - smoothstep(0.0, edgeWidth, edgeDist);\n    float zonePos = clamp(1.0 - edgeDist / edgeWidth, 0.0, 1.0);\n    float x2 = zonePos * zonePos * bevelDepth;\n    float denom = max(1.0 - x2, 0.01);\n    float surfaceAngle = atan(zonePos * sqrt(bevelDepth) / sqrt(denom));\n    result.bevelAmount = surfaceAngle * result.edgeFactor;\n    float eps = max(2.0, edgeWidth * 0.05);\n    float dx = sdSquircle(p + vec2(eps, 0.0), shapeSize, squircleN) - sdSquircle(p - vec2(eps, 0.0), shapeSize, squircleN);\n    float dy = sdSquircle(p + vec2(0.0, eps), shapeSize, squircleN) - sdSquircle(p - vec2(0.0, eps), shapeSize, squircleN);\n    result.gradDir = normalize(vec2(dx, dy) + 0.0001);\n    return result;\n}\n\nvec2 computeRefraction(BevelGeometry bevel) { return bevel.gradDir * bevel.bevelAmount; }\n\nvec2 dirToEquirectangular(vec3 dir) {\n    float theta = atan(dir.x, dir.z);\n    float phi = asin(clamp(dir.y, -1.0, 1.0));\n    return vec2((theta / 3.14159265359) * 0.5 + 0.5, 0.5 - (phi / 3.14159265359));\n}\n\nvec3 sampleSkybox(vec3 dir) { return texture2D(u_skybox, dirToEquirectangular(dir)).rgb; }\nvec3 sampleSkyboxBlurred(vec3 dir) { return texture2D(u_skyboxBlurred, dirToEquirectangular(dir)).rgb; }\n\nvec3 uvToViewDir(vec2 uv) {\n    vec2 centered = (uv - 0.5) * 2.0;\n    return normalize(vec3(centered.x * 1.2, centered.y * 1.2, -1.0));\n}\n\nvec3 sharpBackground(vec2 uv) {\n    vec3 color = sampleSkybox(uvToViewDir(uv));\n    float vignette = 1.0 - length((uv - 0.5) * 1.2);\n    return color * (0.7 + 0.3 * smoothstep(0.0, 0.7, vignette));\n}\n\nvec3 proceduralBackground(vec2 uv) {\n    vec3 color = sampleSkyboxBlurred(uvToViewDir(uv));\n    float vignette = 1.0 - length((uv - 0.5) * 1.2);\n    return color * (0.7 + 0.3 * smoothstep(0.0, 0.7, vignette));\n}\n\nvec3 chromaticRefract(vec2 uv, vec2 dir, float amount) {\n    return vec3(\n        proceduralBackground(uv - dir * amount).r,\n        proceduralBackground(uv).g,\n        proceduralBackground(uv + dir * amount).b\n    );\n}\n\nfloat fresnelSchlick(float cosTheta, float F0) {\n    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);\n}\n\nvec3 computeSurfaceNormal(BevelGeometry bevel) {\n    vec3 panelNormal = vec3(0.0, 0.0, 1.0);\n    float bevelAngle = bevel.bevelAmount * 0.785398 * u_bevelDepth;\n    float sinB = sin(bevelAngle);\n    float cosB = cos(bevelAngle);\n    vec3 bevelDir = vec3(bevel.gradDir.x, bevel.gradDir.y, 0.0);\n    return normalize(panelNormal * cosB + bevelDir * sinB);\n}\n\nvec3 computeFresnelReflection(BevelGeometry bevel, vec3 refractedColor) {\n    vec3 normal = computeSurfaceNormal(bevel);\n    vec3 viewDir = vec3(0.0, 0.0, 1.0);\n    float NdotV = max(dot(normal, viewDir), 0.0);\n    float F0 = 0.04;\n    float fresnel = fresnelSchlick(NdotV, F0);\n    fresnel = fresnel + bevel.edgeFactor * 0.3;\n    fresnel = fresnel * u_reflectionIntensity;\n    vec3 reflectDir = reflect(-viewDir, normal);\n    vec3 reflected = sampleSkybox(reflectDir);\n    return mix(refractedColor, reflected, fresnel);\n}\n\nvec3 getLightDirFromAngles(float angle, float elevation) {\n    float cosElev = cos(elevation);\n    return normalize(vec3(sin(angle) * cosElev, sin(elevation), cos(angle) * cosElev));\n}\n\nvec3 computeSpecularFromLight(vec3 normal, vec3 viewDir, vec3 lightDir, vec3 lightColor, float intensity) {\n    float F0 = 0.04;\n    vec3 halfVec = normalize(viewDir + lightDir);\n    float NdotH = max(dot(normal, halfVec), 0.0);\n    float NdotL = max(dot(normal, lightDir), 0.0);\n    float fresnel = fresnelSchlick(NdotH, F0);\n    float exponent = u_specularSharpness * u_specularSharpness / 32.0;\n    float spec = pow(NdotH, exponent);\n    float norm = (exponent + 2.0) / 6.28318;\n    return lightColor * fresnel * spec * norm * NdotL * 2.0 * intensity;\n}\n\nvec3 computeSpecularHighlights(BevelGeometry bevel) {\n    vec3 normal = computeSurfaceNormal(bevel);\n    vec3 viewDir = vec3(0.0, 0.0, 1.0);\n    vec3 specular = vec3(0.0);\n    vec3 lightDir0 = getLightDirFromAngles(u_light0Angle, u_light0Elevation);\n    specular += computeSpecularFromLight(normal, viewDir, lightDir0, u_light0Color, u_light0Intensity);\n    vec3 lightDir1 = getLightDirFromAngles(u_light1Angle, u_light1Elevation);\n    specular += computeSpecularFromLight(normal, viewDir, lightDir1, u_light1Color, u_light1Intensity);\n    vec3 lightDir2 = getLightDirFromAngles(u_light2Angle, u_light2Elevation);\n    specular += computeSpecularFromLight(normal, viewDir, lightDir2, u_light2Color, u_light2Intensity);\n    return specular;\n}\n\nvoid main() {\n    vec2 uv = v_uv;\n    vec2 p = (uv - 0.5) * u_resolution;\n    float padding = 40.0;\n    float squareSize = (min(u_resolution.x, u_resolution.y) - padding) * 0.5;\n    vec2 size = vec2(squareSize);\n    float d = sdSquircle(p, size, u_n);\n    BevelGeometry bevel = computeBevelGeometry(p, size, u_n, u_bevelWidth, u_bevelDepth);\n    vec2 lensRefract = computeRefraction(bevel);\n    float refractScale = u_ior - 1.0;\n    vec2 baseOffset = lensRefract * refractScale;\n    float dispersionAmount = u_dispersion * 0.02 * bevel.edgeFactor;\n    vec3 bg = sharpBackground(uv);\n    float mask = 1.0 - smoothstep(-1.5, 1.5, d);\n    vec3 refracted = chromaticRefract(uv + baseOffset * 0.5, bevel.gradDir, dispersionAmount);\n    vec3 glassColor = computeFresnelReflection(bevel, refracted);\n    vec3 specular = computeSpecularHighlights(bevel);\n    glassColor += specular;\n    vec3 color = mix(bg, glassColor, mask);\n    color = ACESFilm(color);\n    gl_FragColor = vec4(color, 1.0);\n}",
+      "uniforms": {
+        "u_time": { "type": "float", "value": 0 },
+        "u_resolution": { "type": "vec2", "value": [1920, 1080] },
+        "u_n": { "type": "float", "value": 5.0 },
+        "u_bevelWidth": { "type": "float", "value": 80.0 },
+        "u_bevelDepth": { "type": "float", "value": 1.0 },
+        "u_ior": { "type": "float", "value": 1.8 },
+        "u_dispersion": { "type": "float", "value": 0.5 },
+        "u_specularEnabled": { "type": "float", "value": 1.0 },
+        "u_specularSharpness": { "type": "float", "value": 60.0 },
+        "u_fresnelEnabled": { "type": "float", "value": 1.0 },
+        "u_reflectionIntensity": { "type": "float", "value": 0.7 },
+         "value": 0.0 },
+        "u_causticsEnabled": { "type": "float", "value": 0.0 },
+        "u_causticsIntensity": { "type": "float", "value": 1.0 },
+        "u_absorptionEnabled": { "type": "float", "value": 0.0 },
+        "u_thickness": { "type": "float", "value": 2.0 },
+        "u_multiLightEnabled": { "type": "float", "value": 1.0 },
+        "u_light0Angle": { "type": "float", "value": 0.0 },
+        "u_light0Elevation": { "type": "float", "value": 0.4 },
+        "u_light0Color": { "type": "vec3", "value": [1.0, 0.95, 0.85] },
+        "u_light0Intensity": { "type": "float", "value": 1.2 },
+        "u_light1Angle": { "type": "float", "value": 2.1 },
+        "u_light1Elevation": { "type": "float", "value": 0.3 },
+        "u_light1Color": { "type": "vec3", "value": [0.4, 0.7, 1.0] },
+        "u_light1Intensity": { "type": "float", "value": 0.8 },
+        "u_light2Angle": { "type": "float", "value": 4.2 },
+        "u_light2Elevation": { "type": "float", "value": 0.5 },
+        "u_light2Color": { "type": "vec3", "value": [1.0, 0.5, 0.3] },
+        "u_light2Intensity": { "type": "float", "value": 0.6 },
+        "u_skybox": { "type": "sampler2D", "value": 0 },
+        "u_skyboxBlurred": { "type": "sampler2D", "value": 0 }
+      },
+      "textures": {
+        "u_skybox": { "url": "../blog/shaders/skybox.jpg", "name": "skybox.jpg" },
+        "u_skyboxBlurred": { "url": "../blog/shaders/skybox-blurred.jpg", "name": "skybox-blurred.jpg" }
+      },
+      "duration": 6000,
+      "animations": {
+        "u_light0Angle": { "from": 0.0, "to": 6.28, "easing": "linear", "start": 0, "end": 100 },
+        "u_light1Angle": { "from": 2.1, "to": 8.38, "easing": "linear", "start": 0, "end": 100 },
+        "u_light2Angle": { "from": 4.2, "to": 10.48, "easing": "linear", "start": 0, "end": 100 }
+      },
+      "overlay": {
+        "position": "bottom-left",
+        "title": "Multi-Light Dance",
+        "code": "// 3 colored lights orbiting the glass\nLightData lights[3];\nlights[0] = getLight(angle0, warm);   // Gold\nlights[1] = getLight(angle1, cool);   // Blue  \nlights[2] = getLight(angle2, accent); // Orange\n\n// Accumulate specular from each light\nfor (int i = 0; i < 3; i++)\n    specular += computeSpecular(lights[i]);"
+      }
+    }
+  ],
+  "transitionDuration": 800
+}

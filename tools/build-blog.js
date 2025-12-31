@@ -186,7 +186,9 @@ function renderSection(section, index) {
 
         case 'shader-demo':
             // Shader demos need JS, show placeholder for no-JS
-            const controlsHtml = (section.controls || []).map(ctrl => `
+            // Filter out special control types (like light-position) that need custom handling
+            const sliderControls = (section.controls || []).filter(ctrl => !ctrl.type || ctrl.type === 'slider');
+            const controlsHtml = sliderControls.map(ctrl => `
                 <div class="shader-control">
                     <label>${escapeHtml(ctrl.label)}</label>
                     <input type="range"

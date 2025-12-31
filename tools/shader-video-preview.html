@@ -553,11 +553,49 @@
            ============================================ */
         .sidebar {
             width: var(--sidebar-width);
+            min-width: 280px;
+            max-width: 600px;
             background: var(--bg-primary);
             border-left: 1px solid var(--border-default);
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
+            position: relative;
+        }
+
+        .sidebar-resize-handle {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+            cursor: ew-resize;
+            background: transparent;
+            z-index: 100;
+            transition: background 0.15s ease;
+        }
+
+        .sidebar-resize-handle:hover,
+        .sidebar-resize-handle.dragging {
+            background: var(--accent-teal);
+        }
+
+        .sidebar-resize-handle::before {
+            content: '';
+            position: absolute;
+            left: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 2px;
+            height: 40px;
+            background: var(--border-strong);
+            border-radius: 1px;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        .sidebar-resize-handle:hover::before {
+            opacity: 1;
         }
 
         .sidebar-header {
@@ -733,6 +771,104 @@
 
         .uniform-row.inherited:hover {
             opacity: 0.8;
+        }
+
+        .uniform-row.texture-row {
+            border: 1px dashed var(--border-default);
+            background: var(--bg-deep);
+        }
+
+        .uniform-row.texture-row:hover {
+            border-color: var(--accent-teal);
+        }
+
+        .texture-info {
+            flex: 1;
+            font-size: 10px;
+            font-family: var(--font-mono);
+            color: var(--accent-teal);
+            text-align: right;
+            padding: 2px 6px;
+            background: rgba(45, 212, 191, 0.1);
+            border-radius: var(--radius-sm);
+            max-width: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .texture-btn {
+            padding: 4px 10px !important;
+            font-size: 10px !important;
+            min-width: auto;
+        }
+
+        /* Toggle switch for "Enabled" uniforms */
+        .uniform-row.toggle-row {
+            background: var(--bg-deep);
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 36px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-interactive);
+            border: 1px solid var(--border-default);
+            border-radius: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-slider::before {
+            position: absolute;
+            content: '';
+            height: 14px;
+            width: 14px;
+            left: 2px;
+            bottom: 2px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background: var(--accent-teal);
+            border-color: var(--accent-teal);
+        }
+
+        .toggle-switch input:checked + .toggle-slider::before {
+            transform: translateX(16px);
+            background: white;
+        }
+
+        .toggle-switch input:focus + .toggle-slider {
+            box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.3);
+        }
+
+        .toggle-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .toggle-label.on {
+            color: var(--accent-teal);
         }
 
         .uniform-name {
@@ -1947,7 +2083,8 @@
             </div>
 
             <!-- Sidebar -->
-            <aside class="sidebar">
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-resize-handle" id="sidebar-resize-handle"></div>
                 <div class="sidebar-header">
                     <h3 class="sidebar-title">Stage Editor</h3>
                     <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 10px;" onclick="exportProject()">Export</button>
@@ -2339,6 +2476,10 @@ vec3 normal = normalize(vec3(gradDir * bevelAmount, 1.0));`
         let importedShaderCode = '';
         let extractedUniforms = {};
 
+        // Texture storage - maps texture uniform names to WebGL textures
+        // Format: { 'shaderIndex-uniformName': { texture: WebGLTexture, url: string, name: string } }
+        let textureCache = {};
+
         // Track expanded states
         let expandedStages = new Set();
         let expandedAnimations = new Set();
@@ -2440,9 +2581,21 @@ vec3 normal = normalize(vec3(gradDir * bevelAmount, 1.0));`
             // Initial setup
             updateResolution();
             rebuildPrograms();
+            restoreTextures(); // Restore textures from session
             updateTimelinePanel();
             updateVisualTimeline();
             updateShaderList();
+
+            // Debug: verify overlay canvas setup
+            console.log('Overlay canvas initialized:', {
+                width: overlayCanvas.width,
+                height: overlayCanvas.height,
+                styleWidth: overlayCanvas.style.width,
+                styleHeight: overlayCanvas.style.height,
+                offsetWidth: overlayCanvas.offsetWidth,
+                offsetHeight: overlayCanvas.offsetHeight,
+                ctx: !!overlayCtx
+            });
 
             // Event listeners
             document.getElementById('resolution').addEventListener('change', updateResolution);
@@ -2476,8 +2629,64 @@ vec3 normal = normalize(vec3(gradDir * bevelAmount, 1.0));`
             // Handle window resize
             window.addEventListener('resize', fitCanvasToViewport);
 
+            // Setup sidebar resize
+            setupSidebarResize();
+
             // Start render loop
             requestAnimationFrame(render);
+        }
+
+        // ============================================
+        // SIDEBAR RESIZE
+        // ============================================
+        function setupSidebarResize() {
+            const sidebar = document.getElementById('sidebar');
+            const handle = document.getElementById('sidebar-resize-handle');
+            if (!sidebar || !handle) return;
+
+            let isResizing = false;
+            let startX = 0;
+            let startWidth = 0;
+
+            handle.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                startX = e.clientX;
+                startWidth = sidebar.offsetWidth;
+                handle.classList.add('dragging');
+                document.body.style.cursor = 'ew-resize';
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isResizing) return;
+
+                // Sidebar is on the right, so we subtract the delta
+                const delta = startX - e.clientX;
+                const newWidth = Math.min(600, Math.max(280, startWidth + delta));
+                sidebar.style.width = newWidth + 'px';
+
+                // Update canvas viewport
+                fitCanvasToViewport();
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isResizing) {
+                    isResizing = false;
+                    handle.classList.remove('dragging');
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+
+                    // Save width to localStorage
+                    localStorage.setItem('shader-video-sidebar-width', sidebar.offsetWidth);
+                }
+            });
+
+            // Restore saved width
+            const savedWidth = localStorage.getItem('shader-video-sidebar-width');
+            if (savedWidth) {
+                sidebar.style.width = savedWidth + 'px';
+            }
         }
 
         function updateResolution() {
@@ -2566,6 +2775,107 @@ vec3 normal = normalize(vec3(gradDir * bevelAmount, 1.0));`
             }
 
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        }
+
+        // ============================================
+        // TEXTURE LOADING
+        // ============================================
+        function loadTextureFromFile(shaderIndex, uniformName, file) {
+            const key = `${shaderIndex}-${uniformName}`;
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                loadTextureFromURL(shaderIndex, uniformName, e.target.result, file.name);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function loadTextureFromURL(shaderIndex, uniformName, url, displayName) {
+            const key = `${shaderIndex}-${uniformName}`;
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+
+            img.onload = function() {
+                // Delete old texture if exists
+                if (textureCache[key] && textureCache[key].texture) {
+                    gl.deleteTexture(textureCache[key].texture);
+                }
+
+                const tex = gl.createTexture();
+                gl.bindTexture(gl.TEXTURE_2D, tex);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+
+                // Check if power of 2
+                const isPOT = (img.width & (img.width - 1)) === 0 && (img.height & (img.height - 1)) === 0;
+
+                if (isPOT) {
+                    gl.generateMipmap(gl.TEXTURE_2D);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+                } else {
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                }
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+                textureCache[key] = {
+                    texture: tex,
+                    url: url.length > 100 ? '[embedded]' : url,
+                    name: displayName || 'texture',
+                    width: img.width,
+                    height: img.height
+                };
+
+                // Store texture reference in shader config for persistence
+                if (shaders[shaderIndex]) {
+                    if (!shaders[shaderIndex].textures) {
+                        shaders[shaderIndex].textures = {};
+                    }
+                    shaders[shaderIndex].textures[uniformName] = {
+                        url: url,
+                        name: displayName || 'texture'
+                    };
+                    saveSession();
+                }
+
+                console.log(`Loaded texture ${displayName} for ${uniformName} (${img.width}x${img.height})`);
+                updateTimelinePanel();
+            };
+
+            img.onerror = function() {
+                console.error(`Failed to load texture: ${url}`);
+            };
+
+            img.src = url;
+        }
+
+        function clearTexture(shaderIndex, uniformName) {
+            const key = `${shaderIndex}-${uniformName}`;
+            if (textureCache[key] && textureCache[key].texture) {
+                gl.deleteTexture(textureCache[key].texture);
+            }
+            delete textureCache[key];
+
+            // Remove from shader config
+            if (shaders[shaderIndex] && shaders[shaderIndex].textures) {
+                delete shaders[shaderIndex].textures[uniformName];
+                saveSession();
+            }
+
+            updateTimelinePanel();
+        }
+
+        function restoreTextures() {
+            // Restore textures from shader configs after reload
+            shaders.forEach((shader, shaderIndex) => {
+                if (shader.textures) {
+                    for (const [uniformName, texInfo] of Object.entries(shader.textures)) {
+                        if (texInfo.url) {
+                            loadTextureFromURL(shaderIndex, uniformName, texInfo.url, texInfo.name);
+                        }
+                    }
+                }
+            });
         }
 
         function compileShader(source, type) {
@@ -2773,9 +3083,24 @@ vec3 normal = normalize(vec3(gradDir * bevelAmount, 1.0));`
         }
 
         function setUniforms(program, shader, stageProgress, time, shaderIndex) {
+            let textureUnit = 0; // Track which texture unit to use
+
             for (const [name, uniform] of Object.entries(shader.uniforms)) {
                 const loc = gl.getUniformLocation(program, name);
                 if (!loc) continue;
+
+                // Handle sampler2D (texture) uniforms
+                if (uniform.type === 'sampler2D') {
+                    const texKey = `${shaderIndex}-${name}`;
+                    const texInfo = textureCache[texKey];
+                    if (texInfo && texInfo.texture) {
+                        gl.activeTexture(gl.TEXTURE0 + textureUnit);
+                        gl.bindTexture(gl.TEXTURE_2D, texInfo.texture);
+                        gl.uniform1i(loc, textureUnit);
+                        textureUnit++;
+                    }
+                    continue;
+                }
 
                 let value = getAnimatedUniformValue(shader, name, stageProgress, shaderIndex);
 
@@ -2825,6 +3150,7 @@ vec3 normal = normalize(vec3(gradDir * bevelAmount, 1.0));`
             }
 
             const state = getTimelineState(elapsed);
+            currentShaderIndex = state.shaderIndex; // Update before rendering overlay
             renderFrame(state, elapsed);
             renderCodeOverlay();
             updateComposite();
@@ -3053,6 +3379,7 @@ vec3 normal = normalize(vec3(gradDir * bevelAmount, 1.0));`
                         </div>
 
                         <div class="stage-actions">
+                            <button class="btn btn-secondary" onclick="resetUniforms(${index})" title="Re-extract uniforms with smart defaults">Reset Uniforms</button>
                             <button class="btn btn-secondary" onclick="duplicateStage(${index})">Duplicate</button>
                             <button class="btn btn-secondary" style="color: var(--accent-red);" onclick="removeShaderStage(${index})">Remove</button>
                         </div>
@@ -3074,6 +3401,20 @@ vec3 normal = normalize(vec3(gradDir * bevelAmount, 1.0));`
                 const hasAnimation = animations[name] !== undefined;
                 const isExpanded = expandedAnimations.has(`${shaderIndex}-${name}`);
                 const isLocked = isSystem || inherited;
+
+                // Handle sampler2D (texture) uniforms specially
+                if (uniform.type === 'sampler2D') {
+                    const texKey = `${shaderIndex}-${name}`;
+                    const texInfo = textureCache[texKey];
+                    html += renderTextureUniform(shaderIndex, name, texInfo);
+                    continue;
+                }
+
+                // Handle "Enabled" toggle uniforms (float uniforms ending with "Enabled")
+                if (uniform.type === 'float' && name.toLowerCase().endsWith('enabled') && !isLocked) {
+                    html += renderToggleUniform(shaderIndex, name, uniform);
+                    continue;
+                }
 
                 // Display the inherited value if applicable
                 const displayValue = inherited ? inheritedValue : uniform.value;
@@ -3097,6 +3438,76 @@ vec3 normal = normalize(vec3(gradDir * bevelAmount, 1.0));`
                 `;
             }
             return html;
+        }
+
+        function renderToggleUniform(shaderIndex, name, uniform) {
+            const isOn = uniform.value >= 0.5;
+            const displayName = name.replace(/^u_/, '').replace(/Enabled$/, '');
+            return `
+                <div class="uniform-row toggle-row">
+                    <span class="uniform-name">${displayName}</span>
+                    <span class="uniform-type">toggle</span>
+                    <span class="toggle-label ${isOn ? 'on' : ''}">${isOn ? 'ON' : 'OFF'}</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" ${isOn ? 'checked' : ''}
+                               onchange="toggleUniformEnabled(${shaderIndex}, '${name}', this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            `;
+        }
+
+        function toggleUniformEnabled(shaderIndex, uniformName, enabled) {
+            if (shaders[shaderIndex] && shaders[shaderIndex].uniforms[uniformName]) {
+                shaders[shaderIndex].uniforms[uniformName].value = enabled ? 1.0 : 0.0;
+                updateTimelinePanel();
+                scheduleSave();
+            }
+        }
+
+        function renderTextureUniform(shaderIndex, name, texInfo) {
+            const inputId = `tex-input-${shaderIndex}-${name}`;
+            const urlInputId = `tex-url-${shaderIndex}-${name}`;
+            if (texInfo) {
+                return `
+                    <div class="uniform-row texture-row">
+                        <span class="uniform-name">${name}</span>
+                        <span class="uniform-type">sampler2D</span>
+                        <span class="texture-info" title="${texInfo.name} (${texInfo.width}x${texInfo.height})">
+                            ${texInfo.name.length > 15 ? texInfo.name.substring(0, 12) + '...' : texInfo.name}
+                        </span>
+                        <button class="btn btn-secondary texture-btn" onclick="clearTexture(${shaderIndex}, '${name}')" title="Remove texture">✕</button>
+                    </div>
+                `;
+            } else {
+                return `
+                    <div class="uniform-row texture-row">
+                        <span class="uniform-name">${name}</span>
+                        <span class="uniform-type">sampler2D</span>
+                        <input type="file" id="${inputId}" accept="image/*" style="display: none;"
+                               onchange="handleTextureUpload(${shaderIndex}, '${name}', this)">
+                        <button class="btn btn-secondary texture-btn" onclick="document.getElementById('${inputId}').click()" title="Upload image file">
+                            File
+                        </button>
+                        <button class="btn btn-secondary texture-btn" onclick="promptTextureURL(${shaderIndex}, '${name}')" title="Load from URL">
+                            URL
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        function promptTextureURL(shaderIndex, uniformName) {
+            const url = prompt('Enter image URL:', '../blog/shaders/skybox.jpg');
+            if (url && url.trim()) {
+                loadTextureFromURL(shaderIndex, uniformName, url.trim(), url.split('/').pop());
+            }
+        }
+
+        function handleTextureUpload(shaderIndex, uniformName, input) {
+            if (input.files && input.files[0]) {
+                loadTextureFromFile(shaderIndex, uniformName, input.files[0]);
+            }
         }
 
         function formatUniformValue(value) {
@@ -3239,6 +3650,27 @@ vec3 normal = normalize(vec3(gradDir * bevelAmount, 1.0));`
             if (!shaders[index].overlay) shaders[index].overlay = {};
             shaders[index].overlay.code = code;
             scheduleSave();
+        }
+
+        function resetUniforms(index) {
+            const shader = shaders[index];
+            if (!shader || !shader.code) return;
+
+            // Keep textures reference
+            const oldTextures = shader.textures || {};
+
+            // Re-extract uniforms with smart defaults
+            shader.uniforms = extractUniforms(shader.code);
+
+            // Restore texture references
+            shader.textures = oldTextures;
+
+            // Clear animations since values changed
+            shader.animations = {};
+
+            updateTimelinePanel();
+            scheduleSave();
+            console.log(`Reset uniforms for shader ${index}`);
         }
 
         function duplicateStage(index) {
@@ -3506,35 +3938,100 @@ vec3 normal = normalize(vec3(gradDir * bevelAmount, 1.0));`
         // CODE OVERLAY RENDERING
         // ============================================
         function renderCodeOverlay() {
+            if (!overlayCtx || !overlayCanvas) {
+                console.log('Overlay not ready: ctx=', !!overlayCtx, 'canvas=', !!overlayCanvas);
+                return;
+            }
+
             overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
-            const shader = shaders[currentShaderIndex];
-            if (!showCodeOverlay || !shader) return;
+            if (!showCodeOverlay) return;
 
-            const code = shader.overlay?.code || shader.code || '';
+            const shader = shaders[currentShaderIndex];
+            if (!shader) {
+                console.log('No shader at index', currentShaderIndex, 'total shaders:', shaders.length);
+                return;
+            }
+
+            // Get overlay content - use overlay.code if set, otherwise use first 30 lines of shader code
+            const overlayCode = shader.overlay?.code;
+            const code = (overlayCode && overlayCode.trim()) ? overlayCode : (shader.code || '');
+            if (!code || !code.trim()) {
+                console.log('No code for shader', currentShaderIndex, 'overlay.code:', !!overlayCode, 'shader.code:', !!(shader.code));
+                return;
+            }
+
+            console.log('Rendering overlay for shader', currentShaderIndex, 'canvas:', overlayCanvas.width, 'x', overlayCanvas.height);
+
             const lines = code.split('\n').slice(0, 30);
+            const title = shader.overlay?.title || '';
+
+            // Calculate overlay dimensions based on content
+            const fontSize = Math.max(14, Math.min(18, overlayCanvas.height / 40));
+            const lineHeight = fontSize * 1.6;
+            const padding = 40;
+            const overlayWidth = Math.min(overlayCanvas.width * 0.55, 700);
+            const overlayHeight = Math.min(
+                padding * 2 + (title ? lineHeight * 1.5 : 0) + lines.length * lineHeight,
+                overlayCanvas.height - padding * 2
+            );
+
+            // Background with rounded corners
+            overlayCtx.save();
+            overlayCtx.beginPath();
+            const radius = 12;
+            const x0 = padding / 2;
+            const y0 = padding / 2;
+            // roundRect fallback for older browsers
+            if (overlayCtx.roundRect) {
+                overlayCtx.roundRect(x0, y0, overlayWidth, overlayHeight, radius);
+            } else {
+                overlayCtx.moveTo(x0 + radius, y0);
+                overlayCtx.lineTo(x0 + overlayWidth - radius, y0);
+                overlayCtx.quadraticCurveTo(x0 + overlayWidth, y0, x0 + overlayWidth, y0 + radius);
+                overlayCtx.lineTo(x0 + overlayWidth, y0 + overlayHeight - radius);
+                overlayCtx.quadraticCurveTo(x0 + overlayWidth, y0 + overlayHeight, x0 + overlayWidth - radius, y0 + overlayHeight);
+                overlayCtx.lineTo(x0 + radius, y0 + overlayHeight);
+                overlayCtx.quadraticCurveTo(x0, y0 + overlayHeight, x0, y0 + overlayHeight - radius);
+                overlayCtx.lineTo(x0, y0 + radius);
+                overlayCtx.quadraticCurveTo(x0, y0, x0 + radius, y0);
+                overlayCtx.closePath();
+            }
+            overlayCtx.clip();
 
             // Background gradient
-            const gradient = overlayCtx.createLinearGradient(0, 0, overlayCanvas.width * 0.5, 0);
+            const gradient = overlayCtx.createLinearGradient(x0, 0, x0 + overlayWidth, 0);
             gradient.addColorStop(0, 'rgba(6, 10, 15, 0.95)');
-            gradient.addColorStop(0.8, 'rgba(6, 10, 15, 0.7)');
-            gradient.addColorStop(1, 'rgba(6, 10, 15, 0)');
+            gradient.addColorStop(0.85, 'rgba(6, 10, 15, 0.85)');
+            gradient.addColorStop(1, 'rgba(6, 10, 15, 0.7)');
 
             overlayCtx.fillStyle = gradient;
-            overlayCtx.fillRect(0, 0, overlayCanvas.width * 0.55, overlayCanvas.height);
+            overlayCtx.fillRect(x0, y0, overlayWidth, overlayHeight);
+
+            // Subtle border
+            overlayCtx.strokeStyle = 'rgba(45, 212, 191, 0.3)';
+            overlayCtx.lineWidth = 1;
+            overlayCtx.stroke();
+
+            overlayCtx.restore();
 
             // Code rendering
-            const fontSize = Math.max(11, overlayCanvas.height / 50);
-            const lineHeight = fontSize * 1.4;
-            const padding = 24;
-            let y = padding + fontSize;
+            let y = padding;
 
-            overlayCtx.font = `${fontSize}px 'JetBrains Mono', 'SF Mono', monospace`;
+            // Render title if present
+            if (title) {
+                overlayCtx.font = `bold ${fontSize * 1.1}px 'JetBrains Mono', 'SF Mono', Consolas, monospace`;
+                overlayCtx.fillStyle = '#2dd4bf'; // teal accent
+                overlayCtx.textBaseline = 'top';
+                overlayCtx.fillText(title, padding, y);
+                y += lineHeight * 1.5;
+            }
+
+            overlayCtx.font = `${fontSize}px 'JetBrains Mono', 'SF Mono', Consolas, monospace`;
             overlayCtx.textBaseline = 'top';
 
             lines.forEach((line, i) => {
-                const x = padding;
-                renderSyntaxHighlightedLine(line, x, y, fontSize);
+                renderSyntaxHighlightedLine(line, padding, y, fontSize);
                 y += lineHeight;
             });
         }
@@ -3805,21 +4302,33 @@ vec3 normal = normalize(vec3(gradDir * bevelAmount, 1.0));`
             const uniforms = {};
             const regex = /uniform\s+(float|vec2|vec3|vec4|int|bool|mat2|mat3|mat4|sampler2D)\s+(\w+)/g;
 
+            // System uniforms that get special handling
+            const systemUniforms = {
+                'u_time': { type: 'float', value: 0, min: 0, max: 100, step: 0.1 },
+                'iTime': { type: 'float', value: 0, min: 0, max: 100, step: 0.1 },
+                'u_resolution': { type: 'vec2', value: [1920, 1080], min: 0, max: 4096, step: 1 },
+                'iResolution': { type: 'vec2', value: [1920, 1080], min: 0, max: 4096, step: 1 },
+                'u_mouse': { type: 'vec2', value: [0.5, 0.5], min: 0, max: 1, step: 0.01 },
+                'iMouse': { type: 'vec4', value: [0, 0, 0, 0], min: 0, max: 1, step: 0.01 }
+            };
+
             let match;
             while ((match = regex.exec(code)) !== null) {
                 const type = match[1];
                 const name = match[2];
 
-                // Skip common built-in uniforms
-                if (['u_resolution', 'u_time', 'u_mouse', 'iResolution', 'iTime', 'iMouse'].includes(name)) {
+                // Include system uniforms with their special config
+                if (systemUniforms[name]) {
+                    uniforms[name] = { ...systemUniforms[name] };
                     continue;
                 }
 
+                const defaultValue = getDefaultValue(type, name);
                 uniforms[name] = {
                     type: type,
-                    value: getDefaultValue(type),
+                    value: defaultValue,
                     min: 0,
-                    max: type === 'float' ? 1 : 10,
+                    max: getDefaultMax(type, name, defaultValue),
                     step: 0.01
                 };
             }
@@ -3827,13 +4336,64 @@ vec3 normal = normalize(vec3(gradDir * bevelAmount, 1.0));`
             return uniforms;
         }
 
-        function getDefaultValue(type) {
+        function getDefaultMax(type, name, defaultValue) {
+            const lowerName = name.toLowerCase();
+            if (type === 'float') {
+                if (lowerName.includes('width') || lowerName.includes('size')) return 200.0;
+                if (lowerName.includes('sharpness')) return 200.0;
+                if (lowerName.includes('ior')) return 3.0;
+                if (lowerName.includes('intensity')) return 5.0;
+                if (lowerName.includes('angle')) return 6.28; // 2*PI
+                if (lowerName.includes('elevation')) return 1.57; // PI/2
+                if (lowerName.includes('enabled')) return 1.0;
+                if (lowerName === 'u_n' || lowerName === 'n') return 10.0;
+                // Default: at least 2x the default value
+                return Math.max(1.0, defaultValue * 2);
+            }
+            return 10;
+        }
+
+        function getDefaultValue(type, name = '') {
+            // Smart defaults based on common naming patterns
+            const lowerName = name.toLowerCase();
+
+            if (type === 'float') {
+                // IOR (index of refraction) - glass is ~1.5
+                if (lowerName.includes('ior')) return 1.5;
+                // Intensity values
+                if (lowerName.includes('intensity')) return 1.0;
+                // Sharpness values
+                if (lowerName.includes('sharpness')) return 50.0;
+                // Width/size values (pixels)
+                if (lowerName.includes('width') || lowerName.includes('size')) return 50.0;
+                // Depth values
+                if (lowerName.includes('depth')) return 1.0;
+                // Thickness
+                if (lowerName.includes('thickness')) return 2.0;
+                // Enabled/disabled toggles
+                if (lowerName.includes('enabled')) return 1.0;
+                // Angle values (radians)
+                if (lowerName.includes('angle')) return 0.0;
+                // Elevation
+                if (lowerName.includes('elevation')) return 0.5;
+                // Dispersion
+                if (lowerName.includes('dispersion')) return 0.3;
+                // Squircle N exponent
+                if (lowerName === 'u_n' || lowerName === 'n') return 4.0;
+                // Reflection intensity
+                if (lowerName.includes('reflection')) return 0.5;
+                // Default
+                return 0.5;
+            }
+
             switch (type) {
-                case 'float': return 0.5;
                 case 'int': return 0;
                 case 'bool': return false;
                 case 'vec2': return [0.5, 0.5];
-                case 'vec3': return [0.5, 0.5, 0.5];
+                case 'vec3':
+                    // Color uniforms default to white
+                    if (lowerName.includes('color')) return [1.0, 1.0, 1.0];
+                    return [0.5, 0.5, 0.5];
                 case 'vec4': return [0.5, 0.5, 0.5, 1.0];
                 default: return 0;
             }
@@ -3866,7 +4426,8 @@ vec3 normal = normalize(vec3(gradDir * bevelAmount, 1.0));`
         }
 
         function closeShaderModal() {
-            document.getElementById('json-editor-modal').classList.remove('active');
+            const modal = document.getElementById('json-editor-modal');
+            if (modal) modal.classList.remove('active');
             currentEditingShader = null;
         }
 
@@ -3905,28 +4466,49 @@ vec3 normal = normalize(vec3(gradDir * bevelAmount, 1.0));`
         function loadShadersFromJSON(content) {
             try {
                 const data = JSON.parse(content);
+                let importedShaders = [];
 
                 if (Array.isArray(data)) {
                     // Add shaders to existing list
-                    data.forEach(shader => {
-                        shaders.push({
+                    const startIndex = shaders.length;
+                    data.forEach((shader, i) => {
+                        const newShader = {
                             title: shader.title || shader.name || 'Imported',
                             code: shader.code || '',
                             uniforms: shader.uniforms || extractUniforms(shader.code || ''),
                             duration: shader.duration || 3000,
                             animations: shader.animations || {},
-                            overlay: shader.overlay || {}
-                        });
+                            overlay: shader.overlay || {},
+                            textures: shader.textures || {}
+                        };
+                        shaders.push(newShader);
+                        importedShaders.push({ index: startIndex + i, textures: shader.textures || {} });
                     });
                     rebuildPrograms();
                 } else if (data.shaders) {
                     // Full project import
-                    shaders = data.shaders;
+                    shaders = data.shaders.map((s, i) => ({
+                        ...s,
+                        textures: s.textures || {}
+                    }));
+                    importedShaders = data.shaders.map((s, i) => ({ index: i, textures: s.textures || {} }));
                     if (data.transitionDuration) {
                         transitionDuration = data.transitionDuration;
                     }
                     rebuildPrograms();
                 }
+
+                // Load textures from imported shaders
+                importedShaders.forEach(({ index, textures }) => {
+                    if (textures) {
+                        Object.entries(textures).forEach(([uniformName, texInfo]) => {
+                            if (texInfo.url) {
+                                console.log(`Loading texture for shader ${index}, uniform ${uniformName}: ${texInfo.url}`);
+                                loadTextureFromURL(index, uniformName, texInfo.url, texInfo.name || 'Imported');
+                            }
+                        });
+                    }
+                });
 
                 saveSession();
                 updateUI();
@@ -3966,6 +4548,9 @@ vec3 normal = normalize(vec3(gradDir * bevelAmount, 1.0));`
             if (btn) {
                 btn.classList.toggle('active', showCodeOverlay);
             }
+            console.log('Code overlay toggled:', showCodeOverlay);
+            // Force immediate redraw
+            renderCodeOverlay();
         }
 
         // ============================================

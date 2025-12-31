@@ -10,11 +10,11 @@ uniform float u_specularEnabled;
 uniform float u_specularSharpness;
 uniform float u_fresnelEnabled;
 uniform float u_reflectionIntensity;
-uniform float u_sunAngle;
 uniform float u_causticsEnabled;
 uniform float u_causticsIntensity;
 uniform float u_absorptionEnabled;
 uniform float u_thickness;
+uniform float u_skyboxOffset;  // Offset skybox rotation to align sun with light
 // Multi-light support (3 lights with angle/elevation controls)
 uniform float u_multiLightEnabled;
 uniform float u_light0Angle;
@@ -30,7 +30,8 @@ uniform float u_light2Elevation;
 uniform vec3 u_light2Color;
 uniform float u_light2Intensity;
 uniform vec2 u_resolution;
-uniform sampler2D u_skybox;
+uniform sampler2D u_skybox;         // Sharp skybox for reflections
+uniform sampler2D u_skyboxBlurred;  // Pre-blurred skybox for refraction
 
 // ACES Filmic Tonemapping
 vec3 ACESFilm(vec3 x) {
@@ -156,10 +157,16 @@ vec2 dirToEquirectangular(vec3 dir) {
     return uv;
 }
 
-// Sample skybox texture from direction
+// Sample sharp skybox texture (for reflections)
 vec3 sampleSkybox(vec3 dir) {
     vec2 uv = dirToEquirectangular(dir);
     return texture2D(u_skybox, uv).rgb;
+}
+
+// Sample blurred skybox texture (for refraction through frosted glass)
+vec3 sampleSkyboxBlurred(vec3 dir) {
+    vec2 uv = dirToEquirectangular(dir);
+    return texture2D(u_skyboxBlurred, uv).rgb;
 }
 
 // Compute light influence on a direction (for specular highlights)
@@ -169,9 +176,9 @@ float computeLightInfluence(vec3 dir, vec3 lightDir) {
     return 1.0 / (1.0 + angularDist * angularDist * 9.0);
 }
 
-// Sample environment with multiple lights
+// Sample environment with multiple lights (sharp - for reflections)
 vec3 sampleEnvironmentMultiLight(vec3 dir) {
-    // Sample skybox texture
+    // Sample sharp skybox texture
     vec3 color = sampleSkybox(dir);
 
     // Get all three lights for specular glow overlay
@@ -191,9 +198,31 @@ vec3 sampleEnvironmentMultiLight(vec3 dir) {
     return color;
 }
 
-// Single-light version
+// Sample blurred environment with multiple lights (for refraction)
+vec3 sampleEnvironmentMultiLightBlurred(vec3 dir) {
+    // Sample blurred skybox texture
+    vec3 color = sampleSkyboxBlurred(dir);
+
+    // Get all three lights for specular glow overlay
+    LightData light0 = getLight0();
+    LightData light1 = getLight1();
+    LightData light2 = getLight2();
+
+    // Add subtle light glow on top of skybox
+    float influence0 = computeLightInfluence(dir, light0.direction) * light0.intensity;
+    float influence1 = computeLightInfluence(dir, light1.direction) * light1.intensity;
+    float influence2 = computeLightInfluence(dir, light2.direction) * light2.intensity;
+
+    color += light0.color * influence0 * 0.3;
+    color += light1.color * influence1 * 0.3;
+    color += light2.color * influence2 * 0.3;
+
+    return color;
+}
+
+// Single-light version (sharp - for reflections)
 vec3 sampleEnvironment(vec3 dir, vec3 sunDir, vec3 sunColor) {
-    // Sample skybox texture
+    // Sample sharp skybox texture
     vec3 color = sampleSkybox(dir);
 
     // Add sun glow
@@ -203,23 +232,56 @@ vec3 sampleEnvironment(vec3 dir, vec3 sunDir, vec3 sunColor) {
     return color;
 }
 
-// Background: what we see through the glass (looking into -Z)
-vec3 proceduralBackground(vec2 uv) {
-    // Convert screen UV to a direction using a proper view frustum
-    // This avoids the pole issues of the spherical projection
-    vec2 centered = (uv - 0.5) * 2.0;
+// Single-light blurred version (for refraction)
+vec3 sampleEnvironmentBlurred(vec3 dir, vec3 sunDir, vec3 sunColor) {
+    // Sample blurred skybox texture
+    vec3 color = sampleSkyboxBlurred(dir);
 
-    // Use a fixed FOV projection - camera looking at -Z
+    // Add sun glow
+    float sunInfluence = computeLightInfluence(dir, sunDir);
+    color += sunColor * sunInfluence * 0.3;
+
+    return color;
+}
+
+// Convert UV to view direction
+vec3 uvToViewDir(vec2 uv) {
+    vec2 centered = (uv - 0.5) * 2.0;
     float fov = 1.2; // ~70 degree FOV
-    vec3 viewDir = normalize(vec3(centered.x * fov, centered.y * fov, -1.0));
+    return normalize(vec3(centered.x * fov, centered.y * fov, -1.0));
+}
+
+// Rotate direction around Y axis (for skybox rotation locked to sun)
+vec3 rotateY(vec3 dir, float angle) {
+    float c = cos(angle);
+    float s = sin(angle);
+    return vec3(
+        dir.x * c + dir.z * s,
+        dir.y,
+        -dir.x * s + dir.z * c
+    );
+}
+
+// Get current rotation angle (time-based + offset for alignment)
+float getSkyboxRotation() {
+    return u_time * 0.3 + u_skyboxOffset;
+}
+
+// Sharp background (for outside glass / reflections)
+vec3 sharpBackground(vec2 uv) {
+    vec3 viewDir = uvToViewDir(uv);
+
+    // Rotate skybox to match sun angle (so they move together)
+    float rotation = getSkyboxRotation();
+    vec3 rotatedDir = rotateY(viewDir, rotation);
 
     vec3 color;
     if (u_multiLightEnabled > 0.5) {
-        color = sampleEnvironmentMultiLight(viewDir);
+        color = sampleEnvironmentMultiLight(rotatedDir);
     } else {
         vec3 sunDir = getLightDirection(u_time);
         vec3 sunColor = getLightColor(sunDir);
-        color = sampleEnvironment(viewDir, sunDir, sunColor);
+        color = sampleEnvironment(rotatedDir, sunDir, sunColor);
     }
 
     // Soft vignette
@@ -230,27 +292,44 @@ vec3 proceduralBackground(vec2 uv) {
     return color;
 }
 
-// Blurred background sample - 5-tap blur (cheaper than 9)
-vec3 blurredBackground(vec2 uv, float blurAmount) {
-    float radius = blurAmount * 0.012;
+// Blurred background (for refraction through frosted glass)
+vec3 proceduralBackground(vec2 uv) {
+    vec3 viewDir = uvToViewDir(uv);
 
-    // 5-tap cross pattern (cheaper than 9-tap box)
-    vec3 color = proceduralBackground(uv);
-    color += proceduralBackground(uv + vec2(radius, 0.0));
-    color += proceduralBackground(uv + vec2(-radius, 0.0));
-    color += proceduralBackground(uv + vec2(0.0, radius));
-    color += proceduralBackground(uv + vec2(0.0, -radius));
+    // Rotate skybox to match sun angle (so they move together)
+    float rotation = getSkyboxRotation();
+    vec3 rotatedDir = rotateY(viewDir, rotation);
 
-    return color * 0.2;
+    vec3 color;
+    if (u_multiLightEnabled > 0.5) {
+        color = sampleEnvironmentMultiLightBlurred(rotatedDir);
+    } else {
+        vec3 sunDir = getLightDirection(u_time);
+        vec3 sunColor = getLightColor(sunDir);
+        color = sampleEnvironmentBlurred(rotatedDir, sunDir, sunColor);
+    }
+
+    // Soft vignette
+    float vignette = 1.0 - length((uv - 0.5) * 1.2);
+    vignette = smoothstep(0.0, 0.7, vignette);
+    color *= 0.7 + 0.3 * vignette;
+
+    return color;
 }
 
-// Blurred background with chromatic dispersion
+// Background sample - texture is pre-blurred offline for performance
+vec3 blurredBackground(vec2 uv, float blurAmount) {
+    // Texture already blurred - just sample directly
+    return proceduralBackground(uv);
+}
+
+// Chromatic dispersion - separate RGB channel offsets
 vec3 blurredBackgroundChromatic(vec2 uv, float blurAmount, vec2 dispersionDir, float dispersionAmount) {
     vec2 uvR = uv - dispersionDir * dispersionAmount;
     vec2 uvG = uv;
     vec2 uvB = uv + dispersionDir * dispersionAmount;
 
-    // Single sample per channel for speed (dispersion visible without blur)
+    // Sample pre-blurred texture with chromatic offset
     return vec3(
         proceduralBackground(uvR).r,
         proceduralBackground(uvG).g,
@@ -258,11 +337,10 @@ vec3 blurredBackgroundChromatic(vec2 uv, float blurAmount, vec2 dispersionDir, f
     );
 }
 
-// Get light direction - controlled by u_sunAngle uniform
+// Get light direction - time-based rotation
 // Full 3D orbit: sun goes around the glass in all directions
 vec3 getLightDirection(float t) {
-    // Use u_sunAngle if set (> -99), otherwise animate with time
-    float angle = u_sunAngle > -99.0 ? u_sunAngle : t * 0.3;
+    float angle = t * 0.3;
 
     // 3D spherical orbit - sun travels around the glass panel
     // As angle increases: front -> right -> back -> left -> front
@@ -286,12 +364,22 @@ vec3 getLightColor(vec3 lightDir) {
 
 // Sample environment for reflections - uses single or multi-light
 vec3 sampleReflection(vec3 reflectDir) {
+    // Reflections show what's BEHIND the viewer (positive Z), not behind the glass
+    // The reflect() function gives us the correct optical direction, but since our
+    // background shows what's behind the glass (-Z), we need to flip Z for reflections
+    // to sample the opposite hemisphere of the skybox
+    vec3 mirrorDir = vec3(reflectDir.x, reflectDir.y, -reflectDir.z);
+
+    // Apply same rotation as background so reflections rotate with skybox
+    float rotation = getSkyboxRotation();
+    vec3 rotatedDir = rotateY(mirrorDir, rotation);
+
     if (u_multiLightEnabled > 0.5) {
-        return sampleEnvironmentMultiLight(reflectDir);
+        return sampleEnvironmentMultiLight(rotatedDir);
     } else {
         vec3 sunDir = getLightDirection(u_time);
         vec3 sunColor = getLightColor(sunDir);
-        return sampleEnvironment(reflectDir, sunDir, sunColor);
+        return sampleEnvironment(rotatedDir, sunDir, sunColor);
     }
 }
 
@@ -366,26 +454,39 @@ vec3 computeSpecularHighlights(BevelGeometry bevel) {
 }
 
 // Compute Fresnel reflection/refraction blend
-vec3 computeFresnelReflection(BevelGeometry bevel, vec3 refractedColor) {
+// Takes UV to compute per-pixel view direction for proper mirror effect
+vec3 computeFresnelReflection(BevelGeometry bevel, vec3 refractedColor, vec2 uv) {
     vec3 normal = computeSurfaceNormal(bevel);
-    vec3 viewDir = vec3(0.0, 0.0, 1.0);
+
+    // Per-pixel view direction based on screen position
+    // This creates a proper mirror effect where different parts of the glass
+    // reflect different parts of the environment
+    vec3 viewDir = normalize(vec3(0.0, 0.0, 1.0)); // Looking at the glass
 
     // Fresnel - how much light is reflected vs refracted
     float NdotV = max(dot(normal, viewDir), 0.0);
-    float F0 = 0.04; // Glass at normal incidence
+
+    // Use higher F0 for more visible reflections (artistic choice over physical accuracy)
+    // Real glass is 0.04, but we use 0.1-0.2 for better visual impact
+    float F0 = 0.15;
     float fresnel = fresnelSchlick(NdotV, F0);
 
-    // Boost fresnel for more visible reflections on the bevel
-    // The bevel creates grazing angles where reflection should be strong
-    fresnel = fresnel + bevel.edgeFactor * 0.3;
+    // Boost fresnel on beveled edges where normal is tilted
+    // This makes the edge reflections more pronounced
+    float edgeBoost = 1.0 - NdotV; // Higher when viewing at angle
+    fresnel = mix(fresnel, 1.0, edgeBoost * edgeBoost * 0.5);
 
     // Scale by reflection intensity uniform
-    fresnel = fresnel * u_reflectionIntensity;
+    fresnel = clamp(fresnel * u_reflectionIntensity, 0.0, 1.0);
 
-    // Compute reflection direction
-    vec3 reflectDir = reflect(-viewDir, normal);
+    // For reflection direction, use per-pixel incoming ray direction
+    // The incoming ray varies across the screen (like looking through a window)
+    vec3 incomingRay = uvToViewDir(uv); // Ray from viewer through this pixel
 
-    // Sample environment map for reflection
+    // Reflect this ray off the surface normal
+    vec3 reflectDir = reflect(incomingRay, normal);
+
+    // Sample environment map for reflection (sharp skybox)
     vec3 reflected = sampleReflection(reflectDir);
 
     // Blend refraction and reflection based on Fresnel
@@ -506,8 +607,8 @@ void main() {
         refracted = computeAbsorption(bevel, refracted);
     }
 
-    // Background without refraction (sharp)
-    vec3 bg = proceduralBackground(uv);
+    // Background without refraction (sharp skybox for outside glass)
+    vec3 bg = sharpBackground(uv);
 
     // Anti-aliased mask
     float mask = 1.0 - smoothstep(-1.5, 1.5, d);
@@ -515,7 +616,7 @@ void main() {
     // Apply Fresnel reflection if enabled
     vec3 glassColor = refracted;
     if (u_fresnelEnabled > 0.5) {
-        glassColor = computeFresnelReflection(bevel, refracted);
+        glassColor = computeFresnelReflection(bevel, refracted, uv);
     }
 
     // Compose - blurred refracted interior with optional Fresnel

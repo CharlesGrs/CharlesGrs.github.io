@@ -156,7 +156,8 @@ async function convert() {
         const ldrData = Buffer.alloc(hdr.width * hdr.height * 3);
         for (let i = 0; i < hdr.width * hdr.height; i++) {
             // Apply exposure adjustment and tone mapping
-            const exposure = 1.0;
+            // Lower exposure for bright outdoor HDRIs like sunsets
+            const exposure = 0.2;
             const r = acesTonemap(hdr.data[i * 3 + 0] * exposure);
             const g = acesTonemap(hdr.data[i * 3 + 1] * exposure);
             const b = acesTonemap(hdr.data[i * 3 + 2] * exposure);

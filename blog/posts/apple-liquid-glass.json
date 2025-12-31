@@ -159,7 +159,8 @@
             "height": 380,
             "shaderFile": "glass-refraction.glsl",
             "textures": {
-                "u_skybox": "blog/shaders/skybox.jpg"
+                "u_skybox": "blog/shaders/skybox.jpg",
+                "u_skyboxBlurred": "blog/shaders/skybox-blurred.jpg"
             },
             "uniforms": {
                 "u_time": { "type": "float", "value": 0.0 },
@@ -177,6 +178,7 @@
                 "u_causticsIntensity": { "type": "float", "value": 1.0 },
                 "u_absorptionEnabled": { "type": "float", "value": 0.0 },
                 "u_thickness": { "type": "float", "value": 1.0 },
+                "u_skyboxOffset": { "type": "float", "value": 3.14 },
                 "u_resolution": { "type": "vec2", "value": [700, 380] }
             },
             "controls": [
@@ -203,6 +205,14 @@
                     "max": 150,
                     "step": 1,
                     "default": 60.0
+                },
+                {
+                    "uniform": "u_bevelDepth",
+                    "label": "Bevel Depth",
+                    "min": 0,
+                    "max": 2,
+                    "step": 0.1,
+                    "default": 1.0
                 }
             ]
         },
@@ -233,7 +243,8 @@
             "height": 380,
             "shaderFile": "glass-refraction.glsl",
             "textures": {
-                "u_skybox": "blog/shaders/skybox.jpg"
+                "u_skybox": "blog/shaders/skybox.jpg",
+                "u_skyboxBlurred": "blog/shaders/skybox-blurred.jpg"
             },
             "uniforms": {
                 "u_time": { "type": "float", "value": 0.0 },
@@ -251,6 +262,7 @@
                 "u_causticsIntensity": { "type": "float", "value": 1.0 },
                 "u_absorptionEnabled": { "type": "float", "value": 0.0 },
                 "u_thickness": { "type": "float", "value": 1.0 },
+                "u_skyboxOffset": { "type": "float", "value": 3.14 },
                 "u_resolution": { "type": "vec2", "value": [700, 380] }
             },
             "controls": [
@@ -315,7 +327,8 @@
             "height": 380,
             "shaderFile": "glass-refraction.glsl",
             "textures": {
-                "u_skybox": "blog/shaders/skybox.jpg"
+                "u_skybox": "blog/shaders/skybox.jpg",
+                "u_skyboxBlurred": "blog/shaders/skybox-blurred.jpg"
             },
             "uniforms": {
                 "u_time": { "type": "float", "value": 0.0 },
@@ -328,14 +341,23 @@
                 "u_specularSharpness": { "type": "float", "value": 32.0 },
                 "u_fresnelEnabled": { "type": "float", "value": 0.0 },
                 "u_reflectionIntensity": { "type": "float", "value": 1.0 },
-                "u_sunAngle": { "type": "float", "value": -100.0 },
+                "u_sunAngle": { "type": "float", "value": 3.14 },
                 "u_causticsEnabled": { "type": "float", "value": 1.0 },
                 "u_causticsIntensity": { "type": "float", "value": 1.5 },
                 "u_absorptionEnabled": { "type": "float", "value": 0.0 },
                 "u_thickness": { "type": "float", "value": 1.0 },
+                "u_skyboxOffset": { "type": "float", "value": 3.14 },
                 "u_resolution": { "type": "vec2", "value": [700, 380] }
             },
             "controls": [
+                {
+                    "uniform": "u_sunAngle",
+                    "label": "Sun Angle",
+                    "min": 0,
+                    "max": 6.28,
+                    "step": 0.05,
+                    "default": 3.14
+                },
                 {
                     "uniform": "u_causticsIntensity",
                     "label": "Intensity",
@@ -364,7 +386,7 @@
         },
         {
             "type": "paragraph",
-            "content": "Watch the sun orbit around the glass. Caustics appear when light comes from behind - notice how the bright band traces the bevel contour as the sun passes through the back half of its orbit. Higher IOR creates stronger focusing - diamond (IOR 2.4) produces brilliant fire, while water (IOR 1.33) creates subtle pools."
+            "content": "Drag the sun angle to position the light. Caustics appear when light comes from behind (angle ~π) - notice how the bright band traces the bevel contour as the sun passes through the back half of its orbit. Higher IOR creates stronger focusing - diamond (IOR 2.4) produces brilliant fire, while water (IOR 1.33) creates subtle pools."
         },
         {
             "type": "code",
@@ -394,7 +416,8 @@
             "height": 380,
             "shaderFile": "glass-refraction.glsl",
             "textures": {
-                "u_skybox": "blog/shaders/skybox.jpg"
+                "u_skybox": "blog/shaders/skybox.jpg",
+                "u_skyboxBlurred": "blog/shaders/skybox-blurred.jpg"
             },
             "uniforms": {
                 "u_time": { "type": "float", "value": 0.0 },
@@ -412,6 +435,7 @@
                 "u_causticsIntensity": { "type": "float", "value": 1.0 },
                 "u_absorptionEnabled": { "type": "float", "value": 1.0 },
                 "u_thickness": { "type": "float", "value": 5.0 },
+                "u_skyboxOffset": { "type": "float", "value": 3.14 },
                 "u_resolution": { "type": "vec2", "value": [700, 380] }
             },
             "controls": [
@@ -455,17 +479,18 @@
         },
         {
             "type": "paragraph",
-            "content": "Real scenes have multiple light sources, each casting its own specular highlights, caustics, and coloring the environment. The final demo combines all effects with three independent lights. Each light has a direction (controlled by horizontal angle and elevation) and a color that tints both the sky and the glass effects."
+            "content": "The final demo combines all effects with a single controllable light source. The skybox rotates with the sun, keeping the light locked to the brightest part of the environment. Drag the sun angle to orbit around the glass and watch specular highlights, caustics, and reflections respond together."
         },
         {
             "type": "shader-demo",
             "id": "multilight-demo",
-            "title": "Multi-Light Glass - Drag to Position Lights",
+            "title": "Complete Glass Effect",
             "width": 700,
             "height": 420,
             "shaderFile": "glass-refraction.glsl",
             "textures": {
-                "u_skybox": "blog/shaders/skybox.jpg"
+                "u_skybox": "blog/shaders/skybox.jpg",
+                "u_skyboxBlurred": "blog/shaders/skybox-blurred.jpg"
             },
             "uniforms": {
                 "u_time": { "type": "float", "value": 0.0 },
@@ -478,53 +503,109 @@
                 "u_specularSharpness": { "type": "float", "value": 128.0 },
                 "u_fresnelEnabled": { "type": "float", "value": 1.0 },
                 "u_reflectionIntensity": { "type": "float", "value": 0.8 },
-                "u_sunAngle": { "type": "float", "value": 0.0 },
+                "u_sunAngle": { "type": "float", "value": 0.5 },
                 "u_causticsEnabled": { "type": "float", "value": 1.0 },
                 "u_causticsIntensity": { "type": "float", "value": 1.0 },
                 "u_absorptionEnabled": { "type": "float", "value": 1.0 },
                 "u_thickness": { "type": "float", "value": 2.0 },
-                "u_multiLightEnabled": { "type": "float", "value": 1.0 },
-                "u_light0Angle": { "type": "float", "value": 0.5 },
-                "u_light0Elevation": { "type": "float", "value": 0.3 },
-                "u_light0Color": { "type": "vec3", "value": [1.0, 0.9, 0.7] },
-                "u_light0Intensity": { "type": "float", "value": 1.0 },
-                "u_light1Angle": { "type": "float", "value": 2.5 },
-                "u_light1Elevation": { "type": "float", "value": -0.2 },
-                "u_light1Color": { "type": "vec3", "value": [0.4, 0.7, 1.0] },
-                "u_light1Intensity": { "type": "float", "value": 0.8 },
-                "u_light2Angle": { "type": "float", "value": 4.2 },
-                "u_light2Elevation": { "type": "float", "value": 0.1 },
-                "u_light2Color": { "type": "vec3", "value": [1.0, 0.5, 0.3] },
-                "u_light2Intensity": { "type": "float", "value": 0.6 },
+                "u_multiLightEnabled": { "type": "float", "value": 0.0 },
+                "u_skyboxOffset": { "type": "float", "value": 3.14 },
                 "u_resolution": { "type": "vec2", "value": [700, 420] }
             },
             "controls": [
                 {
-                    "type": "light-position",
-                    "uniforms": ["u_light0Angle", "u_light0Elevation"],
-                    "colorUniform": "u_light0Color",
-                    "label": "Sun",
-                    "color": "#FFE5B4"
+                    "uniform": "u_sunAngle",
+                    "label": "Sun Angle",
+                    "min": 0,
+                    "max": 6.28,
+                    "step": 0.05,
+                    "default": 0.5
                 },
                 {
-                    "type": "light-position",
-                    "uniforms": ["u_light1Angle", "u_light1Elevation"],
-                    "colorUniform": "u_light1Color",
-                    "label": "Fill",
-                    "color": "#66B2FF"
+                    "uniform": "u_bevelWidth",
+                    "label": "Bevel Width",
+                    "min": 10,
+                    "max": 150,
+                    "step": 1,
+                    "default": 50.0
                 },
                 {
-                    "type": "light-position",
-                    "uniforms": ["u_light2Angle", "u_light2Elevation"],
-                    "colorUniform": "u_light2Color",
-                    "label": "Rim",
-                    "color": "#FF8C66"
+                    "uniform": "u_bevelDepth",
+                    "label": "Bevel Depth",
+                    "min": 0,
+                    "max": 2,
+                    "step": 0.1,
+                    "default": 1.0
+                },
+                {
+                    "uniform": "u_ior",
+                    "label": "IOR",
+                    "min": 1.0,
+                    "max": 2.5,
+                    "step": 0.05,
+                    "default": 1.5
+                },
+                {
+                    "uniform": "u_dispersion",
+                    "label": "Dispersion",
+                    "min": 0,
+                    "max": 3,
+                    "step": 0.1,
+                    "default": 0.5
+                },
+                {
+                    "uniform": "u_specularSharpness",
+                    "label": "Specular",
+                    "min": 4,
+                    "max": 256,
+                    "step": 4,
+                    "default": 128.0
+                },
+                {
+                    "uniform": "u_reflectionIntensity",
+                    "label": "Reflection",
+                    "min": 0,
+                    "max": 2,
+                    "step": 0.1,
+                    "default": 0.8
+                },
+                {
+                    "uniform": "u_causticsIntensity",
+                    "label": "Caustics",
+                    "min": 0,
+                    "max": 3,
+                    "step": 0.1,
+                    "default": 1.0
+                },
+                {
+                    "uniform": "u_thickness",
+                    "label": "Thickness",
+                    "min": 0.5,
+                    "max": 10,
+                    "step": 0.5,
+                    "default": 2.0
+                },
+                {
+                    "uniform": "u_n",
+                    "label": "Squircle N",
+                    "min": 2,
+                    "max": 10,
+                    "step": 0.1,
+                    "default": 4.0
+                },
+                {
+                    "uniform": "u_skyboxOffset",
+                    "label": "Skybox Offset",
+                    "min": 0,
+                    "max": 6.28,
+                    "step": 0.05,
+                    "default": 3.14
                 }
             ]
         },
         {
             "type": "paragraph",
-            "content": "The three lights create a classic three-point setup: warm sun as key light, cool blue fill for shadow detail, and orange rim for edge definition. Each light contributes independently to specular highlights, caustics, and environment coloring. Drag the position controls to orbit lights around the glass - notice how caustics only appear when a light is behind the panel."
+            "content": "Drag the sun angle to orbit the light around the glass. When the sun is in front (angle ~0), you'll see strong specular highlights and reflections. As it moves behind (angle ~π), caustics appear as light focuses through the bevel. The skybox rotates with the light, keeping the sun disk aligned with the light direction."
         },
         {
             "type": "code",
