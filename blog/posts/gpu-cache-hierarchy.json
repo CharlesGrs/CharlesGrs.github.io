@@ -8,11 +8,11 @@
     "readTime": "15 min",
     "featured": true,
     "thumbnail": "gpu-cache-hierarchy-thumb.png",
-    "excerpt": "Dive deep into GPU memory architecture—L1, L2 caches, and VRAM—to understand how cache hits and misses dramatically impact texture fetch latency and shader performance.",
+    "excerpt": "Why does one texture sample cost 4 cycles and another 500? GPU cache hierarchy explained—L1, L2, VRAM, and how to stop thrashing them.",
     "sections": [
         {
             "type": "intro",
-            "content": "Every texture sample in your shader triggers a memory request. Whether that request takes 4 cycles or 400+ cycles depends entirely on where the data lives in the GPU's memory hierarchy. Understanding cache behavior isn't just academic—it's the difference between 60fps and 30fps in texture-heavy shaders."
+            "content": "Every texture sample in your shader triggers a memory request. Whether that request takes 4 cycles or 400+ cycles depends on where the data lives in the GPU's memory hierarchy. I've seen shaders go from 30fps to 60fps just by fixing cache access patterns—no algorithmic changes, just better memory locality."
         },
         {
             "type": "heading",
@@ -23,7 +23,7 @@
             "type": "code",
             "language": "text",
             "title": "GPU Memory Hierarchy At a Glance",
-            "content": "┌──────────────────┬─────────────┬──────────────────┬───────────────┐\n│ Memory Level     │ Latency     │ Size (per SM)    │ Bandwidth     │\n├──────────────────┼─────────────┼──────────────────┼───────────────┤\n│ Registers        │ ~1 cycle    │ 256KB            │ ~20 TB/s      │\n│ L1 Cache         │ ~30 cycles  │ 128-192KB        │ ~12 TB/s      │\n│ L2 Cache         │ ~150 cycles │ 4-40MB (shared)  │ ~3 TB/s       │\n│ VRAM (GDDR6)     │ ~500 cycles │ 8-24GB           │ ~1 TB/s       │\n└──────────────────┴─────────────┴──────────────────┴───────────────┘\n\nKey insight: L1 hit = ~30 cycles, VRAM miss = ~500 cycles → 15x difference!"
+            "content": "┌──────────────────┬─────────────┬──────────────────┬───────────────┐\n│ Memory Level     │ Latency     │ Size (per SM)    │ Bandwidth     │\n├──────────────────┼─────────────┼──────────────────┼───────────────┤\n│ Registers        │ ~1 cycle    │ 256KB            │ ~8 TB/s       │\n│ L1 Cache         │ ~30 cycles  │ 128-192KB        │ ~15-20 TB/s   │\n│ L2 Cache         │ ~150 cycles │ 6-96MB (shared)  │ ~3 TB/s       │\n│ VRAM (GDDR6)     │ ~500 cycles │ 8-24GB           │ ~1 TB/s       │\n└──────────────────┴─────────────┴──────────────────┴───────────────┘\n\nL1 hit = ~30 cycles, VRAM miss = ~500 cycles. That's 15x."
         },
         {
             "type": "svg-diagram",
@@ -39,14 +39,14 @@
         },
         {
             "type": "paragraph",
-            "content": "Modern GPUs organize memory into a hierarchy of increasingly larger but slower storage. At the top sit registers—blazingly fast but severely limited. Below them, L1 and L2 caches act as staging areas for frequently accessed data. At the bottom, VRAM holds all your textures, buffers, and render targets."
+            "content": "GPU memory is a hierarchy. Registers are tiny but essentially free to access. L1 and L2 caches sit in between, staging frequently-used data. VRAM holds everything—textures, buffers, render targets—but hitting it cold costs you hundreds of cycles."
         },
         {
             "type": "list",
             "items": [
                 "Registers: ~1 cycle access, 256KB total per SM (shared across thousands of threads)",
                 "L1 Cache: ~28-35 cycles, 128-192KB per SM, dedicated to each streaming multiprocessor",
-                "L2 Cache: ~150-200 cycles, 4-40MB shared across all SMs, unified memory controller",
+                "L2 Cache: ~150-200 cycles, 6-96MB shared across all SMs (up to 128MB with AMD Infinity Cache), unified memory controller",
                 "VRAM (GDDR6/HBM): ~400-800 cycles, 8-24GB, massive bandwidth but high latency"
             ]
         },
@@ -64,7 +64,7 @@
         },
         {
             "type": "paragraph",
-            "content": "When you sample a single texel, the GPU doesn't fetch just that one pixel. It fetches an entire cache line—typically 32 or 64 bytes of contiguous memory. For RGBA8 textures, that's 8-16 texels. This design exploits spatial locality: pixels near each other in UV space tend to be accessed together."
+            "content": "When you sample a single texel, the GPU doesn't fetch just that pixel—it grabs an entire cache line. That's 128 bytes for L1, 32 bytes for texture/L2 transactions. For RGBA8, an L1 cache line holds 32 texels. The hardware bets that if you're reading one pixel, you'll probably want its neighbors too. Usually it's right."
         },
         {
             "type": "svg-diagram",
@@ -86,7 +86,32 @@
         },
         {
             "type": "paragraph",
-            "content": "GPUs execute threads in groups called warps (NVIDIA, 32 threads) or wavefronts (AMD, 32-64 threads). When all threads in a warp access memory at the same time, the hardware tries to coalesce these requests into as few cache line fetches as possible. Perfect coalescing means 32 threads hitting the same cache line—one fetch serves everyone."
+            "content": "GPUs run threads in groups: warps (32 threads on NVIDIA) or wavefronts (32-64 on AMD). When a warp hits memory, the hardware coalesces requests—if all 32 threads need addresses in the same 128-byte chunk, that's one fetch instead of 32."
+        },
+        {
+            "type": "callout",
+            "variant": "info",
+            "content": "A common misconception: coalescing doesn't require thread IDs to match memory addresses. Thread 0 doesn't need to access address 0, thread 1 address 1, etc. As long as each thread in a warp accesses a unique cell within the same ~128-byte chunk, you get full coalescing regardless of which thread hits which address."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "content": "Memory Access Pattern Hierarchy"
+        },
+        {
+            "type": "paragraph",
+            "content": "Not all access patterns are equal. Here's a rough ranking from best to worst performance:"
+        },
+        {
+            "type": "list",
+            "items": [
+                "Broadcast: All threads read the same address. Hardware broadcasts the single value to all threads—extremely efficient.",
+                "Coalesced: Each thread reads a unique cell within a contiguous chunk (~128 bytes). One memory transaction serves the entire warp.",
+                "Partially coalesced: Threads mostly hit the same chunk with some outliers. Slightly more transactions, still reasonable.",
+                "Strided: Threads access memory at regular intervals (e.g., every 4th element). May require multiple transactions depending on stride.",
+                "Scattered: Completely random addresses. Worst case—potentially 32 separate memory transactions for one warp.",
+                "Bank conflicts: Multiple threads access the same memory bank but different addresses within it. Serializes those accesses—up to 32x slower in the worst case."
+            ]
         },
         {
             "type": "svg-diagram",
@@ -97,7 +122,7 @@
         },
         {
             "type": "paragraph",
-            "content": "Fragment shaders naturally achieve good coalescing because GPU rasterizers process pixels in 2x2 quads, and quads are grouped into tiles that map to consecutive threads. When you sample a texture at the interpolated UV, neighboring fragments sample neighboring texels—perfect spatial locality."
+            "content": "Fragment shaders get coalescing almost for free. The rasterizer processes 2x2 quads, groups them into tiles, and those tiles map to consecutive threads. Neighboring pixels sample neighboring texels—spatial locality happens automatically unless you go out of your way to break it."
         },
         {
             "type": "heading",
@@ -128,7 +153,7 @@
         },
         {
             "type": "paragraph",
-            "content": "Mipmaps aren't just for visual quality—they're a cache optimization. When a surface is far from the camera, sampling the full-resolution texture would fetch distant texels that span many cache lines. The mipmap's smaller footprint keeps samples spatially coherent and cache-friendly."
+            "content": "Mipmaps are secretly a cache optimization. When a surface is far away, sampling the full-res texture would pull in texels scattered across memory. The mipmap is smaller, so nearby samples actually land in the same cache lines. This matters more than the visual quality argument—disable mipmaps and watch your frame rate tank."
         },
         {
             "type": "svg-diagram",
@@ -217,7 +242,7 @@
         },
         {
             "type": "paragraph",
-            "content": "GPUs hide memory latency through massive parallelism. While one warp waits for texture data, the scheduler switches to another warp that's ready to execute. This is why occupancy matters: more warps in flight means more opportunities to hide latency."
+            "content": "The GPU's trick for surviving 500-cycle memory stalls: while one warp waits for data, the scheduler runs another warp that's ready. More warps in flight = more chances to do useful work while waiting. This is why occupancy matters—low occupancy means the GPU sits idle during memory fetches."
         },
         {
             "type": "svg-diagram",
@@ -244,7 +269,7 @@
         },
         {
             "type": "paragraph",
-            "content": "GPUs store textures in Morton order (Z-order curve) or similar space-filling curves, not linear row-by-row. This layout keeps 2D-local texels close in memory, improving cache efficiency for typical sampling patterns."
+            "content": "Textures aren't stored row-by-row in memory. GPUs use Morton order (Z-order curves) or similar swizzle patterns. The idea: keep 2D-neighboring texels close in the 1D memory address space, so a cache line actually contains a useful block of pixels instead of a random horizontal stripe."
         },
         {
             "type": "svg-diagram",
@@ -270,7 +295,7 @@
         },
         {
             "type": "paragraph",
-            "content": "Packing multiple textures into one atlas keeps related data in the same cache space. When sampling from an atlas, neighboring draw calls often hit already-cached data. The tradeoff: more complex UV math and potential filtering artifacts at tile boundaries."
+            "content": "Throw related textures into an atlas and they'll share cache space. Draw a bunch of sprites from the same atlas and the cache stays warm. Downside: UV math gets messier, and you'll fight filtering artifacts at tile edges if you're not careful with padding."
         },
         {
             "type": "heading",
@@ -295,7 +320,7 @@
         },
         {
             "type": "paragraph",
-            "content": "Dependent texture reads—where the UV comes from another texture—serialize memory access. The GPU can't prefetch the second texture until the first completes. Minimize these chains or compute UVs mathematically when possible."
+            "content": "Dependent reads are latency killers. If your UV comes from a texture lookup (parallax mapping, flow maps), the GPU can't even start the second fetch until the first one finishes. Two 500-cycle stalls back-to-back. Compute offsets mathematically when you can, or accept the hit."
         },
         {
             "type": "svg-diagram",
@@ -311,7 +336,7 @@
         },
         {
             "type": "paragraph",
-            "content": "Traditional texture binding forces driver overhead and limits cache utilization across draw calls. Bindless textures (via GL_ARB_bindless_texture or Vulkan descriptor indexing) keep all textures resident and accessible, which can improve cache reuse across the frame. However, performance depends heavily on access patterns—uniform descriptor access (all threads in a warp reading the same texture index) is fast, but divergent access across a warp adds overhead. Profile before assuming bindless is faster for your use case."
+            "content": "Bindless textures (GL_ARB_bindless_texture, Vulkan descriptor indexing) skip the binding overhead and keep all textures resident. Sometimes this helps cache reuse across the frame. But there's a catch: if threads in a warp index into different textures, you pay for the divergence. Measure it—bindless isn't automatically faster."
         },
         {
             "type": "heading",
@@ -320,7 +345,7 @@
         },
         {
             "type": "paragraph",
-            "content": "Cache behavior varies significantly between GPU vendors and generations. NVIDIA's L1 is tightly coupled with shared memory, AMD's Infinity Cache adds another hierarchy level, and mobile GPUs often have smaller but more specialized caches optimized for tiled rendering."
+            "content": "Cache behavior isn't portable. NVIDIA's L1 shares silicon with shared memory (you configure the split). AMD threw in Infinity Cache as an extra layer. Mobile GPUs have smaller caches but lean on tile-based rendering to compensate. What flies on desktop might crawl on mobile, and vice versa."
         },
         {
             "type": "svg-diagram",
@@ -341,7 +366,7 @@
         },
         {
             "type": "paragraph",
-            "content": "Here are battle-tested patterns you can apply immediately to improve cache efficiency in your shaders."
+            "content": "Stuff you can copy into your shaders right now:"
         },
         {
             "type": "code",
@@ -364,7 +389,7 @@
         {
             "type": "callout",
             "variant": "tip",
-            "content": "Combine these patterns: Pack your PBR textures into ORM format, prefetch all at shader start, and use mip bias in post-processing passes. This alone can yield 20-40% improvement in texture-heavy shaders."
+            "content": "Stack these together—ORM packing, early prefetch, mip bias in post—and you can often squeeze 20-40% more performance out of texture-heavy shaders without touching the algorithm."
         },
         {
             "type": "heading",
@@ -386,6 +411,23 @@
             "type": "callout",
             "variant": "warning",
             "content": "Don't micro-optimize without profiling. Cache behavior is complex and hardware-dependent. Measure first, optimize second, and verify improvements on actual target hardware."
+        },
+        {
+            "type": "heading",
+            "level": 2,
+            "content": "Sources & Further Reading"
+        },
+        {
+            "type": "list",
+            "items": [
+                "<a href='https://docs.nvidia.com/cuda/ada-tuning-guide/index.html' target='_blank'>NVIDIA Ada GPU Architecture Tuning Guide</a> — Official L1/L2 cache sizes, shared memory configuration",
+                "<a href='https://docs.nvidia.com/cuda/ampere-tuning-guide/index.html' target='_blank'>NVIDIA Ampere GPU Architecture Tuning Guide</a> — A100 cache hierarchy details",
+                "<a href='https://chipsandcheese.com/p/measuring-gpu-memory-latency' target='_blank'>Chips and Cheese: Measuring GPU Memory Latency</a> — Empirical latency measurements for NVIDIA and AMD",
+                "<a href='https://chipsandcheese.com/p/microbenchmarking-nvidias-rtx-4090' target='_blank'>Chips and Cheese: Microbenchmarking NVIDIA's RTX 4090</a> — Ada Lovelace cache architecture analysis",
+                "<a href='https://developer.nvidia.com/blog/using-shared-memory-cuda-cc' target='_blank'>NVIDIA Developer Blog: Using Shared Memory in CUDA</a> — Bank conflicts and shared memory optimization",
+                "<a href='https://fgiesen.wordpress.com/2011/01/17/texture-tiling-and-swizzling/' target='_blank'>Fabian Giesen: Texture Tiling and Swizzling</a> — Morton order and GPU texture memory layout",
+                "<a href='https://www.rastergrid.com/blog/gpu-tech/2021/01/understanding-gpu-caches/' target='_blank'>RasterGrid: Understanding GPU Caches</a> — Cache line sizes and memory hierarchy overview"
+            ]
         }
     ],
     "related": ["procedural-planet-rendering", "screen-space-atmospheric-scattering"]

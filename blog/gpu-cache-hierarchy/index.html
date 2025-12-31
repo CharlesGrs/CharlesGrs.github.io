@@ -16,7 +16,7 @@
     <!-- Primary Meta Tags -->
     <title>GPU Cache Hierarchy: Understanding L1, L2, and VRAM | Charles Grassi</title>
     <meta name="title" content="GPU Cache Hierarchy: Understanding L1, L2, and VRAM | Charles Grassi">
-    <meta name="description" content="Dive deep into GPU memory architecture—L1, L2 caches, and VRAM—to understand how cache hits and misses dramatically impact texture fetch latency and shader performance.">
+    <meta name="description" content="Why does one texture sample cost 4 cycles and another 500? GPU cache hierarchy explained—L1, L2, VRAM, and how to stop thrashing them.">
     <meta name="author" content="Charles Grassi">
     <meta name="robots" content="index, follow">
 
@@ -24,7 +24,7 @@
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://charlesgrs.github.io/blog/gpu-cache-hierarchy/">
     <meta property="og:title" content="GPU Cache Hierarchy: Understanding L1, L2, and VRAM">
-    <meta property="og:description" content="Dive deep into GPU memory architecture—L1, L2 caches, and VRAM—to understand how cache hits and misses dramatically impact texture fetch latency and shader performance.">
+    <meta property="og:description" content="Why does one texture sample cost 4 cycles and another 500? GPU cache hierarchy explained—L1, L2, VRAM, and how to stop thrashing them.">
     <meta property="og:image" content="https://charlesgrs.github.io/blog/images/gpu-cache-hierarchy-thumb.png">
     <meta property="og:site_name" content="Charles Grassi">
     <meta property="article:published_time" content="2025-12-29T00:00:00.000Z">
@@ -41,7 +41,7 @@
     <meta name="twitter:site" content="@charles_grassi">
     <meta name="twitter:creator" content="@charles_grassi">
     <meta name="twitter:title" content="GPU Cache Hierarchy: Understanding L1, L2, and VRAM">
-    <meta name="twitter:description" content="Dive deep into GPU memory architecture—L1, L2 caches, and VRAM—to understand how cache hits and misses dramatically impact texture fetch latency and shader performance.">
+    <meta name="twitter:description" content="Why does one texture sample cost 4 cycles and another 500? GPU cache hierarchy explained—L1, L2, VRAM, and how to stop thrashing them.">
     <meta name="twitter:image" content="https://charlesgrs.github.io/blog/images/gpu-cache-hierarchy-thumb.png">
 
     <!-- Canonical URL -->
@@ -62,7 +62,7 @@
         "@context": "https://schema.org",
         "@type": "TechArticle",
         "headline": "GPU Cache Hierarchy: Understanding L1, L2, and VRAM",
-        "description": "Dive deep into GPU memory architecture—L1, L2 caches, and VRAM—to understand how cache hits and misses dramatically impact texture fetch latency and shader performance.",
+        "description": "Why does one texture sample cost 4 cycles and another 500? GPU cache hierarchy explained—L1, L2, VRAM, and how to stop thrashing them.",
         "image": "https://charlesgrs.github.io/blog/images/gpu-cache-hierarchy-thumb.png",
         "datePublished": "2025-12-29T00:00:00.000Z",
         "dateModified": "2025-12-29T00:00:00.000Z",
@@ -565,7 +565,7 @@
                 </header>
 
                 <div class="article-content">
-                    <p class="article-section section-intro">Every texture sample in your shader triggers a memory request. Whether that request takes 4 cycles or 400+ cycles depends entirely on where the data lives in the GPU&#39;s memory hierarchy. Understanding cache behavior isn&#39;t just academic—it&#39;s the difference between 60fps and 30fps in texture-heavy shaders.</p>
+                    <p class="article-section section-intro">Every texture sample in your shader triggers a memory request. Whether that request takes 4 cycles or 400+ cycles depends on where the data lives in the GPU&#39;s memory hierarchy. I&#39;ve seen shaders go from 30fps to 60fps just by fixing cache access patterns—no algorithmic changes, just better memory locality.</p>
 <h3 id="section-1-tldr-quick-reference" class="article-section section-heading" data-toc-level="3">TL;DR — Quick Reference</h3>
 <div class="article-section section-code">
                 <div class="code-header">
@@ -575,13 +575,13 @@
                 <div class="code-content"><pre>┌──────────────────┬─────────────┬──────────────────┬───────────────┐
 │ Memory Level     │ Latency     │ Size (per SM)    │ Bandwidth     │
 ├──────────────────┼─────────────┼──────────────────┼───────────────┤
-│ Registers        │ ~<span class="number">1</span> cycle    │ 256KB            │ ~<span class="number">20</span> TB/s      │
-│ L1 Cache         │ ~<span class="number">30</span> cycles  │ <span class="number">128</span>-192KB        │ ~<span class="number">12</span> TB/s      │
-│ L2 Cache         │ ~<span class="number">150</span> cycles │ <span class="number">4</span>-40MB (shared)  │ ~<span class="number">3</span> TB/s       │
+│ Registers        │ ~<span class="number">1</span> cycle    │ 256KB            │ ~<span class="number">8</span> TB/s       │
+│ L1 Cache         │ ~<span class="number">30</span> cycles  │ <span class="number">128</span>-192KB        │ ~<span class="number">15</span>-<span class="number">20</span> TB/s   │
+│ L2 Cache         │ ~<span class="number">150</span> cycles │ <span class="number">6</span>-96MB (shared)  │ ~<span class="number">3</span> TB/s       │
 │ VRAM (GDDR6)     │ ~<span class="number">500</span> cycles │ <span class="number">8</span>-24GB           │ ~<span class="number">1</span> TB/s       │
 └──────────────────┴─────────────┴──────────────────┴───────────────┘
 
-Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span class="number">500</span> cycles → 15x difference!</pre></div>
+L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span class="number">500</span> cycles. That&#<span class="number">39</span>;s 15x.</pre></div>
             </div>
 <figure class="article-section section-svg-diagram" data-diagram-id="cache-hierarchy-overview">
                 <div class="svg-container" style="max-width: 750px;">
@@ -592,10 +592,10 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
                 <figcaption>GPU Memory Hierarchy Overview</figcaption>
             </figure>
 <h2 id="section-4-the-memory-hierarchy" class="article-section section-heading" data-toc-level="2">The Memory Hierarchy</h2>
-<p class="article-section section-paragraph">Modern GPUs organize memory into a hierarchy of increasingly larger but slower storage. At the top sit registers—blazingly fast but severely limited. Below them, L1 and L2 caches act as staging areas for frequently accessed data. At the bottom, VRAM holds all your textures, buffers, and render targets.</p>
+<p class="article-section section-paragraph">GPU memory is a hierarchy. Registers are tiny but essentially free to access. L1 and L2 caches sit in between, staging frequently-used data. VRAM holds everything—textures, buffers, render targets—but hitting it cold costs you hundreds of cycles.</p>
 <ul class="article-section section-list"><li>Registers: ~1 cycle access, 256KB total per SM (shared across thousands of threads)</li>
 <li>L1 Cache: ~28-35 cycles, 128-192KB per SM, dedicated to each streaming multiprocessor</li>
-<li>L2 Cache: ~150-200 cycles, 4-40MB shared across all SMs, unified memory controller</li>
+<li>L2 Cache: ~150-200 cycles, 6-96MB shared across all SMs (up to 128MB with AMD Infinity Cache), unified memory controller</li>
 <li>VRAM (GDDR6/HBM): ~400-800 cycles, 8-24GB, massive bandwidth but high latency</li></ul>
 <figure class="article-section section-svg-diagram" data-diagram-id="cache-latency-comparison">
                 <div class="svg-container" style="max-width: 700px;">
@@ -606,7 +606,7 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
                 <figcaption>Memory Access Latency Comparison</figcaption>
             </figure>
 <h2 id="section-8-cache-lines-and-spatial-locality" class="article-section section-heading" data-toc-level="2">Cache Lines and Spatial Locality</h2>
-<p class="article-section section-paragraph">When you sample a single texel, the GPU doesn&#39;t fetch just that one pixel. It fetches an entire cache line—typically 32 or 64 bytes of contiguous memory. For RGBA8 textures, that&#39;s 8-16 texels. This design exploits spatial locality: pixels near each other in UV space tend to be accessed together.</p>
+<p class="article-section section-paragraph">When you sample a single texel, the GPU doesn&#39;t fetch just that pixel—it grabs an entire cache line. That&#39;s 128 bytes for L1, 32 bytes for texture/L2 transactions. For RGBA8, an L1 cache line holds 32 texels. The hardware bets that if you&#39;re reading one pixel, you&#39;ll probably want its neighbors too. Usually it&#39;s right.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="cache-line-fetch">
                 <div class="svg-container" style="max-width: 700px;">
                     <div class="svg-placeholder" data-width="700" data-height="280">
@@ -632,7 +632,18 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
 <span class="keyword">vec4</span> color = <span class="function">texture</span>(uTexture, vTexCoord + offset); <span class="comment">// Must wait!</span></pre></div>
             </div>
 <h2 id="section-12-the-warp-and-cache-coalescing" class="article-section section-heading" data-toc-level="2">The Warp and Cache Coalescing</h2>
-<p class="article-section section-paragraph">GPUs execute threads in groups called warps (NVIDIA, 32 threads) or wavefronts (AMD, 32-64 threads). When all threads in a warp access memory at the same time, the hardware tries to coalesce these requests into as few cache line fetches as possible. Perfect coalescing means 32 threads hitting the same cache line—one fetch serves everyone.</p>
+<p class="article-section section-paragraph">GPUs run threads in groups: warps (32 threads on NVIDIA) or wavefronts (32-64 on AMD). When a warp hits memory, the hardware coalesces requests—if all 32 threads need addresses in the same 128-byte chunk, that&#39;s one fetch instead of 32.</p>
+<aside class="article-section section-callout info">
+                <p>A common misconception: coalescing doesn&#39;t require thread IDs to match memory addresses. Thread 0 doesn&#39;t need to access address 0, thread 1 address 1, etc. As long as each thread in a warp accesses a unique cell within the same ~128-byte chunk, you get full coalescing regardless of which thread hits which address.</p>
+            </aside>
+<h3 id="section-15-memory-access-pattern-hierarchy" class="article-section section-heading" data-toc-level="3">Memory Access Pattern Hierarchy</h3>
+<p class="article-section section-paragraph">Not all access patterns are equal. Here&#39;s a rough ranking from best to worst performance:</p>
+<ul class="article-section section-list"><li>Broadcast: All threads read the same address. Hardware broadcasts the single value to all threads—extremely efficient.</li>
+<li>Coalesced: Each thread reads a unique cell within a contiguous chunk (~128 bytes). One memory transaction serves the entire warp.</li>
+<li>Partially coalesced: Threads mostly hit the same chunk with some outliers. Slightly more transactions, still reasonable.</li>
+<li>Strided: Threads access memory at regular intervals (e.g., every 4th element). May require multiple transactions depending on stride.</li>
+<li>Scattered: Completely random addresses. Worst case—potentially 32 separate memory transactions for one warp.</li>
+<li>Bank conflicts: Multiple threads access the same memory bank but different addresses within it. Serializes those accesses—up to 32x slower in the worst case.</li></ul>
 <figure class="article-section section-svg-diagram" data-diagram-id="warp-coalescing">
                 <div class="svg-container" style="max-width: 750px;">
                     <div class="svg-placeholder" data-width="750" data-height="300">
@@ -641,8 +652,8 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
                 </div>
                 <figcaption>Memory Coalescing in a Warp</figcaption>
             </figure>
-<p class="article-section section-paragraph">Fragment shaders naturally achieve good coalescing because GPU rasterizers process pixels in 2x2 quads, and quads are grouped into tiles that map to consecutive threads. When you sample a texture at the interpolated UV, neighboring fragments sample neighboring texels—perfect spatial locality.</p>
-<h2 id="section-16-what-causes-cache-misses" class="article-section section-heading" data-toc-level="2">What Causes Cache Misses?</h2>
+<p class="article-section section-paragraph">Fragment shaders get coalescing almost for free. The rasterizer processes 2x2 quads, groups them into tiles, and those tiles map to consecutive threads. Neighboring pixels sample neighboring texels—spatial locality happens automatically unless you go out of your way to break it.</p>
+<h2 id="section-20-what-causes-cache-misses" class="article-section section-heading" data-toc-level="2">What Causes Cache Misses?</h2>
 <ul class="article-section section-list"><li>Random UVs: Procedural distortion, noise-based sampling, stippling patterns</li>
 <li>Dependent texture reads: UV offset stored in another texture (parallax, flow maps)</li>
 <li>Large UV jumps: Sampling distant mip levels, cubemap edge cases</li>
@@ -656,8 +667,8 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
                 </div>
                 <figcaption>Common Cache Miss Patterns</figcaption>
             </figure>
-<h2 id="section-19-mipmapping-the-caches-best-friend" class="article-section section-heading" data-toc-level="2">Mipmapping: The Cache&#39;s Best Friend</h2>
-<p class="article-section section-paragraph">Mipmaps aren&#39;t just for visual quality—they&#39;re a cache optimization. When a surface is far from the camera, sampling the full-resolution texture would fetch distant texels that span many cache lines. The mipmap&#39;s smaller footprint keeps samples spatially coherent and cache-friendly.</p>
+<h2 id="section-23-mipmapping-the-caches-best-friend" class="article-section section-heading" data-toc-level="2">Mipmapping: The Cache&#39;s Best Friend</h2>
+<p class="article-section section-paragraph">Mipmaps are secretly a cache optimization. When a surface is far away, sampling the full-res texture would pull in texels scattered across memory. The mipmap is smaller, so nearby samples actually land in the same cache lines. This matters more than the visual quality argument—disable mipmaps and watch your frame rate tank.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="mipmap-cache-benefit">
                 <div class="svg-container" style="max-width: 700px;">
                     <div class="svg-placeholder" data-width="700" data-height="280">
@@ -685,7 +696,7 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
 <span class="comment">// Controls footprint precisely <span class="keyword">for</span> cache-aware sampling</span>
 <span class="keyword">vec4</span> color = textureGrad(uTexture, uv, dFdx(uv) * <span class="number">0.5</span>, dFdy(uv) * <span class="number">0.5</span>);</pre></div>
             </div>
-<h2 id="section-23-measuring-cache-efficiency" class="article-section section-heading" data-toc-level="2">Measuring Cache Efficiency</h2>
+<h2 id="section-27-measuring-cache-efficiency" class="article-section section-heading" data-toc-level="2">Measuring Cache Efficiency</h2>
 <p class="article-section section-paragraph">GPU profilers like NVIDIA Nsight, AMD Radeon GPU Profiler, and RenderDoc expose cache hit rates and memory throughput. Key metrics to watch:</p>
 <ul class="article-section section-list"><li>L1 Hit Rate: Should be &gt;80% for well-optimized shaders. Below 60% indicates access pattern problems.</li>
 <li>L2 Hit Rate: Measures working set fit. Below 70% suggests texture thrashing or too many unique textures.</li>
@@ -699,9 +710,9 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
                 </div>
                 <figcaption>Cache Hit Rate Impact on Performance</figcaption>
             </figure>
-<h2 id="section-27-interactive-demo-cache-access-patterns" class="article-section section-heading" data-toc-level="2">Interactive Demo: Cache Access Patterns</h2>
+<h2 id="section-31-interactive-demo-cache-access-patterns" class="article-section section-heading" data-toc-level="2">Interactive Demo: Cache Access Patterns</h2>
 <p class="article-section section-paragraph">This demo visualizes how different sampling patterns affect cache efficiency. Coherent access (left) keeps samples within cache lines, while random access (right) causes cache thrashing. Watch how the &#39;heat&#39; of memory access spreads differently.</p>
-<figure class="article-section section-shader-demo" data-demo-id="cache-pattern-demo" data-shader-config='{"vertexShader":"attribute vec2 a_position;\nvarying vec2 v_texCoord;\nvoid main() {\n    v_texCoord = a_position * 0.5 + 0.5;\n    gl_Position = vec4(a_position, 0.0, 1.0);\n}","fragmentShader":"precision highp float;\nvarying vec2 v_texCoord;\nuniform float u_time;\nuniform float u_pattern;\nuniform float u_cacheLineSize;\nuniform vec2 u_resolution;\n\n// Simple hash for visualization\nfloat hash(vec2 p) {\n    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);\n}\n\nvoid main() {\n    // Correct for aspect ratio - make grid square\n    float aspect = u_resolution.x / u_resolution.y;\n    vec2 uv = v_texCoord;\n    uv.x *= aspect;\n    \n    // Center the grid\n    float gridSize = 16.0;\n    float totalWidth = gridSize * aspect;\n    float offset = (totalWidth - gridSize) * 0.5;\n    uv.x -= offset / gridSize;\n    \n    // Simulate a texture grid (16x16 &#39;texels&#39;)\n    vec2 texelCoord = floor(uv * gridSize);\n    \n    // Out of bounds check\n    if (texelCoord.x < 0.0 || texelCoord.x >= gridSize || texelCoord.y < 0.0 || texelCoord.y >= gridSize) {\n        gl_FragColor = vec4(vec3(0.05, 0.06, 0.08), 1.0);\n        return;\n    }\n    \n    // Cache line: 4 texels wide (simulated)\n    vec2 cacheLine = floor(texelCoord / u_cacheLineSize);\n    \n    // Current &#39;fetch&#39; position animated over time\n    float t = u_time * 0.5;\n    vec2 fetchPos;\n    \n    if (u_pattern < 0.5) {\n        // Coherent: scan left-to-right, top-to-bottom\n        float scanLine = floor(mod(t * 4.0, gridSize));\n        float scanCol = mod(t * 64.0, gridSize);\n        fetchPos = vec2(scanCol, scanLine);\n    } else {\n        // Random: jump around unpredictably\n        float frame = floor(t * 8.0);\n        fetchPos = vec2(\n            hash(vec2(frame, 0.0)) * gridSize,\n            hash(vec2(0.0, frame)) * gridSize\n        );\n    }\n    \n    vec2 fetchCacheLine = floor(fetchPos / u_cacheLineSize);\n    \n    // Visualize cache line hit\n    float isActiveCacheLine = step(0.5, 1.0 - length(cacheLine - fetchCacheLine));\n    float isActiveTexel = step(length(texelCoord - floor(fetchPos)), 0.5);\n    \n    // Color: texel grid with cache line highlighting\n    vec3 gridColor = vec3(0.1, 0.12, 0.15);\n    vec3 texelColor = mix(gridColor, vec3(0.15, 0.18, 0.22), \n        step(0.5, mod(texelCoord.x + texelCoord.y, 2.0)));\n    \n    // Cache line border\n    vec2 withinCache = mod(texelCoord, u_cacheLineSize);\n    float isCacheBorder = step(withinCache.x, 0.5) + step(withinCache.y, 0.5);\n    texelColor = mix(texelColor, vec3(0.2, 0.25, 0.3), min(isCacheBorder, 1.0) * 0.5);\n    \n    // Highlight active cache line (what we&#39;d fetch)\n    vec3 cacheHitColor = u_pattern < 0.5 ? vec3(0.18, 0.83, 0.75) : vec3(0.91, 0.73, 0.14);\n    texelColor = mix(texelColor, cacheHitColor * 0.4, isActiveCacheLine * 0.8);\n    \n    // Highlight the actual sampled texel\n    texelColor = mix(texelColor, vec3(1.0), isActiveTexel);\n    \n    // Grid lines\n    vec2 grid = abs(fract(uv * gridSize) - 0.5);\n    float gridLine = step(0.42, max(grid.x, grid.y));\n    texelColor = mix(texelColor, vec3(0.3), gridLine * 0.3);\n    \n    gl_FragColor = vec4(texelColor, 1.0);\n}","uniforms":{"u_time":{"type":"float","value":0},"u_pattern":{"type":"float","value":0},"u_cacheLineSize":{"type":"float","value":4},"u_resolution":{"type":"vec2","value":[700,350]}}}'>
+<figure class="article-section section-shader-demo" data-demo-id="cache-pattern-demo" data-shader-config='{"vertexShader":"attribute vec2 a_position;\nvarying vec2 v_texCoord;\nvoid main() {\n    v_texCoord = a_position * 0.5 + 0.5;\n    gl_Position = vec4(a_position, 0.0, 1.0);\n}","fragmentShader":"precision highp float;\nvarying vec2 v_texCoord;\nuniform float u_time;\nuniform float u_pattern;\nuniform float u_cacheLineSize;\nuniform vec2 u_resolution;\n\n// Simple hash for visualization\nfloat hash(vec2 p) {\n    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);\n}\n\nvoid main() {\n    // Correct for aspect ratio - make grid square\n    float aspect = u_resolution.x / u_resolution.y;\n    vec2 uv = v_texCoord;\n    uv.x *= aspect;\n    \n    // Center the grid\n    float gridSize = 16.0;\n    float totalWidth = gridSize * aspect;\n    float offset = (totalWidth - gridSize) * 0.5;\n    uv.x -= offset / gridSize;\n    \n    // Simulate a texture grid (16x16 &#39;texels&#39;)\n    vec2 texelCoord = floor(uv * gridSize);\n    \n    // Out of bounds check\n    if (texelCoord.x < 0.0 || texelCoord.x >= gridSize || texelCoord.y < 0.0 || texelCoord.y >= gridSize) {\n        gl_FragColor = vec4(vec3(0.05, 0.06, 0.08), 1.0);\n        return;\n    }\n    \n    // Cache line: 4 texels wide (simulated)\n    vec2 cacheLine = floor(texelCoord / u_cacheLineSize);\n    \n    // Current &#39;fetch&#39; position animated over time\n    float t = u_time * 0.5;\n    vec2 fetchPos;\n    \n    if (u_pattern < 0.5) {\n        // Coherent: scan left-to-right, top-to-bottom\n        float scanLine = floor(mod(t * 4.0, gridSize));\n        float scanCol = mod(t * 64.0, gridSize);\n        fetchPos = vec2(scanCol, scanLine);\n    } else {\n        // Random: jump around unpredictably\n        float frame = floor(t * 8.0);\n        fetchPos = vec2(\n            hash(vec2(frame, 0.0)) * gridSize,\n            hash(vec2(0.0, frame)) * gridSize\n        );\n    }\n    \n    vec2 fetchCacheLine = floor(fetchPos / u_cacheLineSize);\n    \n    // Visualize cache line hit\n    float isActiveCacheLine = step(0.5, 1.0 - length(cacheLine - fetchCacheLine));\n    float isActiveTexel = step(length(texelCoord - floor(fetchPos)), 0.5);\n    \n    // Color: texel grid with cache line highlighting\n    vec3 gridColor = vec3(0.1, 0.12, 0.15);\n    vec3 texelColor = mix(gridColor, vec3(0.15, 0.18, 0.22), \n        step(0.5, mod(texelCoord.x + texelCoord.y, 2.0)));\n    \n    // Cache line border\n    vec2 withinCache = mod(texelCoord, u_cacheLineSize);\n    float isCacheBorder = step(withinCache.x, 0.5) + step(withinCache.y, 0.5);\n    texelColor = mix(texelColor, vec3(0.2, 0.25, 0.3), min(isCacheBorder, 1.0) * 0.5);\n    \n    // Highlight active cache line (what we&#39;d fetch)\n    vec3 cacheHitColor = u_pattern < 0.5 ? vec3(0.18, 0.83, 0.75) : vec3(0.91, 0.73, 0.14);\n    texelColor = mix(texelColor, cacheHitColor * 0.4, isActiveCacheLine * 0.8);\n    \n    // Highlight the actual sampled texel\n    texelColor = mix(texelColor, vec3(1.0), isActiveTexel);\n    \n    // Grid lines\n    vec2 grid = abs(fract(uv * gridSize) - 0.5);\n    float gridLine = step(0.42, max(grid.x, grid.y));\n    texelColor = mix(texelColor, vec3(0.3), gridLine * 0.3);\n    \n    gl_FragColor = vec4(texelColor, 1.0);\n}","uniforms":{"u_time":{"type":"float","value":0},"u_pattern":{"type":"float","value":0},"u_cacheLineSize":{"type":"float","value":4},"u_resolution":{"type":"vec2","value":[700,350]}},"textures":{}}'>
                 <div class="shader-canvas-container" style="max-width: 700px;">
                     <canvas class="shader-canvas" width="700" height="350"></canvas>
                     <div class="shader-loading">Initializing WebGL...</div>
@@ -731,8 +742,8 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
             </div>
                 <figcaption>Texture Access Pattern Visualization</figcaption>
             </figure>
-<h2 id="section-30-texture-fetch-latency-hiding" class="article-section section-heading" data-toc-level="2">Texture Fetch Latency Hiding</h2>
-<p class="article-section section-paragraph">GPUs hide memory latency through massive parallelism. While one warp waits for texture data, the scheduler switches to another warp that&#39;s ready to execute. This is why occupancy matters: more warps in flight means more opportunities to hide latency.</p>
+<h2 id="section-34-texture-fetch-latency-hiding" class="article-section section-heading" data-toc-level="2">Texture Fetch Latency Hiding</h2>
+<p class="article-section section-paragraph">The GPU&#39;s trick for surviving 500-cycle memory stalls: while one warp waits for data, the scheduler runs another warp that&#39;s ready. More warps in flight = more chances to do useful work while waiting. This is why occupancy matters—low occupancy means the GPU sits idle during memory fetches.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="latency-hiding">
                 <div class="svg-container" style="max-width: 750px;">
                     <div class="svg-placeholder" data-width="750" data-height="280">
@@ -770,8 +781,8 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
 <aside class="article-section section-callout info">
                 <p>Modern shader compilers reorder instructions automatically and balance prefetching against register pressure. The code order you write isn&#39;t necessarily the execution order—the compiler optimizes scheduling. This pattern is more about mental organization and ensuring fetches aren&#39;t blocked by dependent computations.</p>
             </aside>
-<h2 id="section-35-texture-memory-layout" class="article-section section-heading" data-toc-level="2">Texture Memory Layout</h2>
-<p class="article-section section-paragraph">GPUs store textures in Morton order (Z-order curve) or similar space-filling curves, not linear row-by-row. This layout keeps 2D-local texels close in memory, improving cache efficiency for typical sampling patterns.</p>
+<h2 id="section-39-texture-memory-layout" class="article-section section-heading" data-toc-level="2">Texture Memory Layout</h2>
+<p class="article-section section-paragraph">Textures aren&#39;t stored row-by-row in memory. GPUs use Morton order (Z-order curves) or similar swizzle patterns. The idea: keep 2D-neighboring texels close in the 1D memory address space, so a cache line actually contains a useful block of pixels instead of a random horizontal stripe.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="morton-order">
                 <div class="svg-container" style="max-width: 700px;">
                     <div class="svg-placeholder" data-width="700" data-height="280">
@@ -783,10 +794,10 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
 <aside class="article-section section-callout info">
                 <p>Texture swizzling happens automatically when you upload textures via the graphics API. Never manually &#39;optimize&#39; texture data layout—the driver handles this based on GPU-specific tiling patterns.</p>
             </aside>
-<h2 id="section-39-practical-optimization-strategies" class="article-section section-heading" data-toc-level="2">Practical Optimization Strategies</h2>
-<h3 id="section-40-1-texture-atlasing" class="article-section section-heading" data-toc-level="3">1. Texture Atlasing</h3>
-<p class="article-section section-paragraph">Packing multiple textures into one atlas keeps related data in the same cache space. When sampling from an atlas, neighboring draw calls often hit already-cached data. The tradeoff: more complex UV math and potential filtering artifacts at tile boundaries.</p>
-<h3 id="section-42-2-channel-packing" class="article-section section-heading" data-toc-level="3">2. Channel Packing</h3>
+<h2 id="section-43-practical-optimization-strategies" class="article-section section-heading" data-toc-level="2">Practical Optimization Strategies</h2>
+<h3 id="section-44-1-texture-atlasing" class="article-section section-heading" data-toc-level="3">1. Texture Atlasing</h3>
+<p class="article-section section-paragraph">Throw related textures into an atlas and they&#39;ll share cache space. Draw a bunch of sprites from the same atlas and the cache stays warm. Downside: UV math gets messier, and you&#39;ll fight filtering artifacts at tile edges if you&#39;re not careful with padding.</p>
+<h3 id="section-46-2-channel-packing" class="article-section section-heading" data-toc-level="3">2. Channel Packing</h3>
 <div class="article-section section-code">
                 <div class="code-header">
                     <span class="code-title">Channel Packing for Fewer Fetches</span>
@@ -808,8 +819,8 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
 <aside class="article-section section-callout warning">
                 <p>Packing works best for related data (like ORM maps) where values share the same UV coordinates and update together. For unrelated channels, packing can cause cross-channel compression artifacts. Single-channel textures with BC4 compression often achieve better quality and smaller memory footprint than packed RGBA with BC7. Choose based on your data relationships.</p>
             </aside>
-<h3 id="section-45-3-reduce-dependent-reads" class="article-section section-heading" data-toc-level="3">3. Reduce Dependent Reads</h3>
-<p class="article-section section-paragraph">Dependent texture reads—where the UV comes from another texture—serialize memory access. The GPU can&#39;t prefetch the second texture until the first completes. Minimize these chains or compute UVs mathematically when possible.</p>
+<h3 id="section-49-3-reduce-dependent-reads" class="article-section section-heading" data-toc-level="3">3. Reduce Dependent Reads</h3>
+<p class="article-section section-paragraph">Dependent reads are latency killers. If your UV comes from a texture lookup (parallax mapping, flow maps), the GPU can&#39;t even start the second fetch until the first one finishes. Two 500-cycle stalls back-to-back. Compute offsets mathematically when you can, or accept the hit.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="dependent-read-chain">
                 <div class="svg-container" style="max-width: 700px;">
                     <div class="svg-placeholder" data-width="700" data-height="220">
@@ -818,10 +829,10 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
                 </div>
                 <figcaption>Dependent Read Latency Stacking</figcaption>
             </figure>
-<h3 id="section-48-4-bindless-textures" class="article-section section-heading" data-toc-level="3">4. Bindless Textures</h3>
-<p class="article-section section-paragraph">Traditional texture binding forces driver overhead and limits cache utilization across draw calls. Bindless textures (via GL_ARB_bindless_texture or Vulkan descriptor indexing) keep all textures resident and accessible, which can improve cache reuse across the frame. However, performance depends heavily on access patterns—uniform descriptor access (all threads in a warp reading the same texture index) is fast, but divergent access across a warp adds overhead. Profile before assuming bindless is faster for your use case.</p>
-<h2 id="section-50-architecture-differences" class="article-section section-heading" data-toc-level="2">Architecture Differences</h2>
-<p class="article-section section-paragraph">Cache behavior varies significantly between GPU vendors and generations. NVIDIA&#39;s L1 is tightly coupled with shared memory, AMD&#39;s Infinity Cache adds another hierarchy level, and mobile GPUs often have smaller but more specialized caches optimized for tiled rendering.</p>
+<h3 id="section-52-4-bindless-textures" class="article-section section-heading" data-toc-level="3">4. Bindless Textures</h3>
+<p class="article-section section-paragraph">Bindless textures (GL_ARB_bindless_texture, Vulkan descriptor indexing) skip the binding overhead and keep all textures resident. Sometimes this helps cache reuse across the frame. But there&#39;s a catch: if threads in a warp index into different textures, you pay for the divergence. Measure it—bindless isn&#39;t automatically faster.</p>
+<h2 id="section-54-architecture-differences" class="article-section section-heading" data-toc-level="2">Architecture Differences</h2>
+<p class="article-section section-paragraph">Cache behavior isn&#39;t portable. NVIDIA&#39;s L1 shares silicon with shared memory (you configure the split). AMD threw in Infinity Cache as an extra layer. Mobile GPUs have smaller caches but lean on tile-based rendering to compensate. What flies on desktop might crawl on mobile, and vice versa.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="architecture-comparison">
                 <div class="svg-container" style="max-width: 750px;">
                     <div class="svg-placeholder" data-width="750" data-height="260">
@@ -833,8 +844,8 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
 <aside class="article-section section-callout tip">
                 <p>Profile on your target hardware. Desktop optimizations may hurt mobile performance and vice versa. AMD&#39;s cache hierarchy differs enough from NVIDIA that vendor-specific tuning often pays off.</p>
             </aside>
-<h2 id="section-54-quick-wins-copy-paste-patterns" class="article-section section-heading" data-toc-level="2">Quick Wins: Copy-Paste Patterns</h2>
-<p class="article-section section-paragraph">Here are battle-tested patterns you can apply immediately to improve cache efficiency in your shaders.</p>
+<h2 id="section-58-quick-wins-copy-paste-patterns" class="article-section section-heading" data-toc-level="2">Quick Wins: Copy-Paste Patterns</h2>
+<p class="article-section section-paragraph">Stuff you can copy into your shaders right now:</p>
 <div class="article-section section-code">
                 <div class="code-header">
                     <span class="code-title">Pattern 1: ORM Texture Packing</span>
@@ -903,9 +914,9 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
 }</pre></div>
             </div>
 <aside class="article-section section-callout tip">
-                <p>Combine these patterns: Pack your PBR textures into ORM format, prefetch all at shader start, and use mip bias in post-processing passes. This alone can yield 20-40% improvement in texture-heavy shaders.</p>
+                <p>Stack these together—ORM packing, early prefetch, mip bias in post—and you can often squeeze 20-40% more performance out of texture-heavy shaders without touching the algorithm.</p>
             </aside>
-<h2 id="section-60-key-takeaways" class="article-section section-heading" data-toc-level="2">Key Takeaways</h2>
+<h2 id="section-64-key-takeaways" class="article-section section-heading" data-toc-level="2">Key Takeaways</h2>
 <ul class="article-section section-list"><li>Cache hits are ~15x faster than VRAM fetches (30 vs 500 cycles). Coherent access patterns are critical for performance.</li>
 <li>Mipmapping isn&#39;t optional—it&#39;s a cache optimization that keeps your working set manageable.</li>
 <li>Pack related data into fewer textures. Four 1-channel fetches cost more than one 4-channel fetch.</li>
@@ -915,6 +926,14 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
 <aside class="article-section section-callout warning">
                 <p>Don&#39;t micro-optimize without profiling. Cache behavior is complex and hardware-dependent. Measure first, optimize second, and verify improvements on actual target hardware.</p>
             </aside>
+<h2 id="section-67-sources-further-reading" class="article-section section-heading" data-toc-level="2">Sources &amp; Further Reading</h2>
+<ul class="article-section section-list"><li>&lt;a href=&#39;https://docs.nvidia.com/cuda/ada-tuning-guide/index.html&#39; target=&#39;_blank&#39;&gt;NVIDIA Ada GPU Architecture Tuning Guide&lt;/a&gt; — Official L1/L2 cache sizes, shared memory configuration</li>
+<li>&lt;a href=&#39;https://docs.nvidia.com/cuda/ampere-tuning-guide/index.html&#39; target=&#39;_blank&#39;&gt;NVIDIA Ampere GPU Architecture Tuning Guide&lt;/a&gt; — A100 cache hierarchy details</li>
+<li>&lt;a href=&#39;https://chipsandcheese.com/p/measuring-gpu-memory-latency&#39; target=&#39;_blank&#39;&gt;Chips and Cheese: Measuring GPU Memory Latency&lt;/a&gt; — Empirical latency measurements for NVIDIA and AMD</li>
+<li>&lt;a href=&#39;https://chipsandcheese.com/p/microbenchmarking-nvidias-rtx-4090&#39; target=&#39;_blank&#39;&gt;Chips and Cheese: Microbenchmarking NVIDIA&#39;s RTX 4090&lt;/a&gt; — Ada Lovelace cache architecture analysis</li>
+<li>&lt;a href=&#39;https://developer.nvidia.com/blog/using-shared-memory-cuda-cc&#39; target=&#39;_blank&#39;&gt;NVIDIA Developer Blog: Using Shared Memory in CUDA&lt;/a&gt; — Bank conflicts and shared memory optimization</li>
+<li>&lt;a href=&#39;https://fgiesen.wordpress.com/2011/01/17/texture-tiling-and-swizzling/&#39; target=&#39;_blank&#39;&gt;Fabian Giesen: Texture Tiling and Swizzling&lt;/a&gt; — Morton order and GPU texture memory layout</li>
+<li>&lt;a href=&#39;https://www.rastergrid.com/blog/gpu-tech/2021/01/understanding-gpu-caches/&#39; target=&#39;_blank&#39;&gt;RasterGrid: Understanding GPU Caches&lt;/a&gt; — Cache line sizes and memory hierarchy overview</li></ul>
                 </div>
             </article>
             
@@ -930,20 +949,22 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
                     <a class="toc-item" href="#section-4-the-memory-hierarchy" data-target="section-4-the-memory-hierarchy">The Memory Hierarchy</a>
                     <a class="toc-item" href="#section-8-cache-lines-and-spatial-locality" data-target="section-8-cache-lines-and-spatial-locality">Cache Lines and Spatial Locality</a>
                     <a class="toc-item" href="#section-12-the-warp-and-cache-coalescing" data-target="section-12-the-warp-and-cache-coalescing">The Warp and Cache Coalescing</a>
-                    <a class="toc-item" href="#section-16-what-causes-cache-misses" data-target="section-16-what-causes-cache-misses">What Causes Cache Misses?</a>
-                    <a class="toc-item" href="#section-19-mipmapping-the-caches-best-friend" data-target="section-19-mipmapping-the-caches-best-friend">Mipmapping: The Cache&#39;s Best Friend</a>
-                    <a class="toc-item" href="#section-23-measuring-cache-efficiency" data-target="section-23-measuring-cache-efficiency">Measuring Cache Efficiency</a>
-                    <a class="toc-item" href="#section-27-interactive-demo-cache-access-patterns" data-target="section-27-interactive-demo-cache-access-patterns">Interactive Demo: Cache Access Patterns</a>
-                    <a class="toc-item" href="#section-30-texture-fetch-latency-hiding" data-target="section-30-texture-fetch-latency-hiding">Texture Fetch Latency Hiding</a>
-                    <a class="toc-item" href="#section-35-texture-memory-layout" data-target="section-35-texture-memory-layout">Texture Memory Layout</a>
-                    <a class="toc-item" href="#section-39-practical-optimization-strategies" data-target="section-39-practical-optimization-strategies">Practical Optimization Strategies</a>
-                    <a class="toc-item toc-subchapter" href="#section-40-1-texture-atlasing" data-target="section-40-1-texture-atlasing">1. Texture Atlasing</a>
-                    <a class="toc-item toc-subchapter" href="#section-42-2-channel-packing" data-target="section-42-2-channel-packing">2. Channel Packing</a>
-                    <a class="toc-item toc-subchapter" href="#section-45-3-reduce-dependent-reads" data-target="section-45-3-reduce-dependent-reads">3. Reduce Dependent Reads</a>
-                    <a class="toc-item toc-subchapter" href="#section-48-4-bindless-textures" data-target="section-48-4-bindless-textures">4. Bindless Textures</a>
-                    <a class="toc-item" href="#section-50-architecture-differences" data-target="section-50-architecture-differences">Architecture Differences</a>
-                    <a class="toc-item" href="#section-54-quick-wins-copy-paste-patterns" data-target="section-54-quick-wins-copy-paste-patterns">Quick Wins: Copy-Paste Patterns</a>
-                    <a class="toc-item" href="#section-60-key-takeaways" data-target="section-60-key-takeaways">Key Takeaways</a>
+                    <a class="toc-item toc-subchapter" href="#section-15-memory-access-pattern-hierarchy" data-target="section-15-memory-access-pattern-hierarchy">Memory Access Pattern Hierarchy</a>
+                    <a class="toc-item" href="#section-20-what-causes-cache-misses" data-target="section-20-what-causes-cache-misses">What Causes Cache Misses?</a>
+                    <a class="toc-item" href="#section-23-mipmapping-the-caches-best-friend" data-target="section-23-mipmapping-the-caches-best-friend">Mipmapping: The Cache&#39;s Best Friend</a>
+                    <a class="toc-item" href="#section-27-measuring-cache-efficiency" data-target="section-27-measuring-cache-efficiency">Measuring Cache Efficiency</a>
+                    <a class="toc-item" href="#section-31-interactive-demo-cache-access-patterns" data-target="section-31-interactive-demo-cache-access-patterns">Interactive Demo: Cache Access Patterns</a>
+                    <a class="toc-item" href="#section-34-texture-fetch-latency-hiding" data-target="section-34-texture-fetch-latency-hiding">Texture Fetch Latency Hiding</a>
+                    <a class="toc-item" href="#section-39-texture-memory-layout" data-target="section-39-texture-memory-layout">Texture Memory Layout</a>
+                    <a class="toc-item" href="#section-43-practical-optimization-strategies" data-target="section-43-practical-optimization-strategies">Practical Optimization Strategies</a>
+                    <a class="toc-item toc-subchapter" href="#section-44-1-texture-atlasing" data-target="section-44-1-texture-atlasing">1. Texture Atlasing</a>
+                    <a class="toc-item toc-subchapter" href="#section-46-2-channel-packing" data-target="section-46-2-channel-packing">2. Channel Packing</a>
+                    <a class="toc-item toc-subchapter" href="#section-49-3-reduce-dependent-reads" data-target="section-49-3-reduce-dependent-reads">3. Reduce Dependent Reads</a>
+                    <a class="toc-item toc-subchapter" href="#section-52-4-bindless-textures" data-target="section-52-4-bindless-textures">4. Bindless Textures</a>
+                    <a class="toc-item" href="#section-54-architecture-differences" data-target="section-54-architecture-differences">Architecture Differences</a>
+                    <a class="toc-item" href="#section-58-quick-wins-copy-paste-patterns" data-target="section-58-quick-wins-copy-paste-patterns">Quick Wins: Copy-Paste Patterns</a>
+                    <a class="toc-item" href="#section-64-key-takeaways" data-target="section-64-key-takeaways">Key Takeaways</a>
+                    <a class="toc-item" href="#section-67-sources-further-reading" data-target="section-67-sources-further-reading">Sources &amp; Further Reading</a>
             </nav>
         </aside>
         </div>
@@ -1033,18 +1054,21 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
             var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
             if (!gl) throw new Error('WebGL not supported');
 
+            // Default vertex shader if not provided
+            var vertexShaderSrc = config.vertexShader || 'attribute vec2 a_position;\nvarying vec2 v_uv;\nvoid main() {\n    v_uv = a_position * 0.5 + 0.5;\n    gl_Position = vec4(a_position, 0.0, 1.0);\n}';
+
             var vertShader = gl.createShader(gl.VERTEX_SHADER);
-            gl.shaderSource(vertShader, config.vertexShader);
+            gl.shaderSource(vertShader, vertexShaderSrc);
             gl.compileShader(vertShader);
             if (!gl.getShaderParameter(vertShader, gl.COMPILE_STATUS)) {
-                throw new Error(gl.getShaderInfoLog(vertShader));
+                throw new Error('Vertex: ' + gl.getShaderInfoLog(vertShader));
             }
 
             var fragShader = gl.createShader(gl.FRAGMENT_SHADER);
             gl.shaderSource(fragShader, config.fragmentShader);
             gl.compileShader(fragShader);
             if (!gl.getShaderParameter(fragShader, gl.COMPILE_STATUS)) {
-                throw new Error(gl.getShaderInfoLog(fragShader));
+                throw new Error('Fragment: ' + gl.getShaderInfoLog(fragShader));
             }
 
             var program = gl.createProgram();
@@ -1072,6 +1096,35 @@ Key insight: L1 hit = ~<span class="number">30</span> cycles, VRAM miss = ~<span
             for (var name in config.uniforms) {
                 uniformLocs[name] = gl.getUniformLocation(program, name);
                 uniformValues[name] = config.uniforms[name].value;
+            }
+
+            // Load textures if specified
+            var textureUnit = 0;
+            if (config.textures) {
+                for (var texName in config.textures) {
+                    (function(name, src, unit) {
+                        var texLoc = gl.getUniformLocation(program, name);
+                        if (!texLoc) return;
+                        var tex = gl.createTexture();
+                        gl.activeTexture(gl.TEXTURE0 + unit);
+                        gl.bindTexture(gl.TEXTURE_2D, tex);
+                        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([128, 128, 128, 255]));
+                        var img = new Image();
+                        img.crossOrigin = 'anonymous';
+                        img.onload = function() {
+                            gl.activeTexture(gl.TEXTURE0 + unit);
+                            gl.bindTexture(gl.TEXTURE_2D, tex);
+                            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                        };
+                        img.src = '../../' + src;
+                        gl.useProgram(program);
+                        gl.uniform1i(texLoc, unit);
+                    })(texName, config.textures[texName], textureUnit++);
+                }
             }
 
             // Setup controls

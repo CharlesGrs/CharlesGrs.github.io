@@ -229,8 +229,8 @@
         // Apply syntax highlighting to code blocks
         applySyntaxHighlighting();
 
-        // Initialize SVG diagrams
-        initSvgDiagrams();
+        // Initialize SVG diagrams (pass post ID for dynamic loading)
+        initSvgDiagrams(post.id);
 
         // Initialize shader demos
         initShaderDemos();
@@ -286,18 +286,40 @@
             case 'shader-demo':
                 // Store shader config in data attribute for later initialization
                 var shaderConfig = {
+                    shaderFile: section.shaderFile,
                     vertexShader: section.vertexShader,
                     fragmentShader: section.fragmentShader,
-                    uniforms: section.uniforms || {}
+                    uniforms: section.uniforms || {},
+                    textures: section.textures || {}
                 };
                 var controlsHtml = '';
                 if (section.controls && section.controls.length > 0) {
                     controlsHtml = '<div class="shader-controls">' +
                         section.controls.map(function(ctrl) {
+                            // Handle light-position control type (circular drag + color)
+                            if (ctrl.type === 'light-position') {
+                                var angleUniform = ctrl.uniforms[0];
+                                var elevUniform = ctrl.uniforms[1];
+                                var colorUniform = ctrl.colorUniform;
+                                return '<div class="shader-control light-control" data-light-angle="' + angleUniform + '" data-light-elev="' + elevUniform + '" data-light-color="' + colorUniform + '">' +
+                                    '<div class="light-control-header">' +
+                                        '<span class="light-label">' + ctrl.label + '</span>' +
+                                        '<input type="color" class="light-color-picker" value="' + (ctrl.color || '#FFFFFF') + '" title="Light color">' +
+                                    '</div>' +
+                                    '<div class="light-position-control" title="Drag to position light">' +
+                                        '<div class="light-position-ring"></div>' +
+                                        '<div class="light-position-handle" style="background-color: ' + (ctrl.color || '#FFFFFF') + '"></div>' +
+                                        '<div class="light-position-center"></div>' +
+                                    '</div>' +
+                                '</div>';
+                            }
+                            // Standard range slider control
+                            var componentAttr = ctrl.component !== undefined ? ' data-component="' + ctrl.component + '"' : '';
                             return '<div class="shader-control">' +
                                 '<label>' + ctrl.label + '</label>' +
                                 '<input type="range" ' +
-                                    'data-uniform="' + ctrl.uniform + '" ' +
+                                    'data-uniform="' + ctrl.uniform + '"' +
+                                    componentAttr + ' ' +
                                     'min="' + (ctrl.min || 0) + '" ' +
                                     'max="' + (ctrl.max || 1) + '" ' +
                                     'step="' + (ctrl.step || 0.01) + '" ' +
@@ -308,7 +330,7 @@
                     '</div>';
                 }
                 return '<figure class="article-section section-shader-demo" data-demo-id="' + section.id + '" data-shader-config=\'' + JSON.stringify(shaderConfig).replace(/'/g, '&#39;') + '\'>' +
-                    '<div class="shader-canvas-container" style="max-width: ' + (section.width || 700) + 'px;">' +
+                    '<div class="shader-canvas-container">' +
                         '<canvas class="shader-canvas" width="' + (section.width || 700) + '" height="' + (section.height || 400) + '"></canvas>' +
                         '<div class="shader-loading">Initializing WebGL...</div>' +
                     '</div>' +
@@ -323,12 +345,48 @@
 
     // ============================================
     // SVG DIAGRAM INITIALIZATION
-    // Diagrams are defined in js/blog-diagrams.js
+    // Diagrams loaded from blog/diagrams/{post-id}.js or legacy js/blog-diagrams.js
     // ============================================
 
-    function initSvgDiagrams() {
-        var svgDiagrams = window.blogSvgDiagrams || {};
+    var loadedDiagramScripts = {};
+
+    function initSvgDiagrams(postId) {
         var diagramContainers = articleContainer.querySelectorAll('.section-svg-diagram');
+        if (diagramContainers.length === 0) return;
+
+        // Try to load post-specific diagram file first
+        loadDiagramScript(postId)
+            .then(function() {
+                renderAllDiagrams(diagramContainers);
+            })
+            .catch(function() {
+                // Fall back to legacy global diagrams
+                renderAllDiagrams(diagramContainers);
+            });
+    }
+
+    function loadDiagramScript(postId) {
+        if (loadedDiagramScripts[postId]) {
+            return Promise.resolve();
+        }
+
+        return new Promise(function(resolve, reject) {
+            var script = document.createElement('script');
+            script.src = 'blog/diagrams/' + postId + '.js';
+            script.onload = function() {
+                loadedDiagramScripts[postId] = true;
+                resolve();
+            };
+            script.onerror = function() {
+                // Not an error - post may not have diagrams
+                reject();
+            };
+            document.head.appendChild(script);
+        });
+    }
+
+    function renderAllDiagrams(diagramContainers) {
+        var svgDiagrams = window.blogSvgDiagrams || {};
 
         diagramContainers.forEach(function(container) {
             var diagramId = container.getAttribute('data-diagram-id');
@@ -370,14 +428,24 @@
         });
         activeDemos = [];
 
+        // Clean up pending lazy demos
+        if (lazyDemoObserver) {
+            pendingDemos.forEach(function(_, container) {
+                lazyDemoObserver.unobserve(container);
+            });
+            pendingDemos.clear();
+        }
+
         var demoContainers = articleContainer.querySelectorAll('.section-shader-demo');
+
+        // Collect all unique shader files to pre-fetch
+        var shaderFilesToLoad = {};
+        var demoData = [];
 
         demoContainers.forEach(function(container) {
             var demoId = container.getAttribute('data-demo-id');
             var canvas = container.querySelector('.shader-canvas');
             var loadingEl = container.querySelector('.shader-loading');
-
-            // Read shader config from data attribute (defined in JSON)
             var configStr = container.getAttribute('data-shader-config');
             var shaderConfig = null;
 
@@ -387,25 +455,132 @@
                 console.error('Invalid shader config JSON:', e);
             }
 
-            if (!canvas || !shaderConfig || !shaderConfig.vertexShader || !shaderConfig.fragmentShader) {
+            if (!canvas || !shaderConfig) {
                 if (loadingEl) loadingEl.textContent = 'Shader config missing for: ' + demoId;
                 return;
             }
 
-            try {
-                var demo = initWebGLDemo(canvas, shaderConfig, container);
-                if (demo) {
-                    activeDemos.push(demo);
-                    if (loadingEl) loadingEl.style.display = 'none';
-                }
-            } catch (e) {
-                console.error('Error initializing shader demo:', demoId, e);
-                if (loadingEl) {
-                    loadingEl.textContent = 'WebGL error: ' + e.message;
-                    loadingEl.classList.add('error');
-                }
+            // Track which shader files need loading
+            if (shaderConfig.shaderFile) {
+                shaderFilesToLoad[shaderConfig.shaderFile] = true;
             }
+
+            demoData.push({
+                demoId: demoId,
+                canvas: canvas,
+                loadingEl: loadingEl,
+                container: container,
+                shaderConfig: shaderConfig
+            });
         });
+
+        // Pre-fetch all unique shader files (single fetch per file)
+        var shaderFileList = Object.keys(shaderFilesToLoad);
+        var fetchPromises = shaderFileList.map(function(filename) {
+            return loadExternalShader(filename);
+        });
+
+        // Once all shaders are cached, initialize demos lazily (on scroll into view)
+        Promise.all(fetchPromises)
+            .then(function() {
+                // Setup lazy initialization for each demo
+                demoData.forEach(function(data) {
+                    if (data.shaderConfig.shaderFile) {
+                        data.shaderConfig.fragmentShader = shaderSourceCache[data.shaderConfig.shaderFile];
+                    }
+                    setupLazyDemo(data);
+                });
+            })
+            .catch(function(err) {
+                console.error('Error loading shader files:', err);
+                demoData.forEach(function(data) {
+                    if (data.loadingEl && data.shaderConfig.shaderFile) {
+                        data.loadingEl.textContent = 'Failed to load shader';
+                        data.loadingEl.classList.add('error');
+                    }
+                });
+            });
+    }
+
+    // Lazy initialization - only compile shaders when demo scrolls into view
+    var lazyDemoObserver = null;
+    var pendingDemos = new Map();
+
+    function setupLazyDemo(data) {
+        if (!data.shaderConfig.fragmentShader && !data.shaderConfig.vertexShader) {
+            if (data.loadingEl) data.loadingEl.textContent = 'Shader config missing for: ' + data.demoId;
+            return;
+        }
+
+        // Create IntersectionObserver if not exists
+        if (!lazyDemoObserver) {
+            lazyDemoObserver = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        var demoData = pendingDemos.get(entry.target);
+                        if (demoData) {
+                            pendingDemos.delete(entry.target);
+                            lazyDemoObserver.unobserve(entry.target);
+                            initDemoWithConfig(demoData.canvas, demoData.shaderConfig, demoData.container, demoData.loadingEl, demoData.demoId);
+                        }
+                    }
+                });
+            }, {
+                rootMargin: '100px' // Start loading slightly before visible
+            });
+        }
+
+        // Track this demo and observe its container
+        pendingDemos.set(data.container, data);
+        lazyDemoObserver.observe(data.container);
+    }
+
+    // Cache for loaded shader source code (avoid repeated fetches)
+    var shaderSourceCache = {};
+
+    function loadExternalShader(filename) {
+        // Return cached source if available
+        if (shaderSourceCache[filename]) {
+            return Promise.resolve(shaderSourceCache[filename]);
+        }
+
+        return fetch('blog/shaders/' + filename)
+            .then(function(response) {
+                if (!response.ok) throw new Error('Shader not found: ' + filename);
+                return response.text();
+            })
+            .then(function(source) {
+                // Cache for future demos using same shader
+                shaderSourceCache[filename] = source;
+                return source;
+            });
+    }
+
+    function initDemoWithConfig(canvas, shaderConfig, container, loadingEl, demoId) {
+        // Use default vertex shader if not provided
+        if (!shaderConfig.vertexShader) {
+            shaderConfig.vertexShader =
+                'attribute vec2 a_position;\n' +
+                'varying vec2 v_uv;\n' +
+                'void main() {\n' +
+                '    v_uv = a_position * 0.5 + 0.5;\n' +
+                '    gl_Position = vec4(a_position, 0.0, 1.0);\n' +
+                '}';
+        }
+
+        try {
+            var demo = initWebGLDemo(canvas, shaderConfig, container);
+            if (demo) {
+                activeDemos.push(demo);
+                if (loadingEl) loadingEl.style.display = 'none';
+            }
+        } catch (e) {
+            console.error('Error initializing shader demo:', demoId, e);
+            if (loadingEl) {
+                loadingEl.textContent = 'WebGL error: ' + e.message;
+                loadingEl.classList.add('error');
+            }
+        }
     }
 
     function initWebGLDemo(canvas, demoConfig, container) {
@@ -465,27 +640,203 @@
             gl.uniform2f(uniformLocs.u_resolution, canvas.width, canvas.height);
         }
 
+        // Load textures if specified in config
+        var textureUnits = {};
+        var textureUnit = 0;
+        if (demoConfig.textures) {
+            for (var texName in demoConfig.textures) {
+                (function(name, src, unit) {
+                    var texLoc = gl.getUniformLocation(program, name);
+                    if (!texLoc) return;
+
+                    var tex = gl.createTexture();
+                    gl.activeTexture(gl.TEXTURE0 + unit);
+                    gl.bindTexture(gl.TEXTURE_2D, tex);
+
+                    // Placeholder 1x1 pixel until image loads
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+                        new Uint8Array([128, 128, 128, 255]));
+
+                    // Load image
+                    var img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = function() {
+                        gl.activeTexture(gl.TEXTURE0 + unit);
+                        gl.bindTexture(gl.TEXTURE_2D, tex);
+                        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+                        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                    };
+                    img.src = src;
+
+                    // Set sampler uniform to texture unit
+                    gl.useProgram(program);
+                    gl.uniform1i(texLoc, unit);
+                    textureUnits[name] = unit;
+                })(texName, demoConfig.textures[texName], textureUnit++);
+            }
+        }
+
         // Setup control listeners
         var controls = container.querySelectorAll('.shader-control input[type="range"]');
         controls.forEach(function(input) {
             var uniformName = input.getAttribute('data-uniform');
+            var componentIndex = input.getAttribute('data-component');
             var valueDisplay = input.parentElement.querySelector('.control-value');
 
             input.addEventListener('input', function() {
                 var val = parseFloat(input.value);
-                uniformValues[uniformName] = val;
+
+                // Handle component-based updates for vec2/vec3 uniforms
+                if (componentIndex !== null) {
+                    var idx = parseInt(componentIndex);
+                    // Ensure uniform is an array
+                    if (!Array.isArray(uniformValues[uniformName])) {
+                        uniformValues[uniformName] = [0, 0, 0];
+                    }
+                    uniformValues[uniformName][idx] = val;
+                } else {
+                    uniformValues[uniformName] = val;
+                }
+
                 if (valueDisplay) {
                     valueDisplay.textContent = val.toFixed(2);
                 }
             });
         });
 
-        // Animation loop
+        // Setup light-position controls (circular drag controls)
+        var lightControls = container.querySelectorAll('.light-control');
+        lightControls.forEach(function(lightCtrl) {
+            var angleUniform = lightCtrl.getAttribute('data-light-angle');
+            var elevUniform = lightCtrl.getAttribute('data-light-elev');
+            var colorUniform = lightCtrl.getAttribute('data-light-color');
+            var positionControl = lightCtrl.querySelector('.light-position-control');
+            var handle = lightCtrl.querySelector('.light-position-handle');
+            var colorPicker = lightCtrl.querySelector('.light-color-picker');
+
+            var isDragging = false;
+
+            // Helper to convert hex color to RGB array (0-1 range)
+            function hexToRgb(hex) {
+                var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? [
+                    parseInt(result[1], 16) / 255,
+                    parseInt(result[2], 16) / 255,
+                    parseInt(result[3], 16) / 255
+                ] : [1, 1, 1];
+            }
+
+            // Update handle position from uniform values
+            function updateHandlePosition() {
+                var angle = uniformValues[angleUniform] || 0;
+                var elev = uniformValues[elevUniform] || 0;
+                // Map angle (0-2π) to position on circle
+                // angle=0 means light in front (+Z), angle=π means behind (-Z)
+                // Control is top-down view: top=behind, bottom=front
+                var x = Math.sin(angle);
+                var y = -Math.cos(angle); // top=behind (angle=π), bottom=front (angle=0)
+                // Elevation adjusts radius slightly
+                var elevScale = 1.0 - Math.abs(elev) * 0.3;
+                handle.style.left = (50 + x * 40 * elevScale) + '%';
+                handle.style.top = (50 + y * 40 * elevScale) + '%';
+            }
+
+            // Handle drag events
+            function onDrag(e) {
+                if (!isDragging) return;
+                e.preventDefault();
+
+                var rect = positionControl.getBoundingClientRect();
+                var centerX = rect.width / 2;
+                var centerY = rect.height / 2;
+
+                var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                var clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+                var x = (clientX - rect.left - centerX) / centerX;
+                var y = (clientY - rect.top - centerY) / centerY;
+
+                // Clamp to unit circle
+                var len = Math.sqrt(x * x + y * y);
+                if (len > 1) {
+                    x /= len;
+                    y /= len;
+                    len = 1;
+                }
+
+                // Convert to angle: atan2(x, -y) so that:
+                // - bottom (y>0) = angle 0 (light in front, +Z)
+                // - top (y<0) = angle π (light behind, -Z)
+                // - right (x>0) = angle π/2 (light from right)
+                // - left (x<0) = angle 3π/2 (light from left)
+                var angle = Math.atan2(x, -y);
+                if (angle < 0) angle += 2 * Math.PI;
+
+                // Elevation from distance from edge (edge=horizon, center=above)
+                var elev = (1.0 - len) * 0.8; // Center = looking up, edge = horizon
+
+                uniformValues[angleUniform] = angle;
+                uniformValues[elevUniform] = elev;
+                updateHandlePosition();
+            }
+
+            function startDrag(e) {
+                isDragging = true;
+                onDrag(e);
+            }
+
+            function endDrag() {
+                isDragging = false;
+            }
+
+            positionControl.addEventListener('mousedown', startDrag);
+            positionControl.addEventListener('touchstart', startDrag);
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('touchmove', onDrag);
+            document.addEventListener('mouseup', endDrag);
+            document.addEventListener('touchend', endDrag);
+
+            // Color picker
+            if (colorPicker && colorUniform) {
+                colorPicker.addEventListener('input', function() {
+                    var rgb = hexToRgb(colorPicker.value);
+                    uniformValues[colorUniform] = rgb;
+                    handle.style.backgroundColor = colorPicker.value;
+                });
+            }
+
+            // Initialize handle position
+            updateHandlePosition();
+        });
+
+        // Animation loop with visibility-based rendering at 24 FPS
         var startTime = performance.now();
         var animationId = null;
+        var isVisible = false;
+        var lastFrameTime = 0;
+        var frameInterval = 1000 / 24; // 24 FPS
 
         function render() {
-            var elapsed = (performance.now() - startTime) / 1000;
+            if (!isVisible) {
+                animationId = null;
+                return;
+            }
+
+            animationId = requestAnimationFrame(render);
+
+            var now = performance.now();
+            var delta = now - lastFrameTime;
+
+            // Skip frame if not enough time has passed
+            if (delta < frameInterval) {
+                return;
+            }
+
+            lastFrameTime = now - (delta % frameInterval);
+            var elapsed = (now - startTime) / 1000;
 
             gl.viewport(0, 0, canvas.width, canvas.height);
             gl.clearColor(0.04, 0.06, 0.08, 1.0);
@@ -515,18 +866,71 @@
             }
 
             gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-            animationId = requestAnimationFrame(render);
         }
 
-        render();
+        function startRendering() {
+            isVisible = true;
+            if (!animationId) {
+                render();
+            }
+        }
+
+        function stopRendering() {
+            isVisible = false;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+        }
+
+        // Check if canvas is in viewport using getBoundingClientRect
+        function isCanvasVisible() {
+            var rect = canvas.getBoundingClientRect();
+            var viewHeight = window.innerHeight || document.documentElement.clientHeight;
+            var viewWidth = window.innerWidth || document.documentElement.clientWidth;
+
+            // Check if any part of canvas is visible
+            return (
+                rect.bottom > 0 &&
+                rect.right > 0 &&
+                rect.top < viewHeight &&
+                rect.left < viewWidth
+            );
+        }
+
+        function checkVisibility() {
+            var nowVisible = isCanvasVisible();
+            if (nowVisible && !isVisible) {
+                startRendering();
+            } else if (!nowVisible && isVisible) {
+                stopRendering();
+            }
+        }
+
+        // Find scroll container and listen for scroll events
+        var scrollContainer = canvas.closest('.blog-post-view');
+        if (scrollContainer) {
+            scrollContainer.addEventListener('scroll', checkVisibility, { passive: true });
+        }
+        window.addEventListener('scroll', checkVisibility, { passive: true });
+        window.addEventListener('resize', checkVisibility, { passive: true });
+
+        // Initial check
+        checkVisibility();
 
         return {
             gl: gl,
             program: program,
             animationId: animationId,
+            scrollContainer: scrollContainer,
+            checkVisibility: checkVisibility,
             stop: function() {
-                if (animationId) cancelAnimationFrame(animationId);
+                stopRendering();
+                if (scrollContainer) {
+                    scrollContainer.removeEventListener('scroll', checkVisibility);
+                }
+                window.removeEventListener('scroll', checkVisibility);
+                window.removeEventListener('resize', checkVisibility);
             }
         };
     }

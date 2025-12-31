@@ -1,0 +1,4029 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Shader Studio | Video Preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ============================================
+           CSS CUSTOM PROPERTIES - DESIGN TOKENS
+           ============================================ */
+        :root {
+            /* Core palette - Deep space with premium accents */
+            --bg-void: #030508;
+            --bg-deep: #060a0f;
+            --bg-primary: #0a1015;
+            --bg-elevated: #0f161d;
+            --bg-surface: #141d26;
+            --bg-interactive: #1a2530;
+            --bg-hover: #1f2d3a;
+
+            /* Borders & dividers */
+            --border-subtle: rgba(255, 255, 255, 0.04);
+            --border-default: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.12);
+            --border-focus: rgba(45, 212, 191, 0.5);
+
+            /* Text hierarchy */
+            --text-primary: #f0f4f8;
+            --text-secondary: #94a3b8;
+            --text-tertiary: #64748b;
+            --text-muted: #475569;
+
+            /* Accent colors */
+            --accent-teal: #2dd4bf;
+            --accent-teal-dim: rgba(45, 212, 191, 0.15);
+            --accent-teal-glow: rgba(45, 212, 191, 0.4);
+            --accent-gold: #f59e0b;
+            --accent-gold-dim: rgba(245, 158, 11, 0.15);
+            --accent-gold-glow: rgba(245, 158, 11, 0.4);
+            --accent-purple: #a78bfa;
+            --accent-purple-dim: rgba(167, 139, 250, 0.15);
+            --accent-red: #f43f5e;
+            --accent-red-dim: rgba(244, 63, 94, 0.15);
+            --accent-green: #10b981;
+
+            /* Semantic colors */
+            --status-recording: #ef4444;
+            --status-playing: var(--accent-teal);
+            --status-paused: var(--accent-gold);
+
+            /* Typography */
+            --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+
+            /* Spacing scale */
+            --space-1: 4px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 20px;
+            --space-6: 24px;
+            --space-8: 32px;
+            --space-10: 40px;
+
+            /* Border radius */
+            --radius-sm: 4px;
+            --radius-md: 6px;
+            --radius-lg: 8px;
+            --radius-xl: 12px;
+
+            /* Shadows */
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+            --shadow-glow-teal: 0 0 20px var(--accent-teal-glow);
+            --shadow-glow-gold: 0 0 20px var(--accent-gold-glow);
+
+            /* Transitions */
+            --transition-fast: 0.1s ease;
+            --transition-base: 0.2s ease;
+            --transition-slow: 0.3s ease;
+
+            /* Layout */
+            --header-height: 56px;
+            --sidebar-width: 360px;
+            --timeline-height: 180px;
+            --statusbar-height: 40px;
+        }
+
+        /* ============================================
+           RESET & BASE STYLES
+           ============================================ */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background: var(--bg-void);
+            color: var(--text-primary);
+            font-family: var(--font-ui);
+            font-size: 13px;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Focus styles */
+        :focus-visible {
+            outline: 2px solid var(--accent-teal);
+            outline-offset: 2px;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-interactive);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--bg-hover);
+        }
+
+        /* Selection */
+        ::selection {
+            background: var(--accent-teal-dim);
+            color: var(--text-primary);
+        }
+
+        /* ============================================
+           LAYOUT STRUCTURE
+           ============================================ */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: var(--bg-void);
+        }
+
+        /* ============================================
+           HEADER / TOOLBAR
+           ============================================ */
+        .header {
+            height: var(--header-height);
+            background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-primary) 100%);
+            border-bottom: 1px solid var(--border-default);
+            display: flex;
+            align-items: center;
+            padding: 0 var(--space-5);
+            gap: var(--space-6);
+            flex-shrink: 0;
+            position: relative;
+            z-index: 100;
+        }
+
+        /* Subtle top highlight */
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg,
+                transparent 0%,
+                var(--border-strong) 20%,
+                var(--border-strong) 80%,
+                transparent 100%
+            );
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding-right: var(--space-5);
+            border-right: 1px solid var(--border-subtle);
+        }
+
+        .logo-icon {
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-purple) 100%);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--bg-void);
+            box-shadow: var(--shadow-glow-teal);
+        }
+
+        .logo-text {
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+
+        .logo-text span {
+            color: var(--text-tertiary);
+            font-weight: 400;
+        }
+
+        /* Control groups in header */
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: var(--space-5);
+            flex: 1;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .control-group label {
+            font-size: 10px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .control-group input,
+        .control-group select {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            padding: var(--space-2) var(--space-3);
+            min-width: 100px;
+            transition: all var(--transition-fast);
+        }
+
+        .control-group input:hover,
+        .control-group select:hover {
+            border-color: var(--border-strong);
+            background: var(--bg-interactive);
+        }
+
+        .control-group input:focus,
+        .control-group select:focus {
+            outline: none;
+            border-color: var(--accent-teal);
+            box-shadow: 0 0 0 3px var(--accent-teal-dim);
+        }
+
+        /* Divider */
+        .header-divider {
+            width: 1px;
+            height: 28px;
+            background: var(--border-subtle);
+        }
+
+        /* Action buttons container */
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            margin-left: auto;
+        }
+
+        /* ============================================
+           BUTTONS
+           ============================================ */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-2);
+            padding: var(--space-2) var(--space-4);
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: var(--font-ui);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-base);
+            white-space: nowrap;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        /* Primary button */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-teal) 0%, #14b8a6 100%);
+            color: var(--bg-void);
+            font-weight: 600;
+            box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.2);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5eead4 0%, var(--accent-teal) 100%);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md), var(--shadow-glow-teal);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        /* Secondary/Ghost button */
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--border-default);
+            color: var(--text-secondary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-interactive);
+            border-color: var(--border-strong);
+            color: var(--text-primary);
+        }
+
+        /* Accent buttons */
+        .btn-gold {
+            background: linear-gradient(135deg, var(--accent-gold) 0%, #d97706 100%);
+            color: var(--bg-void);
+            font-weight: 600;
+        }
+
+        .btn-gold:hover {
+            background: linear-gradient(135deg, #fbbf24 0%, var(--accent-gold) 100%);
+            box-shadow: var(--shadow-md), var(--shadow-glow-gold);
+        }
+
+        .btn-purple {
+            background: linear-gradient(135deg, var(--accent-purple) 0%, #8b5cf6 100%);
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn-purple:hover {
+            background: linear-gradient(135deg, #c4b5fd 0%, var(--accent-purple) 100%);
+        }
+
+        /* Record button special styling */
+        .btn-record {
+            background: linear-gradient(135deg, var(--accent-gold) 0%, #d97706 100%);
+            color: var(--bg-void);
+            font-weight: 600;
+            min-width: 90px;
+        }
+
+        .btn-record:hover {
+            background: linear-gradient(135deg, #fbbf24 0%, var(--accent-gold) 100%);
+            box-shadow: var(--shadow-md), var(--shadow-glow-gold);
+        }
+
+        .btn-record.recording {
+            background: linear-gradient(135deg, var(--status-recording) 0%, #dc2626 100%);
+            animation: recording-pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes recording-pulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+            }
+        }
+
+        /* Icon buttons */
+        .btn-icon {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border-radius: var(--radius-md);
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            color: var(--text-secondary);
+        }
+
+        .btn-icon:hover {
+            background: var(--bg-interactive);
+            color: var(--text-primary);
+            border-color: var(--border-strong);
+        }
+
+        .btn-icon svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* ============================================
+           MAIN CONTENT AREA
+           ============================================ */
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            background: var(--bg-void);
+        }
+
+        /* ============================================
+           VIEWPORT / CANVAS AREA
+           ============================================ */
+        .viewport {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-deep);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .viewport-inner {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-6);
+            position: relative;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        /* Canvas wrapper with subtle frame */
+        .canvas-frame {
+            position: relative;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow:
+                0 0 0 1px var(--border-default),
+                var(--shadow-lg),
+                0 0 80px rgba(45, 212, 191, 0.05);
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .canvas-frame::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: var(--radius-lg);
+            padding: 1px;
+            background: linear-gradient(135deg,
+                var(--border-strong) 0%,
+                transparent 50%,
+                var(--border-strong) 100%
+            );
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        #canvas, #overlay-canvas {
+            display: block;
+            border-radius: var(--radius-lg);
+        }
+
+        #overlay-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            border-radius: var(--radius-lg);
+            z-index: 10;
+        }
+
+        #composite-canvas {
+            display: none;
+        }
+
+        /* Shader list overlay */
+        .shader-list-overlay {
+            position: absolute;
+            top: var(--space-4);
+            left: var(--space-4);
+            background: rgba(6, 10, 15, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: var(--space-3);
+            min-width: 180px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .shader-list-overlay h4 {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: var(--space-2);
+            padding: 0 var(--space-2);
+        }
+
+        .shader-list-item {
+            padding: var(--space-2) var(--space-3);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            color: var(--text-secondary);
+            transition: all var(--transition-fast);
+            cursor: default;
+        }
+
+        .shader-list-item.active {
+            background: var(--accent-teal-dim);
+            color: var(--accent-teal);
+        }
+
+        .shader-list-item.transitioning {
+            background: var(--accent-gold-dim);
+            color: var(--accent-gold);
+        }
+
+        /* Code overlay styling (DOM version for non-recording preview) */
+        .code-overlay {
+            position: absolute;
+            pointer-events: none;
+            font-family: var(--font-mono);
+            white-space: pre;
+            line-height: 1.6;
+            opacity: 0;
+        }
+
+        /* ============================================
+           SIDEBAR / STAGE EDITOR
+           ============================================ */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-primary);
+            border-left: 1px solid var(--border-default);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: var(--space-4) var(--space-5);
+            border-bottom: 1px solid var(--border-default);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-elevated);
+        }
+
+        .sidebar-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent-gold);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .sidebar-title::before {
+            content: '';
+            width: 3px;
+            height: 12px;
+            background: var(--accent-gold);
+            border-radius: 2px;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--space-3);
+        }
+
+        /* Stage cards */
+        .stage-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--space-3);
+            overflow: hidden;
+            transition: all var(--transition-base);
+        }
+
+        .stage-card:hover {
+            border-color: var(--border-strong);
+        }
+
+        .stage-card.active {
+            border-color: var(--accent-teal);
+            box-shadow: 0 0 0 1px var(--accent-teal-dim);
+        }
+
+        .stage-card-header {
+            padding: var(--space-3) var(--space-4);
+            background: var(--bg-interactive);
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            cursor: pointer;
+            transition: background var(--transition-fast);
+        }
+
+        .stage-card-header:hover {
+            background: var(--bg-hover);
+        }
+
+        .stage-number {
+            width: 24px;
+            height: 24px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: var(--font-mono);
+            color: var(--text-secondary);
+        }
+
+        .stage-card.active .stage-number {
+            background: var(--accent-teal-dim);
+            border-color: var(--accent-teal);
+            color: var(--accent-teal);
+        }
+
+        .stage-title {
+            flex: 1;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .stage-badges {
+            display: flex;
+            gap: var(--space-2);
+        }
+
+        .stage-badge {
+            font-size: 10px;
+            font-weight: 500;
+            font-family: var(--font-mono);
+            padding: 2px var(--space-2);
+            border-radius: var(--radius-sm);
+            background: var(--bg-surface);
+            color: var(--text-tertiary);
+        }
+
+        .stage-badge.duration {
+            color: var(--accent-teal);
+            background: var(--accent-teal-dim);
+        }
+
+        .stage-badge.anim {
+            color: var(--accent-purple);
+            background: var(--accent-purple-dim);
+        }
+
+        .stage-expand-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            transition: transform var(--transition-base);
+        }
+
+        .stage-card.expanded .stage-expand-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Stage body */
+        .stage-card-body {
+            display: none;
+            padding: var(--space-4);
+            border-top: 1px solid var(--border-subtle);
+            background: var(--bg-surface);
+        }
+
+        .stage-card.expanded .stage-card-body {
+            display: block;
+        }
+
+        /* ============================================
+           UNIFORM ROWS & ANIMATION EDITOR
+           ============================================ */
+        .uniform-row {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-3);
+            background: var(--bg-primary);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-2);
+            transition: all var(--transition-fast);
+        }
+
+        .uniform-row:hover {
+            background: var(--bg-elevated);
+        }
+
+        .uniform-row.inherited {
+            opacity: 0.6;
+        }
+
+        .uniform-row.inherited:hover {
+            opacity: 0.8;
+        }
+
+        .uniform-name {
+            font-size: 11px;
+            font-family: var(--font-mono);
+            color: var(--text-secondary);
+            min-width: 90px;
+            display: flex;
+            align-items: center;
+            gap: var(--space-1);
+        }
+
+        .uniform-name .lock-icon {
+            font-size: 9px;
+            opacity: 0.5;
+        }
+
+        .uniform-name .inherited-label {
+            font-size: 9px;
+            color: var(--accent-gold);
+            opacity: 0.7;
+            font-style: italic;
+        }
+
+        .uniform-type {
+            font-size: 9px;
+            font-family: var(--font-mono);
+            font-weight: 500;
+            padding: 2px 6px;
+            background: var(--bg-surface);
+            border-radius: var(--radius-sm);
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .uniform-value {
+            flex: 1;
+            font-size: 11px;
+            font-family: var(--font-mono);
+            color: var(--accent-teal);
+            text-align: right;
+        }
+
+        .keyframe-btn {
+            width: 24px;
+            height: 24px;
+            border: 1px solid var(--border-default);
+            background: var(--bg-surface);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-muted);
+            transition: all var(--transition-fast);
+        }
+
+        .keyframe-btn:hover {
+            background: var(--bg-interactive);
+            border-color: var(--border-strong);
+            color: var(--text-secondary);
+        }
+
+        .keyframe-btn.active {
+            background: var(--accent-gold);
+            border-color: var(--accent-gold);
+            color: var(--bg-void);
+            box-shadow: 0 0 8px var(--accent-gold-glow);
+        }
+
+        /* Animation editor panel */
+        .anim-editor {
+            margin-top: var(--space-2);
+            padding: var(--space-3);
+            background: var(--bg-deep);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-subtle);
+            display: none;
+        }
+
+        .anim-editor.active {
+            display: block;
+            animation: slideDown 0.2s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .anim-row {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            margin-bottom: var(--space-2);
+        }
+
+        .anim-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .anim-row label {
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--text-muted);
+            min-width: 45px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .anim-row input,
+        .anim-row select {
+            flex: 1;
+            padding: var(--space-2) var(--space-2);
+            font-size: 11px;
+            font-family: var(--font-mono);
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            color: var(--text-primary);
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
+        }
+
+        .anim-row input:focus,
+        .anim-row select:focus {
+            outline: none;
+            border-color: var(--accent-teal);
+            box-shadow: 0 0 0 2px var(--accent-teal-dim);
+        }
+
+        .anim-row input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: var(--bg-primary);
+        }
+
+        .anim-row .time-separator {
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+        .anim-row .pct-label {
+            color: var(--text-muted);
+            font-size: 10px;
+            min-width: auto;
+        }
+
+        /* Duration input in stage */
+        .duration-row {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-3);
+            background: var(--bg-primary);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-3);
+        }
+
+        .duration-row label {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            min-width: 70px;
+        }
+
+        .duration-row input {
+            width: 80px;
+            padding: var(--space-2);
+            font-size: 11px;
+            font-family: var(--font-mono);
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            color: var(--text-primary);
+            border-radius: var(--radius-sm);
+        }
+
+        .duration-row .unit {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* Overlay section */
+        .overlay-section {
+            margin-top: var(--space-4);
+            padding-top: var(--space-4);
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .overlay-section-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            margin-bottom: var(--space-3);
+        }
+
+        .overlay-section-title {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent-gold);
+        }
+
+        .overlay-position-select {
+            flex: 1;
+            padding: var(--space-1) var(--space-2);
+            font-size: 10px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            color: var(--text-primary);
+            border-radius: var(--radius-sm);
+        }
+
+        .overlay-input {
+            width: 100%;
+            padding: var(--space-2) var(--space-3);
+            font-size: 11px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-default);
+            color: var(--text-primary);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--space-2);
+            transition: all var(--transition-fast);
+        }
+
+        .overlay-input:focus {
+            outline: none;
+            border-color: var(--accent-teal);
+        }
+
+        .overlay-input.title-input {
+            color: var(--accent-gold);
+            font-weight: 500;
+        }
+
+        .overlay-textarea {
+            width: 100%;
+            height: 80px;
+            padding: var(--space-2) var(--space-3);
+            font-size: 10px;
+            font-family: var(--font-mono);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-default);
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        .overlay-textarea:focus {
+            outline: none;
+            border-color: var(--accent-teal);
+        }
+
+        /* Stage actions */
+        .stage-actions {
+            margin-top: var(--space-4);
+            display: flex;
+            gap: var(--space-2);
+        }
+
+        .stage-actions .btn {
+            flex: 1;
+            padding: var(--space-2);
+            font-size: 10px;
+        }
+
+        /* ============================================
+           VISUAL TIMELINE
+           ============================================ */
+        .timeline-panel {
+            height: var(--timeline-height);
+            background: var(--bg-primary);
+            border-top: 1px solid var(--border-default);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .timeline-header {
+            padding: var(--space-3) var(--space-5);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-subtle);
+            background: var(--bg-elevated);
+        }
+
+        .timeline-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent-gold);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .timeline-title::before {
+            content: '';
+            width: 3px;
+            height: 10px;
+            background: var(--accent-gold);
+            border-radius: 2px;
+        }
+
+        .timeline-controls {
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+        }
+
+        .timeline-zoom {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .timeline-zoom label {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .timeline-zoom input[type="range"] {
+            width: 80px;
+            height: 4px;
+            background: var(--bg-surface);
+            border-radius: 2px;
+            cursor: pointer;
+            -webkit-appearance: none;
+        }
+
+        .timeline-zoom input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: var(--accent-teal);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 6px var(--accent-teal-glow);
+        }
+
+        .timeline-total {
+            font-size: 11px;
+            font-family: var(--font-mono);
+            color: var(--text-secondary);
+        }
+
+        .timeline-total strong {
+            color: var(--accent-teal);
+        }
+
+        /* Timeline scroll container */
+        .timeline-scroll {
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: var(--space-3) var(--space-5);
+        }
+
+        .timeline-ruler {
+            height: 20px;
+            background: var(--bg-surface);
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            position: relative;
+            min-width: 100%;
+        }
+
+        .timeline-ruler-mark {
+            position: absolute;
+            height: 100%;
+            border-left: 1px solid var(--border-default);
+        }
+
+        .timeline-ruler-label {
+            position: absolute;
+            top: 4px;
+            transform: translateX(-50%);
+            font-size: 9px;
+            font-family: var(--font-mono);
+            color: var(--text-muted);
+        }
+
+        .timeline-tracks {
+            position: relative;
+            height: 56px;
+            background: var(--bg-surface);
+            border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+            min-width: 100%;
+            cursor: pointer;
+        }
+
+        /* Timeline stage blocks */
+        .timeline-stage {
+            position: absolute;
+            height: 40px;
+            top: 8px;
+            background: linear-gradient(135deg, var(--bg-interactive) 0%, var(--bg-hover) 100%);
+            border: 2px solid var(--accent-teal);
+            border-radius: var(--radius-md);
+            cursor: move;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            transition: background 0.15s, box-shadow 0.15s;
+        }
+
+        .timeline-stage:hover {
+            background: linear-gradient(135deg, var(--bg-hover) 0%, #253545 100%);
+            box-shadow: 0 0 12px var(--accent-teal-glow);
+        }
+
+        .timeline-stage.active {
+            border-color: var(--accent-gold);
+            background: linear-gradient(135deg, #2a3a2a 0%, #1a3020 100%);
+            box-shadow: 0 0 16px var(--accent-gold-glow);
+        }
+
+        .timeline-stage.dragging {
+            opacity: 0.8;
+            z-index: 10;
+        }
+
+        .timeline-stage-label {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-primary);
+            padding: 0 var(--space-4);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        .timeline-resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 100%;
+            top: 0;
+            cursor: ew-resize;
+            background: transparent;
+            transition: background 0.15s;
+        }
+
+        .timeline-resize-handle:hover {
+            background: rgba(45, 212, 191, 0.3);
+        }
+
+        .timeline-resize-handle.left {
+            left: 0;
+            border-radius: var(--radius-md) 0 0 var(--radius-md);
+        }
+
+        .timeline-resize-handle.right {
+            right: 0;
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+        }
+
+        /* Transition zones */
+        .timeline-transition {
+            position: absolute;
+            height: 40px;
+            top: 8px;
+            background: repeating-linear-gradient(
+                45deg,
+                var(--bg-interactive),
+                var(--bg-interactive) 4px,
+                var(--bg-surface) 4px,
+                var(--bg-surface) 8px
+            );
+            border-radius: 3px;
+            opacity: 0.5;
+        }
+
+        /* Playhead */
+        .timeline-playhead {
+            position: absolute;
+            width: 2px;
+            height: calc(100% + 20px);
+            top: -20px;
+            background: var(--accent-gold);
+            z-index: 20;
+            pointer-events: none;
+            box-shadow: 0 0 8px var(--accent-gold-glow);
+        }
+
+        .timeline-playhead::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -5px;
+            width: 12px;
+            height: 12px;
+            background: var(--accent-gold);
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            box-shadow: 0 0 8px var(--accent-gold-glow);
+        }
+
+        .timeline-footer {
+            padding: var(--space-2) var(--space-5);
+            font-size: 10px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        /* ============================================
+           STATUS BAR
+           ============================================ */
+        .status-bar {
+            height: var(--statusbar-height);
+            background: var(--bg-elevated);
+            border-top: 1px solid var(--border-default);
+            display: flex;
+            align-items: center;
+            padding: 0 var(--space-5);
+            gap: var(--space-6);
+            flex-shrink: 0;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-size: 11px;
+        }
+
+        .status-label {
+            color: var(--text-muted);
+        }
+
+        .status-value {
+            font-family: var(--font-mono);
+            font-weight: 500;
+            color: var(--accent-teal);
+        }
+
+        .status-value.recording {
+            color: var(--status-recording);
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Progress bar */
+        .progress-bar {
+            flex: 1;
+            height: 4px;
+            background: var(--bg-surface);
+            border-radius: 2px;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-bar:hover {
+            height: 6px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-teal) 0%, var(--accent-gold) 100%);
+            border-radius: 2px;
+            transition: width 0.05s linear;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 8px;
+            height: 8px;
+            background: var(--accent-gold);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .progress-bar:hover .progress-fill::after {
+            opacity: 1;
+        }
+
+        /* ============================================
+           MODALS
+           ============================================ */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition-slow);
+        }
+
+        .modal.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-content {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-xl);
+            width: 95%;
+            max-width: 900px;
+            max-height: 85vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-lg), 0 0 60px rgba(0, 0, 0, 0.5);
+            transform: scale(0.95) translateY(10px);
+            transition: transform var(--transition-slow);
+        }
+
+        .modal.active .modal-content {
+            transform: scale(1) translateY(0);
+        }
+
+        .modal-header {
+            padding: var(--space-5);
+            border-bottom: 1px solid var(--border-default);
+            background: var(--bg-elevated);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        .modal-title-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-purple-dim);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all var(--transition-fast);
+        }
+
+        .modal-close:hover {
+            background: var(--bg-interactive);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--space-5);
+        }
+
+        .modal-footer {
+            padding: var(--space-4) var(--space-5);
+            border-top: 1px solid var(--border-default);
+            background: var(--bg-elevated);
+            display: flex;
+            justify-content: flex-end;
+            gap: var(--space-3);
+        }
+
+        /* ============================================
+           TABS
+           ============================================ */
+        .tabs {
+            display: flex;
+            gap: 2px;
+            margin-bottom: var(--space-5);
+            background: var(--bg-surface);
+            padding: 3px;
+            border-radius: var(--radius-md);
+        }
+
+        .tab {
+            flex: 1;
+            padding: var(--space-2) var(--space-4);
+            background: transparent;
+            border: none;
+            color: var(--text-tertiary);
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .tab:hover {
+            color: var(--text-secondary);
+            background: var(--bg-interactive);
+        }
+
+        .tab.active {
+            background: var(--bg-interactive);
+            color: var(--text-primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* ============================================
+           SHADER BROWSER
+           ============================================ */
+        .shader-browser {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .shader-folder {
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .shader-folder:last-child {
+            border-bottom: none;
+        }
+
+        .folder-header {
+            padding: var(--space-3) var(--space-4);
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            cursor: pointer;
+            transition: background var(--transition-fast);
+        }
+
+        .folder-header:hover {
+            background: var(--bg-interactive);
+        }
+
+        .folder-icon {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+
+        .folder-name {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--accent-gold);
+        }
+
+        .folder-contents {
+            display: none;
+            background: var(--bg-primary);
+        }
+
+        .folder-contents.expanded {
+            display: block;
+        }
+
+        .shader-file {
+            padding: var(--space-2) var(--space-4) var(--space-2) var(--space-8);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            border-left: 2px solid transparent;
+        }
+
+        .shader-file:hover {
+            background: var(--bg-interactive);
+        }
+
+        .shader-file.selected {
+            background: var(--accent-teal-dim);
+            border-left-color: var(--accent-teal);
+        }
+
+        .shader-file .file-icon {
+            font-size: 12px;
+            opacity: 0.5;
+        }
+
+        .shader-file .file-name {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .shader-file.selected .file-name {
+            color: var(--accent-teal);
+        }
+
+        .shader-file .file-path {
+            margin-left: auto;
+            font-size: 10px;
+            font-family: var(--font-mono);
+            color: var(--text-muted);
+        }
+
+        /* Export picker */
+        .shader-preview {
+            margin-top: var(--space-4);
+            padding: var(--space-4);
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+        }
+
+        .shader-preview-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent-teal);
+            margin-bottom: var(--space-3);
+        }
+
+        .export-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+        }
+
+        .export-section-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            padding: var(--space-1) 0;
+            margin-top: var(--space-2);
+        }
+
+        .export-item {
+            padding: var(--space-2) var(--space-3);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .export-item:hover {
+            background: var(--bg-interactive);
+            border-color: var(--border-strong);
+        }
+
+        .export-item.selected {
+            background: var(--accent-gold-dim);
+            border-color: var(--accent-gold);
+        }
+
+        .export-item .export-name {
+            font-size: 12px;
+            font-family: var(--font-mono);
+            color: var(--text-primary);
+        }
+
+        .export-item .export-type {
+            font-size: 10px;
+            padding: 2px 6px;
+            background: var(--bg-surface);
+            border-radius: var(--radius-sm);
+            color: var(--text-muted);
+        }
+
+        /* ============================================
+           FILE DROP ZONE
+           ============================================ */
+        .drop-zone {
+            border: 2px dashed var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: var(--space-10);
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition-base);
+        }
+
+        .drop-zone:hover,
+        .drop-zone.dragover {
+            border-color: var(--accent-teal);
+            background: var(--accent-teal-dim);
+        }
+
+        .drop-zone-icon {
+            font-size: 48px;
+            opacity: 0.3;
+            margin-bottom: var(--space-4);
+        }
+
+        .drop-zone-text {
+            color: var(--text-secondary);
+            margin-bottom: var(--space-3);
+        }
+
+        .drop-zone-hint {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* ============================================
+           EXTRACTED UNIFORMS
+           ============================================ */
+        .extracted-uniforms {
+            margin-top: var(--space-4);
+            padding: var(--space-4);
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+        }
+
+        .extracted-uniforms-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent-teal);
+            margin-bottom: var(--space-3);
+        }
+
+        .uniform-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+        }
+
+        .uniform-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-2) var(--space-3);
+            background: var(--bg-primary);
+            border-radius: var(--radius-sm);
+        }
+
+        .uniform-item .name {
+            font-size: 12px;
+            font-family: var(--font-mono);
+            color: var(--text-primary);
+            min-width: 120px;
+        }
+
+        .uniform-item .type {
+            font-size: 10px;
+            padding: 2px 6px;
+            background: var(--bg-surface);
+            border-radius: var(--radius-sm);
+            color: var(--text-muted);
+        }
+
+        .uniform-item input {
+            flex: 1;
+            padding: var(--space-2);
+            font-size: 11px;
+            font-family: var(--font-mono);
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            color: var(--text-primary);
+            border-radius: var(--radius-sm);
+        }
+
+        .uniform-item .auto-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* ============================================
+           SHADER TITLE INPUT
+           ============================================ */
+        .shader-title-group {
+            margin-top: var(--space-4);
+        }
+
+        .shader-title-group label {
+            display: block;
+            font-size: 10px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: var(--space-2);
+        }
+
+        .shader-title-input {
+            width: 100%;
+            padding: var(--space-3);
+            font-size: 14px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            color: var(--text-primary);
+            border-radius: var(--radius-md);
+            transition: all var(--transition-fast);
+        }
+
+        .shader-title-input:focus {
+            outline: none;
+            border-color: var(--accent-teal);
+            box-shadow: 0 0 0 3px var(--accent-teal-dim);
+        }
+
+        /* ============================================
+           JSON EDITOR MODAL
+           ============================================ */
+        .json-editor-description {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-4);
+        }
+
+        .json-textarea {
+            width: 100%;
+            height: 350px;
+            padding: var(--space-4);
+            font-size: 11px;
+            font-family: var(--font-mono);
+            line-height: 1.6;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            color: var(--text-primary);
+            border-radius: var(--radius-md);
+            resize: vertical;
+        }
+
+        .json-textarea:focus {
+            outline: none;
+            border-color: var(--accent-teal);
+        }
+
+        /* ============================================
+           PASTE CODE TAB
+           ============================================ */
+        .paste-textarea {
+            width: 100%;
+            height: 250px;
+            padding: var(--space-4);
+            font-size: 11px;
+            font-family: var(--font-mono);
+            line-height: 1.6;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            color: var(--text-secondary);
+            border-radius: var(--radius-md);
+            resize: vertical;
+        }
+
+        .paste-textarea:focus {
+            outline: none;
+            border-color: var(--accent-teal);
+            color: var(--text-primary);
+        }
+
+        .paste-textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* ============================================
+           LOADING SPINNER
+           ============================================ */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--bg-surface);
+            border-top-color: var(--accent-teal);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ============================================
+           HIDDEN FILE INPUT
+           ============================================ */
+        #file-input {
+            display: none;
+        }
+
+        /* ============================================
+           HELPER TEXT
+           ============================================ */
+        .helper-text {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: var(--space-3);
+        }
+
+        .helper-text code {
+            background: var(--bg-surface);
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- ============================================
+             HEADER / TOOLBAR
+             ============================================ -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">S</div>
+                <div class="logo-text">Shader <span>Studio</span></div>
+            </div>
+
+            <div class="header-controls">
+                <div class="control-group">
+                    <label>Duration</label>
+                    <input type="number" id="duration" value="3000" min="500" max="10000" step="100">
+                </div>
+                <div class="control-group">
+                    <label>Transition</label>
+                    <input type="number" id="transition" value="800" min="100" max="3000" step="100">
+                </div>
+                <div class="control-group">
+                    <label>Resolution</label>
+                    <select id="resolution">
+                        <option value="1920x1080">1920 x 1080</option>
+                        <option value="1280x720">1280 x 720</option>
+                        <option value="3840x2160">3840 x 2160</option>
+                        <option value="1080x1080">1080 x 1080</option>
+                        <option value="1080x1920">1080 x 1920</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="header-divider"></div>
+
+            <div class="header-actions">
+                <button class="btn btn-purple" onclick="openImportModal()">Import Shader</button>
+                <button class="btn btn-secondary" onclick="openShaderModal()">Edit JSON</button>
+                <button class="btn btn-secondary" onclick="clearSession()">Clear</button>
+                <button class="btn btn-secondary" onclick="toggleCodeOverlay()" id="code-overlay-btn">Code</button>
+                <div class="header-divider"></div>
+                <button class="btn btn-secondary" onclick="resetPlayback()">Reset</button>
+                <button class="btn btn-primary" onclick="togglePlayback()" id="play-btn">Play</button>
+                <button class="btn btn-record" onclick="toggleRecording()" id="record-btn">Record</button>
+            </div>
+        </header>
+
+        <!-- ============================================
+             MAIN CONTENT
+             ============================================ -->
+        <div class="main-content">
+            <!-- Viewport -->
+            <div class="viewport">
+                <div class="viewport-inner">
+                    <div class="canvas-frame">
+                        <canvas id="canvas"></canvas>
+                        <canvas id="overlay-canvas"></canvas>
+                    </div>
+                    <canvas id="composite-canvas"></canvas>
+
+                    <!-- Shader list overlay -->
+                    <div class="shader-list-overlay" id="shader-list">
+                        <h4>Stages</h4>
+                    </div>
+
+                    <!-- Code overlay (DOM version) -->
+                    <div class="code-overlay" id="code-overlay"></div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h3 class="sidebar-title">Stage Editor</h3>
+                    <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 10px;" onclick="exportProject()">Export</button>
+                </div>
+                <div class="sidebar-content" id="timeline-content">
+                    <!-- Stage cards populated by JS -->
+                </div>
+            </aside>
+        </div>
+
+        <!-- ============================================
+             TIMELINE PANEL
+             ============================================ -->
+        <div class="timeline-panel">
+            <div class="timeline-header">
+                <h3 class="timeline-title">Timeline</h3>
+                <div class="timeline-controls">
+                    <div class="timeline-zoom">
+                        <label>Zoom</label>
+                        <input type="range" id="timeline-zoom" min="0.5" max="3" step="0.1" value="1" oninput="updateVisualTimeline()">
+                    </div>
+                    <div class="timeline-total" id="timeline-total-time">Total: <strong>0.0s</strong></div>
+                </div>
+            </div>
+            <div class="timeline-scroll" id="timeline-scroll-container">
+                <div class="timeline-ruler" id="timeline-ruler"></div>
+                <div class="timeline-tracks" id="timeline-tracks" onclick="timelineSeek(event)">
+                    <div class="timeline-playhead" id="timeline-playhead"></div>
+                </div>
+            </div>
+            <div class="timeline-footer">
+                Drag edges to resize • Click to seek • Scroll to pan
+            </div>
+        </div>
+
+        <!-- ============================================
+             STATUS BAR
+             ============================================ -->
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-label">Stage</span>
+                <span class="status-value" id="current-stage">1/2</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Time</span>
+                <span class="status-value" id="time-display">0.0s</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Status</span>
+                <span class="status-value" id="status-text">Ready</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Debug</span>
+                <span class="status-value" id="debug-keyframe" style="font-size: 10px; max-width: 250px; overflow: hidden; text-overflow: ellipsis;">-</span>
+            </div>
+            <div class="progress-bar" id="progress-bar" onclick="seekTo(event)">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================
+         IMPORT MODAL
+         ============================================ -->
+    <div class="modal" id="import-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <span class="modal-title-icon">+</span>
+                    Import Shader
+                </h3>
+                <button class="modal-close" onclick="closeImportModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('browse')">Browse Project</button>
+                    <button class="tab" onclick="switchTab('file')">From File</button>
+                    <button class="tab" onclick="switchTab('paste')">Paste Code</button>
+                </div>
+
+                <!-- Browse Tab -->
+                <div class="tab-content active" id="tab-browse">
+                    <p class="helper-text">
+                        Select a shader from the project. Files from <code>shaders/</code> use window.SHADER_NAME format,
+                        files from <code>blog/shaders/</code> are raw GLSL.
+                    </p>
+                    <div class="shader-browser" id="shader-browser">
+                        <div class="shader-folder">
+                            <div class="folder-header" onclick="toggleFolder('main')">
+                                <span class="folder-icon">📁</span>
+                                <span class="folder-name">shaders/ (main)</span>
+                            </div>
+                            <div class="folder-contents" id="folder-main"></div>
+                        </div>
+                        <div class="shader-folder">
+                            <div class="folder-header" onclick="toggleFolder('blog')">
+                                <span class="folder-icon">📁</span>
+                                <span class="folder-name">blog/shaders/</span>
+                            </div>
+                            <div class="folder-contents expanded" id="folder-blog"></div>
+                        </div>
+                    </div>
+                    <div class="shader-preview" id="shader-preview" style="display: none;">
+                        <h4 class="shader-preview-title">Shader Exports</h4>
+                        <div class="export-list" id="export-list"></div>
+                    </div>
+                </div>
+
+                <!-- File Tab -->
+                <div class="tab-content" id="tab-file">
+                    <div class="drop-zone" id="import-zone" onclick="document.getElementById('file-input').click()">
+                        <div class="drop-zone-icon">📄</div>
+                        <p class="drop-zone-text">Drop .glsl or .glsl.js file here or click to browse</p>
+                        <p class="drop-zone-hint">Supports raw GLSL and window.SHADER_NAME format</p>
+                    </div>
+                    <input type="file" id="file-input" accept=".glsl,.glsl.js,.frag,.vert,.txt,.js" onchange="handleFileSelect(event)">
+                </div>
+
+                <!-- Paste Tab -->
+                <div class="tab-content" id="tab-paste">
+                    <textarea class="paste-textarea" id="paste-shader" placeholder="Paste your GLSL shader code here...
+
+Supports both formats:
+1. Raw GLSL (precision highp float; ...)
+2. window.SHADER_NAME = `...` format"></textarea>
+                </div>
+
+                <!-- Shader Title -->
+                <div class="shader-title-group">
+                    <label>Shader Title</label>
+                    <input type="text" class="shader-title-input" id="shader-title" placeholder="e.g., Step 3: Lighting">
+                </div>
+
+                <!-- Extracted Uniforms -->
+                <div class="extracted-uniforms" id="extracted-uniforms" style="display: none;">
+                    <h4 class="extracted-uniforms-title">Detected Uniforms</h4>
+                    <div class="uniform-list" id="uniform-list"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeImportModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="addImportedShader()">Add to Timeline</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================
+         JSON EDITOR MODAL
+         ============================================ -->
+    <div class="modal" id="shader-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <span class="modal-title-icon">{}</span>
+                    Edit Configuration
+                </h3>
+                <button class="modal-close" onclick="closeShaderModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="json-editor-description">
+                    Edit the full shader configuration including keyframes and animations.
+                </p>
+                <textarea class="json-textarea" id="shader-json"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeShaderModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="loadShadersFromJSON()">Apply Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // EASING FUNCTIONS
+        // ============================================
+        const easings = {
+            linear: t => t,
+            easeIn: t => t * t,
+            easeOut: t => t * (2 - t),
+            easeInOut: t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
+            easeInCubic: t => t * t * t,
+            easeOutCubic: t => (--t) * t * t + 1,
+            easeInOutCubic: t => t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1,
+            easeInQuart: t => t * t * t * t,
+            easeOutQuart: t => 1 - (--t) * t * t * t,
+            bounce: t => {
+                if (t < 1/2.75) return 7.5625 * t * t;
+                if (t < 2/2.75) return 7.5625 * (t -= 1.5/2.75) * t + 0.75;
+                if (t < 2.5/2.75) return 7.5625 * (t -= 2.25/2.75) * t + 0.9375;
+                return 7.5625 * (t -= 2.625/2.75) * t + 0.984375;
+            },
+            elastic: t => t === 0 ? 0 : t === 1 ? 1 : -Math.pow(2, 10 * (t - 1)) * Math.sin((t - 1.1) * 5 * Math.PI)
+        };
+
+        // ============================================
+        // DEFAULT SHADERS
+        // ============================================
+        const DEFAULT_SHADERS = [
+            {
+                title: "Step 1: Squircle SDF",
+                code: `precision highp float;
+varying vec2 v_uv;
+uniform float u_time;
+uniform float u_n;
+uniform vec2 u_resolution;
+
+float sdSquircle(vec2 p, vec2 size, float n) {
+    vec2 d = abs(p) / size;
+    float dist = pow(pow(d.x, n) + pow(d.y, n), 1.0 / n);
+    return (dist - 1.0) * min(size.x, size.y);
+}
+
+void main() {
+    vec2 uv = v_uv;
+    vec2 p = (uv - 0.5) * u_resolution;
+    float padding = 40.0;
+    float squareSize = (min(u_resolution.x, u_resolution.y) - padding) * 0.5;
+    vec2 size = vec2(squareSize);
+    float d = sdSquircle(p, size, u_n);
+
+    vec3 darkBlue = vec3(0.02, 0.05, 0.12);
+    vec3 cyan = vec3(0.176, 0.831, 0.749);
+    vec3 gold = vec3(0.91, 0.725, 0.137);
+    vec3 darkGold = vec3(0.35, 0.25, 0.05);
+
+    float stripWidth = 6.0;
+    float stripGap = 20.0;
+    float stripPeriod = stripWidth + stripGap;
+    float distFromEdge = abs(d);
+    float stripPhase = mod(distFromEdge, stripPeriod);
+    float aa = 1.5;
+    float strip = smoothstep(0.0, aa, stripPhase) * (1.0 - smoothstep(stripWidth - aa, stripWidth, stripPhase));
+    float maxDist = 180.0;
+    float t = clamp(distFromEdge / maxDist, 0.0, 1.0);
+    float inside = step(d, 0.0);
+    vec3 outsideColor = mix(cyan, darkBlue, t);
+    vec3 insideColor = mix(gold, darkGold, t);
+    vec3 stripColor = mix(outsideColor, insideColor, inside);
+    vec3 outsideFill = mix(cyan * 0.4, darkBlue * 0.8, t);
+    vec3 insideFill = mix(gold * 0.5, darkGold * 0.8, t);
+    vec3 fillColor = mix(outsideFill, insideFill, inside);
+    vec3 color = mix(fillColor, stripColor, strip);
+
+    gl_FragColor = vec4(color, 1.0);
+}`,
+                uniforms: {
+                    u_time: { type: 'float', value: 0.0 },
+                    u_n: { type: 'float', value: 4.0 },
+                    u_resolution: { type: 'vec2', value: [1920, 1080] }
+                },
+                duration: 3000,
+                animations: {
+                    u_n: { from: 2.0, to: 4.0, easing: 'easeInOut' }
+                },
+                overlay: {
+                    position: 'bottom-left',
+                    title: 'Squircle SDF',
+                    code: `float sdSquircle(vec2 p, vec2 size, float n) {
+    vec2 d = abs(p) / size;
+    float dist = pow(pow(d.x, n) + pow(d.y, n), 1.0/n);
+    return (dist - 1.0) * min(size.x, size.y);
+}`
+                }
+            },
+            {
+                title: "Step 2: Bevel Geometry",
+                code: `precision highp float;
+varying vec2 v_uv;
+uniform float u_time;
+uniform float u_n;
+uniform float u_bevelWidth;
+uniform float u_bevelDepth;
+uniform vec2 u_resolution;
+
+float sdSquircle(vec2 p, vec2 size, float n) {
+    vec2 d = abs(p) / size;
+    float dist = pow(pow(d.x, n) + pow(d.y, n), 1.0 / n);
+    return (dist - 1.0) * min(size.x, size.y);
+}
+
+struct BevelGeometry {
+    vec2 gradDir;
+    float bevelAmount;
+    float edgeFactor;
+};
+
+BevelGeometry computeBevelGeometry(vec2 p, vec2 shapeSize, float squircleN, float edgeWidth, float bevelDepth) {
+    BevelGeometry result;
+    float d = sdSquircle(p, shapeSize, squircleN);
+    float edgeDist = -d;
+    result.edgeFactor = 1.0 - smoothstep(0.0, edgeWidth, edgeDist);
+    float zonePos = clamp(1.0 - edgeDist / edgeWidth, 0.0, 1.0);
+    float x2 = zonePos * zonePos * bevelDepth;
+    float denom = max(1.0 - x2, 0.01);
+    float surfaceAngle = atan(zonePos * sqrt(bevelDepth) / sqrt(denom));
+    result.bevelAmount = surfaceAngle * result.edgeFactor;
+    float eps = max(2.0, edgeWidth * 0.05);
+    float dx = sdSquircle(p + vec2(eps, 0.0), shapeSize, squircleN) - sdSquircle(p - vec2(eps, 0.0), shapeSize, squircleN);
+    float dy = sdSquircle(p + vec2(0.0, eps), shapeSize, squircleN) - sdSquircle(p - vec2(0.0, eps), shapeSize, squircleN);
+    result.gradDir = normalize(vec2(dx, dy) + 0.0001);
+    return result;
+}
+
+void main() {
+    vec2 uv = v_uv;
+    vec2 p = (uv - 0.5) * u_resolution;
+    float padding = 40.0;
+    float squareSize = (min(u_resolution.x, u_resolution.y) - padding) * 0.5;
+    vec2 size = vec2(squareSize);
+    float d = sdSquircle(p, size, u_n);
+    BevelGeometry bevel = computeBevelGeometry(p, size, u_n, u_bevelWidth, u_bevelDepth);
+    vec3 bg = vec3(0.02, 0.03, 0.05);
+    vec3 bevelViz = vec3(
+        (bevel.gradDir * 0.5 + 0.5) * bevel.bevelAmount,
+        bevel.bevelAmount
+    );
+    float mask = 1.0 - smoothstep(-1.5, 1.5, d);
+    vec3 color = mix(bg, bevelViz, mask);
+    gl_FragColor = vec4(color, 1.0);
+}`,
+                uniforms: {
+                    u_time: { type: 'float', value: 0.0 },
+                    u_n: { type: 'float', value: 4.0 },
+                    u_bevelWidth: { type: 'float', value: 40.0 },
+                    u_bevelDepth: { type: 'float', value: 1.0 },
+                    u_resolution: { type: 'vec2', value: [1920, 1080] }
+                },
+                duration: 4000,
+                animations: {
+                    u_bevelWidth: { from: 10.0, to: 40.0, easing: 'easeOut' },
+                    u_bevelDepth: { from: 0.2, to: 1.0, easing: 'easeInOut' }
+                },
+                overlay: {
+                    position: 'bottom-left',
+                    title: 'Bevel Geometry',
+                    code: `float bevelAmount = 1.0 - smoothstep(-bevelWidth, 0.0, sdf);
+vec3 normal = normalize(vec3(gradDir * bevelAmount, 1.0));`
+                }
+            }
+        ];
+
+        // Global transition duration
+        let transitionDuration = 800;
+
+        const VERTEX_SHADER = `
+            attribute vec2 a_position;
+            varying vec2 v_uv;
+            void main() {
+                v_uv = a_position * 0.5 + 0.5;
+                gl_Position = vec4(a_position, 0.0, 1.0);
+            }
+        `;
+
+        const TRANSITION_SHADER = `
+            precision highp float;
+            uniform sampler2D u_texA;
+            uniform sampler2D u_texB;
+            uniform float u_blend;
+            varying vec2 v_uv;
+
+            void main() {
+                vec4 colorA = texture2D(u_texA, v_uv);
+                vec4 colorB = texture2D(u_texB, v_uv);
+                float t = smoothstep(0.0, 1.0, u_blend);
+                gl_FragColor = mix(colorA, colorB, t);
+            }
+        `;
+
+        // ============================================
+        // STATE
+        // ============================================
+        let shaders = JSON.parse(JSON.stringify(DEFAULT_SHADERS));
+        let gl, canvas;
+        let overlayCanvas, overlayCtx;
+        let compositeCanvas, compositeCtx;
+        let programs = [];
+        let framebuffers = [];
+        let textures = [];
+        let transitionProgram = null;
+        let quadBuffer = null;
+
+        let isPlaying = false;
+        let isRecording = false;
+        let startTime = 0;
+        let pausedTime = 0;
+        let mediaRecorder = null;
+        let recordedChunks = [];
+
+        let importedShaderCode = '';
+        let extractedUniforms = {};
+
+        // Track expanded states
+        let expandedStages = new Set();
+        let expandedAnimations = new Set();
+        let timelineDrag = null;
+
+        // Code overlay state
+        let showCodeOverlay = false;
+        let currentShaderIndex = 0;
+        let currentEditingShader = null;
+
+        // ============================================
+        // SESSION PERSISTENCE
+        // ============================================
+        const SESSION_KEY = 'shader-video-preview-session';
+
+        function saveSession() {
+            try {
+                const session = {
+                    shaders: shaders,
+                    transitionDuration: transitionDuration,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+            } catch (e) {
+                console.warn('Failed to save session:', e);
+            }
+        }
+
+        function loadSession() {
+            try {
+                const saved = localStorage.getItem(SESSION_KEY);
+                if (saved) {
+                    const session = JSON.parse(saved);
+                    if (session.shaders && session.shaders.length > 0) {
+                        // Validate shaders have actual code
+                        const validShaders = session.shaders.filter(s =>
+                            s.code && s.code.includes('void main')
+                        );
+                        if (validShaders.length > 0) {
+                            shaders = validShaders;
+                            if (session.transitionDuration) {
+                                transitionDuration = session.transitionDuration;
+                                const transitionInput = document.getElementById('transition');
+                                if (transitionInput) transitionInput.value = transitionDuration;
+                            }
+                            console.log('Loaded', shaders.length, 'valid shaders from session');
+                            return true;
+                        } else {
+                            console.warn('Session had no valid shaders, using defaults');
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to load session:', e);
+            }
+            return false;
+        }
+
+        function clearSession() {
+            localStorage.removeItem(SESSION_KEY);
+            shaders = JSON.parse(JSON.stringify(DEFAULT_SHADERS));
+            recompileAllShaders();
+            updateTimelinePanel();
+            updateVisualTimeline();
+        }
+
+        let saveTimeout = null;
+        function scheduleSave() {
+            if (saveTimeout) clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(saveSession, 1000);
+        }
+
+        // ============================================
+        // WEBGL INITIALIZATION
+        // ============================================
+        function init() {
+            canvas = document.getElementById('canvas');
+            gl = canvas.getContext('webgl', { preserveDrawingBuffer: true });
+
+            if (!gl) {
+                alert('WebGL not supported');
+                return;
+            }
+
+            overlayCanvas = document.getElementById('overlay-canvas');
+            overlayCtx = overlayCanvas.getContext('2d');
+
+            compositeCanvas = document.getElementById('composite-canvas');
+            compositeCtx = compositeCanvas.getContext('2d');
+
+            // Load session or use defaults
+            loadSession();
+
+            // Setup quad buffer
+            quadBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+
+            // Initial setup
+            updateResolution();
+            rebuildPrograms();
+            updateTimelinePanel();
+            updateVisualTimeline();
+            updateShaderList();
+
+            // Event listeners
+            document.getElementById('resolution').addEventListener('change', updateResolution);
+            document.getElementById('duration').addEventListener('change', () => {
+                scheduleSave();
+            });
+            document.getElementById('transition').addEventListener('change', (e) => {
+                transitionDuration = parseInt(e.target.value) || 800;
+                updateVisualTimeline();
+                scheduleSave();
+            });
+
+            // Setup drag/drop for file import
+            const dropZone = document.getElementById('import-zone');
+            if (dropZone) {
+                dropZone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('dragover');
+                });
+                dropZone.addEventListener('dragleave', () => {
+                    dropZone.classList.remove('dragover');
+                });
+                dropZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('dragover');
+                    const file = e.dataTransfer.files[0];
+                    if (file) loadFile(file);
+                });
+            }
+
+            // Handle window resize
+            window.addEventListener('resize', fitCanvasToViewport);
+
+            // Start render loop
+            requestAnimationFrame(render);
+        }
+
+        function updateResolution() {
+            const res = document.getElementById('resolution').value.split('x');
+            const width = parseInt(res[0]);
+            const height = parseInt(res[1]);
+
+            canvas.width = width;
+            canvas.height = height;
+            overlayCanvas.width = width;
+            overlayCanvas.height = height;
+            compositeCanvas.width = width;
+            compositeCanvas.height = height;
+
+            gl.viewport(0, 0, width, height);
+
+            // Update resolution uniforms
+            shaders.forEach(s => {
+                if (s.uniforms.u_resolution) {
+                    s.uniforms.u_resolution.value = [width, height];
+                }
+            });
+
+            // Recreate framebuffers at new resolution
+            createFramebuffers();
+
+            // Scale canvas display to fit viewport
+            fitCanvasToViewport();
+        }
+
+        function fitCanvasToViewport() {
+            const viewportInner = document.querySelector('.viewport-inner');
+            if (!viewportInner) return;
+
+            const padding = 48; // var(--space-6) * 2
+            const availableWidth = viewportInner.clientWidth - padding;
+            const availableHeight = viewportInner.clientHeight - padding;
+
+            const canvasAspect = canvas.width / canvas.height;
+            const viewportAspect = availableWidth / availableHeight;
+
+            let displayWidth, displayHeight;
+
+            if (canvasAspect > viewportAspect) {
+                // Canvas is wider than viewport - fit to width
+                displayWidth = availableWidth;
+                displayHeight = availableWidth / canvasAspect;
+            } else {
+                // Canvas is taller than viewport - fit to height
+                displayHeight = availableHeight;
+                displayWidth = availableHeight * canvasAspect;
+            }
+
+            canvas.style.width = displayWidth + 'px';
+            canvas.style.height = displayHeight + 'px';
+            overlayCanvas.style.width = displayWidth + 'px';
+            overlayCanvas.style.height = displayHeight + 'px';
+        }
+
+        function createFramebuffers() {
+            // Clean up old framebuffers
+            framebuffers.forEach(fb => {
+                if (fb.framebuffer) gl.deleteFramebuffer(fb.framebuffer);
+                if (fb.texture) gl.deleteTexture(fb.texture);
+            });
+            framebuffers = [];
+            textures = [];
+
+            // Create framebuffers for each shader
+            for (let i = 0; i < shaders.length; i++) {
+                const fb = gl.createFramebuffer();
+                const tex = gl.createTexture();
+
+                gl.bindTexture(gl.TEXTURE_2D, tex);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvas.width, canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+                gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+
+                framebuffers.push({ framebuffer: fb, texture: tex });
+                textures.push(tex);
+            }
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        }
+
+        function compileShader(source, type) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        function createProgram(vertSource, fragSource) {
+            const vert = compileShader(vertSource, gl.VERTEX_SHADER);
+            const frag = compileShader(fragSource, gl.FRAGMENT_SHADER);
+
+            if (!vert || !frag) return null;
+
+            const program = gl.createProgram();
+            gl.attachShader(program, vert);
+            gl.attachShader(program, frag);
+            gl.linkProgram(program);
+
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error('Program link error:', gl.getProgramInfoLog(program));
+                return null;
+            }
+
+            return program;
+        }
+
+        function rebuildPrograms() {
+            // Clean up old programs
+            programs.forEach(p => { if (p) gl.deleteProgram(p); });
+            programs = [];
+
+            // Compile shader programs
+            shaders.forEach((shader, i) => {
+                const program = createProgram(VERTEX_SHADER, shader.code);
+                if (!program) {
+                    console.error('Shader', i, ':', shader.title, '- FAILED to compile');
+                }
+                programs.push(program);
+            });
+
+            // Create transition program
+            if (transitionProgram) gl.deleteProgram(transitionProgram);
+            transitionProgram = createProgram(VERTEX_SHADER, TRANSITION_SHADER);
+
+            createFramebuffers();
+        }
+
+        function recompileAllShaders() {
+            rebuildPrograms();
+            updateShaderList();
+        }
+
+        // ============================================
+        // TIMELINE CALCULATIONS
+        // ============================================
+        function getTotalDuration() {
+            let total = 0;
+            shaders.forEach((s, i) => {
+                total += s.duration || 3000;
+                if (i < shaders.length - 1) {
+                    total += transitionDuration;
+                }
+            });
+            return total;
+        }
+
+        function getTimelineState(elapsed) {
+            let accumulated = 0;
+
+            for (let i = 0; i < shaders.length; i++) {
+                const duration = shaders[i].duration || 3000;
+                const stageEnd = accumulated + duration;
+
+                // In this shader stage
+                if (elapsed < stageEnd) {
+                    const stageProgress = (elapsed - accumulated) / duration;
+                    return {
+                        shaderIndex: i,
+                        stageProgress: stageProgress,
+                        inTransition: false,
+                        blend: 0
+                    };
+                }
+
+                accumulated = stageEnd;
+
+                // Check if in transition to next
+                if (i < shaders.length - 1) {
+                    const transEnd = accumulated + transitionDuration;
+                    if (elapsed < transEnd) {
+                        const blend = (elapsed - accumulated) / transitionDuration;
+                        return {
+                            shaderIndex: i,
+                            nextIndex: i + 1,
+                            stageProgress: 1,
+                            inTransition: true,
+                            blend: blend
+                        };
+                    }
+                    accumulated = transEnd;
+                }
+            }
+
+            // Past end - return last shader
+            return {
+                shaderIndex: shaders.length - 1,
+                stageProgress: 1,
+                inTransition: false,
+                blend: 0
+            };
+        }
+
+        // ============================================
+        // UNIFORM ANIMATION
+        // ============================================
+
+        // Get the final value of a uniform from the previous shader (for inheritance)
+        function getPreviousShaderFinalValue(shaderIndex, uniformName) {
+            if (shaderIndex <= 0) return null;
+
+            const prevShader = shaders[shaderIndex - 1];
+            if (!prevShader) return null;
+
+            const prevUniform = prevShader.uniforms?.[uniformName];
+            if (!prevUniform) return null;
+
+            // Check if previous shader had an animation for this uniform
+            const prevAnimation = prevShader.animations?.[uniformName];
+            if (prevAnimation && prevAnimation.to !== undefined) {
+                return prevAnimation.to;
+            }
+
+            // Otherwise return the uniform's static value
+            return prevUniform.value;
+        }
+
+        // Check if a uniform is inherited from previous shader
+        function isUniformInherited(shaderIndex, uniformName) {
+            if (shaderIndex <= 0) return false;
+
+            const prevShader = shaders[shaderIndex - 1];
+            const currShader = shaders[shaderIndex];
+
+            if (!prevShader || !currShader) return false;
+
+            // Check if both shaders have this uniform
+            const prevHasUniform = prevShader.uniforms?.[uniformName] !== undefined;
+            const currHasUniform = currShader.uniforms?.[uniformName] !== undefined;
+
+            return prevHasUniform && currHasUniform;
+        }
+
+        function getAnimatedUniformValue(shader, uniformName, stageProgress, shaderIndex) {
+            const uniform = shader.uniforms[uniformName];
+            if (!uniform) return null;
+
+            const animation = shader.animations?.[uniformName];
+
+            // Get inherited value from previous shader if applicable
+            const inheritedValue = getPreviousShaderFinalValue(shaderIndex, uniformName);
+
+            if (!animation || animation.from === undefined || animation.to === undefined) {
+                // No animation - use inherited value if available, otherwise default
+                return inheritedValue !== null ? inheritedValue : uniform.value;
+            }
+
+            // Use inherited value as 'from' if this uniform exists in previous shader
+            const fromValue = inheritedValue !== null ? inheritedValue : animation.from;
+
+            // Get animation range (default 0-100%)
+            const startPct = animation.start !== undefined ? animation.start : 0;
+            const endPct = animation.end !== undefined ? animation.end : 100;
+
+            // Calculate progress within animation range
+            const progressPct = stageProgress * 100;
+            let t;
+
+            if (progressPct <= startPct) {
+                t = 0;
+            } else if (progressPct >= endPct) {
+                t = 1;
+            } else {
+                t = (progressPct - startPct) / (endPct - startPct);
+            }
+
+            // Apply easing
+            const easingFn = easings[animation.easing] || easings.linear;
+            const easedT = easingFn(t);
+
+            // Interpolate value (use inherited fromValue)
+            const to = animation.to;
+
+            if (Array.isArray(fromValue)) {
+                return fromValue.map((v, i) => v + (to[i] - v) * easedT);
+            }
+            return fromValue + (to - fromValue) * easedT;
+        }
+
+        function setUniforms(program, shader, stageProgress, time, shaderIndex) {
+            for (const [name, uniform] of Object.entries(shader.uniforms)) {
+                const loc = gl.getUniformLocation(program, name);
+                if (!loc) continue;
+
+                let value = getAnimatedUniformValue(shader, name, stageProgress, shaderIndex);
+
+                // Handle system uniforms
+                if (name === 'u_time') {
+                    value = time / 1000;
+                } else if (name === 'u_resolution') {
+                    value = [canvas.width, canvas.height];
+                }
+
+                // Set uniform based on type
+                if (uniform.type === 'float') {
+                    gl.uniform1f(loc, value);
+                } else if (uniform.type === 'vec2') {
+                    gl.uniform2fv(loc, value);
+                } else if (uniform.type === 'vec3') {
+                    gl.uniform3fv(loc, value);
+                } else if (uniform.type === 'vec4') {
+                    gl.uniform4fv(loc, value);
+                }
+            }
+        }
+
+        // ============================================
+        // RENDER LOOP
+        // ============================================
+        function render() {
+            const now = performance.now();
+            let elapsed;
+
+            if (isPlaying) {
+                elapsed = now - startTime;
+                const total = getTotalDuration();
+
+                if (elapsed >= total) {
+                    if (isRecording) {
+                        stopRecording();
+                    }
+                    // Stop at end instead of looping
+                    elapsed = total;
+                    pausedTime = total;
+                    isPlaying = false;
+                    document.getElementById('play-btn').textContent = 'Play';
+                }
+            } else {
+                elapsed = pausedTime;
+            }
+
+            const state = getTimelineState(elapsed);
+            renderFrame(state, elapsed);
+            renderCodeOverlay();
+            updateComposite();
+            updatePlaybackUI(state, elapsed);
+
+            requestAnimationFrame(render);
+        }
+
+        function updatePlaybackUI(state, elapsed) {
+            // Track current shader for code overlay
+            currentShaderIndex = state.shaderIndex;
+
+            // Update progress bar
+            const total = getTotalDuration();
+            const progress = Math.min(elapsed / total, 1) * 100;
+
+            const progressFill = document.getElementById('progress-fill');
+            if (progressFill) {
+                progressFill.style.width = `${progress}%`;
+            }
+
+            // Update time display
+            const timeDisplay = document.getElementById('time-display');
+            if (timeDisplay) {
+                timeDisplay.textContent = `${(elapsed / 1000).toFixed(1)}s`;
+            }
+
+            // Update current stage display
+            const stageNum = state.inTransition ? `${state.shaderIndex + 1}→${state.nextIndex + 1}` : (state.shaderIndex + 1);
+            const stageDisplay = document.getElementById('current-stage');
+            if (stageDisplay) {
+                stageDisplay.textContent = `${stageNum}/${shaders.length}`;
+            }
+
+            // Update status text
+            const statusEl = document.getElementById('status-text');
+            if (statusEl) {
+                if (isRecording) {
+                    statusEl.textContent = 'Recording';
+                    statusEl.classList.add('recording');
+                } else if (isPlaying) {
+                    statusEl.textContent = 'Playing';
+                    statusEl.classList.remove('recording');
+                } else {
+                    statusEl.textContent = 'Ready';
+                    statusEl.classList.remove('recording');
+                }
+            }
+
+            // Update playhead position on visual timeline
+            const playhead = document.getElementById('timeline-playhead');
+            const tracks = document.getElementById('timeline-tracks');
+            if (playhead && tracks) {
+                // Use the same width calculation as updateVisualTimeline
+                const zoom = parseFloat(document.getElementById('timeline-zoom')?.value) || 1;
+                const scrollContainer = document.querySelector('.timeline-scroll');
+                const containerWidth = scrollContainer ? scrollContainer.clientWidth - 40 : 800;
+                const totalWidth = Math.max(containerWidth, 600) * zoom;
+                const playheadPos = (progress / 100) * totalWidth;
+                playhead.style.left = `${playheadPos}px`;
+            }
+
+            // Highlight current shader in list
+            updateShaderListHighlight(state);
+        }
+
+        function renderFrame(state, elapsed) {
+            const program = programs[state.shaderIndex];
+            if (!program) {
+                console.warn('No program for shader index:', state.shaderIndex);
+                return;
+            }
+
+            // Handle transition - need framebuffers
+            if (state.inTransition && state.nextIndex !== undefined && programs[state.nextIndex]) {
+                // Render current shader to framebuffer
+                gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[state.shaderIndex]?.framebuffer || null);
+                gl.viewport(0, 0, canvas.width, canvas.height);
+                gl.useProgram(program);
+
+                const posLoc = gl.getAttribLocation(program, 'a_position');
+                gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+                gl.enableVertexAttribArray(posLoc);
+                gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+                setUniforms(program, shaders[state.shaderIndex], state.stageProgress, elapsed, state.shaderIndex);
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+                // Render next shader to its framebuffer
+                const nextProgram = programs[state.nextIndex];
+                gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[state.nextIndex]?.framebuffer || null);
+                gl.useProgram(nextProgram);
+
+                const nextPosLoc = gl.getAttribLocation(nextProgram, 'a_position');
+                gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+                gl.enableVertexAttribArray(nextPosLoc);
+                gl.vertexAttribPointer(nextPosLoc, 2, gl.FLOAT, false, 0, 0);
+
+                // Next shader stays at initial state (stageProgress = 0) during transition
+                // Animation only starts when it becomes the current shader
+                setUniforms(nextProgram, shaders[state.nextIndex], 0, elapsed, state.nextIndex);
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+                // Blend to screen
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                gl.useProgram(transitionProgram);
+
+                const blendPosLoc = gl.getAttribLocation(transitionProgram, 'a_position');
+                gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+                gl.enableVertexAttribArray(blendPosLoc);
+                gl.vertexAttribPointer(blendPosLoc, 2, gl.FLOAT, false, 0, 0);
+
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, textures[state.shaderIndex]);
+                gl.uniform1i(gl.getUniformLocation(transitionProgram, 'u_texA'), 0);
+
+                gl.activeTexture(gl.TEXTURE1);
+                gl.bindTexture(gl.TEXTURE_2D, textures[state.nextIndex]);
+                gl.uniform1i(gl.getUniformLocation(transitionProgram, 'u_texB'), 1);
+
+                gl.uniform1f(gl.getUniformLocation(transitionProgram, 'u_blend'), state.blend);
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            } else {
+                // No transition - render directly to screen
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                gl.viewport(0, 0, canvas.width, canvas.height);
+                gl.useProgram(program);
+
+                const posLoc = gl.getAttribLocation(program, 'a_position');
+                gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+                gl.enableVertexAttribArray(posLoc);
+                gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+                setUniforms(program, shaders[state.shaderIndex], state.stageProgress, elapsed, state.shaderIndex);
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            }
+        }
+
+        function updatePlayhead(progress) {
+            const tracks = document.getElementById('timeline-tracks');
+            const playhead = document.getElementById('timeline-playhead');
+            if (!tracks || !playhead) return;
+
+            const width = tracks.scrollWidth;
+            playhead.style.left = (progress * width) + 'px';
+        }
+
+        function updateShaderListHighlight(state) {
+            const items = document.querySelectorAll('.shader-list-item');
+            items.forEach((item, i) => {
+                item.classList.remove('active', 'transitioning');
+                if (state.inTransition) {
+                    if (i === state.shaderIndex || i === state.nextIndex) {
+                        item.classList.add('transitioning');
+                    }
+                } else if (i === state.shaderIndex) {
+                    item.classList.add('active');
+                }
+            });
+        }
+
+        // ============================================
+        // SHADER LIST (viewport overlay)
+        // ============================================
+        function updateShaderList() {
+            const container = document.getElementById('shader-list');
+            container.innerHTML = '<h4>Stages</h4>';
+
+            shaders.forEach((shader, i) => {
+                const item = document.createElement('div');
+                item.className = 'shader-list-item';
+                item.textContent = shader.title || `Stage ${i + 1}`;
+                container.appendChild(item);
+            });
+        }
+
+        // ============================================
+        // TIMELINE PANEL (sidebar stage cards)
+        // ============================================
+        function updateTimelinePanel() {
+            const container = document.getElementById('timeline-content');
+            container.innerHTML = '';
+
+            shaders.forEach((shader, index) => {
+                const isExpanded = expandedStages.has(index);
+                const animCount = shader.animations ? Object.keys(shader.animations).length : 0;
+
+                const card = document.createElement('div');
+                card.className = `stage-card${isExpanded ? ' expanded' : ''}`;
+                card.innerHTML = `
+                    <div class="stage-card-header" onclick="toggleStageExpand(${index})">
+                        <div class="stage-number">${index + 1}</div>
+                        <div class="stage-title">${shader.title || `Stage ${index + 1}`}</div>
+                        <div class="stage-badges">
+                            <span class="stage-badge duration">${(shader.duration / 1000).toFixed(1)}s</span>
+                            ${animCount > 0 ? `<span class="stage-badge anim">${animCount} anim</span>` : ''}
+                        </div>
+                        <div class="stage-expand-icon">▼</div>
+                    </div>
+                    <div class="stage-card-body">
+                        <div class="duration-row">
+                            <label>Duration</label>
+                            <input type="number" value="${shader.duration}" min="500" step="100"
+                                   onchange="updateStageDuration(${index}, this.value)">
+                            <span class="unit">ms</span>
+                        </div>
+
+                        ${renderUniformsSection(shader, index)}
+
+                        <div class="overlay-section">
+                            <div class="overlay-section-header">
+                                <span class="overlay-section-title">Code Overlay</span>
+                                <select class="overlay-position-select" onchange="updateOverlayPosition(${index}, this.value)">
+                                    <option value="bottom-left" ${shader.overlay?.position === 'bottom-left' ? 'selected' : ''}>Bottom Left</option>
+                                    <option value="bottom-right" ${shader.overlay?.position === 'bottom-right' ? 'selected' : ''}>Bottom Right</option>
+                                    <option value="top-left" ${shader.overlay?.position === 'top-left' ? 'selected' : ''}>Top Left</option>
+                                    <option value="top-right" ${shader.overlay?.position === 'top-right' ? 'selected' : ''}>Top Right</option>
+                                    <option value="center" ${shader.overlay?.position === 'center' ? 'selected' : ''}>Center</option>
+                                </select>
+                            </div>
+                            <input type="text" class="overlay-input title-input" placeholder="Overlay title..."
+                                   value="${shader.overlay?.title || ''}"
+                                   onchange="updateOverlayTitle(${index}, this.value)">
+                            <textarea class="overlay-textarea" placeholder="Code snippet to display..."
+                                      onchange="updateOverlayCode(${index}, this.value)">${shader.overlay?.code || ''}</textarea>
+                        </div>
+
+                        <div class="stage-actions">
+                            <button class="btn btn-secondary" onclick="duplicateStage(${index})">Duplicate</button>
+                            <button class="btn btn-secondary" style="color: var(--accent-red);" onclick="removeShaderStage(${index})">Remove</button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderUniformsSection(shader, shaderIndex) {
+            const uniforms = shader.uniforms || {};
+            const animations = shader.animations || {};
+
+            let html = '';
+            for (const [name, uniform] of Object.entries(uniforms)) {
+                const isSystem = name === 'u_time' || name === 'u_resolution';
+                const inherited = isUniformInherited(shaderIndex, name);
+                const inheritedValue = inherited ? getPreviousShaderFinalValue(shaderIndex, name) : null;
+                const hasAnimation = animations[name] !== undefined;
+                const isExpanded = expandedAnimations.has(`${shaderIndex}-${name}`);
+                const isLocked = isSystem || inherited;
+
+                // Display the inherited value if applicable
+                const displayValue = inherited ? inheritedValue : uniform.value;
+
+                html += `
+                    <div class="uniform-row ${isLocked ? 'inherited' : ''}">
+                        <span class="uniform-name">
+                            ${isLocked ? '<span class="lock-icon">🔒</span>' : ''}
+                            ${name}
+                            ${inherited ? '<span class="inherited-label">(inherited)</span>' : ''}
+                        </span>
+                        <span class="uniform-type">${uniform.type}</span>
+                        <span class="uniform-value">${formatUniformValue(displayValue)}</span>
+                        ${!isLocked ? `
+                            <button class="keyframe-btn ${hasAnimation ? 'active' : ''}"
+                                    onclick="toggleAnimationEditor(${shaderIndex}, '${name}')"
+                                    title="${hasAnimation ? 'Edit animation' : 'Add animation'}">◆</button>
+                        ` : ''}
+                    </div>
+                    ${!isLocked && isExpanded ? renderAnimationEditor(shaderIndex, name, uniform, animations[name]) : ''}
+                `;
+            }
+            return html;
+        }
+
+        function formatUniformValue(value) {
+            if (Array.isArray(value)) {
+                return `[${value.map(v => typeof v === 'number' ? v.toFixed(1) : v).join(', ')}]`;
+            }
+            return typeof value === 'number' ? value.toFixed(2) : value;
+        }
+
+        function renderAnimationEditor(shaderIndex, uniformName, uniform, animation) {
+            const anim = animation || { from: uniform.value, to: uniform.value, easing: 'linear', start: 0, end: 100 };
+            const isArray = Array.isArray(uniform.value);
+
+            return `
+                <div class="anim-editor active">
+                    <div class="anim-row">
+                        <label>From</label>
+                        <input type="${isArray ? 'text' : 'number'}" step="0.1"
+                               value="${isArray ? JSON.stringify(anim.from) : anim.from}"
+                               id="anim-from-${shaderIndex}-${uniformName}">
+                    </div>
+                    <div class="anim-row">
+                        <label>To</label>
+                        <input type="${isArray ? 'text' : 'number'}" step="0.1"
+                               value="${isArray ? JSON.stringify(anim.to) : anim.to}"
+                               id="anim-to-${shaderIndex}-${uniformName}">
+                    </div>
+                    <div class="anim-row">
+                        <label>Easing</label>
+                        <select id="anim-easing-${shaderIndex}-${uniformName}">
+                            ${Object.keys(easings).map(e => `<option value="${e}" ${anim.easing === e ? 'selected' : ''}>${e}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="anim-row">
+                        <label>Range</label>
+                        <input type="number" min="0" max="100" value="${anim.start || 0}"
+                               id="anim-start-${shaderIndex}-${uniformName}" style="width: 50px;">
+                        <span class="pct-label">%</span>
+                        <span class="time-separator">→</span>
+                        <input type="number" min="0" max="100" value="${anim.end || 100}"
+                               id="anim-end-${shaderIndex}-${uniformName}" style="width: 50px;">
+                        <span class="pct-label">%</span>
+                    </div>
+                    <div class="anim-row" style="justify-content: flex-end; gap: 8px;">
+                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 10px;"
+                                onclick="clearAnimation(${shaderIndex}, '${uniformName}')">Clear</button>
+                        <button class="btn btn-primary" style="padding: 4px 8px; font-size: 10px;"
+                                onclick="saveAnimation(${shaderIndex}, '${uniformName}')">Apply</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function toggleStageExpand(index) {
+            if (expandedStages.has(index)) {
+                expandedStages.delete(index);
+            } else {
+                expandedStages.add(index);
+            }
+            updateTimelinePanel();
+        }
+
+        function toggleAnimationEditor(shaderIndex, uniformName) {
+            const key = `${shaderIndex}-${uniformName}`;
+            if (expandedAnimations.has(key)) {
+                expandedAnimations.delete(key);
+            } else {
+                expandedAnimations.add(key);
+            }
+            updateTimelinePanel();
+        }
+
+        function saveAnimation(shaderIndex, uniformName) {
+            const fromInput = document.getElementById(`anim-from-${shaderIndex}-${uniformName}`);
+            const toInput = document.getElementById(`anim-to-${shaderIndex}-${uniformName}`);
+            const easingSelect = document.getElementById(`anim-easing-${shaderIndex}-${uniformName}`);
+            const startInput = document.getElementById(`anim-start-${shaderIndex}-${uniformName}`);
+            const endInput = document.getElementById(`anim-end-${shaderIndex}-${uniformName}`);
+
+            let fromVal, toVal;
+            try {
+                fromVal = JSON.parse(fromInput.value);
+            } catch {
+                fromVal = parseFloat(fromInput.value);
+            }
+            try {
+                toVal = JSON.parse(toInput.value);
+            } catch {
+                toVal = parseFloat(toInput.value);
+            }
+
+            const startPct = parseFloat(startInput.value) || 0;
+            const endPct = parseFloat(endInput.value) || 100;
+
+            if (!shaders[shaderIndex].animations) {
+                shaders[shaderIndex].animations = {};
+            }
+
+            shaders[shaderIndex].animations[uniformName] = {
+                from: fromVal,
+                to: toVal,
+                easing: easingSelect.value,
+                start: startPct,
+                end: endPct
+            };
+
+            updateTimelinePanel();
+            scheduleSave();
+        }
+
+        function clearAnimation(shaderIndex, uniformName) {
+            if (shaders[shaderIndex].animations) {
+                delete shaders[shaderIndex].animations[uniformName];
+            }
+            expandedAnimations.delete(`${shaderIndex}-${uniformName}`);
+            updateTimelinePanel();
+            scheduleSave();
+        }
+
+        function updateStageDuration(index, value) {
+            shaders[index].duration = Math.max(500, parseInt(value) || 3000);
+            updateTimelinePanel();
+            updateVisualTimeline();
+            scheduleSave();
+        }
+
+        function updateOverlayPosition(index, position) {
+            if (!shaders[index].overlay) shaders[index].overlay = {};
+            shaders[index].overlay.position = position;
+            scheduleSave();
+        }
+
+        function updateOverlayTitle(index, title) {
+            if (!shaders[index].overlay) shaders[index].overlay = {};
+            shaders[index].overlay.title = title;
+            scheduleSave();
+        }
+
+        function updateOverlayCode(index, code) {
+            if (!shaders[index].overlay) shaders[index].overlay = {};
+            shaders[index].overlay.code = code;
+            scheduleSave();
+        }
+
+        function duplicateStage(index) {
+            const copy = JSON.parse(JSON.stringify(shaders[index]));
+            copy.title = (copy.title || `Stage ${index + 1}`) + ' (copy)';
+            shaders.splice(index + 1, 0, copy);
+            rebuildPrograms();
+            updateShaderList();
+            updateTimelinePanel();
+            updateVisualTimeline();
+            scheduleSave();
+        }
+
+        function removeShaderStage(index) {
+            if (shaders.length <= 1) {
+                alert('Cannot remove the last stage');
+                return;
+            }
+            shaders.splice(index, 1);
+            rebuildPrograms();
+            updateShaderList();
+            updateTimelinePanel();
+            updateVisualTimeline();
+            resetPlayback();
+            scheduleSave();
+        }
+
+        // ============================================
+        // VISUAL TIMELINE
+        // ============================================
+        function updateVisualTimeline() {
+            const zoom = parseFloat(document.getElementById('timeline-zoom').value) || 1;
+            const total = getTotalDuration();
+
+            // Calculate width to fill container, with zoom as multiplier
+            const scrollContainer = document.querySelector('.timeline-scroll');
+            const containerWidth = scrollContainer ? scrollContainer.clientWidth - 40 : 800;
+            const minWidth = Math.max(containerWidth, 600) * zoom;
+            const pxPerMs = minWidth / total;
+            const totalWidth = minWidth;
+
+            // Update ruler
+            const ruler = document.getElementById('timeline-ruler');
+            ruler.style.width = totalWidth + 'px';
+            ruler.innerHTML = '';
+
+            const interval = zoom > 1.5 ? 500 : 1000;
+            for (let t = 0; t <= total; t += interval) {
+                const x = t * pxPerMs;
+                const mark = document.createElement('div');
+                mark.className = 'timeline-ruler-mark';
+                mark.style.left = x + 'px';
+
+                const label = document.createElement('span');
+                label.className = 'timeline-ruler-label';
+                label.style.left = x + 'px';
+                label.textContent = (t / 1000).toFixed(1) + 's';
+
+                ruler.appendChild(mark);
+                ruler.appendChild(label);
+            }
+
+            // Update tracks
+            const tracks = document.getElementById('timeline-tracks');
+            tracks.style.width = totalWidth + 'px';
+
+            // Keep playhead, remove other children
+            const playhead = document.getElementById('timeline-playhead');
+            tracks.innerHTML = '';
+            tracks.appendChild(playhead);
+
+            let offset = 0;
+            shaders.forEach((shader, i) => {
+                const duration = shader.duration || 3000;
+                const width = duration * pxPerMs;
+
+                const stage = document.createElement('div');
+                stage.className = 'timeline-stage';
+                stage.style.left = offset + 'px';
+                stage.style.width = width + 'px';
+                stage.dataset.index = i;
+
+                stage.innerHTML = `
+                    <span class="timeline-stage-label">${shader.title || `Stage ${i + 1}`}</span>
+                    <div class="timeline-resize-handle left" onmousedown="startResize(event, ${i}, 'left')"></div>
+                    <div class="timeline-resize-handle right" onmousedown="startResize(event, ${i}, 'right')"></div>
+                `;
+
+                stage.addEventListener('mousedown', (e) => {
+                    if (!e.target.classList.contains('timeline-resize-handle')) {
+                        startDrag(e, i);
+                    }
+                });
+
+                tracks.appendChild(stage);
+                offset += width;
+
+                // Add transition zone
+                if (i < shaders.length - 1) {
+                    const transWidth = transitionDuration * pxPerMs;
+                    const trans = document.createElement('div');
+                    trans.className = 'timeline-transition';
+                    trans.style.left = offset + 'px';
+                    trans.style.width = transWidth + 'px';
+                    tracks.appendChild(trans);
+                    offset += transWidth;
+                }
+            });
+
+            // Update total time display
+            document.getElementById('timeline-total-time').innerHTML = `Total: <strong>${(total / 1000).toFixed(1)}s</strong>`;
+        }
+
+        function startDrag(e, index) {
+            e.preventDefault();
+        }
+
+        function startResize(e, index, side) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const startX = e.clientX;
+            const startDuration = shaders[index].duration;
+            const zoom = parseFloat(document.getElementById('timeline-zoom').value) || 1;
+            const pxPerMs = 0.15 * zoom;
+
+            const onMove = (moveE) => {
+                const delta = moveE.clientX - startX;
+                const msDelta = delta / pxPerMs;
+
+                if (side === 'right') {
+                    shaders[index].duration = Math.max(500, startDuration + msDelta);
+                } else {
+                    shaders[index].duration = Math.max(500, startDuration - msDelta);
+                }
+                updateVisualTimeline();
+            };
+
+            const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                updateTimelinePanel();
+                scheduleSave();
+            };
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        }
+
+        function timelineSeek(e) {
+            const tracks = document.getElementById('timeline-tracks');
+            const rect = tracks.getBoundingClientRect();
+            const x = e.clientX - rect.left + tracks.parentElement.scrollLeft;
+            const progress = x / tracks.scrollWidth;
+            const total = getTotalDuration();
+
+            pausedTime = progress * total;
+            if (isPlaying) {
+                startTime = performance.now() - pausedTime;
+            }
+        }
+
+        function seekTo(e) {
+            const bar = document.getElementById('progress-bar');
+            const rect = bar.getBoundingClientRect();
+            const progress = (e.clientX - rect.left) / rect.width;
+            const total = getTotalDuration();
+
+            pausedTime = Math.max(0, Math.min(total, progress * total));
+            if (isPlaying) {
+                startTime = performance.now() - pausedTime;
+            }
+        }
+
+        // ============================================
+        // PLAYBACK CONTROLS
+        // ============================================
+        function togglePlayback() {
+            if (isPlaying) {
+                pausePlayback();
+            } else {
+                startPlayback();
+            }
+        }
+
+        function startPlayback() {
+            isPlaying = true;
+            startTime = performance.now() - pausedTime;
+            document.getElementById('play-btn').textContent = 'Pause';
+        }
+
+        function pausePlayback() {
+            isPlaying = false;
+            pausedTime = performance.now() - startTime;
+            document.getElementById('play-btn').textContent = 'Play';
+        }
+
+        function resetPlayback() {
+            isPlaying = false;
+            pausedTime = 0;
+            startTime = 0;
+            document.getElementById('play-btn').textContent = 'Play';
+        }
+
+        // ============================================
+        // RECORDING
+        // ============================================
+        function toggleRecording() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        function startRecording() {
+            resetPlayback();
+
+            const stream = compositeCanvas.captureStream(60);
+            mediaRecorder = new MediaRecorder(stream, {
+                mimeType: 'video/webm;codecs=vp9',
+                videoBitsPerSecond: 8000000
+            });
+
+            recordedChunks = [];
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) recordedChunks.push(e.data);
+            };
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'shader-video.webm';
+                a.click();
+                URL.revokeObjectURL(url);
+            };
+
+            mediaRecorder.start();
+            isRecording = true;
+            startPlayback();
+
+            document.getElementById('record-btn').textContent = 'Stop';
+            document.getElementById('record-btn').classList.add('recording');
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            isRecording = false;
+            pausePlayback();
+
+            document.getElementById('record-btn').textContent = 'Record';
+            document.getElementById('record-btn').classList.remove('recording');
+        }
+
+        function updateComposite() {
+            if (!isRecording) return;
+            compositeCtx.drawImage(canvas, 0, 0);
+            compositeCtx.drawImage(overlayCanvas, 0, 0);
+        }
+
+        // ============================================
+        // CODE OVERLAY RENDERING
+        // ============================================
+        function renderCodeOverlay() {
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+            const shader = shaders[currentShaderIndex];
+            if (!showCodeOverlay || !shader) return;
+
+            const code = shader.overlay?.code || shader.code || '';
+            const lines = code.split('\n').slice(0, 30);
+
+            // Background gradient
+            const gradient = overlayCtx.createLinearGradient(0, 0, overlayCanvas.width * 0.5, 0);
+            gradient.addColorStop(0, 'rgba(6, 10, 15, 0.95)');
+            gradient.addColorStop(0.8, 'rgba(6, 10, 15, 0.7)');
+            gradient.addColorStop(1, 'rgba(6, 10, 15, 0)');
+
+            overlayCtx.fillStyle = gradient;
+            overlayCtx.fillRect(0, 0, overlayCanvas.width * 0.55, overlayCanvas.height);
+
+            // Code rendering
+            const fontSize = Math.max(11, overlayCanvas.height / 50);
+            const lineHeight = fontSize * 1.4;
+            const padding = 24;
+            let y = padding + fontSize;
+
+            overlayCtx.font = `${fontSize}px 'JetBrains Mono', 'SF Mono', monospace`;
+            overlayCtx.textBaseline = 'top';
+
+            lines.forEach((line, i) => {
+                const x = padding;
+                renderSyntaxHighlightedLine(line, x, y, fontSize);
+                y += lineHeight;
+            });
+        }
+
+        function renderSyntaxHighlightedLine(line, x, y, fontSize) {
+            const tokens = tokenizeLine(line);
+            let currentX = x;
+
+            tokens.forEach(token => {
+                overlayCtx.fillStyle = token.color;
+                overlayCtx.fillText(token.text, currentX, y);
+                currentX += overlayCtx.measureText(token.text).width;
+            });
+        }
+
+        function tokenizeLine(line) {
+            const tokens = [];
+            const keywords = /\b(void|float|vec2|vec3|vec4|mat2|mat3|mat4|int|bool|uniform|varying|attribute|const|in|out|inout|if|else|for|while|return|break|continue|discard|struct|precision|highp|mediump|lowp)\b/g;
+            const functions = /\b(sin|cos|tan|asin|acos|atan|pow|exp|log|sqrt|abs|sign|floor|ceil|fract|mod|min|max|clamp|mix|step|smoothstep|length|distance|dot|cross|normalize|reflect|refract|texture2D|texture|main)\b/g;
+            const numbers = /\b(\d+\.?\d*[fF]?)\b/g;
+            const preprocessor = /(#\w+)/g;
+            const comments = /(\/\/.*$|\/\*[\s\S]*?\*\/)/g;
+
+            const colors = {
+                keyword: '#c792ea',
+                function: '#82aaff',
+                number: '#f78c6c',
+                preprocessor: '#89ddff',
+                comment: '#546e7a',
+                string: '#c3e88d',
+                default: '#a6accd'
+            };
+
+            // Simple tokenizer
+            let remaining = line;
+            let pos = 0;
+
+            while (remaining.length > 0) {
+                let matched = false;
+
+                // Check for comment
+                const commentMatch = remaining.match(/^(\/\/.*$|\/\*[\s\S]*?\*\/)/);
+                if (commentMatch) {
+                    tokens.push({ text: commentMatch[0], color: colors.comment });
+                    remaining = remaining.slice(commentMatch[0].length);
+                    matched = true;
+                    continue;
+                }
+
+                // Check for preprocessor
+                const preprocMatch = remaining.match(/^(#\w+)/);
+                if (preprocMatch) {
+                    tokens.push({ text: preprocMatch[0], color: colors.preprocessor });
+                    remaining = remaining.slice(preprocMatch[0].length);
+                    matched = true;
+                    continue;
+                }
+
+                // Check for keyword
+                const keywordMatch = remaining.match(/^(void|float|vec2|vec3|vec4|mat2|mat3|mat4|int|bool|uniform|varying|attribute|const|in|out|inout|if|else|for|while|return|break|continue|discard|struct|precision|highp|mediump|lowp)\b/);
+                if (keywordMatch) {
+                    tokens.push({ text: keywordMatch[0], color: colors.keyword });
+                    remaining = remaining.slice(keywordMatch[0].length);
+                    matched = true;
+                    continue;
+                }
+
+                // Check for function
+                const funcMatch = remaining.match(/^(sin|cos|tan|asin|acos|atan|pow|exp|log|sqrt|abs|sign|floor|ceil|fract|mod|min|max|clamp|mix|step|smoothstep|length|distance|dot|cross|normalize|reflect|refract|texture2D|texture|main)\b/);
+                if (funcMatch) {
+                    tokens.push({ text: funcMatch[0], color: colors.function });
+                    remaining = remaining.slice(funcMatch[0].length);
+                    matched = true;
+                    continue;
+                }
+
+                // Check for number
+                const numMatch = remaining.match(/^(\d+\.?\d*[fF]?)/);
+                if (numMatch) {
+                    tokens.push({ text: numMatch[0], color: colors.number });
+                    remaining = remaining.slice(numMatch[0].length);
+                    matched = true;
+                    continue;
+                }
+
+                // Default: take one character
+                if (!matched) {
+                    tokens.push({ text: remaining[0], color: colors.default });
+                    remaining = remaining.slice(1);
+                }
+            }
+
+            return tokens;
+        }
+
+        // ============================================
+        // IMPORT MODAL
+        // ============================================
+        function openImportModal() {
+            document.getElementById('import-modal').classList.add('active');
+            populateShaderBrowser();
+        }
+
+        function closeImportModal() {
+            document.getElementById('import-modal').classList.remove('active');
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tabName);
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.toggle('active', content.id === `tab-${tabName}`);
+            });
+        }
+
+        function populateShaderBrowser() {
+            // The HTML uses folder-based structure, populate those
+            const mainFolder = document.getElementById('folder-main');
+            const blogFolder = document.getElementById('folder-blog');
+
+            if (mainFolder) mainFolder.innerHTML = '';
+            if (blogFolder) blogFolder.innerHTML = '';
+
+            // Find window shaders
+            const windowShaders = [];
+            for (const key in window) {
+                if (key.includes('SHADER') || key.includes('_VERT') || key.includes('_FRAG')) {
+                    if (typeof window[key] === 'string' && window[key].includes('precision')) {
+                        windowShaders.push({ name: key, code: window[key] });
+                    }
+                }
+            }
+
+            if (windowShaders.length === 0 && mainFolder) {
+                mainFolder.innerHTML = '<p style="color: var(--text-tertiary); padding: 12px;">No shaders found in window scope.</p>';
+                return;
+            }
+
+            windowShaders.forEach(shader => {
+                const item = document.createElement('div');
+                item.className = 'shader-file';
+                item.innerHTML = `<span class="file-icon">📄</span><span class="file-name">${shader.name}</span>`;
+                item.onclick = () => addShaderFromBrowser(shader);
+                if (mainFolder) mainFolder.appendChild(item);
+            });
+        }
+
+        function toggleFolder(folderId) {
+            const folder = document.getElementById('folder-' + folderId);
+            if (folder) {
+                folder.classList.toggle('expanded');
+            }
+        }
+
+        function addShaderFromBrowser(shader) {
+            const newShader = {
+                title: shader.name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+                code: shader.code,
+                uniforms: extractUniforms(shader.code),
+                duration: 3000,
+                animations: {},
+                overlay: {}
+            };
+
+            shaders.push(newShader);
+            rebuildPrograms();
+            saveSession();
+            updateUI();
+            updateTimelinePanel();
+            updateVisualTimeline();
+            updateShaderList();
+            closeImportModal();
+        }
+
+        // ============================================
+        // FILE HANDLING
+        // ============================================
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) loadFile(file);
+        }
+
+        function handleFileDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const dropZone = event.currentTarget;
+            dropZone.classList.remove('drag-over');
+
+            const file = event.dataTransfer.files[0];
+            if (file) loadFile(file);
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.currentTarget.classList.add('drag-over');
+        }
+
+        function handleDragLeave(event) {
+            event.currentTarget.classList.remove('drag-over');
+        }
+
+        function loadFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const content = e.target.result;
+
+                if (file.name.endsWith('.glsl.js')) {
+                    parseGlslJsFile(content, file.name);
+                } else if (file.name.endsWith('.glsl') || file.name.endsWith('.frag') || file.name.endsWith('.vert')) {
+                    processShaderCode(content, file.name.replace(/\.\w+$/, ''));
+                } else if (file.name.endsWith('.json')) {
+                    loadShadersFromJSON(content);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function parseGlslJsFile(content, filename) {
+            // Extract shader name from window.SHADER_NAME = `...` pattern
+            const matches = content.matchAll(/window\.(\w+)\s*=\s*`([\s\S]*?)`/g);
+
+            for (const match of matches) {
+                const name = match[1];
+                const code = match[2];
+
+                if (code.includes('precision') || code.includes('void main')) {
+                    processShaderCode(code, name);
+                }
+            }
+        }
+
+        function processShaderCode(code, name) {
+            const shader = {
+                title: name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+                code: code,
+                uniforms: extractUniforms(code),
+                duration: 3000,
+                animations: {},
+                overlay: {}
+            };
+
+            shaders.push(shader);
+            rebuildPrograms();
+            saveSession();
+            updateUI();
+            updateTimelinePanel();
+            updateVisualTimeline();
+            updateShaderList();
+            closeImportModal();
+        }
+
+        function handlePasteShader() {
+            const textarea = document.getElementById('paste-shader');
+            const code = textarea.value.trim();
+
+            if (code) {
+                processShaderCode(code, 'Pasted Shader ' + (shaders.length + 1));
+                textarea.value = '';
+            }
+        }
+
+        // ============================================
+        // UNIFORM EXTRACTION
+        // ============================================
+        function extractUniforms(code) {
+            const uniforms = {};
+            const regex = /uniform\s+(float|vec2|vec3|vec4|int|bool|mat2|mat3|mat4|sampler2D)\s+(\w+)/g;
+
+            let match;
+            while ((match = regex.exec(code)) !== null) {
+                const type = match[1];
+                const name = match[2];
+
+                // Skip common built-in uniforms
+                if (['u_resolution', 'u_time', 'u_mouse', 'iResolution', 'iTime', 'iMouse'].includes(name)) {
+                    continue;
+                }
+
+                uniforms[name] = {
+                    type: type,
+                    value: getDefaultValue(type),
+                    min: 0,
+                    max: type === 'float' ? 1 : 10,
+                    step: 0.01
+                };
+            }
+
+            return uniforms;
+        }
+
+        function getDefaultValue(type) {
+            switch (type) {
+                case 'float': return 0.5;
+                case 'int': return 0;
+                case 'bool': return false;
+                case 'vec2': return [0.5, 0.5];
+                case 'vec3': return [0.5, 0.5, 0.5];
+                case 'vec4': return [0.5, 0.5, 0.5, 1.0];
+                default: return 0;
+            }
+        }
+
+        // ============================================
+        // JSON EDITOR MODAL
+        // ============================================
+        function openShaderModal(shader) {
+            const modal = document.getElementById('json-editor-modal');
+            const editor = document.getElementById('json-editor');
+
+            if (shader) {
+                currentEditingShader = shader;
+                editor.value = JSON.stringify({
+                    title: shader.title,
+                    code: shader.code,
+                    uniforms: shader.uniforms,
+                    duration: shader.duration,
+                    animations: shader.animations,
+                    overlay: shader.overlay
+                }, null, 2);
+            } else {
+                // Edit all shaders
+                currentEditingShader = null;
+                editor.value = JSON.stringify(shaders, null, 2);
+            }
+
+            modal.classList.add('active');
+        }
+
+        function closeShaderModal() {
+            document.getElementById('json-editor-modal').classList.remove('active');
+            currentEditingShader = null;
+        }
+
+        function saveShaderJSON() {
+            const editor = document.getElementById('json-editor');
+
+            try {
+                const data = JSON.parse(editor.value);
+
+                if (currentEditingShader) {
+                    // Update single shader
+                    currentEditingShader.title = data.title || currentEditingShader.title;
+                    currentEditingShader.code = data.code || currentEditingShader.code;
+                    currentEditingShader.uniforms = data.uniforms || currentEditingShader.uniforms;
+                    currentEditingShader.duration = data.duration || currentEditingShader.duration;
+                    currentEditingShader.animations = data.animations || currentEditingShader.animations;
+                    currentEditingShader.overlay = data.overlay || currentEditingShader.overlay;
+                } else if (Array.isArray(data)) {
+                    // Replace all shaders
+                    shaders = data;
+                    rebuildPrograms();
+                }
+
+                saveSession();
+                updateUI();
+                updateTimelinePanel();
+                updateVisualTimeline();
+                updateShaderList();
+
+                closeShaderModal();
+            } catch (e) {
+                alert('Invalid JSON: ' + e.message);
+            }
+        }
+
+        function loadShadersFromJSON(content) {
+            try {
+                const data = JSON.parse(content);
+
+                if (Array.isArray(data)) {
+                    // Add shaders to existing list
+                    data.forEach(shader => {
+                        shaders.push({
+                            title: shader.title || shader.name || 'Imported',
+                            code: shader.code || '',
+                            uniforms: shader.uniforms || extractUniforms(shader.code || ''),
+                            duration: shader.duration || 3000,
+                            animations: shader.animations || {},
+                            overlay: shader.overlay || {}
+                        });
+                    });
+                    rebuildPrograms();
+                } else if (data.shaders) {
+                    // Full project import
+                    shaders = data.shaders;
+                    if (data.transitionDuration) {
+                        transitionDuration = data.transitionDuration;
+                    }
+                    rebuildPrograms();
+                }
+
+                saveSession();
+                updateUI();
+                updateTimelinePanel();
+                updateVisualTimeline();
+                updateShaderList();
+                closeImportModal();
+            } catch (e) {
+                alert('Invalid JSON: ' + e.message);
+            }
+        }
+
+        // ============================================
+        // EXPORT
+        // ============================================
+        function exportProject() {
+            const project = {
+                shaders: shaders,
+                transitionDuration: transitionDuration
+            };
+
+            const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'shader-project.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ============================================
+        // SETTINGS
+        // ============================================
+        function toggleCodeOverlay() {
+            showCodeOverlay = !showCodeOverlay;
+            const btn = document.getElementById('code-overlay-btn');
+            if (btn) {
+                btn.classList.toggle('active', showCodeOverlay);
+            }
+        }
+
+        // ============================================
+        // UI UPDATE ORCHESTRATION
+        // ============================================
+        function updateUI() {
+            updateShaderList();
+            updateTimelinePanel();
+            updateVisualTimeline();
+            updateStatusBar();
+        }
+
+        function updateStatusBar() {
+            // These elements may not exist in the current HTML
+        }
+
+        // ============================================
+        // KEYBOARD SHORTCUTS
+        // ============================================
+        function handleKeydown(event) {
+            // Space: toggle playback
+            if (event.code === 'Space' && event.target.tagName !== 'TEXTAREA' && event.target.tagName !== 'INPUT') {
+                event.preventDefault();
+                togglePlayback();
+            }
+
+            // R: toggle recording
+            if (event.code === 'KeyR' && event.target.tagName !== 'TEXTAREA' && event.target.tagName !== 'INPUT') {
+                event.preventDefault();
+                toggleRecording();
+            }
+
+            // Escape: close modals
+            if (event.code === 'Escape') {
+                closeImportModal();
+                closeShaderModal();
+            }
+
+            // I: open import modal
+            if (event.code === 'KeyI' && event.target.tagName !== 'TEXTAREA' && event.target.tagName !== 'INPUT') {
+                event.preventDefault();
+                openImportModal();
+            }
+        }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        window.addEventListener('load', init);
+        window.addEventListener('keydown', handleKeydown);
+
+        // Close modals on backdrop click
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-backdrop')) {
+                closeImportModal();
+                closeShaderModal();
+            }
+        });
+    </script>
+</body>
+</html>

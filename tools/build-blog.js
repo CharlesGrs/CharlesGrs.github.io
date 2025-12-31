@@ -170,10 +170,22 @@ function renderSection(section, index) {
                 </div>
             `).join('');
 
+            // Load external shader file if specified
+            let fragmentShader = section.fragmentShader;
+            let vertexShader = section.vertexShader;
+            if (section.shaderFile) {
+                try {
+                    fragmentShader = fs.readFileSync(path.join(__dirname, '..', 'blog', 'shaders', section.shaderFile), 'utf8');
+                } catch (e) {
+                    console.warn(`Warning: Could not load shader file ${section.shaderFile}:`, e.message);
+                }
+            }
+
             const shaderConfig = JSON.stringify({
-                vertexShader: section.vertexShader,
-                fragmentShader: section.fragmentShader,
-                uniforms: section.uniforms || {}
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                uniforms: section.uniforms || {},
+                textures: section.textures || {}
             }).replace(/'/g, '&#39;');
 
             return `<figure class="article-section section-shader-demo" data-demo-id="${section.id}" data-shader-config='${shaderConfig}'>
@@ -915,18 +927,21 @@ function generatePostHtml(post) {
             var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
             if (!gl) throw new Error('WebGL not supported');
 
+            // Default vertex shader if not provided
+            var vertexShaderSrc = config.vertexShader || 'attribute vec2 a_position;\\nvarying vec2 v_uv;\\nvoid main() {\\n    v_uv = a_position * 0.5 + 0.5;\\n    gl_Position = vec4(a_position, 0.0, 1.0);\\n}';
+
             var vertShader = gl.createShader(gl.VERTEX_SHADER);
-            gl.shaderSource(vertShader, config.vertexShader);
+            gl.shaderSource(vertShader, vertexShaderSrc);
             gl.compileShader(vertShader);
             if (!gl.getShaderParameter(vertShader, gl.COMPILE_STATUS)) {
-                throw new Error(gl.getShaderInfoLog(vertShader));
+                throw new Error('Vertex: ' + gl.getShaderInfoLog(vertShader));
             }
 
             var fragShader = gl.createShader(gl.FRAGMENT_SHADER);
             gl.shaderSource(fragShader, config.fragmentShader);
             gl.compileShader(fragShader);
             if (!gl.getShaderParameter(fragShader, gl.COMPILE_STATUS)) {
-                throw new Error(gl.getShaderInfoLog(fragShader));
+                throw new Error('Fragment: ' + gl.getShaderInfoLog(fragShader));
             }
 
             var program = gl.createProgram();
@@ -954,6 +969,35 @@ function generatePostHtml(post) {
             for (var name in config.uniforms) {
                 uniformLocs[name] = gl.getUniformLocation(program, name);
                 uniformValues[name] = config.uniforms[name].value;
+            }
+
+            // Load textures if specified
+            var textureUnit = 0;
+            if (config.textures) {
+                for (var texName in config.textures) {
+                    (function(name, src, unit) {
+                        var texLoc = gl.getUniformLocation(program, name);
+                        if (!texLoc) return;
+                        var tex = gl.createTexture();
+                        gl.activeTexture(gl.TEXTURE0 + unit);
+                        gl.bindTexture(gl.TEXTURE_2D, tex);
+                        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([128, 128, 128, 255]));
+                        var img = new Image();
+                        img.crossOrigin = 'anonymous';
+                        img.onload = function() {
+                            gl.activeTexture(gl.TEXTURE0 + unit);
+                            gl.bindTexture(gl.TEXTURE_2D, tex);
+                            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                        };
+                        img.src = '../../' + src;
+                        gl.useProgram(program);
+                        gl.uniform1i(texLoc, unit);
+                    })(texName, config.textures[texName], textureUnit++);
+                }
             }
 
             // Setup controls

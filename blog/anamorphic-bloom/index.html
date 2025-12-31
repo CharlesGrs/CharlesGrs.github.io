@@ -650,7 +650,7 @@ contribution = contribution * contribution * (<span class="number">3.0</span> - 
             </figure>
 <h3 id="section-13-interactive-demo" class="article-section section-heading" data-toc-level="3">Interactive Demo</h3>
 <p class="article-section section-paragraph">Adjust the sliders below to see how blur amount and anamorphic stretch affect the final result. Notice how increasing the anamorphic value creates longer horizontal streaks while keeping the vertical spread tight.</p>
-<figure class="article-section section-shader-demo" data-demo-id="anamorphic-blur-demo" data-shader-config='{"vertexShader":"attribute vec2 a_position;\nvarying vec2 v_texCoord;\nvoid main() {\n    v_texCoord = a_position * 0.5 + 0.5;\n    gl_Position = vec4(a_position, 0.0, 1.0);\n}","fragmentShader":"precision highp float;\nvarying vec2 v_texCoord;\nuniform float u_time;\nuniform float u_blurAmount;\nuniform float u_anamorphic;\nuniform vec2 u_resolution;\n\nvoid main() {\n    vec2 uv = v_texCoord;\n    \n    // Create animated bright spots\n    float pattern = 0.0;\n    for (int i = 0; i < 5; i++) {\n        float fi = float(i);\n        vec2 spot = vec2(\n            0.5 + 0.3 * sin(u_time * 0.5 + fi * 1.3),\n            0.5 + 0.3 * cos(u_time * 0.7 + fi * 1.7)\n        );\n        float d = length(uv - spot);\n        pattern += smoothstep(0.08, 0.0, d) * (0.8 + 0.2 * sin(fi));\n    }\n    \n    // Apply anamorphic blur with offset samples\n    vec3 color = vec3(0.0);\n    float total = 0.0;\n    \n    for (int i = -7; i <= 7; i++) {\n        float fi = float(i);\n        float weight = exp(-fi * fi / 20.0);\n        \n        // Anamorphic: stretch horizontal, compress vertical\n        vec2 offset = vec2(\n            fi * u_blurAmount * 0.015 * (1.0 + u_anamorphic * 2.5),\n            fi * u_blurAmount * 0.015 * (1.0 - u_anamorphic * 0.9)\n        );\n        \n        vec2 sampleUV = uv + offset;\n        \n        // Sample pattern at offset\n        float samplePattern = 0.0;\n        for (int j = 0; j < 5; j++) {\n            float fj = float(j);\n            vec2 spot = vec2(\n                0.5 + 0.3 * sin(u_time * 0.5 + fj * 1.3),\n                0.5 + 0.3 * cos(u_time * 0.7 + fj * 1.7)\n            );\n            float d = length(sampleUV - spot);\n            samplePattern += smoothstep(0.08, 0.0, d) * (0.8 + 0.2 * sin(fj));\n        }\n        \n        color += vec3(samplePattern) * weight;\n        total += weight;\n    }\n    color /= total;\n    \n    // Color grading - teal/gold cinematic look\n    vec3 teal = vec3(0.18, 0.83, 0.75);\n    vec3 gold = vec3(0.91, 0.73, 0.14);\n    color = mix(teal * 0.3, gold, color.r) + color * 0.5;\n    \n    // Subtle vignette\n    float vignette = 1.0 - length(uv - 0.5) * 0.8;\n    color *= vignette;\n    \n    // Dark background\n    vec3 bg = vec3(0.04, 0.06, 0.08);\n    color = max(color, bg);\n    \n    gl_FragColor = vec4(color, 1.0);\n}","uniforms":{"u_time":{"type":"float","value":0},"u_blurAmount":{"type":"float","value":0.5},"u_anamorphic":{"type":"float","value":0.7},"u_resolution":{"type":"vec2","value":[700,400]}}}'>
+<figure class="article-section section-shader-demo" data-demo-id="anamorphic-blur-demo" data-shader-config='{"vertexShader":"attribute vec2 a_position;\nvarying vec2 v_texCoord;\nvoid main() {\n    v_texCoord = a_position * 0.5 + 0.5;\n    gl_Position = vec4(a_position, 0.0, 1.0);\n}","fragmentShader":"precision highp float;\nvarying vec2 v_texCoord;\nuniform float u_time;\nuniform float u_blurAmount;\nuniform float u_anamorphic;\nuniform vec2 u_resolution;\n\nvoid main() {\n    vec2 uv = v_texCoord;\n    \n    // Create animated bright spots\n    float pattern = 0.0;\n    for (int i = 0; i < 5; i++) {\n        float fi = float(i);\n        vec2 spot = vec2(\n            0.5 + 0.3 * sin(u_time * 0.5 + fi * 1.3),\n            0.5 + 0.3 * cos(u_time * 0.7 + fi * 1.7)\n        );\n        float d = length(uv - spot);\n        pattern += smoothstep(0.08, 0.0, d) * (0.8 + 0.2 * sin(fi));\n    }\n    \n    // Apply anamorphic blur with offset samples\n    vec3 color = vec3(0.0);\n    float total = 0.0;\n    \n    for (int i = -7; i <= 7; i++) {\n        float fi = float(i);\n        float weight = exp(-fi * fi / 20.0);\n        \n        // Anamorphic: stretch horizontal, compress vertical\n        vec2 offset = vec2(\n            fi * u_blurAmount * 0.015 * (1.0 + u_anamorphic * 2.5),\n            fi * u_blurAmount * 0.015 * (1.0 - u_anamorphic * 0.9)\n        );\n        \n        vec2 sampleUV = uv + offset;\n        \n        // Sample pattern at offset\n        float samplePattern = 0.0;\n        for (int j = 0; j < 5; j++) {\n            float fj = float(j);\n            vec2 spot = vec2(\n                0.5 + 0.3 * sin(u_time * 0.5 + fj * 1.3),\n                0.5 + 0.3 * cos(u_time * 0.7 + fj * 1.7)\n            );\n            float d = length(sampleUV - spot);\n            samplePattern += smoothstep(0.08, 0.0, d) * (0.8 + 0.2 * sin(fj));\n        }\n        \n        color += vec3(samplePattern) * weight;\n        total += weight;\n    }\n    color /= total;\n    \n    // Color grading - teal/gold cinematic look\n    vec3 teal = vec3(0.18, 0.83, 0.75);\n    vec3 gold = vec3(0.91, 0.73, 0.14);\n    color = mix(teal * 0.3, gold, color.r) + color * 0.5;\n    \n    // Subtle vignette\n    float vignette = 1.0 - length(uv - 0.5) * 0.8;\n    color *= vignette;\n    \n    // Dark background\n    vec3 bg = vec3(0.04, 0.06, 0.08);\n    color = max(color, bg);\n    \n    gl_FragColor = vec4(color, 1.0);\n}","uniforms":{"u_time":{"type":"float","value":0},"u_blurAmount":{"type":"float","value":0.5},"u_anamorphic":{"type":"float","value":0.7},"u_resolution":{"type":"vec2","value":[700,400]}},"textures":{}}'>
                 <div class="shader-canvas-container" style="max-width: 700px;">
                     <canvas class="shader-canvas" width="700" height="350"></canvas>
                     <div class="shader-loading">Initializing WebGL...</div>
@@ -921,18 +921,21 @@ result += (h + l + m) * <span class="number">0.0625</span>;</pre></div>
             var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
             if (!gl) throw new Error('WebGL not supported');
 
+            // Default vertex shader if not provided
+            var vertexShaderSrc = config.vertexShader || 'attribute vec2 a_position;\nvarying vec2 v_uv;\nvoid main() {\n    v_uv = a_position * 0.5 + 0.5;\n    gl_Position = vec4(a_position, 0.0, 1.0);\n}';
+
             var vertShader = gl.createShader(gl.VERTEX_SHADER);
-            gl.shaderSource(vertShader, config.vertexShader);
+            gl.shaderSource(vertShader, vertexShaderSrc);
             gl.compileShader(vertShader);
             if (!gl.getShaderParameter(vertShader, gl.COMPILE_STATUS)) {
-                throw new Error(gl.getShaderInfoLog(vertShader));
+                throw new Error('Vertex: ' + gl.getShaderInfoLog(vertShader));
             }
 
             var fragShader = gl.createShader(gl.FRAGMENT_SHADER);
             gl.shaderSource(fragShader, config.fragmentShader);
             gl.compileShader(fragShader);
             if (!gl.getShaderParameter(fragShader, gl.COMPILE_STATUS)) {
-                throw new Error(gl.getShaderInfoLog(fragShader));
+                throw new Error('Fragment: ' + gl.getShaderInfoLog(fragShader));
             }
 
             var program = gl.createProgram();
@@ -960,6 +963,35 @@ result += (h + l + m) * <span class="number">0.0625</span>;</pre></div>
             for (var name in config.uniforms) {
                 uniformLocs[name] = gl.getUniformLocation(program, name);
                 uniformValues[name] = config.uniforms[name].value;
+            }
+
+            // Load textures if specified
+            var textureUnit = 0;
+            if (config.textures) {
+                for (var texName in config.textures) {
+                    (function(name, src, unit) {
+                        var texLoc = gl.getUniformLocation(program, name);
+                        if (!texLoc) return;
+                        var tex = gl.createTexture();
+                        gl.activeTexture(gl.TEXTURE0 + unit);
+                        gl.bindTexture(gl.TEXTURE_2D, tex);
+                        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([128, 128, 128, 255]));
+                        var img = new Image();
+                        img.crossOrigin = 'anonymous';
+                        img.onload = function() {
+                            gl.activeTexture(gl.TEXTURE0 + unit);
+                            gl.bindTexture(gl.TEXTURE_2D, tex);
+                            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                        };
+                        img.src = '../../' + src;
+                        gl.useProgram(program);
+                        gl.uniform1i(texLoc, unit);
+                    })(texName, config.textures[texName], textureUnit++);
+                }
             }
 
             // Setup controls

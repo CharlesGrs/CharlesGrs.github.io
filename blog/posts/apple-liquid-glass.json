@@ -1,365 +1,452 @@
 {
     "id": "apple-liquid-glass",
-    "title": "Recreating Apple Liquid Glass in Real-Time",
-    "subtitle": "Physically-Based Frosted Glass with Dispersion, Caustics & Specular Highlights",
-    "date": "2024-12-30",
+    "title": "Recreating Apple's Liquid Glass",
+    "subtitle": "Real-Time Frosted Glass with Physically-Based Light Transport",
+    "date": "2024-12-31",
     "category": "vfx",
-    "tags": ["glass", "refraction", "chromatic-aberration", "sdf", "webgl", "fresnel", "caustics"],
-    "readTime": "18 min",
+    "tags": ["glass", "refraction", "sdf", "webgl", "caustics"],
+    "readTime": "15 min",
     "featured": true,
     "thumbnail": "apple-liquid-glass-thumb.png",
-    "excerpt": "A deep dive into recreating Apple's Liquid Glass effect with physically-based light simulation: squircle SDFs, lens-curve bevels, wavelength-dependent dispersion, Fresnel reflections, and caustic focusing.",
+    "excerpt": "A deep dive into recreating Apple's Liquid Glass effect: squircle SDFs, bevel geometry, chromatic dispersion, and cylindrical lens caustics.",
     "sections": [
         {
             "type": "intro",
-            "content": "Apple's Liquid Glass design language represents a masterclass in making UI elements feel physical. Behind the elegant frosted panels lies sophisticated light simulation: curved bevels that refract like real lenses, wavelength-dependent dispersion creating rainbow fringes, Fresnel reflections that respond to viewing angle, and caustic bands where light focuses through curved edges. This article breaks down each technique with working GLSL code you can drop into your own projects."
-        },
-        {
-            "type": "svg-diagram",
-            "id": "liquid-glass-overview",
-            "title": "Liquid Glass Effect Components",
-            "width": 700,
-            "height": 280
+            "content": "Apple's Liquid Glass design language makes UI elements feel like physical objects. The secret isn't just blur - it's the subtle interplay of refraction, specular highlights, and caustics that emerges from treating the panel as real curved glass. This article breaks down each technique, starting from the foundation: the squircle."
         },
         {
             "type": "heading",
             "level": 2,
+            "content": "Ingredients"
+        },
+        {
+            "type": "paragraph",
+            "content": "Three elements combine to create the Liquid Glass illusion: a smooth squircle shape with continuous curvature, beveled edges that create 3D geometry, and an optimized blur that simulates frosted glass. Each layer builds on the previous."
+        },
+        {
+            "type": "shader-demo",
+            "id": "squircle-demo",
+            "title": "Squircle SDF - Adjust the Exponent",
+            "width": 700,
+            "height": 380,
+            "shaderFile": "glass-ingredients.glsl",
+            "uniforms": {
+                "u_time": { "type": "float", "value": 0.0 },
+                "u_n": { "type": "float", "value": 4.0 },
+                "u_resolution": { "type": "vec2", "value": [700, 380] }
+            },
+            "controls": [
+                {
+                    "uniform": "u_n",
+                    "label": "Exponent (n)",
+                    "min": 2,
+                    "max": 10,
+                    "step": 0.1,
+                    "default": 4.0
+                }
+            ]
+        },
+        {
+            "type": "heading",
+            "level": 3,
             "content": "The Squircle: Apple's Signature Shape"
         },
         {
             "type": "paragraph",
-            "content": "Apple doesn't use simple rounded rectangles. They use squircles - superellipses defined by |x/a|^n + |y/b|^n = 1. When n=2, you get an ellipse. When n=4, you get that distinctively smooth Apple corner that doesn't have the abrupt curvature change of a rounded rectangle. As n approaches infinity, it becomes a sharp rectangle."
-        },
-        {
-            "type": "svg-diagram",
-            "id": "squircle-comparison",
-            "title": "Squircle vs Rounded Rectangle vs Ellipse",
-            "width": 700,
-            "height": 220
+            "content": "Apple doesn't use rounded rectangles. They use squircles - superellipses defined by |x/a|ⁿ + |y/b|ⁿ = 1. When n=2, you get an ellipse. When n=4, you get that distinctively smooth Apple corner. As n approaches infinity, it becomes a sharp rectangle. The key difference: rounded rectangles have an abrupt curvature change where the arc meets the straight edge. Squircles have continuous curvature throughout."
         },
         {
             "type": "code",
             "language": "glsl",
             "title": "Squircle Signed Distance Field",
-            "content": "// Superellipse SDF: |x/a|^n + |y/b|^n = 1\n// n=2: ellipse, n=4: squircle (Apple style), n→∞: rectangle\nfloat sdSquircle(vec2 p, vec2 size, float n) {\n    vec2 d = abs(p) / size;\n    float dist = pow(pow(d.x, n) + pow(d.y, n), 1.0 / n);\n    return (dist - 1.0) * min(size.x, size.y);\n}\n\n// Squircle with corner radius - hybrid approach\nfloat sdSquircleRounded(vec2 p, vec2 size, float radius, float n) {\n    vec2 innerSize = size - radius;\n    vec2 d = abs(p);\n    \n    // Inside inner region - pure squircle\n    if (d.x <= innerSize.x && d.y <= innerSize.y) {\n        return sdSquircle(p, size, n);\n    }\n    \n    // Corner region - blend squircle with rounded corner\n    vec2 cornerP = max(d - innerSize, 0.0);\n    float cornerDist = length(cornerP) - radius;\n    float squircleDist = sdSquircle(p, size, n);\n    \n    return max(squircleDist, cornerDist);\n}"
-        },
-        {
-            "type": "paragraph",
-            "content": "The SDF returns negative values inside the shape, positive outside, with the magnitude being the exact distance to the surface. This gives us pixel-perfect anti-aliasing for free - just use smoothstep() around the zero crossing."
-        },
-        {
-            "type": "code",
-            "language": "glsl",
-            "title": "Anti-Aliased Mask from SDF",
-            "content": "float d = sdSquircleRounded(p, halfSize, cornerRadius, 4.0);\n\n// Soft edge mask: 1.0 inside, 0.0 outside\nfloat mask = 1.0 - smoothstep(-edgeSoftness, edgeSoftness, d);\n\nif (mask < 0.001) discard;  // Early-out for transparent pixels"
-        },
-        {
-            "type": "heading",
-            "level": 2,
-            "content": "Unified Bevel Geometry"
-        },
-        {
-            "type": "paragraph",
-            "content": "The magic of Liquid Glass comes from the beveled edges that act like tiny lenses. Instead of flat glass, imagine the edges curving outward like a magnifying glass rim. This curvature refracts light, creates specular highlights, and focuses light into caustics. The key insight: compute this bevel geometry ONCE and reuse it for all effects."
-        },
-        {
-            "type": "svg-diagram",
-            "id": "bevel-geometry-cross-section",
-            "title": "Bevel Cross-Section: The Lens Curve",
-            "width": 700,
-            "height": 250
-        },
-        {
-            "type": "paragraph",
-            "content": "The bevel curvature follows the formula 1 - sqrt(1 - x²), which traces the profile of a circular lens. At the center (x=0), the surface is flat. At the edge (x=1), the surface curves away at 45 degrees. This creates physically plausible refraction that looks like real glass."
-        },
-        {
-            "type": "code",
-            "language": "glsl",
-            "title": "BevelGeometry Struct & Computation",
-            "content": "struct BevelGeometry {\n    vec2 gradDir;      // 2D gradient direction (outward from shape center)\n    float bevelAmount; // Surface tilt amount (0 = flat, 1 = max bevel)\n    float edgeFactor;  // 0 = center, 1 = at edge\n};\n\nBevelGeometry computeBevelGeometry(vec2 uv, vec2 size, float radius, \n                                    float squircleN, float edgeWidth, float bevelDepth) {\n    BevelGeometry result;\n    \n    // Work in pixel space for consistent bevel width\n    vec2 p = (uv - 0.5) * size;\n    \n    // SDF distance - positive inside\n    float d = sdSquircleRounded(p, size * 0.5, radius, squircleN);\n    float edgeDist = -d;\n    \n    // Effect zone extends inward from edge\n    float effectZone = radius * edgeWidth;\n    result.edgeFactor = 1.0 - smoothstep(0.0, effectZone, edgeDist);\n    \n    // Normalized position within edge zone (0 = inner, 1 = outer)\n    float zonePos = clamp(1.0 - edgeDist / effectZone, 0.0, 1.0);\n    \n    // Physical lens curvature: 1 - sqrt(1 - x²)\n    result.bevelAmount = (1.0 - sqrt(1.0 - zonePos * zonePos * bevelDepth)) \n                         * result.edgeFactor;\n    \n    // Compute gradient via finite differences\n    float eps = max(2.0, radius * 0.05);\n    float dx = sdSquircleRounded(p + vec2(eps, 0.0), size * 0.5, radius, squircleN) -\n               sdSquircleRounded(p - vec2(eps, 0.0), size * 0.5, radius, squircleN);\n    float dy = sdSquircleRounded(p + vec2(0.0, eps), size * 0.5, radius, squircleN) -\n               sdSquircleRounded(p - vec2(0.0, eps), size * 0.5, radius, squircleN);\n    \n    // Convert to UV-space gradient\n    result.gradDir = normalize(vec2(dx, dy) / size + 0.0001);\n    \n    return result;\n}"
-        },
-        {
-            "type": "callout",
-            "variant": "tip",
-            "content": "Computing the SDF gradient via finite differences (sampling at p±epsilon) gives us the direction the surface is facing. This is cheaper than analytical gradients and works with any SDF shape."
-        },
-        {
-            "type": "heading",
-            "level": 2,
-            "content": "Separable Gaussian Blur with Linear Sampling"
-        },
-        {
-            "type": "paragraph",
-            "content": "Frosted glass needs heavy blur, but naive implementations are expensive. A 2D Gaussian blur with radius 9 would need 81 samples per pixel. Two key optimizations make this practical: separability (split into H+V passes, reducing to 18 samples) and linear sampling (exploit GPU bilinear filtering to halve samples again)."
-        },
-        {
-            "type": "svg-diagram",
-            "id": "separable-blur-diagram",
-            "title": "Separable Blur: O(N²) → O(2N)",
-            "width": 700,
-            "height": 200
+            "content": "// Squircle SDF: |x/a|^n + |y/b|^n = 1\n// n=2: ellipse, n=4: squircle (Apple), n→∞: rectangle\nfloat sdSquircle(vec2 p, vec2 size, float n) {\n    vec2 d = abs(p) / size;\n    float dist = pow(pow(d.x, n) + pow(d.y, n), 1.0 / n);\n    return (dist - 1.0) * min(size.x, size.y);\n}\n\n// Gradient for surface normals\nvec2 sdSquircleGrad(vec2 p, vec2 size, float n) {\n    vec2 d = abs(p) / size;\n    float sum = pow(d.x, n) + pow(d.y, n);\n    float sumPow = pow(sum, 1.0/n - 1.0);\n    vec2 grad = sign(p) * pow(d, vec2(n-1.0)) / size * sumPow;\n    return normalize(grad);\n}"
         },
         {
             "type": "heading",
             "level": 3,
-            "content": "The Linear Sampling Trick"
+            "content": "Bevel: From Flat to 3D"
         },
         {
             "type": "paragraph",
-            "content": "GPUs perform bilinear interpolation in hardware for free. By sampling between texel centers, we get a weighted average of two texels in one fetch. The trick is computing the optimal sample position that produces the same weighted sum as two discrete samples."
-        },
-        {
-            "type": "svg-diagram",
-            "id": "linear-sampling-optimization",
-            "title": "Linear Sampling: 2 Texels in 1 Fetch",
-            "width": 650,
-            "height": 180
-        },
-        {
-            "type": "code",
-            "language": "glsl",
-            "title": "9-Tap Gaussian with 5 Fetches",
-            "content": "// Optimized Gaussian weights using linear sampling\n// These combine pairs of standard Gaussian taps\nfloat weights[3];\nweights[0] = 0.227027027;  // center\nweights[1] = 0.316216216;  // combined taps 1+2\nweights[2] = 0.070270270;  // combined taps 3+4\n\n// Optimal offsets between texels\nfloat offsets[3];\noffsets[0] = 0.0;\noffsets[1] = 1.384615385;  // Between texel 1 and 2\noffsets[2] = 3.230769231;  // Between texel 3 and 4\n\nvec4 result = texture2D(uSource, vUV) * weights[0];\n\nfor (int i = 1; i < 3; i++) {\n    vec2 offset = vec2(offsets[i] * texelSize.x * blurRadius, 0.0);\n    result += texture2D(uSource, vUV + offset) * weights[i];\n    result += texture2D(uSource, vUV - offset) * weights[i];\n}\n\n// 5 texture fetches instead of 9, identical quality!"
-        },
-        {
-            "type": "paragraph",
-            "content": "For extra smoothness, follow up with Kawase blur passes. Kawase samples 4 corners plus center in a diamond pattern - just 5 taps that spread exponentially with each pass."
-        },
-        {
-            "type": "code",
-            "language": "glsl",
-            "title": "Kawase Blur Pass",
-            "content": "// Ultra-fast blur: 5 samples per pass\n// Run multiple passes with increasing offset (1, 2, 3...)\nvec2 off = texelSize * uOffset;\n\nvec4 sum = texture2D(uSource, vUV);                        // center\nsum += texture2D(uSource, vUV + vec2(-off.x, -off.y));     // corners\nsum += texture2D(uSource, vUV + vec2( off.x, -off.y));\nsum += texture2D(uSource, vUV + vec2(-off.x,  off.y));\nsum += texture2D(uSource, vUV + vec2( off.x,  off.y));\n\ngl_FragColor = sum * 0.2;"
-        },
-        {
-            "type": "heading",
-            "level": 2,
-            "content": "Physically-Based Chromatic Aberration"
-        },
-        {
-            "type": "paragraph",
-            "content": "Real glass disperses light - different wavelengths bend at different angles. This is governed by Cauchy's equation: n(λ) ≈ A + B/λ². For crown glass, the refractive indices are approximately: n_red ≈ 1.514, n_green ≈ 1.517, n_blue ≈ 1.524. Red bends least, blue bends most."
-        },
-        {
-            "type": "svg-diagram",
-            "id": "chromatic-dispersion-diagram",
-            "title": "Wavelength-Dependent Refraction (Dispersion)",
-            "width": 700,
-            "height": 240
-        },
-        {
-            "type": "paragraph",
-            "content": "We implement this by sampling each color channel at a slightly different UV offset, scaled by the dispersion coefficient for that wavelength."
-        },
-        {
-            "type": "code",
-            "language": "glsl",
-            "title": "Per-Channel Refraction with Dispersion",
-            "content": "// Dispersion coefficients based on crown glass\n// (relative to green as baseline)\nconst float disperseR = 0.996;  // Red refracts ~0.4% less\nconst float disperseG = 1.000;  // Green is baseline\nconst float disperseB = 1.008;  // Blue refracts ~0.8% more\n\n// Base refraction from bevel geometry\nvec2 lensRefract = computeRefraction(bevel);\nfloat refractScale = uRefractStrength * 0.02;\n\n// Scale dispersion effect\nfloat aberrationScale = 1.0 + (uChromaticAberration - 1.0) * 0.5;\n\n// Per-channel UV offsets\nvec2 refractR = lensRefract * refractScale * disperseR * aberrationScale;\nvec2 refractG = lensRefract * refractScale * disperseG;\nvec2 refractB = lensRefract * refractScale * disperseB * aberrationScale;\n\n// Sample each channel at its refracted position\nvec3 blurredColor;\nblurredColor.r = texture2D(uBlurredScene, mirrorUV(screenUV + refractR)).r;\nblurredColor.g = texture2D(uBlurredScene, mirrorUV(screenUV + refractG)).g;\nblurredColor.b = texture2D(uBlurredScene, mirrorUV(screenUV + refractB)).b;"
-        },
-        {
-            "type": "callout",
-            "variant": "info",
-            "content": "The mirrorUV() function reflects UVs that go outside 0-1, preventing hard cutoffs at screen edges: abs(mod(uv + 1.0, 2.0) - 1.0)"
+            "content": "A flat shape looks like a sticker. To make it feel like real glass, we need depth. The bevel creates a chamfered edge that catches light differently than the flat center. We use the SDF gradient to determine the edge direction, then compute lighting based on a virtual surface normal that tilts outward in the bevel zone."
         },
         {
             "type": "shader-demo",
-            "id": "chromatic-aberration-demo",
-            "title": "Chromatic Aberration - Adjust Dispersion",
+            "id": "bevel-demo",
+            "title": "Bevel Geometry - Adjust Width",
             "width": 700,
             "height": 380,
-            "vertexShader": "attribute vec2 a_position;\nvarying vec2 v_texCoord;\nvoid main() {\n    v_texCoord = a_position * 0.5 + 0.5;\n    gl_Position = vec4(a_position, 0.0, 1.0);\n}",
-            "fragmentShader": "precision highp float;\nvarying vec2 v_texCoord;\nuniform float u_time;\nuniform float u_dispersion;\nuniform float u_bevelDepth;\nuniform vec2 u_resolution;\n\nfloat sdSquircle(vec2 p, vec2 size, float n) {\n    vec2 d = abs(p) / size;\n    float dist = pow(pow(d.x, n) + pow(d.y, n), 1.0 / n);\n    return (dist - 1.0) * min(size.x, size.y);\n}\n\nvec3 getBackground(vec2 uv) {\n    float t = u_time * 0.4;\n    vec3 col = vec3(0.02, 0.04, 0.06);\n    for (int i = 0; i < 5; i++) {\n        float fi = float(i);\n        vec2 center = vec2(0.3 + fi * 0.15, 0.5 + 0.3 * sin(t + fi));\n        float d = length(uv - center);\n        vec3 c = vec3(0.1 + fi * 0.1, 0.4 + fi * 0.1, 0.6 - fi * 0.05);\n        col += c * 0.35 * smoothstep(0.35, 0.0, d);\n    }\n    return col;\n}\n\nvoid main() {\n    vec2 uv = v_texCoord;\n    vec2 panelSize = vec2(320.0, 220.0);\n    vec2 panelUV = (uv - 0.5) * u_resolution / vec2(700.0, 380.0) * vec2(1.4, 1.3) + 0.5;\n    vec2 p = (panelUV - 0.5) * panelSize;\n    \n    float d = sdSquircle(p, panelSize * 0.5, 4.0);\n    float mask = 1.0 - smoothstep(-1.5, 1.5, d);\n    \n    vec3 bg = getBackground(uv);\n    \n    if (mask < 0.001) {\n        gl_FragColor = vec4(bg, 1.0);\n        return;\n    }\n    \n    // Bevel geometry\n    float radius = 35.0;\n    float edgeDist = -d;\n    float effectZone = radius * 1.5;\n    float edgeFactor = 1.0 - smoothstep(0.0, effectZone, edgeDist);\n    float zonePos = clamp(1.0 - edgeDist / effectZone, 0.0, 1.0);\n    float bevelAmount = (1.0 - sqrt(1.0 - zonePos * zonePos * u_bevelDepth)) * edgeFactor;\n    \n    // Gradient direction\n    float eps = 3.0;\n    float dx = sdSquircle(p + vec2(eps, 0.0), panelSize * 0.5, 4.0) - sdSquircle(p - vec2(eps, 0.0), panelSize * 0.5, 4.0);\n    float dy = sdSquircle(p + vec2(0.0, eps), panelSize * 0.5, 4.0) - sdSquircle(p - vec2(0.0, eps), panelSize * 0.5, 4.0);\n    vec2 gradDir = normalize(vec2(dx, dy) / panelSize + 0.001);\n    \n    // Refraction with chromatic aberration\n    vec2 refract = gradDir * bevelAmount * 0.15;\n    \n    float dispR = mix(1.0, 0.85, u_dispersion);\n    float dispG = 1.0;\n    float dispB = mix(1.0, 1.2, u_dispersion);\n    \n    vec3 glassColor;\n    glassColor.r = getBackground(uv + refract * dispR).r;\n    glassColor.g = getBackground(uv + refract * dispG).g;\n    glassColor.b = getBackground(uv + refract * dispB).b;\n    \n    // Fake blur\n    for (int i = 0; i < 4; i++) {\n        float angle = float(i) * 1.57;\n        vec2 off = vec2(cos(angle), sin(angle)) * 0.015;\n        glassColor.r += getBackground(uv + refract * dispR + off).r * 0.15;\n        glassColor.g += getBackground(uv + refract * dispG + off).g * 0.15;\n        glassColor.b += getBackground(uv + refract * dispB + off).b * 0.15;\n    }\n    glassColor /= 1.6;\n    \n    // Tint\n    glassColor *= vec3(0.95, 0.97, 1.0);\n    \n    // Edge highlight\n    float edgeGlow = smoothstep(10.0, 0.0, abs(d)) * 0.2;\n    glassColor += vec3(1.0) * edgeGlow;\n    \n    vec3 finalColor = mix(bg, glassColor, mask);\n    gl_FragColor = vec4(finalColor, 1.0);\n}",
+            "shaderFile": "glass-bevel.glsl",
             "uniforms": {
                 "u_time": { "type": "float", "value": 0.0 },
-                "u_dispersion": { "type": "float", "value": 0.5 },
-                "u_bevelDepth": { "type": "float", "value": 0.7 },
+                "u_n": { "type": "float", "value": 4.0 },
+                "u_bevelWidth": { "type": "float", "value": 40.0 },
+                "u_bevelDepth": { "type": "float", "value": 1.0 },
                 "u_resolution": { "type": "vec2", "value": [700, 380] }
             },
             "controls": [
                 {
-                    "uniform": "u_dispersion",
-                    "label": "Chromatic Aberration",
-                    "min": 0,
-                    "max": 1,
-                    "step": 0.05,
-                    "default": 0.5
+                    "uniform": "u_bevelWidth",
+                    "label": "Bevel Width (px)",
+                    "min": 1,
+                    "max": 80,
+                    "step": 1,
+                    "default": 40.0
                 },
                 {
                     "uniform": "u_bevelDepth",
                     "label": "Bevel Depth",
                     "min": 0,
                     "max": 1,
-                    "step": 0.05,
-                    "default": 0.7
+                    "step": 0.1,
+                    "default": 1.0
                 }
             ]
         },
         {
-            "type": "heading",
-            "level": 2,
-            "content": "Fresnel Reflections: The Physics of Glass"
-        },
-        {
             "type": "paragraph",
-            "content": "Glass doesn't just refract - it also reflects. The Fresnel equations tell us how much light reflects vs transmits based on viewing angle. At normal incidence (looking straight at glass), about 4% reflects. At grazing angles, nearly 100% reflects. This is why windows become mirrors at shallow angles."
-        },
-        {
-            "type": "svg-diagram",
-            "id": "fresnel-reflection-diagram",
-            "title": "Fresnel Effect: Angle-Dependent Reflection",
-            "width": 700,
-            "height": 220
-        },
-        {
-            "type": "paragraph",
-            "content": "The base reflectance F0 comes from the refractive indices: F0 = ((n1-n2)/(n1+n2))². For glass (n≈1.5) in air (n=1), F0 ≈ 0.04. But here's a subtlety for chromatic aberration: different wavelengths have different refractive indices, thus different F0 values."
+            "content": "The bevel width determines how far the chamfer extends inward from the edge. The SDF gives us the signed distance - negative values are inside the shape. We use smoothstep to create a smooth transition zone where the surface normal gradually tilts from facing outward (at the edge) to facing forward (in the flat center)."
         },
         {
             "type": "code",
             "language": "glsl",
-            "title": "Per-Wavelength F0 for Chromatic Specular",
-            "content": "// Base F0 for glass\nfloat F0_base = 0.04;\n\n// CHROMATIC ABERRATION: F0 varies with wavelength\n// F0 = ((n1-n2)/(n1+n2))^2  where n depends on λ\n// Crown glass refractive indices:\n//   Red (656nm):   n ≈ 1.514 → F0 ≈ 0.0408\n//   Green (550nm): n ≈ 1.519 → F0 ≈ 0.0417  \n//   Blue (486nm):  n ≈ 1.528 → F0 ≈ 0.0432\n\nfloat dispersion = uChromaticAberration;\nfloat F0_R = F0_base * mix(1.0, 0.96, dispersion);  // Red reflects less\nfloat F0_G = F0_base;                               // Green baseline\nfloat F0_B = F0_base * mix(1.0, 1.06, dispersion);  // Blue reflects more\n\n// Compute specular per channel\nfloat specR = computePhongSpecular(normal, viewDir, lightDir, ..., F0_R);\nfloat specG = computePhongSpecular(normal, viewDir, lightDir, ..., F0_G);\nfloat specB = computePhongSpecular(normal, viewDir, lightDir, ..., F0_B);\n\nspecular += lightColor * vec3(specR, specG, specB) * lightIntensity;"
+            "title": "Bevel Geometry Function",
+            "content": "// Returns bevel geometry: XY = bevel direction, Z = bevel amount (0-1)\nvec3 computeBevel(float sdf, vec2 grad, float bevelWidth) {\n    // Bevel amount: 1 at edge, 0 at center\n    float bevelAmount = 1.0 - smoothstep(-bevelWidth, 0.0, sdf);\n    // Direction points outward (toward edge)\n    return vec3(grad, bevelAmount);\n}\n\n// Usage:\nvec3 bevel = computeBevel(d, grad, bevelWidth);\nvec2 bevelDir = bevel.xy;    // Direction of the chamfer\nfloat bevelAmount = bevel.z; // 0 = flat center, 1 = edge\n\n// Construct surface normal from bevel\nvec3 normal = normalize(vec3(bevelDir * bevelAmount, 1.0 - bevelAmount * 0.5));"
         },
         {
             "type": "heading",
             "level": 3,
-            "content": "Window Reflection Physics"
+            "content": "Frosted Glass Blur"
         },
         {
             "type": "paragraph",
-            "content": "Here's a critical insight many implementations get wrong: for a window-like glass panel facing you, you see reflections of things BEHIND you, not in front. Think about looking at a window during the day - you see the scene outside (transmitted through) and reflections of the room behind you (reflected off the front surface)."
+            "content": "The frosted glass effect requires a fast, high-quality blur. We downsample the scene to half resolution first - this doubles the effective blur radius for free. Then we apply separable Gaussian passes: horizontal first, then vertical."
         },
         {
             "type": "svg-diagram",
-            "id": "window-reflection-physics",
-            "title": "Window Reflection: Light Behind Camera Reflects",
+            "id": "blur-pipeline",
+            "title": "Bilinear Sampling Optimization",
             "width": 700,
-            "height": 240
+            "height": 140
         },
         {
-            "type": "code",
-            "language": "glsl",
-            "title": "Fresnel-Schlick with Reflection Direction Check",
-            "content": "// Fresnel-Schlick approximation\nfloat fresnelSchlick(float cosTheta, float F0) {\n    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);\n}\n\nfloat computePhongSpecular(vec3 normal, vec3 viewDir, vec3 lightDir, \n                           vec3 cameraLookDir, vec3 panelNormal, \n                           float shininess, float F0) {\n    // For window reflection: light must be BEHIND camera\n    float dotCheck = dot(lightDir, cameraLookDir);\n    \n    // Tilted edges can catch lights from the side\n    float normalTilt = 1.0 - max(dot(normal, panelNormal), 0.0);\n    float threshold = mix(0.0, -0.5, normalTilt);\n    \n    if (dotCheck < threshold) return 0.0;  // Light in front - no reflection\n    \n    // Reflect light off surface\n    vec3 reflectedLight = reflect(-lightDir, normal);\n    float RdotV = dot(reflectedLight, viewDir);\n    \n    if (RdotV <= 0.0) return 0.0;  // Reflected light points away from camera\n    \n    // Fresnel term\n    vec3 halfVec = normalize(viewDir + lightDir);\n    float NdotH = max(dot(normal, halfVec), 0.0);\n    float F = fresnelSchlick(NdotH, F0);\n    \n    // Energy-normalized Phong lobe\n    float exponent = shininess * shininess / 32.0;\n    float normFactor = (exponent + 2.0) / 6.28318530718;\n    float specLobe = normFactor * pow(RdotV, exponent);\n    \n    return F * specLobe;\n}"
+            "type": "paragraph",
+            "content": "By sampling between texel centers, the GPU's bilinear filtering blends two texels in one fetch - cutting 9 samples down to 5."
         },
         {
             "type": "heading",
             "level": 2,
-            "content": "Caustics: Light Focusing Through Curved Glass"
+            "content": "Enlighten Us"
         },
         {
             "type": "paragraph",
-            "content": "Caustics are the bright patterns formed when light refracts through curved transparent surfaces. At our bevel edges, light rays converge like through a lens, creating bright bands. The intensity is proportional to the surface curvature - where rays converge most, we see the brightest caustics."
+            "content": "With the geometry in place, we can simulate how light interacts with the glass. The bevel acts as a lens - its curved surface bends light according to Snell's law. This section covers refraction, specular highlights, and the caustic patterns that emerge from cylindrical lens focusing."
         },
         {
-            "type": "svg-diagram",
-            "id": "caustics-focusing-diagram",
-            "title": "Caustic Formation: Light Convergence at Curved Edges",
-            "width": 700,
-            "height": 260
+            "type": "heading",
+            "level": 3,
+            "content": "Refraction & Chromatic Dispersion"
         },
         {
             "type": "paragraph",
-            "content": "For chromatic caustics, we apply the same dispersion principle: different wavelengths focus at different positions. Red light bends less (focuses at outer edge), blue bends more (focuses at inner edge). This creates rainbow-like fringes in the caustic bands."
-        },
-        {
-            "type": "code",
-            "language": "glsl",
-            "title": "Per-Channel Caustic Calculation",
-            "content": "// Chromatic dispersion for caustics\n// Exaggerated for artistic effect (real glass ~2-3% spread)\nconst float causticDispersionR = 0.70;  // Red focuses at outer edge\nconst float causticDispersionG = 1.00;  // Green baseline\nconst float causticDispersionB = 1.40;  // Blue focuses at inner edge\n\n// Offset edge position per wavelength\nfloat edgeR = bevel.edgeFactor * mix(1.0, causticDispersionR, dispersionStrength);\nfloat edgeG = bevel.edgeFactor * causticDispersionG;\nfloat edgeB = bevel.edgeFactor * mix(1.0, causticDispersionB, dispersionStrength);\n\n// Clamp to valid range\nedgeR = clamp(edgeR, 0.0, 1.0);\nedgeG = clamp(edgeG, 0.0, 1.0);\nedgeB = clamp(edgeB, 0.0, 1.0);\n\n// Caustic band shape per channel\n// Peak at middle of edge zone, fade at boundaries\nfloat bandR = pow(edgeR * (1.0 - edgeR * 0.5), 0.5 / causticsScale);\nfloat bandG = pow(edgeG * (1.0 - edgeG * 0.5), 0.5 / causticsScale);\nfloat bandB = pow(edgeB * (1.0 - edgeB * 0.5), 0.5 / causticsScale);\n\n// Focusing power scales with curvature squared\nfloat focusingPower = bevel.bevelAmount * bevel.bevelAmount * 8.0;\n\n// Light must be transmitting through glass (behind panel)\nfloat lightTransmission = max(dot(lightDir, panelNormal), 0.0);\n\n// Light aligned with bevel gets focused more\nfloat lightBevelAlign = abs(dot(lightDir, bevelWorldDir));\n\nfloat baseStrength = focusingPower * lightTransmission * lightBevelAlign;\nvec3 causticRGB = vec3(\n    max(baseStrength * bandR, 0.0),\n    max(baseStrength * bandG, 0.0),\n    max(baseStrength * bandB, 0.0)\n);\n\ncaustics += lightColor * lightIntensity * causticRGB;"
+            "content": "When light crosses the glass-air boundary, it bends according to Snell's law. But here's the key: different wavelengths bend at different angles. Blue light has a higher effective IOR than red, so it refracts more. This chromatic dispersion creates those subtle rainbow fringes at the edges - the hallmark of quality glass rendering."
         },
         {
             "type": "shader-demo",
-            "id": "caustics-demo",
-            "title": "Caustics & Specular with Chromatic Effects",
+            "id": "refraction-demo",
+            "title": "Refraction with Chromatic Dispersion",
             "width": 700,
-            "height": 400,
-            "vertexShader": "attribute vec2 a_position;\nvarying vec2 v_texCoord;\nvoid main() {\n    v_texCoord = a_position * 0.5 + 0.5;\n    gl_Position = vec4(a_position, 0.0, 1.0);\n}",
-            "fragmentShader": "precision highp float;\nvarying vec2 v_texCoord;\nuniform float u_time;\nuniform float u_caustics;\nuniform float u_specular;\nuniform float u_chromatic;\nuniform vec2 u_resolution;\n\nfloat sdSquircle(vec2 p, vec2 size, float n) {\n    vec2 d = abs(p) / size;\n    float dist = pow(pow(d.x, n) + pow(d.y, n), 1.0 / n);\n    return (dist - 1.0) * min(size.x, size.y);\n}\n\nvec3 getBackground(vec2 uv) {\n    vec3 col = vec3(0.015, 0.025, 0.04);\n    float t = u_time * 0.2;\n    for (int i = 0; i < 4; i++) {\n        float fi = float(i);\n        vec2 center = vec2(0.25 + fi * 0.2, 0.5 + 0.25 * sin(t * 0.7 + fi * 1.2));\n        float d = length(uv - center);\n        col += vec3(0.15, 0.35, 0.5) * 0.4 * smoothstep(0.4, 0.0, d);\n    }\n    return col;\n}\n\nvoid main() {\n    vec2 uv = v_texCoord;\n    vec2 panelSize = vec2(300.0, 200.0);\n    vec2 panelUV = (uv - 0.5) * u_resolution / vec2(700.0, 400.0) * vec2(1.5, 1.4) + 0.5;\n    vec2 p = (panelUV - 0.5) * panelSize;\n    \n    float d = sdSquircle(p, panelSize * 0.5, 4.0);\n    float mask = 1.0 - smoothstep(-1.5, 1.5, d);\n    \n    vec3 bg = getBackground(uv);\n    \n    if (mask < 0.001) {\n        gl_FragColor = vec4(bg, 1.0);\n        return;\n    }\n    \n    // Bevel geometry\n    float radius = 40.0;\n    float edgeDist = -d;\n    float effectZone = radius * 1.8;\n    float edgeFactor = 1.0 - smoothstep(0.0, effectZone, edgeDist);\n    float zonePos = clamp(1.0 - edgeDist / effectZone, 0.0, 1.0);\n    float bevelAmount = (1.0 - sqrt(1.0 - zonePos * zonePos * 0.8)) * edgeFactor;\n    \n    // Gradient\n    float eps = 3.0;\n    float dx = sdSquircle(p + vec2(eps, 0.0), panelSize * 0.5, 4.0) - sdSquircle(p - vec2(eps, 0.0), panelSize * 0.5, 4.0);\n    float dy = sdSquircle(p + vec2(0.0, eps), panelSize * 0.5, 4.0) - sdSquircle(p - vec2(0.0, eps), panelSize * 0.5, 4.0);\n    vec2 gradDir = normalize(vec2(dx, dy) + 0.001);\n    \n    // Base glass color with refraction\n    vec2 refract = gradDir * bevelAmount * 0.12;\n    vec3 glassColor = getBackground(uv + refract) * 0.9;\n    glassColor *= vec3(0.92, 0.96, 1.0);\n    \n    // Animated light position\n    float lt = u_time * 0.5;\n    vec3 lightPos = vec3(0.7 + 0.3 * sin(lt), 0.3 + 0.2 * cos(lt * 0.7), 0.5);\n    vec3 lightColor = vec3(1.0, 0.95, 0.85);\n    \n    // Specular with chromatic aberration\n    vec3 normal = normalize(vec3(-gradDir * bevelAmount * 2.0, 1.0));\n    vec3 viewDir = vec3(0.0, 0.0, 1.0);\n    vec3 lightDir = normalize(lightPos - vec3(panelUV, 0.0));\n    vec3 halfVec = normalize(lightDir + viewDir);\n    float NdotH = max(dot(normal, halfVec), 0.0);\n    \n    float F0_R = 0.04 * mix(1.0, 0.94, u_chromatic);\n    float F0_G = 0.04;\n    float F0_B = 0.04 * mix(1.0, 1.08, u_chromatic);\n    \n    float fresnel_R = F0_R + (1.0 - F0_R) * pow(1.0 - NdotH, 5.0);\n    float fresnel_G = F0_G + (1.0 - F0_G) * pow(1.0 - NdotH, 5.0);\n    float fresnel_B = F0_B + (1.0 - F0_B) * pow(1.0 - NdotH, 5.0);\n    \n    float specPower = pow(NdotH, 64.0);\n    vec3 specular = lightColor * vec3(fresnel_R, fresnel_G, fresnel_B) * specPower * u_specular * 3.0;\n    \n    // Caustics with chromatic aberration\n    float edgeR = edgeFactor * mix(1.0, 0.7, u_chromatic);\n    float edgeG = edgeFactor;\n    float edgeB = edgeFactor * mix(1.0, 1.4, u_chromatic);\n    \n    float bandR = pow(clamp(edgeR, 0.0, 1.0) * (1.0 - edgeR * 0.5), 0.4);\n    float bandG = pow(clamp(edgeG, 0.0, 1.0) * (1.0 - edgeG * 0.5), 0.4);\n    float bandB = pow(clamp(edgeB, 0.0, 1.0) * (1.0 - edgeB * 0.5), 0.4);\n    \n    float focusingPower = bevelAmount * bevelAmount * 12.0;\n    float lightAlign = abs(dot(normalize(lightPos.xy - panelUV), gradDir));\n    float baseStrength = focusingPower * lightAlign;\n    \n    vec3 caustics = lightColor * vec3(bandR, bandG, bandB) * baseStrength * u_caustics;\n    \n    glassColor += specular + caustics;\n    \n    // Edge glow\n    float edgeGlow = smoothstep(12.0, 0.0, abs(d)) * 0.12;\n    glassColor += vec3(1.0) * edgeGlow;\n    \n    vec3 finalColor = mix(bg, glassColor, mask);\n    gl_FragColor = vec4(finalColor, 1.0);\n}",
+            "height": 380,
+            "shaderFile": "glass-refraction.glsl",
+            "textures": {
+                "u_skybox": "blog/shaders/skybox.jpg"
+            },
             "uniforms": {
                 "u_time": { "type": "float", "value": 0.0 },
-                "u_caustics": { "type": "float", "value": 0.6 },
-                "u_specular": { "type": "float", "value": 0.7 },
-                "u_chromatic": { "type": "float", "value": 0.5 },
-                "u_resolution": { "type": "vec2", "value": [700, 400] }
+                "u_n": { "type": "float", "value": 4.0 },
+                "u_bevelWidth": { "type": "float", "value": 60.0 },
+                "u_bevelDepth": { "type": "float", "value": 1.0 },
+                "u_ior": { "type": "float", "value": 1.5 },
+                "u_dispersion": { "type": "float", "value": 1.0 },
+                "u_specularEnabled": { "type": "float", "value": 0.0 },
+                "u_specularSharpness": { "type": "float", "value": 32.0 },
+                "u_fresnelEnabled": { "type": "float", "value": 0.0 },
+                "u_reflectionIntensity": { "type": "float", "value": 1.0 },
+                "u_sunAngle": { "type": "float", "value": -100.0 },
+                "u_causticsEnabled": { "type": "float", "value": 0.0 },
+                "u_causticsIntensity": { "type": "float", "value": 1.0 },
+                "u_absorptionEnabled": { "type": "float", "value": 0.0 },
+                "u_thickness": { "type": "float", "value": 1.0 },
+                "u_resolution": { "type": "vec2", "value": [700, 380] }
             },
             "controls": [
                 {
-                    "uniform": "u_caustics",
-                    "label": "Caustics Intensity",
+                    "uniform": "u_dispersion",
+                    "label": "Dispersion",
                     "min": 0,
-                    "max": 1,
-                    "step": 0.05,
-                    "default": 0.6
+                    "max": 3,
+                    "step": 0.1,
+                    "default": 1.0
                 },
                 {
-                    "uniform": "u_specular",
-                    "label": "Specular Intensity",
-                    "min": 0,
-                    "max": 1,
+                    "uniform": "u_ior",
+                    "label": "IOR",
+                    "min": 1.0,
+                    "max": 2.5,
                     "step": 0.05,
-                    "default": 0.7
+                    "default": 1.5
                 },
                 {
-                    "uniform": "u_chromatic",
-                    "label": "Chromatic Aberration",
-                    "min": 0,
-                    "max": 1,
-                    "step": 0.05,
-                    "default": 0.5
+                    "uniform": "u_bevelWidth",
+                    "label": "Bevel Width",
+                    "min": 10,
+                    "max": 150,
+                    "step": 1,
+                    "default": 60.0
                 }
             ]
         },
         {
-            "type": "heading",
-            "level": 2,
-            "content": "The Complete Pipeline"
+            "type": "paragraph",
+            "content": "Crank up the dispersion to see the color separation. Notice how the fringes only appear at the edges where the bevel curves - the flat center has no dispersion because there's no refraction there. Real glass has subtle dispersion; diamond's famous 'fire' comes from its extreme chromatic dispersion."
         },
         {
-            "type": "svg-diagram",
-            "id": "liquid-glass-pipeline",
-            "title": "Full Liquid Glass Render Pipeline",
+            "type": "code",
+            "language": "glsl",
+            "title": "Chromatic Dispersion",
+            "content": "// Each RGB channel samples at a different offset\n// Blue bends more than red (higher effective IOR)\nfloat dispersionAmount = uDispersion * 0.003 * bevel.edgeFactor;\nvec2 dispersionDir = bevel.gradDir;\n\nvec2 uvR = baseUV - dispersionDir * dispersionAmount; // Red bends least\nvec2 uvG = baseUV;                                     // Green in middle\nvec2 uvB = baseUV + dispersionDir * dispersionAmount;  // Blue bends most\n\nvec3 color = vec3(\n    texture2D(uBlurredScene, uvR).r,\n    texture2D(uBlurredScene, uvG).g,\n    texture2D(uBlurredScene, uvB).b\n);"
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "content": "Specular & Fresnel Reflection"
+        },
+        {
+            "type": "paragraph",
+            "content": "Glass both reflects and transmits light. The Fresnel equations describe the split: at normal incidence, glass reflects ~4%. At grazing angles, it becomes a near-perfect mirror. Meanwhile, specular highlights appear where the bevel's surface normal aligns with the light reflection direction. Together, these effects make the glass feel physically present."
+        },
+        {
+            "type": "shader-demo",
+            "id": "specular-fresnel-demo",
+            "title": "Specular Highlights + Fresnel Reflection",
             "width": 700,
-            "height": 180
+            "height": 380,
+            "shaderFile": "glass-refraction.glsl",
+            "textures": {
+                "u_skybox": "blog/shaders/skybox.jpg"
+            },
+            "uniforms": {
+                "u_time": { "type": "float", "value": 0.0 },
+                "u_n": { "type": "float", "value": 4.0 },
+                "u_bevelWidth": { "type": "float", "value": 60.0 },
+                "u_bevelDepth": { "type": "float", "value": 1.0 },
+                "u_ior": { "type": "float", "value": 1.5 },
+                "u_dispersion": { "type": "float", "value": 0.5 },
+                "u_specularEnabled": { "type": "float", "value": 1.0 },
+                "u_specularSharpness": { "type": "float", "value": 128.0 },
+                "u_fresnelEnabled": { "type": "float", "value": 1.0 },
+                "u_reflectionIntensity": { "type": "float", "value": 1.0 },
+                "u_sunAngle": { "type": "float", "value": 0.5 },
+                "u_causticsEnabled": { "type": "float", "value": 0.0 },
+                "u_causticsIntensity": { "type": "float", "value": 1.0 },
+                "u_absorptionEnabled": { "type": "float", "value": 0.0 },
+                "u_thickness": { "type": "float", "value": 1.0 },
+                "u_resolution": { "type": "vec2", "value": [700, 380] }
+            },
+            "controls": [
+                {
+                    "uniform": "u_sunAngle",
+                    "label": "Sun Angle",
+                    "min": 0,
+                    "max": 6.28,
+                    "step": 0.05,
+                    "default": 0.5
+                },
+                {
+                    "uniform": "u_specularSharpness",
+                    "label": "Specular",
+                    "min": 4,
+                    "max": 256,
+                    "step": 4,
+                    "default": 128.0
+                },
+                {
+                    "uniform": "u_reflectionIntensity",
+                    "label": "Reflection",
+                    "min": 0,
+                    "max": 2,
+                    "step": 0.1,
+                    "default": 1.0
+                },
+                {
+                    "uniform": "u_bevelWidth",
+                    "label": "Bevel Width",
+                    "min": 10,
+                    "max": 150,
+                    "step": 1,
+                    "default": 60.0
+                }
+            ]
         },
         {
-            "type": "list",
-            "items": [
-                "Render scene to FBO at full resolution",
-                "Downsample to half/quarter resolution for blur efficiency",
-                "Apply separable Gaussian blur (H-pass, V-pass)",
-                "Optional: Chain 2-3 Kawase passes for extra smoothness",
-                "Compute bevel geometry once from squircle SDF",
-                "Sample blurred scene with per-channel refraction offsets",
-                "Add specular highlights with per-channel F0 values",
-                "Add caustics with per-channel edge positions",
-                "Apply tone mapping to match scene post-processing",
-                "Composite glass panel with alpha from SDF mask"
-            ]
+            "type": "paragraph",
+            "content": "Drag the sun angle to see how specular and reflection work together. The specular highlight is a focused glint from the light source, while Fresnel reflection shows the entire environment. At grazing angles (the bevel edges), both effects intensify - the glass becomes almost mirror-like. The specular sharpness controls highlight size; reflection intensity scales the environment contribution."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Specular + Fresnel Combined",
+            "content": "// Fresnel using Schlick approximation\nfloat fresnelSchlick(float cosTheta, float F0) {\n    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);\n}\n\n// Blinn-Phong specular with energy normalization\nvec3 halfVec = normalize(viewDir + lightDir);\nfloat NdotH = max(dot(normal, halfVec), 0.0);\nfloat F = fresnelSchlick(NdotH, 0.04);\nfloat spec = pow(NdotH, shininess) * (shininess + 2.0) / 6.28;\n\n// Fresnel reflection blend\nfloat NdotV = max(dot(normal, viewDir), 0.0);\nfloat fresnel = fresnelSchlick(NdotV, 0.04);\nvec3 reflected = sampleEnvironment(reflect(-viewDir, normal));\nvec3 glassColor = mix(refracted, reflected, fresnel);\nglassColor += lightColor * F * spec; // Add specular on top"
         },
         {
             "type": "heading",
-            "level": 2,
-            "content": "Performance Optimizations"
+            "level": 3,
+            "content": "Caustics"
         },
         {
-            "type": "list",
-            "items": [
-                "Blur at reduced resolution (quarter res is often sufficient) - most detail is lost anyway",
-                "Use linear sampling to halve texture fetches with zero quality loss",
-                "Early-out pixels outside panel using SDF mask (discard before any computation)",
-                "Compute bevel geometry ONCE and reuse for refraction, specular, and caustics",
-                "On mobile: reduce blur passes, skip chromatic aberration (use single-channel)",
-                "For multiple glass panels: share the blurred scene buffer between all panels",
-                "Consider precomputing SDF to a texture for complex shapes"
+            "type": "paragraph",
+            "content": "Caustics are the bright bands of light that form when a curved surface focuses rays like a lens. Think of sunlight through a wine glass creating patterns on a tablecloth. When light passes through our glass panel from behind, it refracts at the back surface's bevel and focuses on our side. The cylindrical lens shape concentrates light perpendicular to the bevel axis."
+        },
+        {
+            "type": "shader-demo",
+            "id": "caustics-demo",
+            "title": "Caustics - Cylindrical Lens Focusing",
+            "width": 700,
+            "height": 380,
+            "shaderFile": "glass-refraction.glsl",
+            "textures": {
+                "u_skybox": "blog/shaders/skybox.jpg"
+            },
+            "uniforms": {
+                "u_time": { "type": "float", "value": 0.0 },
+                "u_n": { "type": "float", "value": 4.0 },
+                "u_bevelWidth": { "type": "float", "value": 60.0 },
+                "u_bevelDepth": { "type": "float", "value": 1.0 },
+                "u_ior": { "type": "float", "value": 1.5 },
+                "u_dispersion": { "type": "float", "value": 0.0 },
+                "u_specularEnabled": { "type": "float", "value": 0.0 },
+                "u_specularSharpness": { "type": "float", "value": 32.0 },
+                "u_fresnelEnabled": { "type": "float", "value": 0.0 },
+                "u_reflectionIntensity": { "type": "float", "value": 1.0 },
+                "u_sunAngle": { "type": "float", "value": -100.0 },
+                "u_causticsEnabled": { "type": "float", "value": 1.0 },
+                "u_causticsIntensity": { "type": "float", "value": 1.5 },
+                "u_absorptionEnabled": { "type": "float", "value": 0.0 },
+                "u_thickness": { "type": "float", "value": 1.0 },
+                "u_resolution": { "type": "vec2", "value": [700, 380] }
+            },
+            "controls": [
+                {
+                    "uniform": "u_causticsIntensity",
+                    "label": "Intensity",
+                    "min": 0,
+                    "max": 3,
+                    "step": 0.1,
+                    "default": 1.5
+                },
+                {
+                    "uniform": "u_ior",
+                    "label": "IOR",
+                    "min": 1.0,
+                    "max": 2.5,
+                    "step": 0.05,
+                    "default": 1.5
+                },
+                {
+                    "uniform": "u_bevelWidth",
+                    "label": "Bevel Width",
+                    "min": 10,
+                    "max": 150,
+                    "step": 1,
+                    "default": 60.0
+                }
             ]
+        },
+        {
+            "type": "paragraph",
+            "content": "Watch the sun orbit around the glass. Caustics appear when light comes from behind - notice how the bright band traces the bevel contour as the sun passes through the back half of its orbit. Higher IOR creates stronger focusing - diamond (IOR 2.4) produces brilliant fire, while water (IOR 1.33) creates subtle pools."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Caustics from Cylindrical Lens",
+            "content": "vec3 computeCaustics(BevelGeometry bevel) {\n    vec3 backNormal = vec3(0.0, 0.0, -1.0); // Back surface\n    \n    // Caustics appear when light comes from BEHIND (lightDir.z < 0)\n    float backFacing = max(dot(lightDir, backNormal), 0.0);\n    if (backFacing < 0.01) return vec3(0.0);\n    \n    // Back bevel is inverted - focus direction flips\n    vec3 focusDir = vec3(-bevel.gradDir.x, -bevel.gradDir.y, 0.0);\n    \n    // Band shape: peaks within the bevel zone\n    float bandShape = pow(edgeFactor * (1.0 - edgeFactor * 0.5), 0.625);\n    \n    // Focusing power from curvature squared × IOR factor\n    float iorFactor = (uIOR - 1.0) / 0.5;\n    float focusingPower = bevelAmount * bevelAmount * 2.0 * iorFactor;\n    \n    // Light alignment with focus direction\n    float rawAlignment = dot(lightDir.xy, focusDir.xy);\n    float focusAlignment = 0.3 + 0.7 * rawAlignment * rawAlignment;\n    \n    return lightColor * focusingPower * focusAlignment * backFacing * bandShape;\n}"
         },
         {
             "type": "callout",
             "variant": "tip",
-            "content": "The most expensive part is the blur. Rendering it at 1/4 resolution and upsampling bilinearly saves 16x fillrate with minimal visible difference. The slight softening actually enhances the frosted glass look."
+            "content": "The key insight: bandShape uses edgeFactor × (1 - edgeFactor×0.5) to create a band that peaks within the bevel, not at the edge. The pow() exponent controls band width - lower values create sharper bands."
+        },
+        {
+            "type": "heading",
+            "level": 3,
+            "content": "Absorption"
+        },
+        {
+            "type": "paragraph",
+            "content": "Real glass isn't perfectly transparent. As light travels through, some wavelengths are absorbed more than others. This is Beer's Law: intensity decays exponentially with distance. Common soda-lime glass (window glass) has iron oxide impurities that absorb red and blue more than green - giving thick glass panels their characteristic green tint at the edges."
+        },
+        {
+            "type": "shader-demo",
+            "id": "absorption-demo",
+            "title": "Beer's Law Absorption",
+            "width": 700,
+            "height": 380,
+            "shaderFile": "glass-refraction.glsl",
+            "textures": {
+                "u_skybox": "blog/shaders/skybox.jpg"
+            },
+            "uniforms": {
+                "u_time": { "type": "float", "value": 0.0 },
+                "u_n": { "type": "float", "value": 4.0 },
+                "u_bevelWidth": { "type": "float", "value": 60.0 },
+                "u_bevelDepth": { "type": "float", "value": 1.0 },
+                "u_ior": { "type": "float", "value": 1.5 },
+                "u_dispersion": { "type": "float", "value": 0.0 },
+                "u_specularEnabled": { "type": "float", "value": 0.0 },
+                "u_specularSharpness": { "type": "float", "value": 32.0 },
+                "u_fresnelEnabled": { "type": "float", "value": 0.0 },
+                "u_reflectionIntensity": { "type": "float", "value": 1.0 },
+                "u_sunAngle": { "type": "float", "value": -100.0 },
+                "u_causticsEnabled": { "type": "float", "value": 0.0 },
+                "u_causticsIntensity": { "type": "float", "value": 1.0 },
+                "u_absorptionEnabled": { "type": "float", "value": 1.0 },
+                "u_thickness": { "type": "float", "value": 5.0 },
+                "u_resolution": { "type": "vec2", "value": [700, 380] }
+            },
+            "controls": [
+                {
+                    "uniform": "u_thickness",
+                    "label": "Thickness (cm)",
+                    "min": 0.5,
+                    "max": 20,
+                    "step": 0.5,
+                    "default": 5.0
+                },
+                {
+                    "uniform": "u_bevelWidth",
+                    "label": "Bevel Width",
+                    "min": 10,
+                    "max": 150,
+                    "step": 1,
+                    "default": 60.0
+                }
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": "Increase the thickness to see the green tint emerge. The center is thicker than the beveled edges, so it absorbs more - creating a gradient from green center to clearer edges. At 20cm, even the sky takes on that aquarium-glass look. Real architectural glass is typically 0.5-2cm."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Beer's Law Absorption",
+            "content": "vec3 computeAbsorption(BevelGeometry bevel, vec3 color) {\n    // Beer's Law: I = I₀ × e^(-α × d)\n    // α = absorption coefficient (per cm), d = path length (cm)\n    \n    // Soda-lime glass absorption coefficients (cm⁻¹)\n    // Iron oxide impurities cause the green tint\n    vec3 absorptionCoeff = vec3(0.02, 0.005, 0.015); // R, G, B\n    \n    // Path length: thicker in center, thinner at edges\n    float pathLength = (1.0 - bevel.edgeFactor * 0.5) * uThickness;\n    \n    // Exponential falloff\n    vec3 transmission = exp(-absorptionCoeff * pathLength);\n    \n    return color * transmission;\n}"
+        },
+        {
+            "type": "callout",
+            "variant": "info",
+            "content": "The absorption coefficients vec3(0.02, 0.005, 0.015) mean green (0.005) is absorbed 4× less than red (0.02) and 3× less than blue (0.015). Different glass types have different impurities - lead crystal is clearer, while bottle glass is greener."
         },
         {
             "type": "heading",
@@ -368,13 +455,88 @@
         },
         {
             "type": "paragraph",
-            "content": "The magic of Apple's Liquid Glass comes from the coherent interaction of all these effects. The bevel geometry drives everything: it determines how much the surface curves away from the viewer, which controls refraction strength, specular highlight position, and caustic intensity. By computing this unified geometry once and deriving all effects from it, we get physically plausible behavior where refraction, reflection, and focusing all respond consistently to the same virtual surface."
+            "content": "Real scenes have multiple light sources, each casting its own specular highlights, caustics, and coloring the environment. The final demo combines all effects with three independent lights. Each light has a direction (controlled by horizontal angle and elevation) and a color that tints both the sky and the glass effects."
+        },
+        {
+            "type": "shader-demo",
+            "id": "multilight-demo",
+            "title": "Multi-Light Glass - Drag to Position Lights",
+            "width": 700,
+            "height": 420,
+            "shaderFile": "glass-refraction.glsl",
+            "textures": {
+                "u_skybox": "blog/shaders/skybox.jpg"
+            },
+            "uniforms": {
+                "u_time": { "type": "float", "value": 0.0 },
+                "u_n": { "type": "float", "value": 4.0 },
+                "u_bevelWidth": { "type": "float", "value": 50.0 },
+                "u_bevelDepth": { "type": "float", "value": 1.0 },
+                "u_ior": { "type": "float", "value": 1.5 },
+                "u_dispersion": { "type": "float", "value": 0.5 },
+                "u_specularEnabled": { "type": "float", "value": 1.0 },
+                "u_specularSharpness": { "type": "float", "value": 128.0 },
+                "u_fresnelEnabled": { "type": "float", "value": 1.0 },
+                "u_reflectionIntensity": { "type": "float", "value": 0.8 },
+                "u_sunAngle": { "type": "float", "value": 0.0 },
+                "u_causticsEnabled": { "type": "float", "value": 1.0 },
+                "u_causticsIntensity": { "type": "float", "value": 1.0 },
+                "u_absorptionEnabled": { "type": "float", "value": 1.0 },
+                "u_thickness": { "type": "float", "value": 2.0 },
+                "u_multiLightEnabled": { "type": "float", "value": 1.0 },
+                "u_light0Angle": { "type": "float", "value": 0.5 },
+                "u_light0Elevation": { "type": "float", "value": 0.3 },
+                "u_light0Color": { "type": "vec3", "value": [1.0, 0.9, 0.7] },
+                "u_light0Intensity": { "type": "float", "value": 1.0 },
+                "u_light1Angle": { "type": "float", "value": 2.5 },
+                "u_light1Elevation": { "type": "float", "value": -0.2 },
+                "u_light1Color": { "type": "vec3", "value": [0.4, 0.7, 1.0] },
+                "u_light1Intensity": { "type": "float", "value": 0.8 },
+                "u_light2Angle": { "type": "float", "value": 4.2 },
+                "u_light2Elevation": { "type": "float", "value": 0.1 },
+                "u_light2Color": { "type": "vec3", "value": [1.0, 0.5, 0.3] },
+                "u_light2Intensity": { "type": "float", "value": 0.6 },
+                "u_resolution": { "type": "vec2", "value": [700, 420] }
+            },
+            "controls": [
+                {
+                    "type": "light-position",
+                    "uniforms": ["u_light0Angle", "u_light0Elevation"],
+                    "colorUniform": "u_light0Color",
+                    "label": "Sun",
+                    "color": "#FFE5B4"
+                },
+                {
+                    "type": "light-position",
+                    "uniforms": ["u_light1Angle", "u_light1Elevation"],
+                    "colorUniform": "u_light1Color",
+                    "label": "Fill",
+                    "color": "#66B2FF"
+                },
+                {
+                    "type": "light-position",
+                    "uniforms": ["u_light2Angle", "u_light2Elevation"],
+                    "colorUniform": "u_light2Color",
+                    "label": "Rim",
+                    "color": "#FF8C66"
+                }
+            ]
+        },
+        {
+            "type": "paragraph",
+            "content": "The three lights create a classic three-point setup: warm sun as key light, cool blue fill for shadow detail, and orange rim for edge definition. Each light contributes independently to specular highlights, caustics, and environment coloring. Drag the position controls to orbit lights around the glass - notice how caustics only appear when a light is behind the panel."
+        },
+        {
+            "type": "code",
+            "language": "glsl",
+            "title": "Multi-Light Accumulation",
+            "content": "// Convert spherical coordinates to 3D direction\nvec3 getLightDirFromAngles(float angle, float elevation) {\n    float cosElev = cos(elevation);\n    return normalize(vec3(\n        sin(angle) * cosElev,  // X: horizontal position\n        sin(elevation),         // Y: vertical position\n        cos(angle) * cosElev    // Z: depth (front/back)\n    ));\n}\n\n// Accumulate specular from all lights\nvec3 computeSpecularHighlights(BevelGeometry bevel) {\n    vec3 specular = vec3(0.0);\n    \n    // Each light contributes independently\n    specular += computeSpecularFromLight(normal, viewDir,\n        light0.direction, light0.color, light0.intensity);\n    specular += computeSpecularFromLight(normal, viewDir,\n        light1.direction, light1.color, light1.intensity);\n    specular += computeSpecularFromLight(normal, viewDir,\n        light2.direction, light2.color, light2.intensity);\n    \n    return specular;\n}\n\n// Environment also samples all lights for sky coloring\nvec3 sampleEnvironmentMultiLight(vec3 dir) {\n    float influence0 = computeLightInfluence(dir, light0.direction);\n    float influence1 = computeLightInfluence(dir, light1.direction);\n    float influence2 = computeLightInfluence(dir, light2.direction);\n    \n    vec3 combinedColor = light0.color * influence0 * light0.intensity\n                       + light1.color * influence1 * light1.intensity\n                       + light2.color * influence2 * light2.intensity;\n    // ... apply to sky gradient and clouds\n}"
         },
         {
             "type": "callout",
-            "variant": "info",
-            "content": "This technique works beautifully for UI panels, modal dialogs, and floating menus. For curved 3D glass objects (bottles, spheres), you'd need raymarched volumetric approaches instead of this screen-space method."
+            "variant": "tip",
+            "content": "The angle controls the horizontal orbit (0-2π around the Y axis), while elevation controls the vertical angle (-π/2 to π/2). When elevation is 0 and angle is 0, the light is directly in front. When angle is π, it's behind - this is when you'll see caustics."
         }
     ],
-    "related": ["frosted-glass-sdf", "anamorphic-bloom"]
+    "related": ["anamorphic-bloom"]
 }

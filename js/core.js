@@ -263,32 +263,32 @@ var glassParams = {
     blurDownscale: 2,          // Downscale factor for blur FBO (2, 4, or 8)
 
     // Glass material
-    cornerRadius: 13,          // Rounded corner radius in pixels
     edgeSoftness: 0.7,         // Edge anti-aliasing
-    refractStrength: 20,       // How much edges bend light (lens curvature)
+    ior: 1.5,                  // Index of Refraction (1.0=air, 1.33=water, 1.5=glass, 2.4=diamond)
     squircleN: 4,              // Squircle exponent: 2=ellipse, 4=Apple squircle, 8+=more rectangular
 
-    // Glass appearance
-    glassOpacity: 0,           // Base glass tint opacity
-    glassTintR: 1,             // Glass tint color R
-    glassTintG: 1.05,          // Glass tint color G
-    glassTintB: 1.05,          // Glass tint color B
-
-    // Effects
-    chromaticAberration: 1,    // RGB split amount at edges
-
     // Edge bevel controls
-    edgeWidth: 5,              // How far effects extend from edge (multiplier of corner radius)
+    edgeWidth: 65,             // Bevel zone width in pixels
     bevelDepth: 1,             // How pronounced the 3D bevel effect is (0-1)
 
     // Caustics (light focusing through curved edges)
     causticsIntensity: 0.06,   // Brightness of caustic bands (0-2)
     causticsScale: 1,          // Size/width of caustic pattern (0.5-3)
 
+    // Surface dust (tiny particles that catch light)
+    dustDensity: 0.3,          // How many dust particles (0-1)
+    dustSize: 1.0,             // Particle size multiplier
+    dustBrightness: 0.02,      // How bright particles appear (0-0.5)
+
+    // Chromatic dispersion (rainbow edge effect from wavelength-dependent IOR)
+    dispersion: 1.0,           // 0=none, 1=physical crown glass, 2+=exaggerated
+
+    // Beer's Law absorption (thickness-based color tinting)
+    thickness: 2.0,            // Glass thickness in cm (window: 0.3-0.6, thick decorative: 1-2)
+
     // Specular highlights (LiquidGlass rim lighting)
     specularIntensity: 0.05,   // Overall specular brightness
     specularSharpness: 128,    // Specular highlight sharpness (higher = tighter highlights)
-    fresnelPower: 4.5,         // Fresnel falloff (higher = more edge-focused)
 
     // Panel padding (pixels added around quad)
     paddingX: 0,

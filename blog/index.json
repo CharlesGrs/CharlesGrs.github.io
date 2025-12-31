@@ -1,9 +1,7 @@
 {
     "posts": [
         "screen-space-sphere-selection",
-        "apple-liquid-glass",
         "gpu-cache-hierarchy",
-        "procedural-planet-rendering",
         "screen-space-atmospheric-scattering",
         "anamorphic-bloom"
     ],

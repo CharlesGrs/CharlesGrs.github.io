@@ -1048,23 +1048,26 @@
                 glassPanelProgram.uResolution = gl.getUniformLocation(glassPanelProgram, 'uResolution');
                 glassPanelProgram.uPanelSize = gl.getUniformLocation(glassPanelProgram, 'uPanelSize');
                 glassPanelProgram.uBlurredScene = gl.getUniformLocation(glassPanelProgram, 'uBlurredScene');
-                glassPanelProgram.uCornerRadius = gl.getUniformLocation(glassPanelProgram, 'uCornerRadius');
                 glassPanelProgram.uEdgeSoftness = gl.getUniformLocation(glassPanelProgram, 'uEdgeSoftness');
-                glassPanelProgram.uRefractStrength = gl.getUniformLocation(glassPanelProgram, 'uRefractStrength');
+                glassPanelProgram.uIOR = gl.getUniformLocation(glassPanelProgram, 'uIOR');
                 glassPanelProgram.uSquircleN = gl.getUniformLocation(glassPanelProgram, 'uSquircleN');
-                glassPanelProgram.uGlassOpacity = gl.getUniformLocation(glassPanelProgram, 'uGlassOpacity');
-                glassPanelProgram.uGlassTint = gl.getUniformLocation(glassPanelProgram, 'uGlassTint');
-                glassPanelProgram.uChromaticAberration = gl.getUniformLocation(glassPanelProgram, 'uChromaticAberration');
                 // Specular highlight uniforms
                 glassPanelProgram.uSpecularIntensity = gl.getUniformLocation(glassPanelProgram, 'uSpecularIntensity');
                 glassPanelProgram.uSpecularSharpness = gl.getUniformLocation(glassPanelProgram, 'uSpecularSharpness');
-                glassPanelProgram.uFresnelPower = gl.getUniformLocation(glassPanelProgram, 'uFresnelPower');
                 // Edge control uniforms
                 glassPanelProgram.uEdgeWidth = gl.getUniformLocation(glassPanelProgram, 'uEdgeWidth');
                 glassPanelProgram.uBevelDepth = gl.getUniformLocation(glassPanelProgram, 'uBevelDepth');
                 // Caustics uniforms
                 glassPanelProgram.uCausticsIntensity = gl.getUniformLocation(glassPanelProgram, 'uCausticsIntensity');
                 glassPanelProgram.uCausticsScale = gl.getUniformLocation(glassPanelProgram, 'uCausticsScale');
+                // Dust uniforms
+                glassPanelProgram.uDustDensity = gl.getUniformLocation(glassPanelProgram, 'uDustDensity');
+                glassPanelProgram.uDustSize = gl.getUniformLocation(glassPanelProgram, 'uDustSize');
+                glassPanelProgram.uDustBrightness = gl.getUniformLocation(glassPanelProgram, 'uDustBrightness');
+                // Dispersion uniform
+                glassPanelProgram.uDispersion = gl.getUniformLocation(glassPanelProgram, 'uDispersion');
+                // Thickness uniform (Beer's Law)
+                glassPanelProgram.uThickness = gl.getUniformLocation(glassPanelProgram, 'uThickness');
                 // World light uniforms
                 glassPanelProgram.uLight0WorldPos = gl.getUniformLocation(glassPanelProgram, 'uLight0WorldPos');
                 glassPanelProgram.uLight0Color = gl.getUniformLocation(glassPanelProgram, 'uLight0Color');
@@ -1308,16 +1311,12 @@
         // Shared uniforms
         gl.uniform2f(glassPanelProgram.uResolution, canvasWidth, canvasHeight);
         gl.uniform1f(glassPanelProgram.uEdgeSoftness, gp.edgeSoftness !== undefined ? gp.edgeSoftness : 1.5);
-        gl.uniform1f(glassPanelProgram.uRefractStrength, gp.refractStrength !== undefined ? gp.refractStrength : 8.0);
+        gl.uniform1f(glassPanelProgram.uIOR, gp.ior !== undefined ? gp.ior : 1.5);
         gl.uniform1f(glassPanelProgram.uSquircleN, gp.squircleN !== undefined ? gp.squircleN : 4.0);
-        gl.uniform1f(glassPanelProgram.uGlassOpacity, gp.glassOpacity !== undefined ? gp.glassOpacity : 0.12);
-        gl.uniform3f(glassPanelProgram.uGlassTint, gp.glassTintR || 1.0, gp.glassTintG || 1.0, gp.glassTintB || 1.0);
-        gl.uniform1f(glassPanelProgram.uChromaticAberration, gp.chromaticAberration !== undefined ? gp.chromaticAberration : 2.0);
 
         // Specular highlight uniforms (LiquidGlass-style)
         gl.uniform1f(glassPanelProgram.uSpecularIntensity, gp.specularIntensity !== undefined ? gp.specularIntensity : 0.3);
         gl.uniform1f(glassPanelProgram.uSpecularSharpness, gp.specularSharpness !== undefined ? gp.specularSharpness : 32.0);
-        gl.uniform1f(glassPanelProgram.uFresnelPower, gp.fresnelPower !== undefined ? gp.fresnelPower : 3.0);
 
         // Edge control uniforms
         gl.uniform1f(glassPanelProgram.uEdgeWidth, gp.edgeWidth !== undefined ? gp.edgeWidth : 2.0);
@@ -1326,6 +1325,17 @@
         // Caustics uniforms
         gl.uniform1f(glassPanelProgram.uCausticsIntensity, gp.causticsIntensity !== undefined ? gp.causticsIntensity : 0.3);
         gl.uniform1f(glassPanelProgram.uCausticsScale, gp.causticsScale !== undefined ? gp.causticsScale : 1.0);
+
+        // Dust uniforms
+        gl.uniform1f(glassPanelProgram.uDustDensity, gp.dustDensity !== undefined ? gp.dustDensity : 0.3);
+        gl.uniform1f(glassPanelProgram.uDustSize, gp.dustSize !== undefined ? gp.dustSize : 1.0);
+        gl.uniform1f(glassPanelProgram.uDustBrightness, gp.dustBrightness !== undefined ? gp.dustBrightness : 0.02);
+
+        // Dispersion uniform
+        gl.uniform1f(glassPanelProgram.uDispersion, gp.dispersion !== undefined ? gp.dispersion : 1.0);
+
+        // Thickness uniform (Beer's Law absorption)
+        gl.uniform1f(glassPanelProgram.uThickness, gp.thickness !== undefined ? gp.thickness : 1.0);
 
         // World lights from globalLights (world positions + colors)
         const lights = window.globalLights || {};
@@ -1386,9 +1396,6 @@
         gl.bindBuffer(gl.ARRAY_BUFFER, glassQuadBuffer);
         gl.enableVertexAttribArray(glassPanelProgram.aPosition);
         gl.vertexAttribPointer(glassPanelProgram.aPosition, 2, gl.FLOAT, false, 0, 0);
-
-        // Shared corner radius for all panels
-        gl.uniform1f(glassPanelProgram.uCornerRadius, gp.cornerRadius || 16.0);
 
         // Get camera position and compute view direction
         const camX = lights.cameraX !== undefined ? lights.cameraX : 0;
