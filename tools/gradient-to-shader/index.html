@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gradient to Shader | Charles Grassi</title>
+    <meta name="description" content="Convert gradients to GLSL shader code. Multiple techniques: mix() chains, polynomial fitting, LUT textures.">
+
+    <link rel="icon" type="image/x-icon" href="../../assets/favicon/favicon.ico">
+
+    <style>
+        :root {
+            --bg-primary: #0a0f14;
+            --bg-secondary: #111820;
+            --bg-tertiary: #1a222c;
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa0a8;
+            --accent-gold: #e8b923;
+            --accent-teal: #2dd4bf;
+            --border-color: #2a3440;
+            --error-color: #ef4444;
+            --success-color: #22c55e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+
+        header a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+
+        header a:hover {
+            color: var(--accent-teal);
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin: 0.5rem 0;
+            color: var(--text-primary);
+        }
+
+        h1 span {
+            color: var(--accent-gold);
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Gradient Editor */
+        .gradient-editor {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .gradient-preview-container {
+            position: relative;
+            height: 60px;
+            margin-bottom: 1rem;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .gradient-preview-container canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .gradient-track {
+            position: relative;
+            height: 30px;
+            margin-bottom: 1rem;
+        }
+
+        .color-stop {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            cursor: grab;
+            transform: translate(-50%, 0);
+            top: 20px;
+            z-index: 10;
+        }
+
+        .color-stop:active {
+            cursor: grabbing;
+        }
+
+        .color-stop.selected {
+            box-shadow: 0 0 0 3px var(--accent-teal);
+        }
+
+        .editor-controls {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        label {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        input[type="color"] {
+            width: 40px;
+            height: 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: transparent;
+        }
+
+        input[type="number"] {
+            width: 70px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 0.4rem;
+            color: var(--text-primary);
+            font-family: inherit;
+        }
+
+        select {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 0.4rem 0.6rem;
+            color: var(--text-primary);
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        button {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 0.4rem 0.8rem;
+            color: var(--text-primary);
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        button:hover {
+            border-color: var(--accent-teal);
+            color: var(--accent-teal);
+        }
+
+        button.primary {
+            background: var(--accent-gold);
+            border-color: var(--accent-gold);
+            color: var(--bg-primary);
+            font-weight: 600;
+        }
+
+        button.primary:hover {
+            background: #f5c93d;
+            border-color: #f5c93d;
+        }
+
+        button.danger {
+            border-color: var(--error-color);
+            color: var(--error-color);
+        }
+
+        /* Techniques Grid */
+        .techniques-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .technique-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .technique-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .technique-title {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .technique-badge {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }
+
+        .technique-badge.fast {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--success-color);
+        }
+
+        .technique-badge.accurate {
+            background: rgba(45, 212, 191, 0.2);
+            color: var(--accent-teal);
+        }
+
+        .technique-body {
+            padding: 1.25rem;
+        }
+
+        .technique-description {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .technique-preview {
+            margin-bottom: 1rem;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .technique-preview canvas {
+            width: 100%;
+            height: 24px;
+            display: block;
+        }
+
+        .error-display {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+        }
+
+        .error-display span {
+            color: var(--accent-gold);
+            font-weight: 600;
+        }
+
+        .code-block {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            position: relative;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+        }
+
+        .code-lang {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        .copy-btn {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+        }
+
+        .copy-btn.copied {
+            color: var(--success-color);
+            border-color: var(--success-color);
+        }
+
+        pre {
+            padding: 1rem;
+            overflow-x: auto;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            max-height: 300px;
+        }
+
+        code {
+            font-family: inherit;
+        }
+
+        /* LUT Download */
+        .lut-controls {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .lut-preview {
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+
+        /* Options for polynomial */
+        .technique-options {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .techniques-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .editor-controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+        /* Instructions tooltip */
+        .instructions {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .instructions strong {
+            color: var(--text-primary);
+        }
+
+        kbd {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            padding: 0.1rem 0.4rem;
+            font-size: 0.75rem;
+        }
+
+        .webgl-badge {
+            display: inline-block;
+            font-size: 0.65rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+            background: rgba(232, 185, 35, 0.2);
+            color: var(--accent-gold);
+            margin-left: 0.5rem;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="../../">&larr; Back to Portfolio</a>
+            <h1>Gradient <span>&rarr;</span> Shader <span class="webgl-badge">WebGL Rendered</span></h1>
+            <p class="subtitle">Convert visual gradients to optimized GLSL code</p>
+        </header>
+
+        <div class="instructions">
+            <strong>Usage:</strong> Click on the gradient bar to add color stops.
+            Drag stops to reposition. Select a stop and use the color picker to change its color.
+            Press <kbd>Delete</kbd> or <kbd>Backspace</kbd> to remove selected stop.
+            All previews are rendered with actual WebGL shaders.
+        </div>
+
+        <div class="gradient-editor">
+            <div class="gradient-preview-container">
+                <canvas id="mainPreviewCanvas"></canvas>
+            </div>
+            <div class="gradient-track" id="gradientTrack"></div>
+
+            <div class="editor-controls">
+                <div class="control-group">
+                    <label>Color:</label>
+                    <input type="color" id="stopColor" value="#e8b923">
+                </div>
+                <div class="control-group">
+                    <label>Position:</label>
+                    <input type="number" id="stopPosition" min="0" max="100" value="50">
+                    <span style="color: var(--text-secondary)">%</span>
+                </div>
+                <div class="control-group">
+                    <label>Color Space:</label>
+                    <select id="colorSpace">
+                        <option value="srgb">sRGB (naive)</option>
+                        <option value="linear">Linear RGB</option>
+                        <option value="oklab" selected>Oklab (perceptual)</option>
+                    </select>
+                </div>
+                <button onclick="addStop()">+ Add Stop</button>
+                <button class="danger" onclick="deleteSelectedStop()">Delete Stop</button>
+                <button onclick="resetGradient()">Reset</button>
+            </div>
+        </div>
+
+        <div class="techniques-grid">
+            <!-- Mix Chain -->
+            <div class="technique-card">
+                <div class="technique-header">
+                    <span class="technique-title">mix() Chain</span>
+                    <span class="technique-badge accurate">Pixel-perfect</span>
+                </div>
+                <div class="technique-body">
+                    <p class="technique-description">
+                        Sequential lerp between color stops using GLSL's <code>mix()</code> and <code>smoothstep()</code>.
+                        Exact reproduction of your gradient. Best for complex gradients with many stops.
+                    </p>
+                    <div class="technique-preview">
+                        <canvas id="mixPreviewCanvas"></canvas>
+                    </div>
+                    <div class="error-display">Max error: <span id="mixError">0.00%</span></div>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-lang">GLSL</span>
+                            <button class="copy-btn" onclick="copyCode('mixCode')">Copy</button>
+                        </div>
+                        <pre><code id="mixCode"></code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Polynomial -->
+            <div class="technique-card">
+                <div class="technique-header">
+                    <span class="technique-title">Polynomial Fit</span>
+                    <span class="technique-badge fast">Fast</span>
+                </div>
+                <div class="technique-body">
+                    <p class="technique-description">
+                        Fits R, G, B channels to polynomial curves. Fewer instructions, smooth results.
+                        Works best for simple gradients (2-4 colors). May overshoot on complex gradients.
+                    </p>
+                    <div class="technique-options">
+                        <div class="control-group">
+                            <label>Degree:</label>
+                            <select id="polyDegree" onchange="updateOutputs()">
+                                <option value="2">Quadratic (3 coeffs)</option>
+                                <option value="3" selected>Cubic (4 coeffs)</option>
+                                <option value="4">Quartic (5 coeffs)</option>
+                                <option value="5">Quintic (6 coeffs)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="technique-preview">
+                        <canvas id="polyPreviewCanvas"></canvas>
+                    </div>
+                    <div class="error-display">Max error: <span id="polyError">0.00%</span></div>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-lang">GLSL</span>
+                            <button class="copy-btn" onclick="copyCode('polyCode')">Copy</button>
+                        </div>
+                        <pre><code id="polyCode"></code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LUT Texture -->
+            <div class="technique-card">
+                <div class="technique-header">
+                    <span class="technique-title">1D LUT Texture</span>
+                    <span class="technique-badge accurate">Pixel-perfect</span>
+                </div>
+                <div class="technique-body">
+                    <p class="technique-description">
+                        Export as a 1D texture strip to sample in your shader. Perfect accuracy,
+                        single texture fetch. Best for complex gradients or when you need exact colors.
+                    </p>
+                    <div class="lut-controls">
+                        <div class="control-group">
+                            <label>Width:</label>
+                            <select id="lutWidth" onchange="updateLUT()">
+                                <option value="64">64px</option>
+                                <option value="128">128px</option>
+                                <option value="256" selected>256px</option>
+                                <option value="512">512px</option>
+                            </select>
+                        </div>
+                        <button class="primary" onclick="downloadLUT()">Download PNG</button>
+                    </div>
+                    <canvas id="lutCanvas" class="lut-preview" height="24"></canvas>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-lang">GLSL</span>
+                            <button class="copy-btn" onclick="copyCode('lutCode')">Copy</button>
+                        </div>
+                        <pre><code id="lutCode"></code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step Function -->
+            <div class="technique-card">
+                <div class="technique-header">
+                    <span class="technique-title">Step Function</span>
+                    <span class="technique-badge fast">Fastest</span>
+                </div>
+                <div class="technique-body">
+                    <p class="technique-description">
+                        Hard-edged color bands without blending. Great for posterized/retro looks,
+                        color quantization, or when you need distinct color regions.
+                    </p>
+                    <div class="technique-preview">
+                        <canvas id="stepPreviewCanvas"></canvas>
+                    </div>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-lang">GLSL</span>
+                            <button class="copy-btn" onclick="copyCode('stepCode')">Copy</button>
+                        </div>
+                        <pre><code id="stepCode"></code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== WebGL Setup ==========
+        const glContexts = {};
+        const glPrograms = {};
+
+        // Common vertex shader
+        const VERTEX_SHADER = `#version 300 es
+            in vec2 aPosition;
+            out vec2 vUV;
+            void main() {
+                vUV = aPosition * 0.5 + 0.5;
+                gl_Position = vec4(aPosition, 0.0, 1.0);
+            }
+        `;
+
+        // Color space conversion functions (shared)
+        const COLOR_SPACE_FUNCTIONS = `
+            vec3 srgbToLinear(vec3 c) {
+                return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
+            }
+
+            vec3 linearToSrgb(vec3 c) {
+                return mix(c * 12.92, 1.055 * pow(c, vec3(1.0/2.4)) - 0.055, step(0.0031308, c));
+            }
+
+            vec3 linearToOklab(vec3 c) {
+                float l = 0.4122214708 * c.r + 0.5363325363 * c.g + 0.0514459929 * c.b;
+                float m = 0.2119034982 * c.r + 0.6806995451 * c.g + 0.1073969566 * c.b;
+                float s = 0.0883024619 * c.r + 0.2817188376 * c.g + 0.6299787005 * c.b;
+                l = pow(max(l, 0.0), 1.0/3.0);
+                m = pow(max(m, 0.0), 1.0/3.0);
+                s = pow(max(s, 0.0), 1.0/3.0);
+                return vec3(
+                    0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+                    1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+                    0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
+                );
+            }
+
+            vec3 oklabToLinear(vec3 c) {
+                float l = c.x + 0.3963377774 * c.y + 0.2158037573 * c.z;
+                float m = c.x - 0.1055613458 * c.y - 0.0638541728 * c.z;
+                float s = c.x - 0.0894841775 * c.y - 1.2914855480 * c.z;
+                l = l*l*l; m = m*m*m; s = s*s*s;
+                return vec3(
+                    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+                    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+                    -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+                );
+            }
+        `;
+
+        function initWebGL(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            const gl = canvas.getContext('webgl2', { antialias: false, preserveDrawingBuffer: true });
+            if (!gl) {
+                console.error('WebGL2 not supported');
+                return null;
+            }
+
+            // Create quad buffer
+            const quadBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+
+            glContexts[canvasId] = { gl, quadBuffer };
+            return gl;
+        }
+
+        function compileShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+                console.error('Source:', source);
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        function createProgram(gl, vertSource, fragSource) {
+            const vertShader = compileShader(gl, gl.VERTEX_SHADER, vertSource);
+            const fragShader = compileShader(gl, gl.FRAGMENT_SHADER, fragSource);
+            if (!vertShader || !fragShader) return null;
+
+            const program = gl.createProgram();
+            gl.attachShader(program, vertShader);
+            gl.attachShader(program, fragShader);
+            gl.linkProgram(program);
+
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error('Program link error:', gl.getProgramInfoLog(program));
+                return null;
+            }
+
+            return program;
+        }
+
+        function renderWithShader(canvasId, fragmentShader) {
+            const ctx = glContexts[canvasId];
+            if (!ctx) return;
+
+            const { gl, quadBuffer } = ctx;
+            const canvas = document.getElementById(canvasId);
+
+            // Set canvas size
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+
+            // Create/update program
+            const program = createProgram(gl, VERTEX_SHADER, fragmentShader);
+            if (!program) return;
+
+            gl.useProgram(program);
+
+            // Bind quad
+            gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+            const posLoc = gl.getAttribLocation(program, 'aPosition');
+            gl.enableVertexAttribArray(posLoc);
+            gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+            // Draw
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+            // Cleanup
+            gl.deleteProgram(program);
+        }
+
+        // ========== Color Stops ==========
+        let colorStops = [
+            { position: 0, color: '#1a1a2e' },
+            { position: 0.5, color: '#e8b923' },
+            { position: 1, color: '#2dd4bf' }
+        ];
+
+        let selectedStopIndex = null;
+        let isDragging = false;
+
+        // ========== Initialization ==========
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize all WebGL contexts
+            initWebGL('mainPreviewCanvas');
+            initWebGL('mixPreviewCanvas');
+            initWebGL('polyPreviewCanvas');
+            initWebGL('stepPreviewCanvas');
+
+            renderStops();
+            updateOutputs();
+
+            // Keyboard handler
+            document.addEventListener('keydown', (e) => {
+                if ((e.key === 'Delete' || e.key === 'Backspace') && selectedStopIndex !== null) {
+                    if (document.activeElement.tagName !== 'INPUT') {
+                        e.preventDefault();
+                        deleteSelectedStop();
+                    }
+                }
+            });
+
+            // Handle window resize
+            window.addEventListener('resize', () => updateOutputs());
+        });
+
+        // ========== Helper Functions ==========
+        function hexToRgb(hex) {
+            const r = parseInt(hex.slice(1, 3), 16) / 255;
+            const g = parseInt(hex.slice(3, 5), 16) / 255;
+            const b = parseInt(hex.slice(5, 7), 16) / 255;
+            return [r, g, b];
+        }
+
+        function formatFloat(n) {
+            const str = n.toFixed(4);
+            // Remove trailing zeros but keep at least one decimal
+            return str.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '.0');
+        }
+
+        function getSortedStops() {
+            return [...colorStops].sort((a, b) => a.position - b.position);
+        }
+
+        // ========== Gradient Rendering ==========
+        function renderStops() {
+            const track = document.getElementById('gradientTrack');
+            track.innerHTML = '';
+
+            // Add gradient bar to track (CSS fallback for interaction)
+            const sorted = getSortedStops();
+            const cssStops = sorted.map(s => `${s.color} ${s.position * 100}%`).join(', ');
+
+            const bar = document.createElement('div');
+            bar.style.cssText = `
+                position: absolute;
+                left: 0; right: 0; top: 0;
+                height: 20px;
+                border-radius: 4px;
+                background: linear-gradient(to right, ${cssStops});
+                cursor: crosshair;
+            `;
+            bar.onclick = (e) => {
+                if (!isDragging) {
+                    const rect = bar.getBoundingClientRect();
+                    const position = (e.clientX - rect.left) / rect.width;
+                    addStopAtPosition(position);
+                }
+            };
+            track.appendChild(bar);
+
+            // Add stop handles
+            colorStops.forEach((stop, index) => {
+                const handle = document.createElement('div');
+                handle.className = 'color-stop' + (index === selectedStopIndex ? ' selected' : '');
+                handle.style.left = `${stop.position * 100}%`;
+                handle.style.backgroundColor = stop.color;
+
+                handle.onmousedown = (e) => {
+                    e.stopPropagation();
+                    selectStop(index);
+                    startDrag(index, e);
+                };
+
+                handle.onclick = (e) => {
+                    e.stopPropagation();
+                    selectStop(index);
+                };
+
+                track.appendChild(handle);
+            });
+        }
+
+        function selectStop(index) {
+            selectedStopIndex = index;
+            const stop = colorStops[index];
+            document.getElementById('stopColor').value = stop.color;
+            document.getElementById('stopPosition').value = Math.round(stop.position * 100);
+            renderStops();
+        }
+
+        function startDrag(index, e) {
+            isDragging = true;
+            const track = document.getElementById('gradientTrack');
+
+            const onMove = (e) => {
+                const rect = track.getBoundingClientRect();
+                let position = (e.clientX - rect.left) / rect.width;
+                position = Math.max(0, Math.min(1, position));
+                colorStops[index].position = position;
+                document.getElementById('stopPosition').value = Math.round(position * 100);
+                renderStops();
+                updateOutputs();
+            };
+
+            const onUp = () => {
+                isDragging = false;
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        }
+
+        function addStopAtPosition(position) {
+            // Sample color (simple linear interpolation for UI)
+            const sorted = getSortedStops();
+            let color = sorted[0].color;
+
+            for (let i = 0; i < sorted.length - 1; i++) {
+                if (position >= sorted[i].position && position <= sorted[i + 1].position) {
+                    const t = (position - sorted[i].position) / (sorted[i + 1].position - sorted[i].position);
+                    const c1 = hexToRgb(sorted[i].color);
+                    const c2 = hexToRgb(sorted[i + 1].color);
+                    const r = Math.round((c1[0] + (c2[0] - c1[0]) * t) * 255);
+                    const g = Math.round((c1[1] + (c2[1] - c1[1]) * t) * 255);
+                    const b = Math.round((c1[2] + (c2[2] - c1[2]) * t) * 255);
+                    color = `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+                    break;
+                }
+            }
+
+            colorStops.push({ position, color });
+            selectStop(colorStops.length - 1);
+            renderStops();
+            updateOutputs();
+        }
+
+        function addStop() {
+            const color = document.getElementById('stopColor').value;
+            const position = parseInt(document.getElementById('stopPosition').value) / 100;
+            colorStops.push({ position, color });
+            selectStop(colorStops.length - 1);
+            renderStops();
+            updateOutputs();
+        }
+
+        function deleteSelectedStop() {
+            if (selectedStopIndex !== null && colorStops.length > 2) {
+                colorStops.splice(selectedStopIndex, 1);
+                selectedStopIndex = null;
+                renderStops();
+                updateOutputs();
+            }
+        }
+
+        function resetGradient() {
+            colorStops = [
+                { position: 0, color: '#1a1a2e' },
+                { position: 0.5, color: '#e8b923' },
+                { position: 1, color: '#2dd4bf' }
+            ];
+            selectedStopIndex = null;
+            renderStops();
+            updateOutputs();
+        }
+
+        // Event listeners
+        document.getElementById('stopColor').addEventListener('input', (e) => {
+            if (selectedStopIndex !== null) {
+                colorStops[selectedStopIndex].color = e.target.value;
+                renderStops();
+                updateOutputs();
+            }
+        });
+
+        document.getElementById('stopPosition').addEventListener('input', (e) => {
+            if (selectedStopIndex !== null) {
+                colorStops[selectedStopIndex].position = parseInt(e.target.value) / 100;
+                renderStops();
+                updateOutputs();
+            }
+        });
+
+        document.getElementById('colorSpace').addEventListener('change', () => {
+            updateOutputs();
+        });
+
+        // ========== Shader Generation ==========
+
+        function generateMixShaderCode(forOutput = false) {
+            const sorted = getSortedStops();
+            const colorSpace = document.getElementById('colorSpace').value;
+
+            let code = '';
+
+            // Add color space functions if needed
+            if (colorSpace === 'oklab' || colorSpace === 'linear') {
+                if (forOutput) {
+                    code += `// Color space conversion functions\n`;
+                }
+                code += COLOR_SPACE_FUNCTIONS + '\n';
+            }
+
+            code += `vec3 gradient(float t) {\n`;
+
+            // Generate color variables
+            const first = hexToRgb(sorted[0].color);
+
+            if (colorSpace === 'oklab') {
+                code += `    vec3 c = linearToOklab(srgbToLinear(vec3(${formatFloat(first[0])}, ${formatFloat(first[1])}, ${formatFloat(first[2])})));\n`;
+            } else if (colorSpace === 'linear') {
+                code += `    vec3 c = srgbToLinear(vec3(${formatFloat(first[0])}, ${formatFloat(first[1])}, ${formatFloat(first[2])}));\n`;
+            } else {
+                code += `    vec3 c = vec3(${formatFloat(first[0])}, ${formatFloat(first[1])}, ${formatFloat(first[2])});\n`;
+            }
+
+            for (let i = 1; i < sorted.length; i++) {
+                const rgb = hexToRgb(sorted[i].color);
+                const prevPos = sorted[i-1].position;
+                const currPos = sorted[i].position;
+
+                if (colorSpace === 'oklab') {
+                    code += `    c = mix(c, linearToOklab(srgbToLinear(vec3(${formatFloat(rgb[0])}, ${formatFloat(rgb[1])}, ${formatFloat(rgb[2])}))), smoothstep(${formatFloat(prevPos)}, ${formatFloat(currPos)}, t));\n`;
+                } else if (colorSpace === 'linear') {
+                    code += `    c = mix(c, srgbToLinear(vec3(${formatFloat(rgb[0])}, ${formatFloat(rgb[1])}, ${formatFloat(rgb[2])})), smoothstep(${formatFloat(prevPos)}, ${formatFloat(currPos)}, t));\n`;
+                } else {
+                    code += `    c = mix(c, vec3(${formatFloat(rgb[0])}, ${formatFloat(rgb[1])}, ${formatFloat(rgb[2])}), smoothstep(${formatFloat(prevPos)}, ${formatFloat(currPos)}, t));\n`;
+                }
+            }
+
+            if (colorSpace === 'oklab') {
+                code += `    return linearToSrgb(oklabToLinear(c));\n`;
+            } else if (colorSpace === 'linear') {
+                code += `    return linearToSrgb(c);\n`;
+            } else {
+                code += `    return c;\n`;
+            }
+            code += `}`;
+
+            return code;
+        }
+
+        function generateMixFragmentShader() {
+            const gradientFunc = generateMixShaderCode(false);
+            return `#version 300 es
+                precision highp float;
+                in vec2 vUV;
+                out vec4 fragColor;
+                ${gradientFunc}
+                void main() {
+                    fragColor = vec4(gradient(vUV.x), 1.0);
+                }
+            `;
+        }
+
+        // ========== Polynomial Fitting ==========
+
+        function sampleGradientInColorSpace(t) {
+            const sorted = getSortedStops();
+            const colorSpace = document.getElementById('colorSpace').value;
+
+            // Find the segment
+            if (t <= sorted[0].position) {
+                return convertToWorkingSpace(hexToRgb(sorted[0].color), colorSpace);
+            }
+            if (t >= sorted[sorted.length - 1].position) {
+                return convertToWorkingSpace(hexToRgb(sorted[sorted.length - 1].color), colorSpace);
+            }
+
+            for (let i = 0; i < sorted.length - 1; i++) {
+                if (t >= sorted[i].position && t <= sorted[i + 1].position) {
+                    const localT = (t - sorted[i].position) / (sorted[i + 1].position - sorted[i].position);
+                    const c1 = convertToWorkingSpace(hexToRgb(sorted[i].color), colorSpace);
+                    const c2 = convertToWorkingSpace(hexToRgb(sorted[i + 1].color), colorSpace);
+
+                    // Interpolate in working space
+                    const result = [
+                        c1[0] + (c2[0] - c1[0]) * localT,
+                        c1[1] + (c2[1] - c1[1]) * localT,
+                        c1[2] + (c2[2] - c1[2]) * localT
+                    ];
+
+                    // Convert back to sRGB for output
+                    return convertFromWorkingSpace(result, colorSpace);
+                }
+            }
+            return hexToRgb(sorted[0].color);
+        }
+
+        function convertToWorkingSpace(rgb, colorSpace) {
+            if (colorSpace === 'linear') {
+                return srgbToLinearJS(rgb);
+            } else if (colorSpace === 'oklab') {
+                return linearToOklabJS(srgbToLinearJS(rgb));
+            }
+            return rgb;
+        }
+
+        function convertFromWorkingSpace(color, colorSpace) {
+            if (colorSpace === 'linear') {
+                return linearToSrgbJS(color);
+            } else if (colorSpace === 'oklab') {
+                return linearToSrgbJS(oklabToLinearJS(color));
+            }
+            return color;
+        }
+
+        // JavaScript implementations of color space conversions
+        function srgbToLinearJS(c) {
+            return c.map(v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+        }
+
+        function linearToSrgbJS(c) {
+            return c.map(v => v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1/2.4) - 0.055);
+        }
+
+        function linearToOklabJS(c) {
+            let l = 0.4122214708 * c[0] + 0.5363325363 * c[1] + 0.0514459929 * c[2];
+            let m = 0.2119034982 * c[0] + 0.6806995451 * c[1] + 0.1073969566 * c[2];
+            let s = 0.0883024619 * c[0] + 0.2817188376 * c[1] + 0.6299787005 * c[2];
+
+            l = Math.cbrt(Math.max(0, l));
+            m = Math.cbrt(Math.max(0, m));
+            s = Math.cbrt(Math.max(0, s));
+
+            return [
+                0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+                1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+                0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
+            ];
+        }
+
+        function oklabToLinearJS(c) {
+            const l = c[0] + 0.3963377774 * c[1] + 0.2158037573 * c[2];
+            const m = c[0] - 0.1055613458 * c[1] - 0.0638541728 * c[2];
+            const s = c[0] - 0.0894841775 * c[1] - 1.2914855480 * c[2];
+
+            return [
+                4.0767416621 * l*l*l - 3.3077115913 * m*m*m + 0.2309699292 * s*s*s,
+                -1.2684380046 * l*l*l + 2.6097574011 * m*m*m - 0.3413193965 * s*s*s,
+                -0.0041960863 * l*l*l - 0.7034186147 * m*m*m + 1.7076147010 * s*s*s
+            ];
+        }
+
+        function fitPolynomial(points, degree) {
+            const n = points.length;
+            const m = degree + 1;
+
+            const X = [], Y = [];
+            for (let i = 0; i < n; i++) {
+                const row = [];
+                for (let j = 0; j <= degree; j++) {
+                    row.push(Math.pow(points[i].x, j));
+                }
+                X.push(row);
+                Y.push(points[i].y);
+            }
+
+            const XtX = [], XtY = [];
+            for (let i = 0; i < m; i++) {
+                XtX.push([]);
+                for (let j = 0; j < m; j++) {
+                    let sum = 0;
+                    for (let k = 0; k < n; k++) sum += X[k][i] * X[k][j];
+                    XtX[i].push(sum);
+                }
+                let sum = 0;
+                for (let k = 0; k < n; k++) sum += X[k][i] * Y[k];
+                XtY.push(sum);
+            }
+
+            const A = XtX.map((row, i) => [...row, XtY[i]]);
+
+            for (let i = 0; i < m; i++) {
+                let maxRow = i;
+                for (let k = i + 1; k < m; k++) {
+                    if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) maxRow = k;
+                }
+                [A[i], A[maxRow]] = [A[maxRow], A[i]];
+
+                for (let k = i + 1; k < m; k++) {
+                    const factor = A[k][i] / A[i][i];
+                    for (let j = i; j <= m; j++) A[k][j] -= factor * A[i][j];
+                }
+            }
+
+            const coeffs = new Array(m).fill(0);
+            for (let i = m - 1; i >= 0; i--) {
+                coeffs[i] = A[i][m];
+                for (let j = i + 1; j < m; j++) coeffs[i] -= A[i][j] * coeffs[j];
+                coeffs[i] /= A[i][i];
+            }
+
+            return coeffs;
+        }
+
+        function evalPolynomial(coeffs, t) {
+            let result = 0, tPow = 1;
+            for (let i = 0; i < coeffs.length; i++) {
+                result += coeffs[i] * tPow;
+                tPow *= t;
+            }
+            return Math.max(0, Math.min(1, result));
+        }
+
+        function generatePolyShaderCode(coeffsR, coeffsG, coeffsB, forOutput = false) {
+            const degree = coeffsR.length - 1;
+
+            let code = `vec3 gradient(float t) {\n`;
+            code += `    float t2 = t * t;\n`;
+            if (degree >= 3) code += `    float t3 = t2 * t;\n`;
+            if (degree >= 4) code += `    float t4 = t3 * t;\n`;
+            if (degree >= 5) code += `    float t5 = t4 * t;\n`;
+            code += `\n`;
+
+            const terms = ['1.0', 't', 't2', 't3', 't4', 't5'];
+
+            code += `    float r = `;
+            code += coeffsR.map((c, i) => `${formatFloat(c)}${i > 0 ? ' * ' + terms[i] : ''}`).join(' + ');
+            code += `;\n`;
+
+            code += `    float g = `;
+            code += coeffsG.map((c, i) => `${formatFloat(c)}${i > 0 ? ' * ' + terms[i] : ''}`).join(' + ');
+            code += `;\n`;
+
+            code += `    float b = `;
+            code += coeffsB.map((c, i) => `${formatFloat(c)}${i > 0 ? ' * ' + terms[i] : ''}`).join(' + ');
+            code += `;\n`;
+
+            code += `\n    return clamp(vec3(r, g, b), 0.0, 1.0);\n`;
+            code += `}`;
+
+            return code;
+        }
+
+        function generatePolyFragmentShader(coeffsR, coeffsG, coeffsB) {
+            const gradientFunc = generatePolyShaderCode(coeffsR, coeffsG, coeffsB, false);
+            return `#version 300 es
+                precision highp float;
+                in vec2 vUV;
+                out vec4 fragColor;
+                ${gradientFunc}
+                void main() {
+                    fragColor = vec4(gradient(vUV.x), 1.0);
+                }
+            `;
+        }
+
+        // ========== Step Function ==========
+
+        function generateStepShaderCode(forOutput = false) {
+            const sorted = getSortedStops();
+
+            let code = `vec3 gradient(float t) {\n`;
+
+            for (let i = sorted.length - 1; i > 0; i--) {
+                const threshold = (sorted[i-1].position + sorted[i].position) / 2;
+                const rgb = hexToRgb(sorted[i].color);
+                code += `    if (t > ${formatFloat(threshold)}) return vec3(${formatFloat(rgb[0])}, ${formatFloat(rgb[1])}, ${formatFloat(rgb[2])});\n`;
+            }
+
+            const first = hexToRgb(sorted[0].color);
+            code += `    return vec3(${formatFloat(first[0])}, ${formatFloat(first[1])}, ${formatFloat(first[2])});\n`;
+            code += `}`;
+
+            return code;
+        }
+
+        function generateStepFragmentShader() {
+            const gradientFunc = generateStepShaderCode(false);
+            return `#version 300 es
+                precision highp float;
+                in vec2 vUV;
+                out vec4 fragColor;
+                ${gradientFunc}
+                void main() {
+                    fragColor = vec4(gradient(vUV.x), 1.0);
+                }
+            `;
+        }
+
+        // ========== LUT Generation ==========
+
+        function generateLUTCode() {
+            return `uniform sampler2D uGradientLUT;
+
+vec3 gradient(float t) {
+    return texture(uGradientLUT, vec2(t, 0.5)).rgb;
+}
+
+// Usage: upload the PNG as a texture with:
+// - Wrap mode: CLAMP_TO_EDGE
+// - Filter: LINEAR for smooth, NEAREST for banded`;
+        }
+
+        function updateLUT() {
+            const canvas = document.getElementById('lutCanvas');
+            const width = parseInt(document.getElementById('lutWidth').value);
+            canvas.width = width;
+
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.createImageData(width, 24);
+
+            for (let x = 0; x < width; x++) {
+                const t = x / (width - 1);
+                const [r, g, b] = sampleGradientInColorSpace(t);
+
+                for (let y = 0; y < 24; y++) {
+                    const i = (y * width + x) * 4;
+                    imageData.data[i + 0] = Math.round(Math.max(0, Math.min(1, r)) * 255);
+                    imageData.data[i + 1] = Math.round(Math.max(0, Math.min(1, g)) * 255);
+                    imageData.data[i + 2] = Math.round(Math.max(0, Math.min(1, b)) * 255);
+                    imageData.data[i + 3] = 255;
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        function downloadLUT() {
+            const width = parseInt(document.getElementById('lutWidth').value);
+
+            const downloadCanvas = document.createElement('canvas');
+            downloadCanvas.width = width;
+            downloadCanvas.height = 1;
+            const ctx = downloadCanvas.getContext('2d');
+            const imageData = ctx.createImageData(width, 1);
+
+            for (let x = 0; x < width; x++) {
+                const t = x / (width - 1);
+                const [r, g, b] = sampleGradientInColorSpace(t);
+                imageData.data[x * 4 + 0] = Math.round(Math.max(0, Math.min(1, r)) * 255);
+                imageData.data[x * 4 + 1] = Math.round(Math.max(0, Math.min(1, g)) * 255);
+                imageData.data[x * 4 + 2] = Math.round(Math.max(0, Math.min(1, b)) * 255);
+                imageData.data[x * 4 + 3] = 255;
+            }
+            ctx.putImageData(imageData, 0, 0);
+
+            const link = document.createElement('a');
+            link.download = 'gradient-lut.png';
+            link.href = downloadCanvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // ========== Error Calculation ==========
+
+        function calculatePolyError(coeffsR, coeffsG, coeffsB) {
+            const samples = 100;
+            let maxError = 0;
+
+            for (let i = 0; i < samples; i++) {
+                const t = i / (samples - 1);
+                const original = sampleGradientInColorSpace(t);
+                const approx = [
+                    evalPolynomial(coeffsR, t),
+                    evalPolynomial(coeffsG, t),
+                    evalPolynomial(coeffsB, t)
+                ];
+
+                const error = Math.max(
+                    Math.abs(original[0] - approx[0]),
+                    Math.abs(original[1] - approx[1]),
+                    Math.abs(original[2] - approx[2])
+                );
+                maxError = Math.max(maxError, error);
+            }
+
+            return maxError * 100;
+        }
+
+        // ========== Main Update Function ==========
+
+        function updateOutputs() {
+            const degree = parseInt(document.getElementById('polyDegree').value);
+            const samples = 64;
+
+            // Sample gradient for polynomial fitting
+            const points = [];
+            for (let i = 0; i < samples; i++) {
+                const t = i / (samples - 1);
+                const color = sampleGradientInColorSpace(t);
+                points.push({ t, color });
+            }
+
+            // Fit polynomials
+            const coeffsR = fitPolynomial(points.map(p => ({ x: p.t, y: p.color[0] })), degree);
+            const coeffsG = fitPolynomial(points.map(p => ({ x: p.t, y: p.color[1] })), degree);
+            const coeffsB = fitPolynomial(points.map(p => ({ x: p.t, y: p.color[2] })), degree);
+
+            // Render WebGL previews
+            renderWithShader('mainPreviewCanvas', generateMixFragmentShader());
+            renderWithShader('mixPreviewCanvas', generateMixFragmentShader());
+            renderWithShader('polyPreviewCanvas', generatePolyFragmentShader(coeffsR, coeffsG, coeffsB));
+            renderWithShader('stepPreviewCanvas', generateStepFragmentShader());
+
+            // Update code outputs
+            document.getElementById('mixCode').textContent = generateMixShaderCode(true);
+            document.getElementById('polyCode').textContent = generatePolyShaderCode(coeffsR, coeffsG, coeffsB, true);
+            document.getElementById('stepCode').textContent = generateStepShaderCode(true);
+            document.getElementById('lutCode').textContent = generateLUTCode();
+
+            // Update error displays
+            document.getElementById('mixError').textContent = '0.00%';
+            document.getElementById('polyError').textContent = calculatePolyError(coeffsR, coeffsG, coeffsB).toFixed(2) + '%';
+
+            // Update LUT
+            updateLUT();
+        }
+
+        // ========== Clipboard ==========
+
+        function copyCode(elementId) {
+            const code = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = document.querySelector(`[onclick="copyCode('${elementId}')"]`);
+                btn.textContent = 'Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = 'Copy';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
