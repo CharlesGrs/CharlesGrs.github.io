@@ -48,6 +48,11 @@ float fbm(vec3 p) {
     return value;
 }
 
+// 2D overload for convenience
+float fbm(vec2 p) {
+    return fbm(vec3(p, 0.0));
+}
+
 // ============ Scattering Physics ============
 float rayleighCoeff(float wavelength, float base) {
     float lambda = wavelength / 550.0;
