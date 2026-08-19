@@ -20,7 +20,7 @@ const path = require('path');
 const { marked } = require('marked');
 
 // Configuration
-const SITE_URL = 'https://charlesgrs.github.io';
+const SITE_URL = 'https://charlesgrassi.dev';
 const AUTHOR_NAME = 'Charles Grassi';
 const LOCAL_PORT = 8080;
 

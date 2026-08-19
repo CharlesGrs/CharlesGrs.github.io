@@ -3008,6 +3008,465 @@
             svg.appendChild(createText(w/2, h/2, 'VS', 'diagram-label-small'));
 
             container.appendChild(svg);
+        },
+
+        // ================================================================
+        // NEURAL VOLUMETRIC CLOUDS
+        // ================================================================
+
+        // What is shared between the two lighting paths and what is swapped.
+        // The whole argument of the post is that exactly one box changes colour.
+        'neural-cloud-ab': function(container, w, h) {
+            var svg = createSvg(w, h);
+
+            var TEAL = '#2dd4bf';
+            var GOLD = '#e8b923';
+
+            svg.appendChild(createText(w / 2, 22, 'One raymarch step', 'diagram-title'));
+
+            // --- the ray, with sample points marching along it
+            var rayY = 74;
+            svg.appendChild(createLine(40, rayY, w - 40, rayY, 'rgba(255,255,255,0.18)', 1));
+            svg.appendChild(createText(40, rayY - 20, 'eye', 'diagram-label-tiny'));
+
+            for (var s = 0; s < 12; s++) {
+                var sx = 70 + s * ((w - 150) / 11);
+                var dot = createCircle(sx, rayY, 3.5, 'rgba(45,212,191,0.5)', 'none');
+                dot.innerHTML = '<animate attributeName="fill" ' +
+                    'values="rgba(45,212,191,0.35);rgba(232,185,35,0.95);rgba(45,212,191,0.35)" ' +
+                    'dur="2.4s" begin="' + (s * 0.2) + 's" repeatCount="indefinite"/>' +
+                    '<animate attributeName="r" values="3.5;6;3.5" dur="2.4s" begin="' +
+                    (s * 0.2) + 's" repeatCount="indefinite"/>';
+                svg.appendChild(dot);
+            }
+
+            // --- the four stages of a step
+            var stages = [
+                { label: 'sample density', sub: 'baked pyramid', shared: true },
+                { label: 'in-scattered radiance', sub: 'THE ONE QUANTITY', shared: false },
+                { label: 'step integral', sub: 'L * albedo * (1 - T)', shared: true },
+                { label: 'accumulate', sub: 'transmittance, composite', shared: true }
+            ];
+
+            var boxW = 158, boxH = 58, gap = 14;
+            var totalW = stages.length * boxW + (stages.length - 1) * gap;
+            var x0 = (w - totalW) / 2;
+            var boxY = 122;
+
+            stages.forEach(function(stage, i) {
+                var bx = x0 + i * (boxW + gap);
+                var color = stage.shared ? TEAL : GOLD;
+                var fill = stage.shared ? 'rgba(45,212,191,0.08)' : 'rgba(232,185,35,0.16)';
+
+                var box = createRect(bx, boxY, boxW, boxH, 6, fill, color,
+                                     stage.shared ? 1 : 2);
+                if (!stage.shared) {
+                    box.innerHTML = '<animate attributeName="fill" ' +
+                        'values="rgba(232,185,35,0.10);rgba(232,185,35,0.28);rgba(232,185,35,0.10)" ' +
+                        'dur="2.4s" repeatCount="indefinite"/>';
+                }
+                svg.appendChild(box);
+
+                svg.appendChild(createText(bx + boxW / 2, boxY + 23, stage.label,
+                                           'diagram-label'));
+                svg.appendChild(createText(bx + boxW / 2, boxY + 41, stage.sub,
+                                           'diagram-label-tiny'));
+
+                if (i < stages.length - 1) {
+                    svg.appendChild(createArrow(bx + boxW + 2, boxY + boxH / 2,
+                                                bx + boxW + gap - 2, boxY + boxH / 2,
+                                                'rgba(255,255,255,0.35)'));
+                }
+            });
+
+            // --- the swap, drawn under the gold box only
+            var swapX = x0 + (boxW + gap);
+            var swapCx = swapX + boxW / 2;
+
+            svg.appendChild(createLine(swapCx, boxY + boxH, swapCx, boxY + boxH + 24,
+                                       'rgba(232,185,35,0.5)', 1));
+
+            var variants = [
+                { title: 'analytic', sub: 'multiple-scattering octaves', sub2: '14 texture fetches' },
+                { title: 'neural', sub: '13-16-16-3, squared ReLU', sub2: '12 fetches + 512 MACs' }
+            ];
+
+            variants.forEach(function(v, i) {
+                var vy = boxY + boxH + 30 + i * 62;
+                var vx = swapCx - 150;
+
+                var vbox = createRect(vx, vy, 300, 52, 6,
+                                      'rgba(232,185,35,0.05)', 'rgba(232,185,35,0.55)', 1);
+                vbox.innerHTML = '<animate attributeName="stroke-opacity" ' +
+                    'values="0.25;1;0.25" dur="4.8s" begin="' + (i * 2.4) +
+                    's" repeatCount="indefinite"/>';
+                svg.appendChild(vbox);
+
+                svg.appendChild(createText(vx + 52, vy + 26, v.title, 'diagram-label'));
+                svg.appendChild(createLine(vx + 104, vy + 10, vx + 104, vy + 42,
+                                           'rgba(255,255,255,0.15)', 1));
+                svg.appendChild(createText(vx + 202, vy + 19, v.sub, 'diagram-label-small'));
+                svg.appendChild(createText(vx + 202, vy + 36, v.sub2, 'diagram-label-tiny'));
+            });
+
+            // --- legend
+            svg.appendChild(createRect(40, h - 30, 10, 10, 2, 'rgba(45,212,191,0.25)', TEAL, 1));
+            svg.appendChild(createText(160, h - 24,
+                'identical, bit for bit', 'diagram-label-tiny'));
+            svg.appendChild(createRect(300, h - 30, 10, 10, 2, 'rgba(232,185,35,0.3)', GOLD, 2));
+            svg.appendChild(createText(420, h - 24,
+                'the only thing that differs', 'diagram-label-tiny'));
+
+            container.appendChild(svg);
+        },
+
+        // The 13 inputs: two multi-scale density chains plus one angle.
+        'neural-cloud-descriptor': function(container, w, h) {
+            var svg = createSvg(w, h);
+
+            var TEAL = '#2dd4bf';
+            var GOLD = '#e8b923';
+
+            svg.appendChild(createText(w / 2, 22, 'What the network reads at each sample',
+                                       'diagram-title'));
+
+            var cx = 300, cy = 172;
+
+            // --- cloud silhouette behind everything
+            var cloud = createPath(
+                'M 120,215 C 108,180 140,158 170,166 C 176,132 224,120 250,144 ' +
+                'C 278,116 336,126 344,164 C 382,160 402,190 388,215 Z',
+                'rgba(255,255,255,0.055)', 'rgba(255,255,255,0.16)', 1);
+            svg.appendChild(cloud);
+
+            // --- the chain at the sample point
+            var scales = [6, 12, 24, 48, 96, 192];
+            var radii = [13, 22, 33, 46, 61, 78];
+
+            for (var i = scales.length - 1; i >= 0; i--) {
+                var ring = createCircle(cx, cy, radii[i], 'none',
+                                        'rgba(45,212,191,' + (0.25 + i * 0.09) + ')');
+                ring.setAttribute('stroke-width', 1.2);
+                ring.setAttribute('stroke-dasharray', '3 4');
+                ring.innerHTML = '<animate attributeName="stroke-opacity" ' +
+                    'values="0.25;1;0.25" dur="3.6s" begin="' + (i * 0.32) +
+                    's" repeatCount="indefinite"/>';
+                svg.appendChild(ring);
+            }
+
+            svg.appendChild(createCircle(cx, cy, 4, GOLD, 'none'));
+            svg.appendChild(createText(cx, cy + 96, 'mean density, 6 scales',
+                                       'diagram-label-small'));
+            svg.appendChild(createText(cx, cy + 112, '6 / 12 / 24 / 48 / 96 / 192 metres',
+                                       'diagram-label-tiny'));
+
+            // --- the chain toward the sun
+            var sunX = 630, sunY = 78;
+            var sun = createCircle(sunX, sunY, 17, 'rgba(232,185,35,0.9)', 'none');
+            sun.innerHTML = '<animate attributeName="r" values="15;19;15" dur="3s" ' +
+                'repeatCount="indefinite"/>';
+            svg.appendChild(sun);
+            svg.appendChild(createText(sunX, sunY + 34, 'sun', 'diagram-label-tiny'));
+
+            var dx = sunX - cx, dy = sunY - cy;
+            var len = Math.sqrt(dx * dx + dy * dy);
+            dx /= len; dy /= len;
+
+            svg.appendChild(createLine(cx, cy, sunX - dx * 22, sunY - dy * 22,
+                                       'rgba(232,185,35,0.28)', 1));
+
+            for (var k = 0; k < 6; k++) {
+                var t = 0.16 + k * 0.145;
+                var px = cx + dx * len * t;
+                var py = cy + dy * len * t;
+                var r = 7 + k * 3.4;
+
+                var probe = createCircle(px, py, r, 'none', 'rgba(232,185,35,0.75)');
+                probe.setAttribute('stroke-width', 1.2);
+                probe.innerHTML = '<animate attributeName="stroke-opacity" ' +
+                    'values="0.2;1;0.2" dur="3.6s" begin="' + (k * 0.32) +
+                    's" repeatCount="indefinite"/>';
+                svg.appendChild(probe);
+            }
+
+            svg.appendChild(createText(520, 205, 'the same chain, toward the sun',
+                                       'diagram-label-small'));
+            svg.appendChild(createText(520, 221, 'dominant predictor', 'diagram-label-tiny'));
+
+            // --- the view ray and the one angle
+            svg.appendChild(createArrow(78, 262, cx - 12, cy + 10, 'rgba(255,255,255,0.4)'));
+            svg.appendChild(createText(96, 280, 'view', 'diagram-label-tiny'));
+
+            var arc = createPath('M ' + (cx + 34) + ',' + (cy - 4) +
+                                 ' A 36,36 0 0,0 ' + (cx + 24) + ',' + (cy + 26),
+                                 'none', 'rgba(255,255,255,0.4)', 1);
+            svg.appendChild(arc);
+            svg.appendChild(createText(cx + 74, cy + 20, 'cos(view, sun)',
+                                       'diagram-label-tiny'));
+
+            // --- the count
+            svg.appendChild(createText(w - 90, h - 36, '6 + 6 + 1', 'diagram-label'));
+            svg.appendChild(createText(w - 90, h - 18, '13 inputs', 'diagram-label-tiny'));
+
+            container.appendChild(svg);
+        },
+
+        // The measured result. Data is the saved sweep CSV.
+        'neural-cloud-sweep': function(container, w, h) {
+            var svg = createSvg(w, h);
+
+            var TEAL = '#2dd4bf';
+            var GOLD = '#e8b923';
+
+            // angle, analytic energy, neural energy
+            var DATA = [
+                [0, 0.2085, 0.9600],
+                [15, 0.2206, 0.9531],
+                [30, 0.2929, 0.9797],
+                [45, 0.3909, 0.9622],
+                [60, 0.4840, 0.9571],
+                [75, 0.5710, 0.9903],
+                [90, 0.6545, 0.9904],
+                [105, 0.7470, 0.9671],
+                [120, 0.8493, 0.9772],
+                [135, 0.9295, 0.9664],
+                [150, 1.0103, 0.9448],
+                [165, 1.2122, 0.9607],
+                [180, 1.4892, 0.9692]
+            ];
+            if (!DATA.length) { container.appendChild(svg); return; }
+
+            svg.appendChild(createText(w / 2, 20, 'Energy against sun angle', 'diagram-title'));
+
+            var left = 66, right = w - 150, top = 44, bottom = h - 46;
+            var yLow = 0.0, yHigh = 2.0;
+
+            function X(angle) { return left + (angle / 180) * (right - left); }
+            function Y(e) {
+                var c = Math.max(yLow, Math.min(yHigh, e));
+                return bottom - ((c - yLow) / (yHigh - yLow)) * (bottom - top);
+            }
+
+            // grid
+            [0.0, 0.5, 1.0, 1.5, 2.0].forEach(function(v) {
+                svg.appendChild(createLine(left, Y(v), right, Y(v),
+                                           'rgba(255,255,255,0.06)', 1));
+                svg.appendChild(createText(left - 24, Y(v), v.toFixed(1),
+                                           'diagram-label-tiny'));
+            });
+
+            // the line worth hitting
+            var unity = createLine(left, Y(1), right, Y(1), 'rgba(255,255,255,0.45)', 1);
+            unity.setAttribute('stroke-dasharray', '5 4');
+            svg.appendChild(unity);
+            svg.appendChild(createText(right + 34, Y(1) - 12, 'correct', 'diagram-label-tiny'));
+
+            [0, 45, 90, 135, 180].forEach(function(a) {
+                svg.appendChild(createText(X(a), bottom + 18, a + '°',
+                                           'diagram-label-tiny'));
+            });
+
+            svg.appendChild(createText(X(18), bottom + 34, 'front lit', 'diagram-label-tiny'));
+            svg.appendChild(createText(X(163), bottom + 34, 'backlit', 'diagram-label-tiny'));
+
+            function series(index, color, label, labelY) {
+                var d = '';
+                DATA.forEach(function(row, i) {
+                    d += (i === 0 ? 'M' : ' L') + X(row[0]) + ',' + Y(row[index]);
+                });
+
+                var line = createPath(d, 'none', color, 2.5);
+                line.setAttribute('stroke-linejoin', 'round');
+                line.setAttribute('stroke-dasharray', '1400');
+                line.setAttribute('stroke-dashoffset', '1400');
+                line.innerHTML = '<animate attributeName="stroke-dashoffset" from="1400" ' +
+                    'to="0" dur="1.8s" fill="freeze"/>';
+                svg.appendChild(line);
+
+                DATA.forEach(function(row) {
+                    svg.appendChild(createCircle(X(row[0]), Y(row[index]), 3, color, 'none'));
+                });
+
+                svg.appendChild(createRect(right + 22, labelY - 5, 9, 9, 2, color, 'none'));
+                svg.appendChild(createText(right + 84, labelY, label, 'diagram-label-tiny'));
+            }
+
+            series(1, GOLD, 'analytic', top + 16);
+            series(2, TEAL, 'neural', top + 34);
+
+            container.appendChild(svg);
+        },
+
+        // Why a piecewise-linear activation is visible in a raymarch.
+        'neural-cloud-activation': function(container, w, h) {
+            var svg = createSvg(w, h);
+
+            var TEAL = '#2dd4bf';
+            var GOLD = '#e8b923';
+
+            svg.appendChild(createText(w / 2, 20, 'The activation is visible in the render',
+                                       'diagram-title'));
+
+            function panel(ox, title, sub, color, piecewise) {
+                svg.appendChild(createText(ox + 150, 46, title, 'diagram-label'));
+                svg.appendChild(createText(ox + 150, 63, sub, 'diagram-label-tiny'));
+
+                // --- the curve
+                var gx = ox + 26, gy = 88, gw = 118, gh = 74;
+                svg.appendChild(createRect(gx, gy, gw, gh, 4, 'rgba(255,255,255,0.03)',
+                                           'rgba(255,255,255,0.10)', 1));
+                svg.appendChild(createLine(gx, gy + gh - 12, gx + gw, gy + gh - 12,
+                                           'rgba(255,255,255,0.15)', 1));
+
+                var d = '', i;
+                for (i = 0; i <= 40; i++) {
+                    var t = i / 40;
+                    var x = gx + t * gw;
+                    var v = Math.max(0, t - 0.35);
+                    var y = gy + gh - 12 - (piecewise ? v * 1.5 : v * v * 4.2) * gh * 0.9;
+                    y = Math.max(gy + 4, y);
+                    d += (i === 0 ? 'M' : ' L') + x + ',' + y;
+                }
+                svg.appendChild(createPath(d, 'none', color, 2));
+
+                // --- a cloud cross-section shaded by that field
+                var ccx = ox + 218, ccy = 128;
+                var blob = createPath(
+                    'M ' + (ccx - 62) + ',' + (ccy + 40) +
+                    ' C ' + (ccx - 76) + ',' + (ccy + 4) + ' ' + (ccx - 44) + ',' + (ccy - 20) +
+                    ' ' + (ccx - 18) + ',' + (ccy - 14) +
+                    ' C ' + (ccx - 10) + ',' + (ccy - 44) + ' ' + (ccx + 34) + ',' + (ccy - 46) +
+                    ' ' + (ccx + 44) + ',' + (ccy - 16) +
+                    ' C ' + (ccx + 72) + ',' + (ccy - 14) + ' ' + (ccx + 76) + ',' + (ccy + 22) +
+                    ' ' + (ccx + 58) + ',' + (ccy + 40) + ' Z',
+                    'rgba(255,255,255,0.07)', 'rgba(255,255,255,0.22)', 1);
+                svg.appendChild(blob);
+
+                if (piecewise) {
+                    // shell-shaped seams following the surface
+                    for (i = 1; i <= 4; i++) {
+                        var scale = 1 - i * 0.17;
+                        var seam = createPath(
+                            'M ' + (ccx - 62 * scale) + ',' + (ccy + 40 * scale) +
+                            ' C ' + (ccx - 40 * scale) + ',' + (ccy - 26 * scale) + ' ' +
+                            (ccx + 30 * scale) + ',' + (ccy - 30 * scale) + ' ' +
+                            (ccx + 58 * scale) + ',' + (ccy + 40 * scale),
+                            'none', 'rgba(232,185,35,0.85)', 1.4);
+                        seam.innerHTML = '<animate attributeName="stroke-opacity" ' +
+                            'values="0.35;1;0.35" dur="2.6s" begin="' + (i * 0.22) +
+                            's" repeatCount="indefinite"/>';
+                        svg.appendChild(seam);
+                    }
+                    svg.appendChild(createText(ccx, ccy + 62, 'creases follow the surface',
+                                               'diagram-label-tiny'));
+                } else {
+                    var grad = createPath(
+                        'M ' + (ccx - 50) + ',' + (ccy + 34) +
+                        ' C ' + (ccx - 30) + ',' + (ccy - 20) + ' ' +
+                        (ccx + 24) + ',' + (ccy - 24) + ' ' +
+                        (ccx + 48) + ',' + (ccy + 34),
+                        'none', 'rgba(45,212,191,0.5)', 12);
+                    grad.setAttribute('stroke-linecap', 'round');
+                    svg.appendChild(grad);
+                    svg.appendChild(createText(ccx, ccy + 62, 'smooth', 'diagram-label-tiny'));
+                }
+            }
+
+            panel(20, 'ReLU', 'piecewise linear → 2nd difference 4.1× mean gradient',
+                  GOLD, true);
+            svg.appendChild(createLine(w / 2, 44, w / 2, h - 30, 'rgba(255,255,255,0.10)', 1));
+            panel(w / 2 + 20, 'squared ReLU', 'one extra multiply → 2nd difference 0.5',
+                  TEAL, false);
+
+            container.appendChild(svg);
+        },
+
+        // A smooth quantity estimated by a coin flip.
+        'neural-cloud-bernoulli': function(container, w, h) {
+            var svg = createSvg(w, h);
+
+            var TEAL = '#2dd4bf';
+            var GOLD = '#e8b923';
+
+            svg.appendChild(createText(w / 2, 20,
+                'The quantity is smooth. The estimator is a coin flip.', 'diagram-title'));
+
+            // --- left: paths escaping into one band or the other
+            var cx = 168, cy = 160;
+
+            svg.appendChild(createLine(40, cy - 6, 300, cy - 6, 'rgba(255,255,255,0.18)', 1));
+            svg.appendChild(createText(70, cy - 20, 'sky band', 'diagram-label-tiny'));
+            svg.appendChild(createText(70, cy + 10, 'ground band', 'diagram-label-tiny'));
+
+            svg.appendChild(createCircle(cx, cy + 34, 30, 'rgba(255,255,255,0.07)',
+                                         'rgba(255,255,255,0.2)'));
+            svg.appendChild(createCircle(cx, cy + 34, 3.5, GOLD, 'none'));
+
+            var angles = [-140, -108, -74, -46, -14, 22, 54, 96];
+            angles.forEach(function(a, i) {
+                var rad = a * Math.PI / 180;
+                var ex = cx + Math.cos(rad) * 96;
+                var ey = cy + 34 + Math.sin(rad) * 96;
+                var up = ey < cy - 6;
+                var color = up ? 'rgba(45,212,191,0.85)' : 'rgba(232,185,35,0.85)';
+
+                var ray = createLine(cx, cy + 34, ex, ey, color, 1.4);
+                ray.setAttribute('stroke-dasharray', '110');
+                ray.setAttribute('stroke-dashoffset', '110');
+                ray.innerHTML = '<animate attributeName="stroke-dashoffset" values="110;0;110" ' +
+                    'dur="3.2s" begin="' + (i * 0.28) + 's" repeatCount="indefinite"/>';
+                svg.appendChild(ray);
+            });
+
+            svg.appendChild(createText(cx, h - 30,
+                'each path escapes into one band or the other', 'diagram-label-tiny'));
+            svg.appendChild(createText(cx, h - 15, 'no partial credit', 'diagram-label-tiny'));
+
+            svg.appendChild(createLine(w / 2 + 10, 40, w / 2 + 10, h - 24,
+                                       'rgba(255,255,255,0.10)', 1));
+
+            // --- right: noise against path count, versus the signal's own spread
+            var gx = 430, gy = 56, gw = 260, gh = 168;
+            svg.appendChild(createRect(gx, gy, gw, gh, 4, 'rgba(255,255,255,0.03)',
+                                       'rgba(255,255,255,0.10)', 1));
+
+            var counts = [4, 8, 16, 32, 64, 128];
+            var noise = [0.246, 0.174, 0.123, 0.087, 0.061, 0.043];
+            var SPREAD = 0.31;
+
+            function NY(v) { return gy + gh - (v / 0.32) * gh; }
+
+            var sig = createLine(gx, NY(SPREAD), gx + gw, NY(SPREAD), 'rgba(255,255,255,0.5)', 1);
+            sig.setAttribute('stroke-dasharray', '5 4');
+            svg.appendChild(sig);
+            svg.appendChild(createText(gx + 74, NY(SPREAD) - 11,
+                'the signal’s own spread, 0.31', 'diagram-label-tiny'));
+
+            var d = '';
+            counts.forEach(function(c, i) {
+                var x = gx + (i / (counts.length - 1)) * gw;
+                d += (i === 0 ? 'M' : ' L') + x + ',' + NY(noise[i]);
+            });
+
+            var line = createPath(d, 'none', TEAL, 2.5);
+            line.setAttribute('stroke-dasharray', '400');
+            line.setAttribute('stroke-dashoffset', '400');
+            line.innerHTML = '<animate attributeName="stroke-dashoffset" from="400" to="0" ' +
+                'dur="1.6s" fill="freeze"/>';
+            svg.appendChild(line);
+
+            counts.forEach(function(c, i) {
+                var x = gx + (i / (counts.length - 1)) * gw;
+                svg.appendChild(createCircle(x, NY(noise[i]), 3, TEAL, 'none'));
+                svg.appendChild(createText(x, gy + gh + 15, String(c), 'diagram-label-tiny'));
+            });
+
+            svg.appendChild(createText(gx + gw / 2, gy + gh + 33, 'paths per band',
+                                       'diagram-label-tiny'));
+            svg.appendChild(createText(gx + 58, gy + 14, 'noise = √(p(1-p)/n)',
+                                       'diagram-label-tiny'));
+
+            container.appendChild(svg);
         }
     };
 

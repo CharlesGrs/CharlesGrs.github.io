@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-5KEDPWV47H"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-5KEDPWV47H');
+    </script>
+
+    <!-- Primary Meta Tags -->
+    <title>Neural Shaders, Explained With Clouds | Charles Grassi</title>
+    <meta name="title" content="Neural Shaders, Explained With Clouds | Charles Grassi">
+    <meta name="description" content="Some things in graphics are too complicated to write an equation for, so games fake them. Neural shaders let you train the answer instead. Here is one built end to end on a cloud, and measured against a path tracer.">
+    <meta name="author" content="Charles Grassi">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://charlesgrassi.dev/blog/neural-volumetric-clouds/">
+    <meta property="og:title" content="Neural Shaders, Explained With Clouds">
+    <meta property="og:description" content="Some things in graphics are too complicated to write an equation for, so games fake them. Neural shaders let you train the answer instead. Here is one built end to end on a cloud, and measured against a path tracer.">
+    <meta property="og:image" content="https://charlesgrassi.dev/blog/images/neural-cloud-social.png">
+    <meta property="og:site_name" content="Charles Grassi">
+    <meta property="article:published_time" content="2026-08-19T00:00:00.000Z">
+    <meta property="article:author" content="Charles Grassi">
+    <meta property="article:section" content="Rendering">
+    <meta property="article:tag" content="neural-rendering">
+    <meta property="article:tag" content="volumetrics">
+    <meta property="article:tag" content="clouds">
+    <meta property="article:tag" content="hlsl">
+    <meta property="article:tag" content="unity">
+    <meta property="article:tag" content="path-tracing">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@charles_grassi">
+    <meta name="twitter:creator" content="@charles_grassi">
+    <meta name="twitter:title" content="Neural Shaders, Explained With Clouds">
+    <meta name="twitter:description" content="Some things in graphics are too complicated to write an equation for, so games fake them. Neural shaders let you train the answer instead. Here is one built end to end on a cloud, and measured against a path tracer.">
+    <meta name="twitter:image" content="https://charlesgrassi.dev/blog/images/neural-cloud-social.png">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://charlesgrassi.dev/blog/neural-volumetric-clouds/">
+
+    <!-- Theme -->
+    <meta name="theme-color" content="#0a0f14">
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="../../assets/favicon/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="../../assets/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../../assets/favicon/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="../../assets/favicon/apple-touch-icon.png">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        "headline": "Neural Shaders, Explained With Clouds",
+        "description": "Some things in graphics are too complicated to write an equation for, so games fake them. Neural shaders let you train the answer instead. Here is one built end to end on a cloud, and measured against a path tracer.",
+        "image": "https://charlesgrassi.dev/blog/images/neural-cloud-social.png",
+        "datePublished": "2026-08-19T00:00:00.000Z",
+        "dateModified": "2026-08-19T00:00:00.000Z",
+        "author": {
+            "@type": "Person",
+            "name": "Charles Grassi",
+            "url": "https://charlesgrassi.dev"
+        },
+        "publisher": {
+            "@type": "Person",
+            "name": "Charles Grassi",
+            "url": "https://charlesgrassi.dev"
+        },
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https://charlesgrassi.dev/blog/neural-volumetric-clouds/"
+        },
+        "articleSection": "Rendering",
+        "keywords": "neural-rendering, volumetrics, clouds, hlsl, unity, path-tracing"
+    }
+    </script>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/blog.css">
+
+    <style>
+        /* Static page specific styles */
+        body {
+            background: var(--bg-primary);
+            min-height: 100vh;
+        }
+
+        /* Top header bar - fixed */
+        .site-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(10, 15, 20, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 0.75rem 1.5rem;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+
+        .header-brand {
+            margin-right: auto;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .brand-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .brand-separator {
+            color: rgba(255, 255, 255, 0.2);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .brand-section {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent-teal);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .header-cta {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .cta-demos {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(45, 212, 191, 0.1);
+            border: 1px solid rgba(45, 212, 191, 0.3);
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent-teal);
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+
+        .cta-demos:hover {
+            background: rgba(45, 212, 191, 0.2);
+            border-color: rgba(45, 212, 191, 0.5);
+            box-shadow: 0 0 20px rgba(45, 212, 191, 0.15);
+        }
+
+        .cta-hire {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1.25rem;
+            background: linear-gradient(135deg, var(--accent-gold) 0%, #d4a520 100%);
+            border: none;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #0a0f14;
+            text-decoration: none;
+            transition: all 0.25s ease;
+            box-shadow: 0 2px 8px rgba(232, 185, 35, 0.3);
+        }
+
+        .cta-hire:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(232, 185, 35, 0.4);
+        }
+
+        .static-blog-page {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--space-lg);
+            padding-top: 5rem; /* Account for fixed header */
+        }
+
+        .article-nav {
+            max-width: 1100px;
+            margin: 0 auto var(--space-md) auto;
+        }
+
+        /* Article with TOC Layout */
+        .article-with-toc {
+            display: grid;
+            grid-template-columns: minmax(0, 800px) 220px;
+            gap: 0 2rem;
+            justify-content: center;
+        }
+
+        .article-with-toc .blog-article {
+            max-width: 800px;
+        }
+
+        /* TOC Styles */
+        .article-toc {
+            position: sticky;
+            top: 5rem;
+            align-self: start;
+            width: 220px;
+            max-height: calc(100vh - 180px);
+        }
+
+        .toc-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: var(--space-sm);
+            padding-bottom: var(--space-xs);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .toc-header-icon {
+            width: 14px;
+            height: 14px;
+            color: var(--accent-teal);
+            opacity: 0.7;
+        }
+
+        .toc-header-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+
+        .toc-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow-y: auto;
+            max-height: calc(100vh - 240px);
+        }
+
+        .toc-item {
+            display: flex;
+            padding: 0.5rem 0.75rem;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            line-height: 1.35;
+        }
+
+        .toc-item:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .toc-item.toc-subchapter {
+            padding-left: 1.5rem;
+            font-size: 0.75rem;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.45);
+        }
+
+        .toc-item.active {
+            color: var(--accent-teal);
+            background: rgba(45, 212, 191, 0.04);
+        }
+
+        .toc-item.active.settled {
+            color: var(--accent-gold);
+            background: rgba(232, 185, 35, 0.06);
+        }
+
+        /* Hide TOC on smaller screens */
+        @media (max-width: 1080px) {
+            .article-toc {
+                display: none;
+            }
+
+            .article-with-toc {
+                grid-template-columns: minmax(0, 900px);
+            }
+
+            .article-with-toc .blog-article {
+                max-width: 900px;
+            }
+
+            .article-nav {
+                max-width: 900px;
+            }
+        }
+
+        .nav-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.8rem;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+
+        .nav-back:hover {
+            border-color: var(--accent-teal);
+            color: var(--accent-teal);
+        }
+
+        .nav-back svg {
+            width: 14px;
+            height: 14px;
+            transition: transform 0.25s ease;
+        }
+
+        .nav-back:hover svg {
+            transform: translateX(-3px);
+        }
+
+        .section-video { margin: var(--space-lg) 0; }
+
+        .section-video video {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: #0a0f14;
+        }
+
+        .section-video figcaption {
+            margin-top: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            text-align: center;
+        }
+
+        .article-convert {
+            margin: var(--space-xl, 3rem) 0 var(--space-lg, 2rem);
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        /* --- subscribe --- */
+
+        .subscribe-box {
+            padding: 1.5rem;
+            border: 1px solid rgba(45, 212, 191, 0.22);
+            border-radius: 12px;
+            background: rgba(45, 212, 191, 0.04);
+        }
+
+        .subscribe-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 0.35rem 0;
+        }
+
+        .subscribe-copy {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin: 0 0 1rem 0;
+        }
+
+        .subscribe-form {
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
+
+        .subscribe-form input[type="email"] {
+            flex: 1 1 240px;
+            min-width: 0;
+            padding: 0.7rem 0.9rem;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background: rgba(10, 15, 20, 0.75);
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        .subscribe-form input[type="email"]:focus {
+            outline: none;
+            border-color: var(--accent-teal);
+            box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.15);
+        }
+
+        .subscribe-form button {
+            padding: 0.7rem 1.3rem;
+            border-radius: 6px;
+            border: 1px solid rgba(45, 212, 191, 0.4);
+            background: rgba(45, 212, 191, 0.12);
+            color: var(--accent-teal);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .subscribe-form button:hover:not(:disabled) {
+            background: rgba(45, 212, 191, 0.22);
+            border-color: var(--accent-teal);
+        }
+
+        .subscribe-form button:disabled { opacity: 0.5; cursor: default; }
+
+        .subscribe-status {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            margin: 0.7rem 0 0 0;
+            min-height: 1em;
+        }
+
+        .subscribe-status.ok { color: var(--accent-teal); }
+        .subscribe-status.error { color: #e8734a; }
+
+        /* --- availability --- */
+
+        .availability-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.32rem 0.75rem;
+            margin-bottom: 0.9rem;
+            border-radius: 999px;
+            border: 1px solid rgba(45, 212, 191, 0.35);
+            background: rgba(45, 212, 191, 0.08);
+            color: var(--accent-teal);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.04em;
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+
+        .availability-badge:hover {
+            background: rgba(45, 212, 191, 0.18);
+            border-color: var(--accent-teal);
+        }
+
+        .availability-led {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent-teal);
+            box-shadow: 0 0 6px var(--accent-teal);
+            animation: availability-pulse 2.4s ease-in-out infinite;
+        }
+
+        @keyframes availability-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .availability-led { animation: none; }
+        }
+
+        /* CTA Banner after article */
+        .article-cta-banner {
+            margin-top: var(--space-xl);
+            padding: var(--space-lg);
+            background: linear-gradient(145deg, rgba(20, 28, 38, 0.9) 0%, rgba(15, 22, 30, 0.95) 100%);
+            border: 1px solid rgba(232, 185, 35, 0.2);
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .article-hire {
+            text-align: left;
+        }
+
+        .hire-kicker {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--accent-gold);
+            margin: 0 0 0.4rem 0;
+        }
+
+        .hire-offer {
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin: 0 0 var(--space-md) 0;
+            padding-left: 0.9rem;
+            border-left: 2px solid rgba(45, 212, 191, 0.35);
+        }
+
+        .hire-offer strong { color: var(--text-primary); }
+
+        .article-hire .cta-banner-buttons { justify-content: flex-start; }
+
+        .cta-banner-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: var(--text-xl);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 0.5rem 0;
+        }
+
+        .cta-banner-subtitle {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+            margin: 0 0 var(--space-md) 0;
+        }
+
+        .cta-banner-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .cta-banner-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+
+        .cta-banner-btn.primary {
+            background: linear-gradient(135deg, var(--accent-gold) 0%, #d4a520 100%);
+            color: #0a0f14;
+            box-shadow: 0 2px 12px rgba(232, 185, 35, 0.3);
+        }
+
+        .cta-banner-btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(232, 185, 35, 0.4);
+        }
+
+        .cta-banner-btn.secondary {
+            background: rgba(45, 212, 191, 0.1);
+            border: 1px solid rgba(45, 212, 191, 0.3);
+            color: var(--accent-teal);
+        }
+
+        .cta-banner-btn.secondary:hover {
+            background: rgba(45, 212, 191, 0.2);
+            border-color: rgba(45, 212, 191, 0.5);
+        }
+
+        .static-footer {
+            margin-top: var(--space-xl);
+            padding-top: var(--space-lg);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            text-align: center;
+        }
+
+        .footer-author {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-xs);
+            margin-bottom: var(--space-md);
+        }
+
+        .footer-author-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: var(--text-base);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .footer-author-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: var(--text-xs);
+            color: var(--text-secondary);
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: var(--space-md);
+        }
+
+        .footer-link {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: var(--text-xs);
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.25s;
+        }
+
+        .footer-link:hover {
+            color: var(--accent-teal);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .site-header {
+                padding: 0.5rem 1rem;
+            }
+
+            .header-content {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+
+            .brand-separator, .brand-section {
+                display: none;
+            }
+
+            .header-cta {
+                gap: 0.5rem;
+            }
+
+            .cta-demos span,
+            .cta-hire span {
+                display: none;
+            }
+
+            .cta-demos,
+            .cta-hire {
+                padding: 0.5rem;
+            }
+
+            .static-blog-page {
+                padding: var(--space-md);
+                padding-top: 4.5rem;
+            }
+
+            .cta-banner-buttons {
+                flex-direction: column;
+            }
+
+            .cta-banner-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Fixed Header -->
+    <header class="site-header">
+        <div class="header-content">
+            <a href="../../" class="header-brand">
+                <span class="brand-name">Charles Grassi</span>
+                <span class="brand-separator">//</span>
+                <span class="brand-section">Blog</span>
+            </a>
+            <div class="header-cta">
+                <a href="../../?tab=skills" class="cta-demos">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                    <span>Live Demos</span>
+                </a>
+                <a href="../../?tab=contact" class="cta-hire">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <span>Hire Me</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="static-blog-page">
+        <!-- Back Navigation -->
+        <nav class="article-nav">
+            <a href="../../blog/" class="nav-back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                All Posts
+            </a>
+        </nav>
+
+        <!-- Article with TOC Layout -->
+        <div class="article-with-toc">
+            <article class="blog-article">
+                <header class="article-header">
+                    <div class="article-meta">
+                        <span class="article-category">Rendering</span>
+                        <span>August 19, 2026</span>
+                        <span>18 min read</span>
+                    </div>
+                    <h1 class="article-title">Neural Shaders, Explained With Clouds</h1>
+                    <p class="article-subtitle">Instead of working out the equation, you train one. What that means, built end to end and measured against a path tracer.</p>
+                    <div class="card-tags" style="margin-top: var(--space-sm);"><span class="card-tag">neural-rendering</span><span class="card-tag">volumetrics</span><span class="card-tag">clouds</span><span class="card-tag">hlsl</span><span class="card-tag">unity</span><span class="card-tag">path-tracing</span></div>
+                </header>
+
+                <div class="article-content">
+                    <p class="article-section section-intro">For as long as computer graphics has existed, making something look real has meant someone working out the maths for it. How light falls on skin, how metal catches a highlight, how water bends whatever is behind it. Somebody derives the equation, writes it down, and the graphics card runs it a few million times a second.</p>
+<p class="article-section section-paragraph">Some things are too complicated to write down. Clouds are the classic case. Light that goes into a cloud bounces between droplets thousands of times before any of it comes back out, and there is no neat equation for where it ends up. Games have always faked it.</p>
+<p class="article-section section-paragraph">Neural shaders are a different approach. Instead of working out the equation, you show a small neural network a few hundred thousand examples of the right answer and let it figure out how to produce them on its own. It is <strong>the same idea behind the AI everyone has been talking about, shrunk down small enough to run inside a video game sixty times a second</strong>.</p>
+<p class="article-section section-paragraph">That changes what is affordable. Effects that used to need minutes per frame can run live, and the things nobody could write an equation for stop being faked.</p>
+<figure class="article-section section-video">
+                <video autoplay loop muted playsinline preload="metadata" poster="../../blog/images/neural-cloud-turntable-poster.png">
+                    <source src="../../blog/videos/neural-cloud-turntable.webm" type="video/webm">
+                    <source src="../../blog/videos/neural-cloud-turntable.mp4" type="video/mp4">
+                </video>
+                <figcaption>Left is the correct answer from a path tracer. Middle is the approximation games ship. Right is a small neural network trained to reproduce the left one. Watch the percentages as the camera goes round: the middle one drifts, the right one does not.</figcaption>
+            </figure>
+<aside class="article-section section-callout info">
+                <p>The result, up front. The approximation real-time renderers ship today is off by a factor of <strong>ten</strong> depending on where the sun sits: a fifth of the correct brightness with the sun behind the camera, and more than twice too bright looking straight into it. The trained version holds within about <strong>five percent</strong> across almost the whole range, for about <strong>20% more GPU time</strong>.</p>
+            </aside>
+<p class="article-section section-paragraph">This article builds one end to end, on a cloud, and then checks it against the slow correct answer to find out how close it really gets.</p>
+<h2 id="section-7-what-is-a-neural-shader" class="article-section section-heading" data-toc-level="2">What is a neural shader?</h2>
+<p class="article-section section-paragraph">A shader is the small program that decides what colour each pixel ends up. Somewhere inside it there is a calculation: given these inputs, produce this colour. A neural shader replaces one of those calculations with a network that was trained rather than written.</p>
+<p class="article-section section-paragraph">Training means showing it examples. You generate a few hundred thousand cases where you already know the right answer, and the network gradually adjusts itself until it produces those answers too. Once that is done it has learned a shortcut to a result that would otherwise take far too long to compute.</p>
+<p class="article-section section-paragraph">The comparison people usually reach for is written directions against local knowledge. Directions are precise and someone had to work them out. Local knowledge came from walking the route a thousand times and cannot really be explained, but it gets you there faster.</p>
+<aside class="article-section section-callout info">
+                <p>The important word is <em>small</em>. This is not a model sitting in a data centre. The one in this article is about 500 multiply-add operations, which is roughly the cost of a couple of texture lookups, and it runs at every step along every ray.</p>
+            </aside>
+<h2 id="section-12-why-clouds" class="article-section section-heading" data-toc-level="2">Why clouds?</h2>
+<p class="article-section section-paragraph">Because a cloud is the clearest case of a problem where the honest answer is known and unaffordable.</p>
+<p class="article-section section-paragraph">The honest answer is called path tracing. You simulate millions of individual light paths, bouncing each one around inside the cloud until it escapes, and average what comes out. It produces genuinely correct images and it takes minutes per frame.</p>
+<p class="article-section section-paragraph">So real-time renderers approximate instead, with a handful of curves that get tuned until the picture looks right. Those approximations are good. They ship in everything, and a cloud drawn that way is one you would happily put in a game. What they are not is accurate, and how far off they land <strong>changes depending on where the sun is</strong>, which is the part that turns out to matter.</p>
+<p class="article-section section-paragraph">Clouds are also a good test case for a less obvious reason. Everything else about drawing one is simple. Stepping along a ray and adding up what you find is easy code, which means the network can replace one specific piece and leave the rest untouched. That is what makes it possible to prove it helped.</p>
+<p class="article-section section-paragraph">The shape of the cloud is simple too, and worth a look because it is stranger than most people expect. There is no mesh and no sculpting. A cloud here is a few spheres welded together, leaned over sideways, flattened underneath, with fractal noise eaten out of the surface. That is the whole thing.</p>
+<details class="article-section section-details">
+                <summary>What a cloud actually is, in code</summary>
+                <div class="details-body"><p class="article-section section-paragraph">Every shape in the article comes out of this one function. It answers a single question: for a point in space, are you inside the cloud, and by how much. Positive means inside.</p><div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">The entire cloud shape, condensed</span>
+                    <span class="code-language">c</span>
+                </div>
+                <div class="code-content"><pre><span class="keyword">float</span> Sample(float3 p)
+{
+    <span class="comment">// Wind shear. The cloud leans downwind as it rises, so the shape at</span>
+    <span class="comment">// height y is the shape at the base, shifted sideways.</span>
+    p.xz -= shear * p.y;
+
+    <span class="comment">// Anvil. Widening the top is the same thing as narrowing the point you</span>
+    <span class="comment">// are asking about, so it is a warp rather than extra geometry.</span>
+    <span class="keyword">float</span> t = SmoothStep(anvilHeight, height, p.y);
+    p.xz /= <span class="number">1.0</span> + anvilSpread / radius * t;
+
+    <span class="comment">// The body: a handful of spheres, smoothly welded into each other.</span>
+    <span class="keyword">float</span> d = lobes[<span class="number">0</span>].w - <span class="function">length</span>(p - lobes[<span class="number">0</span>].xyz);
+    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">1</span>; i &lt; lobeCount; i++)
+        d = SmoothMax(d, lobes[i].w - <span class="function">length</span>(p - lobes[i].xyz), lobeBlend);
+
+    <span class="comment">// Flat bottom. Intersect with the half space above the base, which is</span>
+    <span class="comment">// the razor edge a real cumulus has.</span>
+    d = SmoothMin(d, p.y, baseSoftness);
+
+    <span class="comment">// Erosion. Fractal noise eats into the surface, faded <span class="keyword">in</span> above the</span>
+    <span class="comment">// base so the flat bottom survives it.</span>
+    <span class="keyword">float</span> fade = SmoothStep(<span class="number">0.0</span>, baseFadeHeight, p.y);
+    <span class="keyword">float</span> n = Fbm(p / erosionFeatureSize, erosionOctaves, seed);
+    d += n * erosionAmplitude * fade;
+
+    <span class="keyword">return</span> d;   <span class="comment">// positive inside the cloud, negative outside</span>
+}</pre></div>
+            </div><p class="article-section section-paragraph">Around forty lines, including the comments, and it produces every cloud in this article. Changing a couple of the numbers turns a cumulus into a storm.</p><p class="article-section section-paragraph">The reason it is written as a function rather than stored as data is that a function can be sampled at any resolution. The renderer bakes it into a voxel grid before drawing, and the path tracer can sample the same function directly, so both are looking at the same cloud rather than at two versions of one.</p></div>
+            </details>
+<h2 id="section-19-what-exactly-gets-replaced" class="article-section section-heading" data-toc-level="2">What exactly gets replaced?</h2>
+<p class="article-section section-paragraph">Drawing a cloud means walking a ray forward in small steps and asking two questions at every step. How much light is blocked here, and how much light is scattered toward the camera from here.</p>
+<p class="article-section section-paragraph">The first question is easy, because it only depends on how dense the cloud is at that point. The second is the hard one. Answering it properly means accounting for every route light could have taken to arrive there, including all the bouncing.</p>
+<p class="article-section section-paragraph">The network answers the second question and nothing else. Same ray walking, same blocking, same way of combining it all together. One switch in the shader changes the lighting model and the rest of the code carries on unaware.</p>
+<details class="article-section section-details">
+                <summary>The whole ray march, in about thirty lines</summary>
+                <div class="details-body"><p class="article-section section-paragraph">This is the loop that draws the cloud. It walks forward, skips empty space, and at each step asks how dense it is and how much light is coming toward the camera. The marked line is the only thing the network changes.</p><div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">The full march, condensed</span>
+                    <span class="code-language">hlsl</span>
+                </div>
+                <div class="code-content"><pre>half4 RaymarchCloud(Ray ray, Volume v, Surface s)
+{
+    <span class="keyword">float</span> tNear, tFar;
+    <span class="keyword">if</span> (!IntersectBox(v, ray, tNear, tFar)) <span class="keyword">return</span> <span class="number">0</span>;
+
+    <span class="comment">// Step size comes from the volume&#<span class="number">39</span>;s own resolution, not from how far</span>
+    <span class="comment">// apart the box walls happen to be. The box is about <span class="number">97</span>% empty air.</span>
+    <span class="keyword">float</span> stepSize = v.voxelSize * s.stepScale;
+
+    <span class="comment">// Offset each pixel&#<span class="number">39</span>;s start by up to one step. Without <span class="keyword">this</span> every pixel</span>
+    <span class="comment">// samples at the same depths and the error lines up into visible bands.</span>
+    <span class="keyword">float</span> t = tNear + stepSize * Dither(pixel);
+
+    half3 scattered = <span class="number">0</span>;
+    half transmittance = <span class="number">1</span>;
+
+    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; s.steps; i++)
+    {
+        <span class="comment">// Stop once the cloud has blocked essentially all the light.</span>
+        <span class="keyword">if</span> (t &gt;= tFar || transmittance &lt; <span class="number">0.01</span>) break;
+
+        float3 p = ray.origin + ray.dir * t;
+
+        <span class="comment">// A coarse mip reading zero proves <span class="keyword">this</span> whole region is empty,</span>
+        <span class="comment">// so the ray can jump rather than crawl.</span>
+        <span class="keyword">if</span> (SampleCoarse(v, p) &lt;= <span class="number">0</span>) { t += skipStep; continue; }
+
+        <span class="keyword">float</span> density = SampleDensity(v, p);
+
+        <span class="keyword">if</span> (density &gt; 1e-<span class="number">5</span>)
+        {
+            <span class="comment">// ****  THE ONE LINE THE NETWORK REPLACES  ****</span>
+            half3 inScatter = ShadeSample(v, s, p, ray.dir, toSun);
+
+            <span class="comment">// How much light <span class="keyword">this</span> step blocks.</span>
+            half stepT = <span class="function">exp</span>(-density * stepSize);
+
+            <span class="comment">// Add what scattered toward us, dimmed by everything <span class="keyword">in</span> front.</span>
+            scattered += transmittance * inScatter * (<span class="number">1</span> - stepT);
+            transmittance *= stepT;
+        }
+
+        t += stepSize;
+    }
+
+    <span class="keyword">return</span> half4(scattered, <span class="number">1</span> - transmittance);
+}</pre></div>
+            </div><p class="article-section section-paragraph">Everything in that loop except the marked line is identical between the two versions being compared. Same stepping, same skipping, same dithering, same accumulation. That is what makes the comparison later in the article mean anything.</p></div>
+            </details>
+<figure class="article-section section-svg-diagram" data-diagram-id="neural-cloud-ab">
+                <div class="svg-container" style="max-width: 760px;">
+                    <div class="svg-placeholder" data-width="760" data-height="380">
+                        <noscript>Diagram: One step along the ray. Only the gold box changes.</noscript>
+                    </div>
+                </div>
+                <figcaption>One step along the ray. Only the gold box changes.</figcaption>
+            </figure>
+<aside class="article-section section-callout warning">
+                <p>Keeping everything else identical is the whole experiment rather than a matter of tidiness. When two images differ in more than one way, the difference between them says nothing useful about either change.</p>
+            </aside>
+<p class="article-section section-paragraph">That second question has an answer at every point inside the cloud, and the shader can draw it directly instead of using it. This is the quantity being replaced:</p>
+<figure class="article-section section-image">
+                <img src="../../blog/images/neural-cloud-debug-scatter.png" alt="Debug view showing the light the network predicts is scattering toward the camera" loading="lazy">
+                <figcaption>The network&#39;s output, painted onto the cloud rather than used to light it. Warm means more light heading toward the camera, cool means less.</figcaption>
+            </figure>
+<h2 id="section-28-what-does-the-network-look-at" class="article-section section-heading" data-toc-level="2">What does the network look at?</h2>
+<p class="article-section section-paragraph">This is the decision that matters most, because the network can only be as good as what it is allowed to see, and every input it reads costs performance at runtime.</p>
+<p class="article-section section-paragraph">What works for clouds is <strong>how much cloud is nearby, measured at several sizes at once</strong>. Picture standing in fog and asking how thick it is within arm&#39;s reach, then within a room, then within a street, then across a whole neighbourhood. Do that where you are standing, do it again in the direction of the sun, add the angle between your view and the sun, and that is everything the network gets.</p>
+<figure class="article-section section-svg-diagram" data-diagram-id="neural-cloud-descriptor">
+                <div class="svg-container" style="max-width: 760px;">
+                    <div class="svg-placeholder" data-width="760" data-height="320">
+                        <noscript>Diagram: Two sets of measurements: one here, one toward the sun</noscript>
+                    </div>
+                </div>
+                <figcaption>Two sets of measurements: one here, one toward the sun</figcaption>
+            </figure>
+<p class="article-section section-paragraph">Here is one of those inputs drawn onto the cloud. This is what it reads, not what it produces:</p>
+<figure class="article-section section-image">
+                <img src="../../blog/images/neural-cloud-debug-descriptor.png" alt="Debug view showing how much cloud lies between each point and the sun" loading="lazy">
+                <figcaption>How much cloud sits between each point and the sun. Points that read as deeply buried get less direct light. The network gets six of these at different sizes, and six more measured around the point itself.</figcaption>
+            </figure>
+<p class="article-section section-paragraph">There is nothing in that list about the cloud&#39;s shape, how many lumps it has, or what kind of cloud it is. Just density at different sizes, and one angle. Describing the neighbourhood rather than the object is what keeps the input list short, and short inputs are what make it cheap enough to run per step.</p>
+<details class="article-section section-details">
+                <summary>The exact inputs, and why the sizes are in metres</summary>
+                <div class="details-body"><p class="article-section section-paragraph">Thirteen numbers per step. Six are the average density around the sample point at growing radii, six are the same thing measured toward the sun, and the last is the cosine of the angle between the view direction and the sun.</p><div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">The full input list</span>
+                    <span class="code-language">text</span>
+                </div>
+                <div class="code-content"><pre>  [<span class="number">0</span>:<span class="number">6</span>)   mean density at the point,  coarsening
+  [<span class="number">6</span>:<span class="number">12</span>)  mean density toward the sun, coarsening   &lt;- dominant predictor
+  [<span class="number">12</span>]    <span class="function">cos</span>(view, sun)
+
+  radii are fixed <span class="keyword">in</span> METRES: <span class="number">6</span> / <span class="number">12</span> / <span class="number">24</span> / <span class="number">48</span> / <span class="number">96</span> / <span class="number">192</span></pre></div>
+            </div><p class="article-section section-paragraph">Fixing those radii in metres rather than in texels is the decision that made this generalise. A description in texels means something different for every bake resolution and every cloud size, so a network trained on one would be wrong on the next. A description in metres means the same thing everywhere, and the mip level is just a cheap way to sample it.</p><p class="article-section section-paragraph">The averages come from a mip pyramid of the density volume, so a coarse radius costs exactly what a fine one does: a single texture fetch.</p></div>
+            </details>
+<p class="article-section section-paragraph">The network also predicts how much light arrives from the sky above and how much bounces up off the ground below. Those come almost free, because they share the same internal machinery as the main answer.</p>
+<figure class="article-section section-image">
+                <img src="../../blog/images/neural-cloud-debug-skylight.png" alt="Debug view showing how much sky light reaches each point inside the cloud" loading="lazy">
+                <figcaption>How much of the sky each point can still see. Deep inside the cloud, very little. This is why cloud undersides are soft grey instead of black.</figcaption>
+            </figure>
+<h2 id="section-38-how-do-you-build-one" class="article-section section-heading" data-toc-level="2">How do you build one?</h2>
+<p class="article-section section-paragraph">Four steps, and none of them are exotic.</p>
+<h3 id="section-40-1-build-the-slow-correct-version-first" class="article-section section-heading" data-toc-level="3">1. Build the slow correct version first</h3>
+<p class="article-section section-paragraph">Write the path tracer. It fires rays, bounces them thousands of times, and averages the result. It is slow and it does not need to be fast, because it never ships. It exists to generate truth, and later to be the thing you get scored against.</p>
+<p class="article-section section-paragraph">Skipping this step is tempting and it removes the only way to tell whether the network helped. &quot;It looks better&quot; is not a result.</p>
+<h3 id="section-43-2-decide-what-the-network-sees" class="article-section section-heading" data-toc-level="3">2. Decide what the network sees</h3>
+<p class="article-section section-paragraph">Covered above. Few inputs, each one cheap to fetch, and nothing that ties the network to one particular asset.</p>
+<h3 id="section-45-3-train-it" class="article-section section-heading" data-toc-level="3">3. Train it</h3>
+<p class="article-section section-paragraph">Run the path tracer over a lot of points, save the answers, and fit the network to them. This is ordinary machine learning, in Python, offline, once. What comes out is a few hundred numbers that ship with the game like any other asset.</p>
+<details class="article-section section-details">
+                <summary>What &quot;a few hundred numbers&quot; means in practice</summary>
+                <div class="details-body"><p class="article-section section-paragraph">Thirteen inputs, two hidden layers of sixteen units each, three outputs. That works out at 512 multiply-accumulate operations per evaluation, and the weights fit comfortably into shader constants.</p><p class="article-section section-paragraph">Where the training samples come from matters more than how many there are. The first version spread them evenly through the cloud, but most of a cloud is deep interior that no camera ever sees, so most of the effort went into learning a part of the answer that never appears on screen. Choosing points the way a camera does, by sending a ray in and training where it first collides, moved accuracy on the bright visible regions from 0.34 to 0.70 with no change to the network at all.</p></div>
+            </details>
+<h3 id="section-48-4-run-it-in-the-shader" class="article-section section-heading" data-toc-level="3">4. Run it in the shader</h3>
+<p class="article-section section-paragraph">Load the weights into shader constants and write the multiply-adds out by hand. There is no framework and no dependency involved. A network this small is a couple of loops.</p>
+<details class="article-section section-details">
+                <summary>The actual inference code, in HLSL</summary>
+                <div class="details-body"><p class="article-section section-paragraph">This is the entire network. Two unrolled loops, an activation function and a clamp, running at every step along every ray.</p><div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Inference, inside the raymarch loop</span>
+                    <span class="code-language">hlsl</span>
+                </div>
+                <div class="code-content"><pre><span class="comment">// Squared ReLU: x*x <span class="keyword">for</span> positive x, zero below. One extra multiply over</span>
+<span class="comment">// plain ReLU, and the reason <span class="keyword">for</span> it is visual rather than mathematical.</span>
+<span class="keyword">float</span> Act(<span class="keyword">float</span> x)
+{
+    <span class="keyword">float</span> r = <span class="function">max</span>(x, <span class="number">0.0</span>);
+    <span class="keyword">return</span> r * r;
+}
+
+float3 CloudNetEvaluate(<span class="keyword">float</span> descriptor[<span class="number">13</span>])
+{
+    <span class="comment">// Standardise against the mean and scale stored alongside the weights.</span>
+    <span class="keyword">float</span> x[<span class="number">13</span>];
+    [unroll] <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">13</span>; i++)
+        x[i] = (descriptor[i] - _NetMean[i]) * _NetScale[i];
+
+    <span class="keyword">float</span> h0[<span class="number">16</span>], h1[<span class="number">16</span>];
+
+    [unroll] <span class="keyword">for</span> (<span class="keyword">int</span> j = <span class="number">0</span>; j &lt; <span class="number">16</span>; j++)
+    {
+        <span class="keyword">float</span> sum = _NetBias0[j];
+        [unroll] <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">13</span>; i++) sum += x[i] * _NetW0[j][i];
+        h0[j] = Act(sum);
+    }
+
+    [unroll] <span class="keyword">for</span> (<span class="keyword">int</span> j = <span class="number">0</span>; j &lt; <span class="number">16</span>; j++)
+    {
+        <span class="keyword">float</span> sum = _NetBias1[j];
+        [unroll] <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">16</span>; i++) sum += h0[i] * _NetW1[j][i];
+        h1[j] = Act(sum);
+    }
+
+    <span class="comment">// Squaring the output keeps the result non-negative by construction.</span>
+    <span class="comment">// A clamp would not: it has zero gradient below zero, so any output that</span>
+    <span class="comment">// wanders negative during training is dead <span class="keyword">for</span> the rest of the run.</span>
+    float3 y;
+    [unroll] <span class="keyword">for</span> (<span class="keyword">int</span> k = <span class="number">0</span>; k &lt; <span class="number">3</span>; k++)
+    {
+        <span class="keyword">float</span> sum = _NetBias2[k];
+        [unroll] <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">16</span>; i++) sum += h1[i] * _NetW2[k][i];
+        y[k] = sum * sum;
+    }
+
+    <span class="keyword">return</span> <span class="function">min</span>(y, _NetClamp);
+}</pre></div>
+            </div><p class="article-section section-paragraph">The three outputs are sun light, sky light and bounced ground light. They share both hidden layers, so the second and third cost sixteen multiply-adds each and no extra texture reads.</p></div>
+            </details>
+<h2 id="section-51-does-it-work" class="article-section section-heading" data-toc-level="2">Does it work?</h2>
+<p class="article-section section-paragraph">The usual way to judge a cloud renderer is to look at a screenshot, and that turns out to be close to useless. An approximation is not uniformly wrong. It is a set of curves that were tuned in one situation, and it behaves differently in others.</p>
+<p class="article-section section-paragraph">So instead of one screenshot, swing the sun all the way around the cloud and score both renderers against the path traced answer at every position. A score of 1.000 means the render matches the truth. Below 1 is too dark, above 1 is too bright.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Sweeping the sun, scored against the path traced answer</span>
+                    <span class="code-language">text</span>
+                </div>
+                <div class="code-content"><pre>  sun angle      the usual way      neural
+  ---------      -------------      ------
+       <span class="number">0</span> deg            <span class="number">0.208</span>       <span class="number">0.963</span>
+      <span class="number">15</span> deg            <span class="number">0.227</span>       <span class="number">0.958</span>
+      <span class="number">30</span> deg            <span class="number">0.309</span>       <span class="number">0.960</span>
+      <span class="number">45</span> deg            <span class="number">0.410</span>       <span class="number">0.952</span>
+      <span class="number">60</span> deg            <span class="number">0.509</span>       <span class="number">0.943</span>
+      <span class="number">75</span> deg            <span class="number">0.602</span>       <span class="number">0.956</span>
+      <span class="number">90</span> deg            <span class="number">0.674</span>       <span class="number">0.957</span>
+     <span class="number">105</span> deg            <span class="number">0.738</span>       <span class="number">0.932</span>
+     <span class="number">120</span> deg            <span class="number">0.794</span>       <span class="number">0.904</span>
+     <span class="number">135</span> deg            <span class="number">0.893</span>       <span class="number">0.939</span>
+     <span class="number">150</span> deg            <span class="number">1.080</span>       <span class="number">0.937</span>
+     <span class="number">165</span> deg            <span class="number">1.433</span>       <span class="number">1.010</span>
+     <span class="number">180</span> deg            <span class="number">2.173</span>       <span class="number">1.199</span>
+
+  <span class="number">1.000</span> means the render matches the slow correct answer exactly.
+  <span class="number">0</span> deg is the sun behind you. <span class="number">180</span> deg is the sun behind the cloud.</pre></div>
+            </div>
+<figure class="article-section section-svg-diagram" data-diagram-id="neural-cloud-sweep">
+                <div class="svg-container" style="max-width: 760px;">
+                    <div class="svg-placeholder" data-width="760" data-height="340">
+                        <noscript>Diagram: The shape of the curve is the result</noscript>
+                    </div>
+                </div>
+                <figcaption>The shape of the curve is the result</figcaption>
+            </figure>
+<p class="article-section section-paragraph">The usual approach swings from <strong>0.21 to 2.17</strong>, a factor of ten across the sweep. With the sun behind the camera it draws the cloud with about a fifth of the light it should have, and looking into the sun it renders it more than twice as bright as it is. The network holds between <strong>0.93 and 0.96</strong> from front lit all the way round to side on and past it, which is within about five percent of correct across eleven of the thirteen positions. The last two are the hard ones, and they are worth looking at rather than averaging away.</p>
+<p class="article-section section-paragraph">Here is the worst case, with the sun behind the camera:</p>
+<figure class="article-section section-image">
+                <img src="../../blog/images/neural-cloud-front.png" alt="Path traced reference, the usual approximation, and the neural version, front lit" loading="lazy">
+                <figcaption>Left is the path traced truth. Middle is the approximation games use today. Right is the neural version. Same cloud, same ray walking, same everything except one calculation.</figcaption>
+            </figure>
+<p class="article-section section-paragraph">The middle image is worth sitting with, because there is nothing obviously wrong with it. Without the left one for comparison it would pass without comment. It is simply <em>grey where it should be white</em>, and tuning cannot fix that everywhere at once, because the error moves as the sun does.</p>
+<p class="article-section section-paragraph">At 165 and 180 degrees the camera is looking almost straight into the sun through the cloud, and the network overshoots: 1.01, then 1.20. That is the one case it was always going to find hardest, for a reason worth knowing. Nearly all the light arriving there has carried straight on through a single bounce, which puts a very bright narrow spike into the answer, and a network trained to be right about everything spreads its effort rather than nailing a spike. The approximation has an exact formula for that spike, which is why it lands closest there too, and then sails past it to <strong>2.17</strong>.</p>
+<figure class="article-section section-image">
+                <img src="../../blog/images/neural-cloud-back.png" alt="Path traced reference, the usual approximation, and the neural version, backlit" loading="lazy">
+                <figcaption>The other end of the sweep, looking into the sun. The reference is a dark body with a bright rim. The approximation loses the body entirely and renders the whole cloud as rim. The neural version keeps the body, and overshoots by a fifth rather than by a factor of two.</figcaption>
+            </figure>
+<details class="article-section section-details">
+                <summary>Why the error swings, physically</summary>
+                <div class="details-body"><p class="article-section section-paragraph">With the sun behind you, light has to turn roughly 180 degrees to come back to your eye. Cloud droplets scatter light strongly forward and weakly backward, so hardly any of it manages that in a single bounce. Everything visible on a front-lit cloud has bounced many times, and many-bounce light is what the cheap approximations model worst.</p><p class="article-section section-paragraph">With the sun behind the cloud, light only has to carry straight on, which is exactly what droplets do best. The approximation has a real formula for that case, lands much closer, and in fact overshoots.</p><p class="article-section section-paragraph">This is why one screenshot cannot tell you whether a scattering model is good. It tells you whether the model is good in the situation you happened to be looking at.</p></div>
+            </details>
+<details class="article-section section-details">
+                <summary>The numbers behind the pictures, and one caveat</summary>
+                <div class="details-body"><div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">RMSE against the reference, over 10,687 cloud pixels</span>
+                    <span class="code-language">text</span>
+                </div>
+                <div class="code-content"><pre>  angle    the usual way    neural
+      <span class="number">0</span>           <span class="number">3.2968</span>    <span class="number">0.8763</span>
+     <span class="number">90</span>           <span class="number">0.6027</span>    <span class="number">0.3491</span>
+    <span class="number">180</span>           <span class="number">2.8441</span>    <span class="number">1.3775</span></pre></div>
+            </div><p class="article-section section-paragraph">The neural version wins at every angle on RMSE as well as on average brightness, by a factor of about four front lit and two everywhere else. It wins looking into the sun too, at 1.38 against 2.84, even though that is the angle where both are furthest from the truth.</p><p class="article-section section-paragraph">The caveat, stated rather than buried: the approximation is running conventional parameters rather than ones fitted to this particular reference. Fitting them would lift the curve. It would not change the shape of it, which is the actual claim, since no single set of constants can track a quantity that changes character between front lit and backlit. But it has not been done.</p></div>
+            </details>
+<h2 id="section-64-is-it-fast-enough" class="article-section section-heading" data-toc-level="2">Is it fast enough?</h2>
+<p class="article-section section-paragraph">Almost. It costs about a fifth more than the approximation it replaces, and the reason it costs anything at all is about tooling rather than about the method.</p>
+<p class="article-section section-paragraph">On texture reads the neural version comes out ahead. The usual approximation needs fourteen of them per step: six walking a second ray toward the sun to find out how shadowed the point is, then four up and four down for ambient light. Those are sequential, so each one has to finish before the next can start. The network needs twelve, and they are independent, so the graphics card can start all of them at once and let them overlap.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Per step along the ray</span>
+                    <span class="code-language">text</span>
+                </div>
+                <div class="code-content"><pre>  the usual way   <span class="number">14</span> texture reads   (<span class="number">6</span> toward the sun, <span class="number">4</span> up, <span class="number">4</span> down, sequential)
+  neural          <span class="number">12</span> texture reads   + <span class="number">512</span> multiply-accumulates, reads independent</pre></div>
+            </div>
+<p class="article-section section-paragraph">Texture reads are not the whole cost though. The network is <strong>512 multiply-accumulate operations per step</strong>, and in Unity today those run as ordinary scalar arithmetic on the shader cores, one after another. So the only way to settle it is to time both.</p>
+<div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Cloud pass only, on a laptop RTX 4080 (Unity 6, URP, D3D12)</span>
+                    <span class="code-language">text</span>
+                </div>
+                <div class="code-content"><pre>  resolution      approximation        neural      slower by
+  ----------      -------------        ------      ---------
+  4K                    <span class="number">1.88</span> ms       <span class="number">2.32</span> ms          <span class="number">1.</span>23x
+  5K                    <span class="number">3.34</span> ms       <span class="number">4.24</span> ms          <span class="number">1.</span>27x
+  8K                    <span class="number">7.83</span> ms       <span class="number">9.21</span> ms          <span class="number">1.</span>18x</pre></div>
+            </div>
+<p class="article-section section-paragraph">Those resolutions are absurd on purpose. At 1080p the cloud takes well under a millisecond, which is smaller than the measurement&#39;s own overhead, so anything below 4K is timing the measuring rather than the cloud. Scaled back down, a 1080p frame works out at roughly <strong>0.5 ms against 0.6 ms</strong>.</p>
+<p class="article-section section-paragraph">So the neural version costs about <strong>20% more</strong>, consistently, across a sixteen-fold range of pixel counts.</p>
+<p class="article-section section-paragraph">That 20% describes how the arithmetic is being executed, not the technique itself. Modern graphics cards already have dedicated hardware for exactly this shape of work: small matrix-vector products, issued as a single instruction across a whole group of threads, on the same tensor units that run everything else people call AI.</p>
+<p class="article-section section-paragraph">Getting at it needs two things. <strong>DirectX 12 and Vulkan expose it as cooperative vectors</strong>, which is the API feature that lets a shader hand the hardware a whole matrix multiply instead of a pile of individual multiplies. And <strong>Slang</strong> is the shading language built to target that path, which is what NVIDIA&#39;s own neural shading guides use throughout. On that route the 512 multiply-accumulates in this article stop being a cost worth discussing.</p>
+<p class="article-section section-paragraph">None of it is reachable from Unity&#39;s HLSL right now. So the version in this article does the matrix work the slow way, by hand, one multiply at a time, and still lands within 20% of the approximation while being considerably more accurate. That gap is the part worth watching, because it closes as the tooling catches up rather than as the technique improves.</p>
+<details class="article-section section-details">
+                <summary>How the timing was measured</summary>
+                <div class="details-body"><p class="article-section section-paragraph">Cloud layer only, with an empty frame timed at the same resolution and subtracted so the clear and the camera setup are cancelled rather than counted. Frames go out in batches with a single GPU fence at the end, and each figure is the best of three batches, because a live editor is a noisy place to measure anything. Hardware is a mobile RTX 4080 with 12 GB, driver 32.0.15.9636, running Unity 6000.5.8 on Direct3D 12. A laptop part throttles, which is part of why each figure is the best of three batches rather than an average.</p></div>
+            </details>
+<aside class="article-section section-callout info">
+                <p>This is the honest state of neural shading in Unity in 2026. The hardware exists, the APIs exist, and the engine has not exposed them yet. If you are evaluating the technique for production today, budget for the scalar cost. If you are evaluating it for a project shipping in two years, the arithmetic is probably free by then.</p>
+            </aside>
+<h2 id="section-77-how-do-you-do-this-in-unity" class="article-section section-heading" data-toc-level="2">How do you do this in Unity?</h2>
+<p class="article-section section-paragraph">None of this needs a special pipeline, a vendor extension, or a recent graphics card. It runs on Unity 6 with URP, and would run on Built-in with small changes.</p>
+<ul class="article-section section-list"><li><strong>The weights are just an asset.</strong> Training writes a small binary file, it goes into the project like any other, and a script uploads it into shader constants on load.</li>
+<li><strong>Inference is plain HLSL.</strong> No compute shader and no package dependency, just two unrolled loops in an ordinary fragment shader. That is also the reason it is not as fast as it could be: the matrix work is written out by hand because Unity does not expose the hardware path for it.</li>
+<li><strong>The cloud itself is a box.</strong> The ray walking runs on the faces of a bounding box in the transparent queue, clipped against the depth buffer so the rest of the scene sorts correctly around it.</li>
+<li><strong>Training happens outside Unity</strong>, in Python, and only once. You ship the weights, not the trainer.</li></ul>
+<details class="article-section section-details">
+                <summary>Getting weights into shader constants without falling over</summary>
+                <div class="details-body"><p class="article-section section-paragraph">Shader constant arrays have a fixed length, and that length is decided by the first upload of the session. Growing the layout later leaves the new slots reading zero in an editor that is already running. The result is a spectacular white blob rather than an error message, and from the C# side the upload appears to have succeeded.</p><p class="article-section section-paragraph">Two guards make this survivable. The array is padded to a fixed size so its length no longer depends on the network shape, and the last slot carries a sentinel value the shader checks before trusting anything. When the sentinel is missing the shader falls back to the ordinary approximation instead of rendering nonsense.</p><p class="article-section section-paragraph">Neither guard resizes an array that has already been allocated, so changing the layout still means restarting the editor once.</p></div>
+            </details>
+<h2 id="section-81-what-went-wrong-along-the-way" class="article-section section-heading" data-toc-level="2">What went wrong along the way</h2>
+<p class="article-section section-paragraph">Almost none of the difficulty was the network being too small or the training data being too thin. It was a series of specific, quiet mistakes, and these are the ones worth passing on.</p>
+<h3 id="section-83-never-transform-the-thing-you-are-predicting" class="article-section section-heading" data-toc-level="3">Never transform the thing you are predicting</h3>
+<p class="article-section section-paragraph">The correct answers had a very lopsided distribution, so fitting the cube root of them looked sensible. It cost <strong>half the light in the final render</strong>.</p>
+<p class="article-section section-paragraph">The reason is worth knowing because it applies to any fitting problem. Training answers come from a random simulation, so each one is slightly noisy. Cube root is a curve that bends, and averaging noisy numbers through a bending curve does not give you the curve of the average. Cubing afterwards does not undo it either, because the damage was done by the noise rather than by the transform. Going back to fitting the raw values, with nothing else changed, took the render from half the correct brightness to exactly right.</p>
+<h3 id="section-86-the-activation-function-shows-up-in-the-picture" class="article-section section-heading" data-toc-level="3">The activation function shows up in the picture</h3>
+<p class="article-section section-paragraph">The standard building block in small networks is ReLU. Using it here made the network piecewise flat, and walking a ray through a piecewise flat field draws the seams. The cloud came out with faint shell-shaped creases following its surface. Squaring the ReLU costs one extra multiply and removes them completely.</p>
+<aside class="article-section section-callout warning">
+                <p>The tempting fix is Leaky ReLU, which is the standard recommendation almost everywhere including NVIDIA&#39;s own neural shading guide. It solves a different problem and brings the creases straight back, because the function is still made of flat pieces. The right answer for a network that outputs a number is not always the right answer for one that outputs a field you are going to walk through.</p>
+            </aside>
+<figure class="article-section section-svg-diagram" data-diagram-id="neural-cloud-activation">
+                <div class="svg-container" style="max-width: 760px;">
+                    <div class="svg-placeholder" data-width="760" data-height="300">
+                        <noscript>Diagram: Flat-sided activations leave seams in the render</noscript>
+                    </div>
+                </div>
+                <figcaption>Flat-sided activations leave seams in the render</figcaption>
+            </figure>
+<h3 id="section-90-a-smooth-quantity-can-still-need-a-lot-of-samples" class="article-section section-heading" data-toc-level="3">A smooth quantity can still need a lot of samples</h3>
+<p class="article-section section-paragraph">Part of what the network predicts is how much sky light reaches a point. That quantity varies smoothly, so estimating it from only a few light paths seemed reasonable.</p>
+<p class="article-section section-paragraph">The quantity is smooth, but the estimate of it is a coin flip: each path either escapes to the sky or it does not, with nothing in between. Averaging eight coin flips is very noisy however smooth the true answer underneath happens to be.</p>
+<figure class="article-section section-svg-diagram" data-diagram-id="neural-cloud-bernoulli">
+                <div class="svg-container" style="max-width: 760px;">
+                    <div class="svg-placeholder" data-width="760" data-height="300">
+                        <noscript>Diagram: A smooth quantity behind a coin-flip estimate</noscript>
+                    </div>
+                </div>
+                <figcaption>A smooth quantity behind a coin-flip estimate</figcaption>
+            </figure>
+<details class="article-section section-details">
+                <summary>How much noise, exactly</summary>
+                <div class="details-body"><div class="article-section section-code">
+                <div class="code-header">
+                    <span class="code-title">Noise in the estimate, against paths used</span>
+                    <span class="code-language">text</span>
+                </div>
+                <div class="code-content"><pre>  paths per band      <span class="number">4</span>      <span class="number">8</span>     <span class="number">16</span>     <span class="number">32</span>     <span class="number">64</span>    <span class="number">128</span>
+  noise           <span class="number">0.246</span>  <span class="number">0.174</span>  <span class="number">0.123</span>  <span class="number">0.087</span>  <span class="number">0.061</span>  <span class="number">0.043</span>
+
+  the real signal only varies by about <span class="number">0.31</span> <span class="keyword">in</span> total,
+  so at <span class="number">8</span> paths the noise is more than half the signal
+
+  best correlation the network could possibly reach:
+    <span class="number">8</span> paths  -&gt;  <span class="number">0.79</span>        <span class="number">64</span> paths  -&gt;  <span class="number">0.98</span></pre></div>
+            </div><p class="article-section section-paragraph">On an eight-path dataset the network reproduced only half the variation in the real answer, while every average-brightness check reported that everything was fine. An average is blind to this. The model was not underfitting, it was correctly fitting a target that had half its information replaced by noise.</p></div>
+            </details>
+<h3 id="section-95-test-on-something-genuinely-unseen" class="article-section section-heading" data-toc-level="3">Test on something genuinely unseen</h3>
+<p class="article-section section-paragraph">To check that the network generalises, one cloud shape is held out of training. The first version held out the last shape in the list, which happened to be both the thickest and the largest. That measures extrapolation rather than generalisation, and it failed badly.</p>
+<p class="article-section section-paragraph">Taken at face value the failure said the network was too small and needed to be bigger, which would have meant a rewrite. Holding out a shape from the middle of the range instead showed the opposite: making the network bigger buys nothing here. A wider one scored very slightly worse.</p>
+<h2 id="section-98-what-else-can-you-do-with-this" class="article-section section-heading" data-toc-level="2">What else can you do with this?</h2>
+<p class="article-section section-paragraph">Clouds are one instance of a shape that turns up everywhere: <strong>the correct answer exists, it is a simulation, and the simulation is too slow.</strong> Once you start looking for that shape it is difficult to stop finding it.</p>
+<ul class="article-section section-list"><li><strong>Skin, wax, marble, milk.</strong> Light entering a surface, bouncing around inside and leaving somewhere else is the same physics as a cloud at a smaller scale. Real-time renderers approximate it with a blur whose width was chosen by eye. The correct answer is a simulation nobody can afford per frame.</li>
+<li><strong>Textures.</strong> NVIDIA&#39;s neural texture compression stores a material as network weights instead of pixels and decompresses it while shading, several times smaller than the block formats everyone uses today. That one is already shipping.</li>
+<li><strong>Layered and exotic materials.</strong> Car paint with flake under clearcoat, fabric with sheen, iridescent shells. These are currently towers of analytic lobes stacked until the result looks plausible, and every layer costs another set of tuned constants.</li>
+<li><strong>Bounced light.</strong> Indirect illumination is the same trade at room scale: a path tracer knows the answer, and a small network can be trained to serve it at frame rate.</li>
+<li><strong>Hair and cloth.</strong> Thousands of fibres each scattering light into each other, which is a many-bounce problem with no closed form and a lot of hand-tuned faking around it.</li></ul>
+<p class="article-section section-paragraph">The pattern to look for in your own work is <strong>something expensive to compute, cheap to describe, and possible to generate correct answers for offline</strong>. If you can render the ground truth even very slowly, and the situation can be summarised in a handful of numbers, it is a candidate.</p>
+<p class="article-section section-paragraph">What makes this genuinely different from the usual round of optimisation is the direction it moves in. Faking something faster gets you a cheaper approximation. Training it gets you the <em>real</em> answer at a price you can afford, and the gap between those two is what the sun sweep earlier in this article is a picture of.</p>
+<details class="article-section section-details">
+                <summary>Where this particular cloud stops</summary>
+                <div class="details-body"><p class="article-section section-paragraph">The material is baked into the weights. How reflective the droplets are and how strongly they scatter forward are not inputs, so changing them leaves the network answering confidently about a material it has never seen. They stay locked.</p><p class="article-section section-paragraph">The sky is simplified to two bands, above and below the horizon, so a cloud lit by a bright sunset on one side and dark sky on the other has detail two numbers cannot express.</p><p class="article-section section-paragraph">Looking straight into the sun is the hardest case, because a single very bright forward spike dominates there and a network spreads its effort across everything rather than nailing a spike. The weights used here were trained on this one cloud, which handles it well; a network trained across many shapes at once has more trouble with it. The general fix is to stop asking the network to predict the easy part, since the first bounce of light has an exact formula and can be computed directly, leaving the network only what comes after.</p><p class="article-section section-paragraph">And there is no level of detail system, so this handles one cloud close up rather than a sky full of them.</p></div>
+            </details>
+<h2 id="section-104-why-this-matters-beyond-clouds" class="article-section section-heading" data-toc-level="2">Why this matters beyond clouds</h2>
+<p class="article-section section-paragraph">The cloud is a worked example. The pattern under it is reusable anywhere the honest answer is a simulation you cannot afford and the situation can be described in a handful of numbers. Subsurface scattering, layered materials, indirect light and cloth all have that shape. Run the simulation offline, train something small to reproduce it, and the expensive part moves from runtime to training time, which is a cost you pay once.</p>
+<p class="article-section section-paragraph">What makes a result like this trustworthy is not the network. It is replacing exactly one quantity, keeping everything else identical, building the slow correct version first, and then measuring across a whole range of situations rather than picking a flattering screenshot.</p>
+<p class="article-section section-paragraph">The most interesting thing to come out of it is not that a network beat an approximation, which was always likely given enough correct answers to learn from. It is that the approximation everyone ships is off by a factor of ten depending on where the sun is, and that is not something a screenshot was ever going to reveal.</p>
+<h2 id="section-108-where-to-read-more" class="article-section section-heading" data-toc-level="2">Where to read more</h2>
+<p class="article-section section-paragraph">NVIDIA&#39;s <a href="https://developer.nvidia.com/blog/how-to-get-started-with-neural-shading-for-your-game-or-application/" target="_blank" rel="noopener">How to Get Started with Neural Shading</a> is the best introduction to the wider technique, and covers the parts this article deliberately worked around: cooperative vectors, the tensor hardware underneath them, and Slang, which is the shading language built to target that path. It walks through a much smaller worked example than a cloud, which makes it a good place to start before building something.</p>
+<p class="article-section section-paragraph">The difference in approach is worth knowing about. That guide shows the technique on the hardware designed for it. This article shows what happens when you build the same thing in an engine with none of that available, measure it honestly against a path traced reference, and find out it still wins on quality while costing about a fifth more.</p>
+                </div>
+            </article>
+            
+        <aside class="article-toc">
+            <div class="toc-header">
+                <svg class="toc-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 6h16M4 12h16M4 18h10"/>
+                </svg>
+                <span class="toc-header-title">Contents</span>
+            </div>
+            <nav class="toc-nav">
+                <a class="toc-item" href="#section-7-what-is-a-neural-shader" data-target="section-7-what-is-a-neural-shader">What is a neural shader?</a>
+                    <a class="toc-item" href="#section-12-why-clouds" data-target="section-12-why-clouds">Why clouds?</a>
+                    <a class="toc-item" href="#section-19-what-exactly-gets-replaced" data-target="section-19-what-exactly-gets-replaced">What exactly gets replaced?</a>
+                    <a class="toc-item" href="#section-28-what-does-the-network-look-at" data-target="section-28-what-does-the-network-look-at">What does the network look at?</a>
+                    <a class="toc-item" href="#section-38-how-do-you-build-one" data-target="section-38-how-do-you-build-one">How do you build one?</a>
+                    <a class="toc-item toc-subchapter" href="#section-40-1-build-the-slow-correct-version-first" data-target="section-40-1-build-the-slow-correct-version-first">1. Build the slow correct version first</a>
+                    <a class="toc-item toc-subchapter" href="#section-43-2-decide-what-the-network-sees" data-target="section-43-2-decide-what-the-network-sees">2. Decide what the network sees</a>
+                    <a class="toc-item toc-subchapter" href="#section-45-3-train-it" data-target="section-45-3-train-it">3. Train it</a>
+                    <a class="toc-item toc-subchapter" href="#section-48-4-run-it-in-the-shader" data-target="section-48-4-run-it-in-the-shader">4. Run it in the shader</a>
+                    <a class="toc-item" href="#section-51-does-it-work" data-target="section-51-does-it-work">Does it work?</a>
+                    <a class="toc-item" href="#section-64-is-it-fast-enough" data-target="section-64-is-it-fast-enough">Is it fast enough?</a>
+                    <a class="toc-item" href="#section-77-how-do-you-do-this-in-unity" data-target="section-77-how-do-you-do-this-in-unity">How do you do this in Unity?</a>
+                    <a class="toc-item" href="#section-81-what-went-wrong-along-the-way" data-target="section-81-what-went-wrong-along-the-way">What went wrong along the way</a>
+                    <a class="toc-item toc-subchapter" href="#section-83-never-transform-the-thing-you-are-predicting" data-target="section-83-never-transform-the-thing-you-are-predicting">Never transform the thing you are predicting</a>
+                    <a class="toc-item toc-subchapter" href="#section-86-the-activation-function-shows-up-in-the-picture" data-target="section-86-the-activation-function-shows-up-in-the-picture">The activation function shows up in the picture</a>
+                    <a class="toc-item toc-subchapter" href="#section-90-a-smooth-quantity-can-still-need-a-lot-of-samples" data-target="section-90-a-smooth-quantity-can-still-need-a-lot-of-samples">A smooth quantity can still need a lot of samples</a>
+                    <a class="toc-item toc-subchapter" href="#section-95-test-on-something-genuinely-unseen" data-target="section-95-test-on-something-genuinely-unseen">Test on something genuinely unseen</a>
+                    <a class="toc-item" href="#section-98-what-else-can-you-do-with-this" data-target="section-98-what-else-can-you-do-with-this">What else can you do with this?</a>
+                    <a class="toc-item" href="#section-104-why-this-matters-beyond-clouds" data-target="section-104-why-this-matters-beyond-clouds">Why this matters beyond clouds</a>
+                    <a class="toc-item" href="#section-108-where-to-read-more" data-target="section-108-where-to-read-more">Where to read more</a>
+            </nav>
+        </aside>
+        </div>
+
+        <!-- Hire block -->
+        <div class="article-convert">
+            <div class="subscribe-box">
+                <p class="subscribe-title">One of these every few weeks</p>
+                <p class="subscribe-copy">Rendering techniques, built and measured against a reference. No newsletter padding, nothing else sent to the address.</p>
+                <form class="subscribe-form" data-source="article">
+                    <input type="email" name="email" placeholder="you@studio.com" required aria-label="Email address">
+                    <button type="submit">Notify me</button>
+                </form>
+                <p class="subscribe-status" role="status"></p>
+            </div>
+
+            <div class="article-cta-banner article-hire">
+                <a class="availability-badge" href="mailto:contact.charles.grassi@gmail.com?subject=Rendering%20work">
+                    <span class="availability-led"></span>
+                    Available for contract work &middot; Remote
+                </a>
+                <h2 class="cta-banner-title">Rendering problems, solved and measured</h2>
+                <p class="cta-banner-subtitle">Charles Grassi. Unity rendering and technical art specialist: URP, hand-written HLSL, volumetrics, water, procedural geometry. I work solo, and I write up the technique so you can see exactly what you are buying.</p>
+                <p class="hire-offer">The easiest place to start is a <strong>fixed-price rendering audit</strong>. Send a build or a capture, get back a written breakdown of where the frame is going and what each fix is worth. No meeting needed, and it is the cheapest way to find out whether we should work together.</p>
+                <div class="cta-banner-buttons">
+                    <a href="mailto:contact.charles.grassi@gmail.com?subject=Rendering%20audit%20enquiry" class="cta-banner-btn primary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                        Talk about your frame
+                    </a>
+                    <a href="https://www.linkedin.com/in/charles-grassi/" target="_blank" rel="noopener" class="cta-banner-btn secondary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM2 8.98h5.96V21H2zM9.5 8.98h5.7v1.64h.08c.8-1.4 2.6-2.3 4.3-2.3 3.9 0 4.62 2.4 4.62 5.7V21h-5.96v-5.4c0-1.3 0-3-1.9-3s-2.2 1.44-2.2 2.9V21H9.5z"/>
+                        </svg>
+                        LinkedIn
+                    </a>
+                    <a href="../../?tab=contact" class="cta-banner-btn secondary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                        More work
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="static-footer">
+            <div class="footer-author">
+                <span class="footer-author-name">Charles Grassi</span>
+                <span class="footer-author-title">Graphics Programmer & Technical Artist</span>
+            </div>
+            <div class="footer-links">
+                <a href="../../" class="footer-link">Portfolio</a>
+                <a href="../../blog/" class="footer-link">Blog</a>
+                <a href="https://twitter.com/charles_grassi" class="footer-link" target="_blank" rel="noopener">Twitter</a>
+                <a href="https://www.linkedin.com/in/charles-grassi/" class="footer-link" target="_blank" rel="noopener">LinkedIn</a>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Optional: Load JS for interactive diagrams/demos -->
+    <script src="../../js/blog-diagrams.js" defer></script>
+    <script src="../../js/convert.js" defer></script>
+    <script>
+        // Initialize SVG diagrams if blog-diagrams.js is available
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof window.blogSvgDiagrams !== 'undefined') {
+                var diagrams = document.querySelectorAll('.section-svg-diagram');
+                diagrams.forEach(function(container) {
+                    var id = container.getAttribute('data-diagram-id');
+                    var placeholder = container.querySelector('.svg-placeholder');
+                    if (placeholder && window.blogSvgDiagrams[id]) {
+                        var w = parseInt(placeholder.getAttribute('data-width')) || 600;
+                        var h = parseInt(placeholder.getAttribute('data-height')) || 200;
+                        var svgContainer = container.querySelector('.svg-container');
+                        svgContainer.innerHTML = '';
+                        try {
+                            window.blogSvgDiagrams[id](svgContainer, w, h);
+                        } catch (e) {
+                            console.error('Diagram error:', id, e);
+                        }
+                    }
+                });
+            }
+
+            // Initialize shader demos
+            var demos = document.querySelectorAll('.section-shader-demo');
+            demos.forEach(function(container) {
+                var canvas = container.querySelector('.shader-canvas');
+                var loadingEl = container.querySelector('.shader-loading');
+                var configStr = container.getAttribute('data-shader-config');
+
+                if (!canvas || !configStr) return;
+
+                try {
+                    var config = JSON.parse(configStr);
+                    initShaderDemo(canvas, config, container, loadingEl);
+                } catch (e) {
+                    if (loadingEl) {
+                        loadingEl.textContent = 'Shader error: ' + e.message;
+                        loadingEl.classList.add('error');
+                    }
+                }
+            });
+        });
+
+        function initShaderDemo(canvas, config, container, loadingEl) {
+            var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (!gl) throw new Error('WebGL not supported');
+
+            // Default vertex shader if not provided
+            var vertexShaderSrc = config.vertexShader || 'attribute vec2 a_position;\nvarying vec2 v_uv;\nvoid main() {\n    v_uv = a_position * 0.5 + 0.5;\n    gl_Position = vec4(a_position, 0.0, 1.0);\n}';
+
+            var vertShader = gl.createShader(gl.VERTEX_SHADER);
+            gl.shaderSource(vertShader, vertexShaderSrc);
+            gl.compileShader(vertShader);
+            if (!gl.getShaderParameter(vertShader, gl.COMPILE_STATUS)) {
+                throw new Error('Vertex: ' + gl.getShaderInfoLog(vertShader));
+            }
+
+            var fragShader = gl.createShader(gl.FRAGMENT_SHADER);
+            gl.shaderSource(fragShader, config.fragmentShader);
+            gl.compileShader(fragShader);
+            if (!gl.getShaderParameter(fragShader, gl.COMPILE_STATUS)) {
+                throw new Error('Fragment: ' + gl.getShaderInfoLog(fragShader));
+            }
+
+            var program = gl.createProgram();
+            gl.attachShader(program, vertShader);
+            gl.attachShader(program, fragShader);
+            gl.linkProgram(program);
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                throw new Error(gl.getProgramInfoLog(program));
+            }
+
+            gl.useProgram(program);
+
+            var posBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1
+            ]), gl.STATIC_DRAW);
+
+            var posLoc = gl.getAttribLocation(program, 'a_position');
+            gl.enableVertexAttribArray(posLoc);
+            gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+            var uniformLocs = {};
+            var uniformValues = {};
+            for (var name in config.uniforms) {
+                uniformLocs[name] = gl.getUniformLocation(program, name);
+                uniformValues[name] = config.uniforms[name].value;
+            }
+
+            // Load textures if specified
+            var textureUnit = 0;
+            if (config.textures) {
+                for (var texName in config.textures) {
+                    (function(name, src, unit) {
+                        var texLoc = gl.getUniformLocation(program, name);
+                        if (!texLoc) return;
+                        var tex = gl.createTexture();
+                        gl.activeTexture(gl.TEXTURE0 + unit);
+                        gl.bindTexture(gl.TEXTURE_2D, tex);
+                        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([128, 128, 128, 255]));
+                        var img = new Image();
+                        img.crossOrigin = 'anonymous';
+                        img.onload = function() {
+                            gl.activeTexture(gl.TEXTURE0 + unit);
+                            gl.bindTexture(gl.TEXTURE_2D, tex);
+                            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                        };
+                        img.src = '../../' + src;
+                        gl.useProgram(program);
+                        gl.uniform1i(texLoc, unit);
+                    })(texName, config.textures[texName], textureUnit++);
+                }
+            }
+
+            // Setup controls
+            var controls = container.querySelectorAll('input[type="range"]');
+            controls.forEach(function(input) {
+                var uniformName = input.getAttribute('data-uniform');
+                var valueDisplay = input.parentElement.querySelector('.control-value');
+                input.addEventListener('input', function() {
+                    uniformValues[uniformName] = parseFloat(input.value);
+                    if (valueDisplay) valueDisplay.textContent = parseFloat(input.value).toFixed(2);
+                });
+            });
+
+            var startTime = performance.now();
+
+            function render() {
+                var elapsed = (performance.now() - startTime) / 1000;
+                gl.viewport(0, 0, canvas.width, canvas.height);
+                gl.clearColor(0.04, 0.06, 0.08, 1.0);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                gl.useProgram(program);
+
+                for (var name in uniformLocs) {
+                    var loc = uniformLocs[name];
+                    if (!loc) continue;
+                    if (name === 'u_time') gl.uniform1f(loc, elapsed);
+                    else if (name === 'u_resolution') gl.uniform2f(loc, canvas.width, canvas.height);
+                    else {
+                        var val = uniformValues[name];
+                        if (typeof val === 'number') gl.uniform1f(loc, val);
+                        else if (Array.isArray(val) && val.length === 2) gl.uniform2f(loc, val[0], val[1]);
+                        else if (Array.isArray(val) && val.length === 3) gl.uniform3f(loc, val[0], val[1], val[2]);
+                    }
+                }
+
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+                requestAnimationFrame(render);
+            }
+
+            if (loadingEl) loadingEl.style.display = 'none';
+            render();
+        }
+
+        // TOC scroll tracking and smooth scroll
+        (function initToc() {
+            var tocItems = document.querySelectorAll('.toc-item');
+            var headings = document.querySelectorAll('.section-heading[id]');
+            if (tocItems.length < 2 || headings.length < 2) return;
+
+            var settleTimeout = null;
+            var currentActiveId = null;
+
+            function setActiveTocItem(activeId, immediate) {
+                if (settleTimeout) {
+                    clearTimeout(settleTimeout);
+                    settleTimeout = null;
+                }
+
+                tocItems.forEach(function(item) {
+                    item.classList.remove('settled');
+                    var isActive = item.getAttribute('data-target') === activeId;
+                    item.classList.toggle('active', isActive);
+                });
+
+                currentActiveId = activeId;
+
+                var delay = immediate ? 0 : 150;
+                settleTimeout = setTimeout(function() {
+                    var activeItem = document.querySelector('.toc-item[data-target="' + currentActiveId + '"]');
+                    if (activeItem) activeItem.classList.add('settled');
+                }, delay);
+            }
+
+            // Smooth scroll on click
+            tocItems.forEach(function(item) {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var targetId = item.getAttribute('data-target');
+                    var target = document.getElementById(targetId);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        setActiveTocItem(targetId, false);
+                    }
+                });
+            });
+
+            // Scroll tracking with IntersectionObserver
+            var observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        setActiveTocItem(entry.target.id, false);
+                    }
+                });
+            }, {
+                rootMargin: '-80px 0px -60% 0px',
+                threshold: 0
+            });
+
+            headings.forEach(function(heading) {
+                observer.observe(heading);
+            });
+
+            // Set initial state
+            if (headings.length > 0) {
+                setActiveTocItem(headings[0].id, true);
+            }
+        })();
+    </script>
+</body>
+</html>

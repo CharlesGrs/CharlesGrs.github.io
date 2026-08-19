@@ -132,7 +132,7 @@
 
 
     <!-- Version Badge -->
-    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.79</span></div>
+    <div class="version-badge" id="version-badge" title="Site version">v<span id="version-number">1.80</span></div>
 
     <div class="container" id="main-content" role="main">
         <!-- Tabbed Carousel -->
@@ -225,12 +225,18 @@
                     <div class="gpu-inspector">
                         <!-- Hero Section - Large Impact Title -->
                         <div class="inspector-hero">
-                            <div class="hero-status-bar">
+                            <!-- The line above the fold. It used to read
+                                 SHADER_PROFILE.LOADED // BUFFER_0x7F, which is
+                                 the most valuable space on the site spent on
+                                 decoration. A visitor deciding whether to make
+                                 contact should not have to reach the footer to
+                                 learn the answer. -->
+                            <a class="hero-status-bar hero-status-link" href="?tab=contact">
                                 <span class="status-led active"></span>
-                                <span class="status-text">SHADER_PROFILE.LOADED</span>
+                                <span class="status-text">AVAILABLE FOR CONTRACT WORK</span>
                                 <span class="status-separator">//</span>
-                                <span class="status-coords">BUFFER_0x7F</span>
-                            </div>
+                                <span class="status-coords">RENDERING &amp; TECHNICAL ART &middot; REMOTE</span>
+                            </a>
 
                             <div class="hero-title-block">
                                 <span class="title-prefix">&gt;</span>
@@ -2296,6 +2302,7 @@
     <script defer src="js/ui.js"></script>
     <script defer src="js/blog-diagram-helpers.js"></script>
     <script defer src="js/blog-diagrams.js"></script>
+    <script defer src="js/convert.js"></script>
     <script defer src="js/blog.js"></script>
     <script defer src="js/playground.js"></script>
     <script defer src="js/settings-panel.js"></script>

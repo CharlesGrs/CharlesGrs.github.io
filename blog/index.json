@@ -1,5 +1,6 @@
 {
     "posts": [
+        "neural-volumetric-clouds",
         "apple-liquid-glass",
         "screen-space-sphere-selection",
         "gpu-cache-hierarchy",

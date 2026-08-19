@@ -16,12 +16,61 @@ const BLOG_DIR = path.join(ROOT, 'blog');
 const POSTS_JSON_DIR = path.join(BLOG_DIR, 'posts');
 
 // Site configuration
+// The block that closes every article.
+//
+// This is where a 15-minute read turns into an enquiry, so it names a concrete
+// first transaction rather than inviting the reader to "get in touch". The
+// numbers here are quoted from survival-quarter/PROFILE.md and must not drift
+// from it: two pages disagreeing about the rate costs the gig.
+const HIRE_BLOCK = `<div class="article-convert">
+            <div class="subscribe-box">
+                <p class="subscribe-title">One of these every few weeks</p>
+                <p class="subscribe-copy">Rendering techniques, built and measured against a reference. No newsletter padding, nothing else sent to the address.</p>
+                <form class="subscribe-form" data-source="article">
+                    <input type="email" name="email" placeholder="you@studio.com" required aria-label="Email address">
+                    <button type="submit">Notify me</button>
+                </form>
+                <p class="subscribe-status" role="status"></p>
+            </div>
+
+            <div class="article-cta-banner article-hire">
+                <a class="availability-badge" href="mailto:contact.charles.grassi@gmail.com?subject=Rendering%20work">
+                    <span class="availability-led"></span>
+                    Available for contract work &middot; Remote
+                </a>
+                <h2 class="cta-banner-title">Rendering problems, solved and measured</h2>
+                <p class="cta-banner-subtitle">Charles Grassi. Unity rendering and technical art specialist: URP, hand-written HLSL, volumetrics, water, procedural geometry. I work solo, and I write up the technique so you can see exactly what you are buying.</p>
+                <p class="hire-offer">The easiest place to start is a <strong>fixed-price rendering audit</strong>. Send a build or a capture, get back a written breakdown of where the frame is going and what each fix is worth. No meeting needed, and it is the cheapest way to find out whether we should work together.</p>
+                <div class="cta-banner-buttons">
+                    <a href="mailto:contact.charles.grassi@gmail.com?subject=Rendering%20audit%20enquiry" class="cta-banner-btn primary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                        Talk about your frame
+                    </a>
+                    <a href="https://www.linkedin.com/in/charles-grassi/" target="_blank" rel="noopener" class="cta-banner-btn secondary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM2 8.98h5.96V21H2zM9.5 8.98h5.7v1.64h.08c.8-1.4 2.6-2.3 4.3-2.3 3.9 0 4.62 2.4 4.62 5.7V21h-5.96v-5.4c0-1.3 0-3-1.9-3s-2.2 1.44-2.2 2.9V21H9.5z"/>
+                        </svg>
+                        LinkedIn
+                    </a>
+                    <a href="../../?tab=contact" class="cta-banner-btn secondary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                        More work
+                    </a>
+                </div>
+            </div>
+        </div>`;
+
 const SITE_CONFIG = {
-    siteUrl: 'https://charlesgrs.github.io',
+    siteUrl: 'https://charlesgrassi.dev',
     siteName: 'Charles Grassi',
     authorName: 'Charles Grassi',
     authorTwitter: '@charles_grassi',
-    defaultOgImage: 'https://charlesgrs.github.io/og-image.png'
+    defaultOgImage: 'https://charlesgrassi.dev/og-image.png'
 };
 
 // Category metadata
@@ -35,6 +84,24 @@ const CATEGORIES = {
 /**
  * Escape HTML special characters
  */
+/**
+ * Inline formatting for article prose: **bold**, *italic*, `code`.
+ * Must stay identical to markdownInline() in js/blog.js, or a post renders
+ * bold on the static page and literal asterisks in the portfolio view.
+ */
+function markdownInline(escaped) {
+    return String(escaped == null ? '' : escaped)
+        .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+                 '<a href="$2" target="_blank" rel="noopener">$1</a>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+}
+
+function formatInline(text) {
+    return markdownInline(escapeHtml(String(text == null ? '' : text)));
+}
+
 function escapeHtml(text) {
     if (!text) return '';
     return text
@@ -137,7 +204,7 @@ function highlightCode(code, language) {
 function renderSection(section, index) {
     switch (section.type) {
         case 'intro':
-            return `<p class="article-section section-intro">${escapeHtml(section.content)}</p>`;
+            return `<p class="article-section section-intro">${formatInline(section.content)}</p>`;
 
         case 'heading':
             const tag = `h${section.level || 2}`;
@@ -145,7 +212,7 @@ function renderSection(section, index) {
             return `<${tag} id="${headingId}" class="article-section section-heading" data-toc-level="${section.level || 2}">${escapeHtml(section.content)}</${tag}>`;
 
         case 'paragraph':
-            return `<p class="article-section section-paragraph">${escapeHtml(section.content)}</p>`;
+            return `<p class="article-section section-paragraph">${formatInline(section.content)}</p>`;
 
         case 'code':
             const highlighted = highlightCode(section.content, section.language);
@@ -158,7 +225,7 @@ function renderSection(section, index) {
             </div>`;
 
         case 'list':
-            const items = (section.items || []).map(item => `<li>${escapeHtmlWithLinks(item)}</li>`).join('\n');
+            const items = (section.items || []).map(item => `<li>${markdownInline(escapeHtmlWithLinks(item))}</li>`).join('\n');
             return `<ul class="article-section section-list">${items}</ul>`;
 
         case 'image':
@@ -168,9 +235,23 @@ function renderSection(section, index) {
                 ${caption}
             </figure>`;
 
+        case 'video':
+            // Looping, muted and inline so it behaves like a figure rather than
+            // a player. webm first, mp4 as the fallback source.
+            const vCaption = section.caption ? `<figcaption>${formatInline(section.caption)}</figcaption>` : '';
+            const vPoster = section.poster ? ` poster="../../blog/images/${section.poster}"` : '';
+            const vWebm = section.webm ? `<source src="../../blog/videos/${section.webm}" type="video/webm">` : '';
+            return `<figure class="article-section section-video">
+                <video autoplay loop muted playsinline preload="metadata"${vPoster}>
+                    ${vWebm}
+                    <source src="../../blog/videos/${section.src}" type="video/mp4">
+                </video>
+                ${vCaption}
+            </figure>`;
+
         case 'callout':
             return `<aside class="article-section section-callout ${section.variant || 'info'}">
-                <p>${escapeHtml(section.content)}</p>
+                <p>${formatInline(section.content)}</p>
             </aside>`;
 
         case 'svg-diagram':
@@ -183,6 +264,15 @@ function renderSection(section, index) {
                 </div>
                 ${section.title ? `<figcaption>${escapeHtml(section.title)}</figcaption>` : ''}
             </figure>`;
+
+        case 'details':
+            const innerHtml = (section.sections || [])
+                .map((child, childIndex) => renderSection(child, `${index}-${childIndex}`))
+                .join('');
+            return `<details class="article-section section-details">
+                <summary>${formatInline(section.summary || 'Technical detail')}</summary>
+                <div class="details-body">${innerHtml}</div>
+            </details>`;
 
         case 'shader-demo':
             // Shader demos need JS, show placeholder for no-JS
@@ -297,9 +387,14 @@ function generatePostHtml(post) {
     const tocHtml = generateTocHtml(post.sections || []);
     const tagsHtml = (post.tags || []).map(tag => `<span class="card-tag">${escapeHtml(tag)}</span>`).join('');
 
-    const ogImage = post.thumbnail
-        ? `${SITE_CONFIG.siteUrl}/blog/images/${post.thumbnail}`
-        : SITE_CONFIG.defaultOgImage;
+    // Social cards are cropped to 1.91:1 by X and LinkedIn, so a post that
+    // supplies a purpose-made card at that ratio uses it. The thumbnail is
+    // square and gets its top and bottom cut off in a feed.
+    const ogImage = post.ogImage
+        ? `${SITE_CONFIG.siteUrl}/blog/images/${post.ogImage}`
+        : post.thumbnail
+            ? `${SITE_CONFIG.siteUrl}/blog/images/${post.thumbnail}`
+            : SITE_CONFIG.defaultOgImage;
 
     const postUrl = `${SITE_CONFIG.siteUrl}/blog/${post.id}/`;
     const categoryLabel = CATEGORIES[post.category]?.label || post.category;
@@ -656,6 +751,152 @@ function generatePostHtml(post) {
             transform: translateX(-3px);
         }
 
+        .section-video { margin: var(--space-lg) 0; }
+
+        .section-video video {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: #0a0f14;
+        }
+
+        .section-video figcaption {
+            margin-top: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            text-align: center;
+        }
+
+        .article-convert {
+            margin: var(--space-xl, 3rem) 0 var(--space-lg, 2rem);
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        /* --- subscribe --- */
+
+        .subscribe-box {
+            padding: 1.5rem;
+            border: 1px solid rgba(45, 212, 191, 0.22);
+            border-radius: 12px;
+            background: rgba(45, 212, 191, 0.04);
+        }
+
+        .subscribe-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 0.35rem 0;
+        }
+
+        .subscribe-copy {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin: 0 0 1rem 0;
+        }
+
+        .subscribe-form {
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
+
+        .subscribe-form input[type="email"] {
+            flex: 1 1 240px;
+            min-width: 0;
+            padding: 0.7rem 0.9rem;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background: rgba(10, 15, 20, 0.75);
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        .subscribe-form input[type="email"]:focus {
+            outline: none;
+            border-color: var(--accent-teal);
+            box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.15);
+        }
+
+        .subscribe-form button {
+            padding: 0.7rem 1.3rem;
+            border-radius: 6px;
+            border: 1px solid rgba(45, 212, 191, 0.4);
+            background: rgba(45, 212, 191, 0.12);
+            color: var(--accent-teal);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .subscribe-form button:hover:not(:disabled) {
+            background: rgba(45, 212, 191, 0.22);
+            border-color: var(--accent-teal);
+        }
+
+        .subscribe-form button:disabled { opacity: 0.5; cursor: default; }
+
+        .subscribe-status {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            margin: 0.7rem 0 0 0;
+            min-height: 1em;
+        }
+
+        .subscribe-status.ok { color: var(--accent-teal); }
+        .subscribe-status.error { color: #e8734a; }
+
+        /* --- availability --- */
+
+        .availability-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.32rem 0.75rem;
+            margin-bottom: 0.9rem;
+            border-radius: 999px;
+            border: 1px solid rgba(45, 212, 191, 0.35);
+            background: rgba(45, 212, 191, 0.08);
+            color: var(--accent-teal);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.04em;
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+
+        .availability-badge:hover {
+            background: rgba(45, 212, 191, 0.18);
+            border-color: var(--accent-teal);
+        }
+
+        .availability-led {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent-teal);
+            box-shadow: 0 0 6px var(--accent-teal);
+            animation: availability-pulse 2.4s ease-in-out infinite;
+        }
+
+        @keyframes availability-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .availability-led { animation: none; }
+        }
+
         /* CTA Banner after article */
         .article-cta-banner {
             margin-top: var(--space-xl);
@@ -665,6 +906,32 @@ function generatePostHtml(post) {
             border-radius: 12px;
             text-align: center;
         }
+
+        .article-hire {
+            text-align: left;
+        }
+
+        .hire-kicker {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--accent-gold);
+            margin: 0 0 0.4rem 0;
+        }
+
+        .hire-offer {
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin: 0 0 var(--space-md) 0;
+            padding-left: 0.9rem;
+            border-left: 2px solid rgba(45, 212, 191, 0.35);
+        }
+
+        .hire-offer strong { color: var(--text-primary); }
+
+        .article-hire .cta-banner-buttons { justify-content: flex-start; }
 
         .cta-banner-title {
             font-family: 'Outfit', sans-serif;
@@ -873,26 +1140,8 @@ function generatePostHtml(post) {
             ${tocHtml}
         </div>
 
-        <!-- CTA Banner -->
-        <div class="article-cta-banner">
-            <h2 class="cta-banner-title">Want to see more?</h2>
-            <p class="cta-banner-subtitle">Check out my interactive portfolio with live shader demos</p>
-            <div class="cta-banner-buttons">
-                <a href="../../?tab=contact" class="cta-banner-btn primary">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                        <polyline points="22,6 12,13 2,6"/>
-                    </svg>
-                    Get in Touch
-                </a>
-                <a href="../../?tab=skills" class="cta-banner-btn secondary">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-                    </svg>
-                    Live Demos
-                </a>
-            </div>
-        </div>
+        <!-- Hire block -->
+        ${HIRE_BLOCK}
 
         <!-- Footer -->
         <footer class="static-footer">
@@ -911,6 +1160,7 @@ function generatePostHtml(post) {
 
     <!-- Optional: Load JS for interactive diagrams/demos -->
     <script src="../../js/blog-diagrams.js" defer></script>
+    <script src="../../js/convert.js" defer></script>
     <script>
         // Initialize SVG diagrams if blog-diagrams.js is available
         document.addEventListener('DOMContentLoaded', function() {
@@ -1251,6 +1501,150 @@ function generateIndexHtml(posts) {
     <link rel="stylesheet" href="../css/blog.css">
 
     <style>
+        .article-convert {
+            margin: var(--space-xl, 3rem) 0 var(--space-lg, 2rem);
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        /* --- subscribe --- */
+
+        .subscribe-box {
+            padding: 1.5rem;
+            border: 1px solid rgba(45, 212, 191, 0.22);
+            border-radius: 12px;
+            background: rgba(45, 212, 191, 0.04);
+        }
+
+        .subscribe-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 0.35rem 0;
+        }
+
+        .subscribe-copy {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin: 0 0 1rem 0;
+        }
+
+        .subscribe-form {
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
+
+        .subscribe-form input[type="email"] {
+            flex: 1 1 240px;
+            min-width: 0;
+            padding: 0.7rem 0.9rem;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background: rgba(10, 15, 20, 0.75);
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        .subscribe-form input[type="email"]:focus {
+            outline: none;
+            border-color: var(--accent-teal);
+            box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.15);
+        }
+
+        .subscribe-form button {
+            padding: 0.7rem 1.3rem;
+            border-radius: 6px;
+            border: 1px solid rgba(45, 212, 191, 0.4);
+            background: rgba(45, 212, 191, 0.12);
+            color: var(--accent-teal);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .subscribe-form button:hover:not(:disabled) {
+            background: rgba(45, 212, 191, 0.22);
+            border-color: var(--accent-teal);
+        }
+
+        .subscribe-form button:disabled { opacity: 0.5; cursor: default; }
+
+        .subscribe-status {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            margin: 0.7rem 0 0 0;
+            min-height: 1em;
+        }
+
+        .subscribe-status.ok { color: var(--accent-teal); }
+        .subscribe-status.error { color: #e8734a; }
+
+        /* --- availability --- */
+
+        .availability-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.32rem 0.75rem;
+            margin-bottom: 0.9rem;
+            border-radius: 999px;
+            border: 1px solid rgba(45, 212, 191, 0.35);
+            background: rgba(45, 212, 191, 0.08);
+            color: var(--accent-teal);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.04em;
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+
+        .availability-badge:hover {
+            background: rgba(45, 212, 191, 0.18);
+            border-color: var(--accent-teal);
+        }
+
+        .availability-led {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent-teal);
+            box-shadow: 0 0 6px var(--accent-teal);
+            animation: availability-pulse 2.4s ease-in-out infinite;
+        }
+
+        @keyframes availability-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .availability-led { animation: none; }
+        }
+
+        .article-cta-banner {
+            padding: var(--space-lg, 2rem);
+            background: linear-gradient(145deg, rgba(20, 28, 38, 0.9) 0%, rgba(15, 22, 30, 0.95) 100%);
+            border: 1px solid rgba(232, 185, 35, 0.2);
+            border-radius: 12px;
+            text-align: left;
+        }
+        .cta-banner-title { font-family: 'Outfit', sans-serif; font-size: 1.5rem; font-weight: 600; color: var(--text-primary); margin: 0 0 0.5rem 0; }
+        .cta-banner-subtitle { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.7; margin: 0 0 1rem 0; }
+        .hire-offer { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.7; margin: 0 0 1.5rem 0; padding-left: 0.9rem; border-left: 2px solid rgba(45, 212, 191, 0.35); }
+        .hire-offer strong { color: var(--text-primary); }
+        .cta-banner-buttons { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .cta-banner-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: 500; text-decoration: none; transition: all 0.25s ease; }
+        .cta-banner-btn.primary { background: linear-gradient(135deg, var(--accent-gold) 0%, #d4a520 100%); color: #0a0f14; }
+        .cta-banner-btn.primary:hover { transform: translateY(-2px); }
+        .cta-banner-btn.secondary { background: rgba(45, 212, 191, 0.1); border: 1px solid rgba(45, 212, 191, 0.3); color: var(--accent-teal); }
+        .cta-banner-btn.secondary:hover { background: rgba(45, 212, 191, 0.2); }
         body {
             background: var(--bg-primary);
             min-height: 100vh;
@@ -1373,7 +1767,36 @@ function generateIndexHtml(posts) {
         <div class="posts-grid">
             ${postsHtml}
         </div>
+
+        <!-- Conversion. Search traffic lands here rather than on a post, and
+             until now this page asked the reader for nothing at all. -->
+        <div class="article-convert" style="max-width: 760px; margin: 4rem auto 2rem;">
+            <div class="subscribe-box">
+                <p class="subscribe-title">One of these every few weeks</p>
+                <p class="subscribe-copy">Rendering techniques, built and measured against a reference. No newsletter padding, nothing else sent to the address.</p>
+                <form class="subscribe-form" data-source="blog-index">
+                    <input type="email" name="email" placeholder="you@studio.com" required aria-label="Email address">
+                    <button type="submit">Notify me</button>
+                </form>
+                <p class="subscribe-status" role="status"></p>
+            </div>
+
+            <div class="article-cta-banner article-hire">
+                <a class="availability-badge" href="mailto:contact.charles.grassi@gmail.com?subject=Rendering%20work">
+                    <span class="availability-led"></span>
+                    Available for contract work &middot; Remote
+                </a>
+                <h2 class="cta-banner-title">Rendering problems, solved and measured</h2>
+                <p class="cta-banner-subtitle">Charles Grassi. Unity rendering and technical art specialist: URP, hand-written HLSL, volumetrics, water, procedural geometry.</p>
+                <p class="hire-offer">The easiest place to start is a <strong>fixed-price rendering audit</strong>. Send a build or a capture, get back a written breakdown of where the frame is going and what each fix is worth.</p>
+                <div class="cta-banner-buttons">
+                    <a href="mailto:contact.charles.grassi@gmail.com?subject=Rendering%20audit%20enquiry" class="cta-banner-btn primary">Talk about your frame</a>
+                    <a href="../?tab=contact" class="cta-banner-btn secondary">More work</a>
+                </div>
+            </div>
+        </div>
     </div>
+    <script src="../js/convert.js" defer></script>
 </body>
 </html>`;
 }

@@ -22,10 +22,10 @@
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://charlesgrs.github.io/blog/">
+    <meta property="og:url" content="https://charlesgrassi.dev/blog/">
     <meta property="og:title" content="Blog | Charles Grassi">
     <meta property="og:description" content="Technical articles on real-time rendering, shader development, GPU optimization, and visual effects.">
-    <meta property="og:image" content="https://charlesgrs.github.io/og-image.png">
+    <meta property="og:image" content="https://charlesgrassi.dev/og-image.png">
     <meta property="og:site_name" content="Charles Grassi">
 
     <!-- Twitter -->
@@ -33,10 +33,10 @@
     <meta name="twitter:site" content="@charles_grassi">
     <meta name="twitter:title" content="Blog | Charles Grassi">
     <meta name="twitter:description" content="Technical articles on real-time rendering, shader development, GPU optimization, and visual effects.">
-    <meta name="twitter:image" content="https://charlesgrs.github.io/og-image.png">
+    <meta name="twitter:image" content="https://charlesgrassi.dev/og-image.png">
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="https://charlesgrs.github.io/blog/">
+    <link rel="canonical" href="https://charlesgrassi.dev/blog/">
 
     <!-- Theme -->
     <meta name="theme-color" content="#0a0f14">
@@ -57,6 +57,150 @@
     <link rel="stylesheet" href="../css/blog.css">
 
     <style>
+        .article-convert {
+            margin: var(--space-xl, 3rem) 0 var(--space-lg, 2rem);
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        /* --- subscribe --- */
+
+        .subscribe-box {
+            padding: 1.5rem;
+            border: 1px solid rgba(45, 212, 191, 0.22);
+            border-radius: 12px;
+            background: rgba(45, 212, 191, 0.04);
+        }
+
+        .subscribe-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 0.35rem 0;
+        }
+
+        .subscribe-copy {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin: 0 0 1rem 0;
+        }
+
+        .subscribe-form {
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
+
+        .subscribe-form input[type="email"] {
+            flex: 1 1 240px;
+            min-width: 0;
+            padding: 0.7rem 0.9rem;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background: rgba(10, 15, 20, 0.75);
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        .subscribe-form input[type="email"]:focus {
+            outline: none;
+            border-color: var(--accent-teal);
+            box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.15);
+        }
+
+        .subscribe-form button {
+            padding: 0.7rem 1.3rem;
+            border-radius: 6px;
+            border: 1px solid rgba(45, 212, 191, 0.4);
+            background: rgba(45, 212, 191, 0.12);
+            color: var(--accent-teal);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .subscribe-form button:hover:not(:disabled) {
+            background: rgba(45, 212, 191, 0.22);
+            border-color: var(--accent-teal);
+        }
+
+        .subscribe-form button:disabled { opacity: 0.5; cursor: default; }
+
+        .subscribe-status {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            margin: 0.7rem 0 0 0;
+            min-height: 1em;
+        }
+
+        .subscribe-status.ok { color: var(--accent-teal); }
+        .subscribe-status.error { color: #e8734a; }
+
+        /* --- availability --- */
+
+        .availability-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.32rem 0.75rem;
+            margin-bottom: 0.9rem;
+            border-radius: 999px;
+            border: 1px solid rgba(45, 212, 191, 0.35);
+            background: rgba(45, 212, 191, 0.08);
+            color: var(--accent-teal);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.04em;
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+
+        .availability-badge:hover {
+            background: rgba(45, 212, 191, 0.18);
+            border-color: var(--accent-teal);
+        }
+
+        .availability-led {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent-teal);
+            box-shadow: 0 0 6px var(--accent-teal);
+            animation: availability-pulse 2.4s ease-in-out infinite;
+        }
+
+        @keyframes availability-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .availability-led { animation: none; }
+        }
+
+        .article-cta-banner {
+            padding: var(--space-lg, 2rem);
+            background: linear-gradient(145deg, rgba(20, 28, 38, 0.9) 0%, rgba(15, 22, 30, 0.95) 100%);
+            border: 1px solid rgba(232, 185, 35, 0.2);
+            border-radius: 12px;
+            text-align: left;
+        }
+        .cta-banner-title { font-family: 'Outfit', sans-serif; font-size: 1.5rem; font-weight: 600; color: var(--text-primary); margin: 0 0 0.5rem 0; }
+        .cta-banner-subtitle { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.7; margin: 0 0 1rem 0; }
+        .hire-offer { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.7; margin: 0 0 1.5rem 0; padding-left: 0.9rem; border-left: 2px solid rgba(45, 212, 191, 0.35); }
+        .hire-offer strong { color: var(--text-primary); }
+        .cta-banner-buttons { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .cta-banner-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: 500; text-decoration: none; transition: all 0.25s ease; }
+        .cta-banner-btn.primary { background: linear-gradient(135deg, var(--accent-gold) 0%, #d4a520 100%); color: #0a0f14; }
+        .cta-banner-btn.primary:hover { transform: translateY(-2px); }
+        .cta-banner-btn.secondary { background: rgba(45, 212, 191, 0.1); border: 1px solid rgba(45, 212, 191, 0.3); color: var(--accent-teal); }
+        .cta-banner-btn.secondary:hover { background: rgba(45, 212, 191, 0.2); }
         body {
             background: var(--bg-primary);
             min-height: 100vh;
@@ -178,11 +322,39 @@
         <!-- Posts Grid -->
         <div class="posts-grid">
             
+            <article class="blog-post-card featured">
+                <a href="neural-volumetric-clouds/" class="card-link">
+                    <div class="card-thumbnail">
+                        <img src="images/neural-cloud-thumb.png" alt="" loading="lazy">
+                        <span class="card-new-badge">New</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-meta">
+                            <span class="meta-date">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                August 19, 2026
+                            </span>
+                            <span class="meta-separator"></span>
+                            <span class="meta-read-time">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                18 min
+                            </span>
+                        </div>
+                        <h2 class="card-title">Neural Shaders, Explained With Clouds</h2>
+                        <p class="card-excerpt">Some things in graphics are too complicated to write an equation for, so games fake them. Neural shaders let you train the answer instead. Here is one built end to end on a cloud, and measured against a path tracer.</p>
+                        <div class="card-tags"><span class="card-tag">neural-rendering</span><span class="card-tag">volumetrics</span><span class="card-tag">clouds</span></div>
+                        <div class="card-arrow">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        </div>
+                    </div>
+                </a>
+            </article>
+
             <article class="blog-post-card">
                 <a href="screen-space-sphere-selection/" class="card-link">
                     <div class="card-thumbnail">
                         <img src="images/screen-space-sphere-selection-thumb.png" alt="" loading="lazy">
-                        <span class="card-new-badge">New</span>
+                        
                     </div>
                     <div class="card-content">
                         <div class="card-meta">
@@ -210,7 +382,7 @@
                 <a href="gpu-cache-hierarchy/" class="card-link">
                     <div class="card-thumbnail">
                         <img src="images/gpu-cache-hierarchy-thumb.png" alt="" loading="lazy">
-                        <span class="card-new-badge">New</span>
+                        
                     </div>
                     <div class="card-content">
                         <div class="card-meta">
@@ -238,7 +410,7 @@
                 <a href="screen-space-atmospheric-scattering/" class="card-link">
                     <div class="card-thumbnail">
                         <img src="images/volumetric-light-thumb.png" alt="" loading="lazy">
-                        <span class="card-new-badge">New</span>
+                        
                     </div>
                     <div class="card-content">
                         <div class="card-meta">
@@ -266,7 +438,7 @@
                 <a href="anamorphic-bloom/" class="card-link">
                     <div class="card-thumbnail">
                         <img src="images/anamorphic-bloom-thumb.png" alt="" loading="lazy">
-                        <span class="card-new-badge">New</span>
+                        
                     </div>
                     <div class="card-content">
                         <div class="card-meta">
@@ -318,6 +490,35 @@
                 </a>
             </article>
         </div>
+
+        <!-- Conversion. Search traffic lands here rather than on a post, and
+             until now this page asked the reader for nothing at all. -->
+        <div class="article-convert" style="max-width: 760px; margin: 4rem auto 2rem;">
+            <div class="subscribe-box">
+                <p class="subscribe-title">One of these every few weeks</p>
+                <p class="subscribe-copy">Rendering techniques, built and measured against a reference. No newsletter padding, nothing else sent to the address.</p>
+                <form class="subscribe-form" data-source="blog-index">
+                    <input type="email" name="email" placeholder="you@studio.com" required aria-label="Email address">
+                    <button type="submit">Notify me</button>
+                </form>
+                <p class="subscribe-status" role="status"></p>
+            </div>
+
+            <div class="article-cta-banner article-hire">
+                <a class="availability-badge" href="mailto:contact.charles.grassi@gmail.com?subject=Rendering%20work">
+                    <span class="availability-led"></span>
+                    Available for contract work &middot; Remote
+                </a>
+                <h2 class="cta-banner-title">Rendering problems, solved and measured</h2>
+                <p class="cta-banner-subtitle">Charles Grassi. Unity rendering and technical art specialist: URP, hand-written HLSL, volumetrics, water, procedural geometry.</p>
+                <p class="hire-offer">The easiest place to start is a <strong>fixed-price rendering audit</strong>. Send a build or a capture, get back a written breakdown of where the frame is going and what each fix is worth.</p>
+                <div class="cta-banner-buttons">
+                    <a href="mailto:contact.charles.grassi@gmail.com?subject=Rendering%20audit%20enquiry" class="cta-banner-btn primary">Talk about your frame</a>
+                    <a href="../?tab=contact" class="cta-banner-btn secondary">More work</a>
+                </div>
+            </div>
+        </div>
     </div>
+    <script src="../js/convert.js" defer></script>
 </body>
 </html>

@@ -10,943 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-
-    <style>
-        :root {
-            --bg-void: #05080c;
-            --bg-deep: #0a1018;
-            --bg-panel: #111a24;
-            --bg-card: #162230;
-            --text-bright: #f0f4f8;
-            --text-mid: #94a3b8;
-            --text-dim: #64748b;
-            --accent-cyan: #22d3ee;
-            --accent-amber: #fbbf24;
-            --accent-rose: #fb7185;
-            --glow-cyan: rgba(34, 211, 238, 0.4);
-            --glow-amber: rgba(251, 191, 36, 0.4);
-            --red: #f87171;
-            --green: #4ade80;
-            --blue: #60a5fa;
-            --red-glow: rgba(248, 113, 113, 0.3);
-            --green-glow: rgba(74, 222, 128, 0.3);
-            --blue-glow: rgba(96, 165, 250, 0.3);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        html {
-            scroll-behavior: smooth;
-        }
-
-        body {
-            font-family: 'Space Grotesk', sans-serif;
-            background: var(--bg-void);
-            color: var(--text-bright);
-            min-height: 100vh;
-            line-height: 1.6;
-            overflow-x: hidden;
-        }
-
-        /* Animated background */
-        .bg-atmosphere {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            pointer-events: none;
-            z-index: 0;
-            background:
-                radial-gradient(ellipse 80% 50% at 20% 0%, rgba(34, 211, 238, 0.08) 0%, transparent 50%),
-                radial-gradient(ellipse 60% 40% at 80% 100%, rgba(251, 191, 36, 0.06) 0%, transparent 50%),
-                radial-gradient(ellipse 100% 100% at 50% 50%, var(--bg-void) 0%, var(--bg-deep) 100%);
-        }
-
-        .container {
-            position: relative;
-            z-index: 1;
-            max-width: 1500px;
-            margin: 0 auto;
-            padding: 2rem 2.5rem;
-        }
-
-        /* Header */
-        header {
-            margin-bottom: 3rem;
-            animation: fadeInDown 0.6s ease-out;
-        }
-
-        @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: var(--text-dim);
-            text-decoration: none;
-            font-size: 0.85rem;
-            margin-bottom: 1.5rem;
-            transition: all 0.2s;
-        }
-
-        .back-link:hover {
-            color: var(--accent-cyan);
-            gap: 0.75rem;
-        }
-
-        .hero-title {
-            display: flex;
-            align-items: baseline;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        h1 {
-            font-size: clamp(2rem, 5vw, 3.5rem);
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            background: linear-gradient(135deg, var(--text-bright) 0%, var(--accent-cyan) 50%, var(--accent-amber) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .lab-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            padding: 0.35rem 0.75rem;
-            background: linear-gradient(135deg, rgba(34, 211, 238, 0.15), rgba(251, 191, 36, 0.1));
-            border: 1px solid rgba(34, 211, 238, 0.3);
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            color: var(--accent-cyan);
-            animation: pulse 3s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-
-        .lab-badge::before {
-            content: '';
-            width: 6px;
-            height: 6px;
-            background: var(--accent-cyan);
-            border-radius: 50%;
-            box-shadow: 0 0 8px var(--glow-cyan);
-        }
-
-        .subtitle {
-            margin-top: 0.75rem;
-            color: var(--text-mid);
-            font-size: 1.1rem;
-            max-width: 600px;
-        }
-
-        /* Phenomenon Selector */
-        .phenomenon-selector {
-            display: flex;
-            gap: 0.75rem;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-            animation: fadeIn 0.6s ease-out 0.2s both;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        .phenomenon-btn {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.25rem;
-            padding: 1rem 1.5rem;
-            background: var(--bg-panel);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            overflow: hidden;
-            min-width: 160px;
-        }
-
-        .phenomenon-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-amber));
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        .phenomenon-btn:hover {
-            background: var(--bg-card);
-            border-color: rgba(255,255,255,0.15);
-            transform: translateY(-2px);
-        }
-
-        .phenomenon-btn.active {
-            background: var(--bg-card);
-            border-color: var(--accent-cyan);
-            box-shadow: 0 0 30px rgba(34, 211, 238, 0.15);
-        }
-
-        .phenomenon-btn.active::before {
-            opacity: 1;
-        }
-
-        .phenomenon-icon {
-            font-size: 1.5rem;
-            margin-bottom: 0.25rem;
-        }
-
-        .phenomenon-name {
-            font-weight: 600;
-            font-size: 0.95rem;
-            color: var(--text-bright);
-        }
-
-        .phenomenon-hint {
-            font-size: 0.75rem;
-            color: var(--text-dim);
-        }
-
-        /* Main Layout */
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr 340px;
-            gap: 2rem;
-            animation: fadeIn 0.6s ease-out 0.3s both;
-        }
-
-        @media (max-width: 1100px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Visualization Panel */
-        .viz-panel {
-            background: var(--bg-panel);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 20px;
-            padding: 1.75rem;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .viz-panel::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.5), transparent);
-        }
-
-        .viz-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.25rem;
-        }
-
-        .viz-title {
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--text-bright);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .viz-title::before {
-            content: '';
-            width: 8px;
-            height: 8px;
-            background: var(--accent-cyan);
-            border-radius: 2px;
-            box-shadow: 0 0 10px var(--glow-cyan);
-        }
-
-        /* Legend */
-        .wavelength-legend {
-            display: flex;
-            gap: 1.25rem;
-        }
-
-        .wavelength-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.8rem;
-            color: var(--text-mid);
-        }
-
-        .wavelength-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            position: relative;
-        }
-
-        .wavelength-dot.red {
-            background: var(--red);
-            box-shadow: 0 0 10px var(--red-glow);
-        }
-
-        .wavelength-dot.green {
-            background: var(--green);
-            box-shadow: 0 0 10px var(--green-glow);
-        }
-
-        .wavelength-dot.blue {
-            background: var(--blue);
-            box-shadow: 0 0 10px var(--blue-glow);
-        }
-
-        /* Graph Container */
-        .graph-wrapper {
-            position: relative;
-            background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.5) 100%);
-            border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 16px;
-            height: 360px;
-            margin-bottom: 1.5rem;
-            overflow: hidden;
-        }
-
-        .graph-wrapper canvas {
-            width: 100%;
-            height: 100%;
-        }
-
-        .axis-label {
-            position: absolute;
-            font-size: 0.7rem;
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--text-dim);
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-        }
-
-        .axis-label.x-axis {
-            bottom: 12px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-
-        .axis-label.y-axis {
-            top: 50%;
-            left: 12px;
-            transform: rotate(-90deg) translateX(-50%);
-            transform-origin: left center;
-        }
-
-        /* Color Journey */
-        .color-journey {
-            margin-bottom: 1.5rem;
-        }
-
-        .journey-label {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.5rem;
-            font-size: 0.85rem;
-            color: var(--text-mid);
-        }
-
-        .journey-depth {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
-            color: var(--text-dim);
-        }
-
-        .color-strip-wrapper {
-            position: relative;
-            height: 56px;
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.08);
-        }
-
-        .color-strip-wrapper canvas {
-            width: 100%;
-            height: 100%;
-        }
-
-        .depth-markers {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            display: flex;
-            justify-content: space-between;
-            padding: 0 8px;
-            pointer-events: none;
-        }
-
-        .depth-marker {
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            padding-bottom: 6px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.65rem;
-            color: rgba(255,255,255,0.5);
-            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
-        }
-
-        /* Equation Display */
-        .equation-card {
-            background: linear-gradient(135deg, var(--bg-card), rgba(34, 211, 238, 0.05));
-            border: 1px solid rgba(34, 211, 238, 0.2);
-            border-radius: 12px;
-            padding: 1.25rem;
-            margin-bottom: 1.5rem;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .equation-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(34, 211, 238, 0.03) 0%, transparent 70%);
-            animation: rotate 20s linear infinite;
-        }
-
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        .equation-content {
-            position: relative;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 1.4rem;
-            color: var(--accent-cyan);
-            text-shadow: 0 0 20px var(--glow-cyan);
-        }
-
-        .equation-content .var {
-            font-style: italic;
-            color: var(--accent-amber);
-        }
-
-        .equation-content .subscript {
-            font-size: 0.65em;
-            vertical-align: sub;
-        }
-
-        /* Scene Preview - Enhanced 3D */
-        .scene-wrapper {
-            position: relative;
-            border-radius: 16px;
-            overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.08);
-            cursor: grab;
-            user-select: none;
-        }
-
-        .scene-wrapper:active {
-            cursor: grabbing;
-        }
-
-        .scene-wrapper canvas {
-            width: 100%;
-            height: 320px;
-            display: block;
-        }
-
-        .scene-label {
-            position: absolute;
-            bottom: 12px;
-            left: 12px;
-            font-size: 0.7rem;
-            color: rgba(255,255,255,0.6);
-            background: rgba(0,0,0,0.5);
-            padding: 0.3rem 0.6rem;
-            border-radius: 6px;
-            backdrop-filter: blur(4px);
-            pointer-events: none;
-        }
-
-        .scene-controls-hint {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            font-size: 0.65rem;
-            color: rgba(255,255,255,0.4);
-            background: rgba(0,0,0,0.4);
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            backdrop-filter: blur(4px);
-            pointer-events: none;
-            transition: opacity 0.3s;
-        }
-
-        .scene-wrapper:active .scene-controls-hint {
-            opacity: 0;
-        }
-
-        /* Controls Panel */
-        .controls-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 1.25rem;
-        }
-
-        .control-card {
-            background: var(--bg-panel);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 16px;
-            padding: 1.25rem;
-            transition: all 0.3s;
-        }
-
-        .control-card:hover {
-            border-color: rgba(255,255,255,0.1);
-        }
-
-        .card-header {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            margin-bottom: 1rem;
-            padding-bottom: 0.75rem;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
-        }
-
-        .card-icon {
-            font-size: 1.1rem;
-        }
-
-        .card-title {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--text-bright);
-        }
-
-        /* Sliders */
-        .slider-group {
-            margin-bottom: 1rem;
-        }
-
-        .slider-group:last-child {
-            margin-bottom: 0;
-        }
-
-        .slider-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.5rem;
-        }
-
-        .slider-label {
-            font-size: 0.8rem;
-            color: var(--text-mid);
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-
-        .slider-label .color-indicator {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-        }
-
-        .slider-label .color-indicator.red { background: var(--red); }
-        .slider-label .color-indicator.green { background: var(--green); }
-        .slider-label .color-indicator.blue { background: var(--blue); }
-
-        .slider-value {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
-            color: var(--accent-cyan);
-            background: rgba(34, 211, 238, 0.1);
-            padding: 0.15rem 0.5rem;
-            border-radius: 4px;
-        }
-
-        input[type="range"] {
-            width: 100%;
-            height: 6px;
-            border-radius: 3px;
-            background: var(--bg-void);
-            outline: none;
-            -webkit-appearance: none;
-            cursor: pointer;
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: var(--accent-cyan);
-            box-shadow: 0 0 12px var(--glow-cyan);
-            cursor: grab;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        input[type="range"]::-webkit-slider-thumb:hover {
-            transform: scale(1.15);
-            box-shadow: 0 0 20px var(--glow-cyan);
-        }
-
-        input[type="range"]:active::-webkit-slider-thumb {
-            cursor: grabbing;
-        }
-
-        input[type="range"].red::-webkit-slider-thumb {
-            background: var(--red);
-            box-shadow: 0 0 12px var(--red-glow);
-        }
-        input[type="range"].green::-webkit-slider-thumb {
-            background: var(--green);
-            box-shadow: 0 0 12px var(--green-glow);
-        }
-        input[type="range"].blue::-webkit-slider-thumb {
-            background: var(--blue);
-            box-shadow: 0 0 12px var(--blue-glow);
-        }
-
-        /* Toggle Buttons */
-        .toggle-row {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .toggle-btn {
-            flex: 1;
-            padding: 0.6rem;
-            background: var(--bg-void);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 8px;
-            color: var(--text-dim);
-            font-family: inherit;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .toggle-btn:hover {
-            background: var(--bg-card);
-            color: var(--text-mid);
-        }
-
-        .toggle-btn.active {
-            background: var(--accent-cyan);
-            border-color: var(--accent-cyan);
-            color: var(--bg-void);
-            font-weight: 600;
-        }
-
-        /* Presets Grid */
-        .presets-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.6rem;
-        }
-
-        .preset-btn {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.7rem 0.9rem;
-            background: var(--bg-void);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 10px;
-            color: var(--text-mid);
-            font-family: inherit;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .preset-btn:hover {
-            background: var(--bg-card);
-            border-color: rgba(255,255,255,0.12);
-            transform: translateY(-1px);
-        }
-
-        .preset-btn.active {
-            background: linear-gradient(135deg, rgba(34, 211, 238, 0.15), rgba(251, 191, 36, 0.1));
-            border-color: var(--accent-cyan);
-            color: var(--text-bright);
-        }
-
-        .preset-icon {
-            font-size: 1.1rem;
-        }
-
-        /* Info Section */
-        .info-section {
-            margin-bottom: 2rem;
-            animation: fadeIn 0.6s ease-out 0.2s both;
-        }
-
-        .info-card {
-            background: var(--bg-panel);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 20px;
-            padding: 2rem;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .info-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 300px;
-            height: 300px;
-            background: radial-gradient(circle, rgba(251, 191, 36, 0.05) 0%, transparent 70%);
-            pointer-events: none;
-        }
-
-        .info-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .info-icon {
-            font-size: 2rem;
-        }
-
-        .info-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-bright);
-        }
-
-        .info-content {
-            position: relative;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .info-block {
-            background: rgba(0,0,0,0.2);
-            border-radius: 12px;
-            padding: 1.25rem;
-            border-left: 3px solid var(--accent-cyan);
-        }
-
-        .info-block.highlight {
-            border-left-color: var(--accent-amber);
-            background: linear-gradient(135deg, rgba(251, 191, 36, 0.05), transparent);
-        }
-
-        .info-block h4 {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--accent-cyan);
-            margin-bottom: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .info-block.highlight h4 {
-            color: var(--accent-amber);
-        }
-
-        .info-block p {
-            font-size: 0.9rem;
-            color: var(--text-mid);
-            line-height: 1.7;
-        }
-
-        .info-block code {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            background: rgba(34, 211, 238, 0.1);
-            color: var(--accent-cyan);
-            padding: 0.15rem 0.4rem;
-            border-radius: 4px;
-        }
-
-        /* Try This Callout */
-        .try-this {
-            background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(251, 191, 36, 0.02));
-            border: 1px solid rgba(251, 191, 36, 0.3);
-            border-radius: 12px;
-            padding: 1rem 1.25rem;
-            margin-top: 1.5rem;
-            display: flex;
-            align-items: flex-start;
-            gap: 0.75rem;
-        }
-
-        .try-this-icon {
-            font-size: 1.25rem;
-            flex-shrink: 0;
-        }
-
-        .try-this-content {
-            font-size: 0.9rem;
-            color: var(--text-mid);
-        }
-
-        .try-this-content strong {
-            color: var(--accent-amber);
-        }
-
-        /* Code Section */
-        .code-section {
-            margin-top: 2rem;
-            animation: fadeIn 0.6s ease-out 0.5s both;
-        }
-
-        .code-card {
-            background: var(--bg-panel);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 16px;
-            overflow: hidden;
-        }
-
-        .code-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 1.25rem;
-            background: var(--bg-card);
-            border-bottom: 1px solid rgba(255,255,255,0.06);
-        }
-
-        .code-title {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.85rem;
-            color: var(--text-mid);
-        }
-
-        .code-title::before {
-            content: '</>';
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--accent-cyan);
-        }
-
-        .copy-btn {
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-            padding: 0.5rem 1rem;
-            background: var(--bg-void);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
-            color: var(--text-mid);
-            font-family: inherit;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .copy-btn:hover {
-            background: var(--accent-cyan);
-            border-color: var(--accent-cyan);
-            color: var(--bg-void);
-        }
-
-        .copy-btn.copied {
-            background: var(--green);
-            border-color: var(--green);
-            color: var(--bg-void);
-        }
-
-        pre {
-            padding: 1.5rem;
-            overflow-x: auto;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
-            line-height: 1.6;
-            color: var(--text-mid);
-            max-height: 350px;
-        }
-
-        pre code {
-            font-family: inherit;
-        }
-
-        /* Footer */
-        .footer-note {
-            margin-top: 3rem;
-            text-align: center;
-            padding: 1.5rem;
-            color: var(--text-dim);
-            font-size: 0.85rem;
-        }
-
-        .footer-note a {
-            color: var(--accent-cyan);
-            text-decoration: none;
-        }
-
-        .footer-note a:hover {
-            text-decoration: underline;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .container {
-                padding: 1.5rem;
-            }
-
-            .phenomenon-selector {
-                gap: 0.5rem;
-            }
-
-            .phenomenon-btn {
-                min-width: auto;
-                flex: 1;
-                padding: 0.75rem 1rem;
-            }
-
-            .phenomenon-hint {
-                display: none;
-            }
-
-            .wavelength-legend {
-                display: none;
-            }
-
-            .presets-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="bg-atmosphere"></div>
@@ -960,230 +24,415 @@
                 <h1>Light Transport Lab</h1>
                 <span class="lab-badge">Interactive</span>
             </div>
-            <p class="subtitle">Explore how light travels through different materials. See why the sky is blue, blood is red, and clouds are white.</p>
+            <p class="subtitle">All light transport boils down to 3 building blocks: <strong>Absorption</strong>, <strong>Rayleigh scattering</strong>, and <strong>Mie scattering</strong>. Toggle them on/off to see how they combine.</p>
         </header>
-
-        <div class="phenomenon-selector">
-            <button class="phenomenon-btn active" data-phenomenon="beer-lambert">
-                <span class="phenomenon-icon">🧪</span>
-                <span class="phenomenon-name">Beer-Lambert</span>
-                <span class="phenomenon-hint">Pure absorption</span>
-            </button>
-            <button class="phenomenon-btn" data-phenomenon="rayleigh">
-                <span class="phenomenon-icon">🌅</span>
-                <span class="phenomenon-name">Rayleigh</span>
-                <span class="phenomenon-hint">Why sky is blue</span>
-            </button>
-            <button class="phenomenon-btn" data-phenomenon="mie">
-                <span class="phenomenon-icon">☁️</span>
-                <span class="phenomenon-name">Mie</span>
-                <span class="phenomenon-hint">Fog & clouds</span>
-            </button>
-            <button class="phenomenon-btn" data-phenomenon="combined">
-                <span class="phenomenon-icon">🔬</span>
-                <span class="phenomenon-name">Combined</span>
-                <span class="phenomenon-hint">Real-world media</span>
-            </button>
-        </div>
-
-        <div class="info-section" id="infoSection">
-            <div class="info-card">
-                <div class="info-header">
-                    <span class="info-icon" id="infoIcon">🧪</span>
-                    <h2 class="info-title" id="infoTitle">Beer-Lambert Law</h2>
-                </div>
-
-                <div class="info-content" id="infoContent">
-                    <div class="info-block">
-                        <h4>The Core Idea</h4>
-                        <p>Light intensity decreases exponentially as it travels through a medium. The equation <code>I = I₀ · e^(-σ·d)</code> describes this beautifully simple relationship.</p>
-                    </div>
-                    <div class="info-block highlight">
-                        <h4>Why Things Have Color</h4>
-                        <p>Different wavelengths absorb at different rates! Water absorbs red light faster than blue—so deep water looks blue. Blood absorbs blue/green—so it looks red.</p>
-                    </div>
-                    <div class="info-block">
-                        <h4>Optical Depth Intuition</h4>
-                        <p>At τ = 1, about 63% of light is absorbed. At τ = 3, it's 95%. At τ = 5, 99% is gone. This is why we use log scale—the interesting stuff happens early!</p>
-                    </div>
-                </div>
-
-                <div class="try-this">
-                    <span class="try-this-icon">💡</span>
-                    <div class="try-this-content">
-                        <strong>Try this:</strong> Click "Water" preset, then slowly increase the red absorption. Watch how the color strip shifts from cyan toward pure blue—this is exactly what happens as you dive deeper!
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <div class="main-grid">
             <div class="viz-panel">
-                <div class="viz-header">
-                    <span class="viz-title">Transmittance vs Optical Depth</span>
-                    <div class="wavelength-legend">
-                        <div class="wavelength-item">
-                            <span class="wavelength-dot red"></span>
-                            <span>Red 700nm</span>
+                <div class="effect-toggles">
+                    <button class="effect-toggle active" data-effect="absorption">
+                        <span class="toggle-indicator">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </span>
+                        <div class="toggle-content">
+                            <div class="toggle-name">Absorption</div>
+                            <div class="toggle-desc">Beer-Lambert law</div>
                         </div>
-                        <div class="wavelength-item">
-                            <span class="wavelength-dot green"></span>
-                            <span>Green 550nm</span>
+                    </button>
+                    <button class="effect-toggle" data-effect="rayleigh">
+                        <span class="toggle-indicator">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </span>
+                        <div class="toggle-content">
+                            <div class="toggle-name">Rayleigh</div>
+                            <div class="toggle-desc">Small particles (1/λ⁴)</div>
                         </div>
-                        <div class="wavelength-item">
-                            <span class="wavelength-dot blue"></span>
-                            <span>Blue 450nm</span>
+                    </button>
+                    <button class="effect-toggle" data-effect="mie">
+                        <span class="toggle-indicator">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </span>
+                        <div class="toggle-content">
+                            <div class="toggle-name">Mie</div>
+                            <div class="toggle-desc">Large particles (~constant)</div>
                         </div>
-                    </div>
+                    </button>
                 </div>
 
-                <div class="graph-wrapper">
-                    <canvas id="graphCanvas"></canvas>
-                    <span class="axis-label x-axis">Optical Depth (τ)</span>
-                    <span class="axis-label y-axis">Transmittance</span>
-                </div>
-
-                <div class="color-journey">
-                    <div class="journey-label">
-                        <span>What you see as light travels deeper</span>
-                        <span class="journey-depth">0 → <span id="maxDepthDisplay">10</span> optical depth</span>
-                    </div>
-                    <div class="color-strip-wrapper">
-                        <canvas id="colorStrip"></canvas>
-                        <div class="depth-markers">
-                            <span class="depth-marker">Surface</span>
-                            <span class="depth-marker">Deep</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="equation-card">
-                    <div class="equation-content" id="equationBox">
-                        <span class="var">I</span> = <span class="var">I</span><span class="subscript">0</span> · e<sup>-σ·d</sup>
-                    </div>
+                <!-- View Mode Toggle -->
+                <div class="view-mode-container">
+                    <button class="view-mode-btn" data-mode="transmitted">
+                        <span class="view-mode-icon">➡️</span>
+                        <span class="view-mode-label">Transmitted</span>
+                    </button>
+                    <button class="view-mode-btn" data-mode="scattered">
+                        <span class="view-mode-icon">💫</span>
+                        <span class="view-mode-label">Scattered</span>
+                    </button>
+                    <button class="view-mode-btn active" data-mode="combined">
+                        <span class="view-mode-icon">🔮</span>
+                        <span class="view-mode-label">Combined</span>
+                    </button>
                 </div>
 
                 <div class="scene-wrapper" id="sceneWrapper">
                     <canvas id="sceneCanvas"></canvas>
-                    <span class="scene-label" id="sceneLabel">Underwater - Beer-Lambert</span>
-                    <span class="scene-controls-hint">Drag to rotate</span>
+                    <span class="scene-hint">Drag to rotate • Scroll to zoom</span>
+                    <span class="light-label" id="lightLabel">Sunlight</span>
+                </div>
+
+                <!-- Scattering Albedo Bar -->
+                <div class="albedo-display">
+                    <div class="albedo-header">
+                        <span class="albedo-title">
+                            <span>⚡</span>
+                            What happens to light?
+                        </span>
+                        <span class="albedo-value" id="albedoPercent">100% absorbed</span>
+                    </div>
+                    <div class="albedo-bar-container">
+                        <div class="albedo-bar-absorbed" id="absorbedBar" style="width: 100%;">
+                            <span class="albedo-bar-label">Absorbed (heat)</span>
+                        </div>
+                        <div class="albedo-bar-scattered" id="scatteredBar" style="width: 0%;">
+                            <span class="albedo-bar-label">Scattered</span>
+                        </div>
+                    </div>
+                    <div class="albedo-legend">
+                        <span><span class="legend-dot absorbed"></span> σₐ = absorption</span>
+                        <span><span class="legend-dot scattered"></span> σₛ = scattering</span>
+                    </div>
+                </div>
+
+                <!-- Wavelength Response (visible when Rayleigh is active) -->
+                <div class="wavelength-response" id="wavelengthResponse">
+                    <div class="wavelength-title">
+                        <span>🌈</span>
+                        Rayleigh Wavelength Response (σ ∝ 1/λ⁴)
+                    </div>
+                    <div class="wavelength-bars">
+                        <div class="wavelength-row">
+                            <span class="wavelength-label">Red 700nm</span>
+                            <div class="wavelength-bar-track">
+                                <div class="wavelength-bar-fill red" id="barRed" style="width: 18%;"></div>
+                            </div>
+                            <span class="wavelength-multiplier" id="multRed">1.0×</span>
+                        </div>
+                        <div class="wavelength-row">
+                            <span class="wavelength-label">Green 550nm</span>
+                            <div class="wavelength-bar-track">
+                                <div class="wavelength-bar-fill green" id="barGreen" style="width: 42%;"></div>
+                            </div>
+                            <span class="wavelength-multiplier" id="multGreen">2.3×</span>
+                        </div>
+                        <div class="wavelength-row">
+                            <span class="wavelength-label">Blue 450nm</span>
+                            <div class="wavelength-bar-track">
+                                <div class="wavelength-bar-fill blue" id="barBlue" style="width: 100%;"></div>
+                            </div>
+                            <span class="wavelength-multiplier" id="multBlue">5.5×</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Phase Function Diagram (visible when scattering is active) -->
+                <div class="phase-diagram" id="phaseDiagram">
+                    <div class="phase-title">
+                        <span>📊</span>
+                        Phase Function (where light scatters)
+                    </div>
+                    <div class="phase-svg-container">
+                        <svg class="phase-svg" viewBox="0 0 200 200" id="phaseSvg">
+                            <!-- Grid circles -->
+                            <circle cx="100" cy="100" r="80" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+                            <circle cx="100" cy="100" r="60" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+                            <circle cx="100" cy="100" r="40" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+                            <circle cx="100" cy="100" r="20" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+
+                            <!-- Axis lines -->
+                            <line x1="20" y1="100" x2="180" y2="100" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                            <line x1="100" y1="20" x2="100" y2="180" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+
+                            <!-- Light direction arrow -->
+                            <path d="M 20,100 L 40,100" stroke="#fbbf24" stroke-width="2" marker-end="url(#arrowhead)"/>
+                            <defs>
+                                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                    <polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24"/>
+                                </marker>
+                            </defs>
+
+                            <!-- Phase function curve (will be updated dynamically) -->
+                            <path id="phaseCurve" fill="rgba(34, 211, 238, 0.2)" stroke="#22d3ee" stroke-width="2"/>
+
+                            <!-- Labels -->
+                            <text x="175" y="95" class="phase-label-text phase-label-forward">Forward</text>
+                            <text x="10" y="95" class="phase-label-text phase-label-backward">Back</text>
+                            <text x="93" y="18" class="phase-label-text">90°</text>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Why Is Questions -->
+                <div class="why-questions">
+                    <div class="why-title">
+                        <span>💡</span>
+                        Why is...
+                    </div>
+                    <button class="why-btn" data-answer="sky-blue">
+                        <span class="why-btn-icon">🌤️</span>
+                        <span>...the sky blue?</span>
+                    </button>
+                    <div class="why-answer" id="answer-sky-blue">
+                        <strong>Rayleigh scattering!</strong> Air molecules are tiny (~0.3nm), much smaller than visible light wavelengths (400-700nm).
+                        Blue light (λ=450nm) scatters <strong>5.5× more</strong> than red (λ=700nm) because σ ∝ 1/λ⁴.
+                        When you look at the sky, you're seeing scattered sunlight - mostly blue!
+                        <br><br>👆 <em>Click "Atmosphere" preset to see this</em>
+                    </div>
+
+                    <button class="why-btn" data-answer="clouds-white">
+                        <span class="why-btn-icon">☁️</span>
+                        <span>...clouds white?</span>
+                    </button>
+                    <div class="why-answer" id="answer-clouds-white">
+                        <strong>Mie scattering!</strong> Cloud droplets are large (~10-20μm), comparable to light wavelengths.
+                        At this size, all wavelengths scatter equally (no color preference), so clouds appear <strong>white</strong>.
+                        The droplets are also highly forward-scattering (g ≈ 0.85), creating bright edges when backlit.
+                        <br><br>👆 <em>Click "Cloud" preset to see this</em>
+                    </div>
+
+                    <button class="why-btn" data-answer="sunset-red">
+                        <span class="why-btn-icon">🌅</span>
+                        <span>...sunsets red?</span>
+                    </button>
+                    <div class="why-answer" id="answer-sunset-red">
+                        <strong>Long path through atmosphere!</strong> At sunset, sunlight travels through much more air.
+                        Blue light gets scattered away along the path, leaving mostly <strong>red and orange</strong> to reach your eyes.
+                        This is the same Rayleigh scattering - just with more distance for blue to scatter out.
+                        <br><br>👆 <em>Click "Sunset Path" preset to see this</em>
+                    </div>
+                </div>
+
+                <div class="building-blocks">
+                    <div class="blocks-title">The 3 Building Blocks of Light Transport</div>
+
+                    <div class="block-item" data-block="absorption">
+                        <div class="block-icon">🧪</div>
+                        <div class="block-text">
+                            <h4>Absorption (Beer-Lambert)</h4>
+                            <p>Light gets absorbed and converted to heat. Different wavelengths absorb at different rates, giving materials their color.</p>
+                            <span class="block-equation">T = e<sup>-σ<sub>a</sub>·d</sup></span>
+                        </div>
+                    </div>
+
+                    <div class="block-item" data-block="rayleigh">
+                        <div class="block-icon">🌅</div>
+                        <div class="block-text">
+                            <h4>Rayleigh Scattering</h4>
+                            <p>Particles much smaller than light wavelength (~0.1-1nm). Blue scatters 5.5× more than red. Why the sky is blue!</p>
+                            <span class="block-equation">σ<sub>s</sub> ∝ 1/λ<sup>4</sup></span>
+                        </div>
+                    </div>
+
+                    <div class="block-item" data-block="mie">
+                        <div class="block-icon">☁️</div>
+                        <div class="block-text">
+                            <h4>Mie Scattering</h4>
+                            <p>Particles similar to light wavelength (~1-10μm). All colors scatter equally → white appearance. Why clouds are white!</p>
+                            <span class="block-equation">σ<sub>s</sub> ≈ constant</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div class="controls-panel">
                 <div class="control-card">
                     <div class="card-header">
-                        <span class="card-icon">🎨</span>
-                        <span class="card-title">Absorption per Wavelength</span>
+                        <span class="card-icon">💡</span>
+                        <span class="card-title">Light Source</span>
                     </div>
-
-                    <div class="slider-group">
-                        <div class="slider-header">
-                            <span class="slider-label">
-                                <span class="color-indicator red"></span>
-                                Red (σ<sub>r</sub>)
-                            </span>
-                            <span class="slider-value" id="sigmaRValue">0.10</span>
+                    <div class="light-color-row">
+                        <span class="slider-label">Light Color</span>
+                        <div class="color-picker-wrapper">
+                            <input type="color" id="lightColor" value="#fff8f0">
+                            <span class="color-value" id="lightColorValue">#fff8f0</span>
                         </div>
-                        <input type="range" id="sigmaR" class="red" min="0" max="2" step="0.01" value="0.1">
                     </div>
-
-                    <div class="slider-group">
+                    <div class="slider-group" style="margin-top: 0.75rem;">
                         <div class="slider-header">
-                            <span class="slider-label">
-                                <span class="color-indicator green"></span>
-                                Green (σ<sub>g</sub>)
-                            </span>
-                            <span class="slider-value" id="sigmaGValue">0.20</span>
+                            <span class="slider-label">Light Intensity</span>
+                            <span class="slider-value" id="lightIntensityValue">3.0</span>
                         </div>
-                        <input type="range" id="sigmaG" class="green" min="0" max="2" step="0.01" value="0.2">
-                    </div>
-
-                    <div class="slider-group">
-                        <div class="slider-header">
-                            <span class="slider-label">
-                                <span class="color-indicator blue"></span>
-                                Blue (σ<sub>b</sub>)
-                            </span>
-                            <span class="slider-value" id="sigmaBValue">0.05</span>
-                        </div>
-                        <input type="range" id="sigmaB" class="blue" min="0" max="2" step="0.01" value="0.05">
-                    </div>
-                </div>
-
-                <div class="control-card" id="scatteringControls" style="display: none;">
-                    <div class="card-header">
-                        <span class="card-icon">💨</span>
-                        <span class="card-title">Scattering Properties</span>
-                    </div>
-
-                    <div class="slider-group">
-                        <div class="slider-header">
-                            <span class="slider-label">Particle Size</span>
-                            <span class="slider-value" id="particleSizeValue">0.10 μm</span>
-                        </div>
-                        <input type="range" id="particleSize" min="0.01" max="10" step="0.01" value="0.1">
-                    </div>
-
-                    <div class="slider-group">
-                        <div class="slider-header">
-                            <span class="slider-label">Density</span>
-                            <span class="slider-value" id="densityValue">1.00</span>
-                        </div>
-                        <input type="range" id="density" min="0.1" max="5" step="0.1" value="1">
+                        <input type="range" id="lightIntensity" min="0.5" max="10" step="0.1" value="3.0">
                     </div>
                 </div>
 
                 <div class="control-card">
                     <div class="card-header">
-                        <span class="card-icon">⚙️</span>
-                        <span class="card-title">View Settings</span>
+                        <span class="card-icon">🎨</span>
+                        <span class="card-title">Absorption Coefficients (σₐ)</span>
                     </div>
 
-                    <div class="slider-group">
-                        <div class="slider-header">
-                            <span class="slider-label">Max Optical Depth</span>
-                            <span class="slider-value" id="maxDepthValue">10</span>
+                    <div class="param-group">
+                        <div class="param-group-title">Per-wavelength absorption (m⁻¹)</div>
+
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <span class="slider-label">
+                                    <span style="color: var(--red);">●</span>
+                                    Red <span class="unit">(700nm)</span>
+                                </span>
+                                <span class="slider-value" id="sigmaRValue">0.80</span>
+                            </div>
+                            <input type="range" id="sigmaR" min="0" max="5" step="0.01" value="0.8">
                         </div>
-                        <input type="range" id="maxDepth" min="1" max="50" step="1" value="10">
+
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <span class="slider-label">
+                                    <span style="color: var(--green);">●</span>
+                                    Green <span class="unit">(550nm)</span>
+                                </span>
+                                <span class="slider-value" id="sigmaGValue">0.15</span>
+                            </div>
+                            <input type="range" id="sigmaG" min="0" max="5" step="0.01" value="0.15">
+                        </div>
+
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <span class="slider-label">
+                                    <span style="color: var(--blue);">●</span>
+                                    Blue <span class="unit">(450nm)</span>
+                                </span>
+                                <span class="slider-value" id="sigmaBValue">0.02</span>
+                            </div>
+                            <input type="range" id="sigmaB" min="0" max="5" step="0.01" value="0.02">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-card" id="scatteringControls">
+                    <div class="card-header">
+                        <span class="card-icon">💨</span>
+                        <span class="card-title">Scattering Properties (σₛ)</span>
                     </div>
 
-                    <div class="toggle-row">
-                        <button class="toggle-btn active" id="toggleLog">Log Scale</button>
-                        <button class="toggle-btn" id="toggleLinear">Linear</button>
+                    <div class="param-group">
+                        <div class="param-group-title">Particle Physics</div>
+
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <span class="slider-label">
+                                    Particle Diameter
+                                    <span class="regime-badge rayleigh" id="regimeBadge">Rayleigh</span>
+                                </span>
+                                <span class="slider-value" id="particleSizeValue">1.0 nm</span>
+                            </div>
+                            <input type="range" id="particleSize" min="0.1" max="10000" step="0.1" value="1">
+                        </div>
+
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <span class="slider-label">
+                                    Particle Density <span class="unit">(relative)</span>
+                                </span>
+                                <span class="slider-value" id="densityValue">1.0</span>
+                            </div>
+                            <input type="range" id="density" min="0.01" max="10" step="0.01" value="1">
+                        </div>
+
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <span class="slider-label">
+                                    Anisotropy (g) <span class="unit">forward scattering</span>
+                                </span>
+                                <span class="slider-value" id="anisotropyValue">0.76</span>
+                            </div>
+                            <input type="range" id="anisotropy" min="-0.9" max="0.99" step="0.01" value="0.76">
+                        </div>
                     </div>
                 </div>
 
                 <div class="control-card">
                     <div class="card-header">
                         <span class="card-icon">✨</span>
-                        <span class="card-title">Explore Presets</span>
+                        <span class="card-title">Real-World Presets</span>
                     </div>
+
+                    <!-- Learning Path Tabs -->
+                    <div class="learning-path-tabs">
+                        <button class="learning-tab active" data-path="all">All</button>
+                        <button class="learning-tab" data-path="absorption">Absorption</button>
+                        <button class="learning-tab" data-path="scattering">Scattering</button>
+                        <button class="learning-tab" data-path="combined">Combined</button>
+                    </div>
+
                     <div class="presets-grid">
-                        <button class="preset-btn" data-preset="water">
-                            <span class="preset-icon">💧</span> Water
+                        <button class="preset-btn" data-preset="clear-water" data-path="absorption">
+                            <span class="preset-icon">💧</span>
+                            <span>Clear Water</span>
+                            <span class="preset-info">abs</span>
                         </button>
-                        <button class="preset-btn" data-preset="atmosphere">
-                            <span class="preset-icon">🌤️</span> Atmosphere
+                        <button class="preset-btn" data-preset="blood" data-path="absorption">
+                            <span class="preset-icon">🩸</span>
+                            <span>Blood</span>
+                            <span class="preset-info">abs</span>
                         </button>
-                        <button class="preset-btn" data-preset="fog">
-                            <span class="preset-icon">🌫️</span> Fog
+                        <button class="preset-btn" data-preset="atmosphere" data-path="scattering">
+                            <span class="preset-icon">🌤️</span>
+                            <span>Atmosphere</span>
+                            <span class="preset-info">ray</span>
                         </button>
-                        <button class="preset-btn" data-preset="blood">
-                            <span class="preset-icon">🩸</span> Blood
+                        <button class="preset-btn" data-preset="sunset" data-path="scattering">
+                            <span class="preset-icon">🌅</span>
+                            <span>Sunset Path</span>
+                            <span class="preset-info">ray</span>
                         </button>
-                        <button class="preset-btn" data-preset="milk">
-                            <span class="preset-icon">🥛</span> Milk
+                        <button class="preset-btn" data-preset="fog" data-path="scattering">
+                            <span class="preset-icon">🌫️</span>
+                            <span>Dense Fog</span>
+                            <span class="preset-info">mie</span>
                         </button>
-                        <button class="preset-btn" data-preset="sunset">
-                            <span class="preset-icon">🌅</span> Sunset
+                        <button class="preset-btn" data-preset="cloud" data-path="scattering">
+                            <span class="preset-icon">☁️</span>
+                            <span>Cloud</span>
+                            <span class="preset-info">mie</span>
                         </button>
-                        <button class="preset-btn" data-preset="ocean-deep">
-                            <span class="preset-icon">🌊</span> Deep Ocean
+                        <button class="preset-btn" data-preset="milk" data-path="combined">
+                            <span class="preset-icon">🥛</span>
+                            <span>Milk</span>
+                            <span class="preset-info">abs+mie</span>
                         </button>
-                        <button class="preset-btn" data-preset="smoke">
-                            <span class="preset-icon">💨</span> Smoke
+                        <button class="preset-btn" data-preset="ocean-deep" data-path="combined">
+                            <span class="preset-icon">🌊</span>
+                            <span>Deep Ocean</span>
+                            <span class="preset-info">abs+ray</span>
                         </button>
+                    </div>
+
+                    <div class="physical-values" id="physicalValues">
+                        <div class="physical-values-title">📐 Physical Values (Current)</div>
+                        <div class="value-row">
+                            <span class="value-label">Extinction (σ<sub>t</sub> = σ<sub>a</sub> + σ<sub>s</sub>)</span>
+                            <span class="value-number" id="extinctionValue">0.52 m⁻¹</span>
+                        </div>
+                        <div class="value-row">
+                            <span class="value-label">Scattering Albedo (ω = σ<sub>s</sub>/σ<sub>t</sub>)</span>
+                            <span class="value-number" id="albedoValue">0.00</span>
+                        </div>
+                        <div class="value-row">
+                            <span class="value-label">Mean Free Path (1/σ<sub>t</sub>)</span>
+                            <span class="value-number" id="mfpValue">1.92 m</span>
+                        </div>
+                        <div class="value-row">
+                            <span class="value-label">Optical Depth (1m)</span>
+                            <span class="value-number" id="opticalDepthValue">0.52</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1192,7 +441,7 @@
         <div class="code-section">
             <div class="code-card">
                 <div class="code-header">
-                    <span class="code-title">GLSL Shader Implementation</span>
+                    <span class="code-title">GLSL Implementation</span>
                     <button class="copy-btn" onclick="copyCode()">
                         <span>Copy Code</span>
                     </button>
@@ -1206,805 +455,6 @@
         </div>
     </div>
 
-    <script src="shaders/loader.js"></script>
-    <script>
-        // ========== State ==========
-        let currentPhenomenon = 'beer-lambert';
-        let useLogScale = true;
-
-        const params = {
-            sigmaR: 0.1,
-            sigmaG: 0.2,
-            sigmaB: 0.05,
-            particleSize: 0.1,
-            density: 1.0,
-            maxDepth: 10
-        };
-
-        const WAVELENGTHS = { r: 700, g: 550, b: 450 };
-
-        // ========== Camera State ==========
-        const camera = {
-            rotX: 0.3,      // pitch
-            rotY: 0.0,      // yaw
-            targetRotX: 0.3,
-            targetRotY: 0.0,
-            isDragging: false,
-            lastX: 0,
-            lastY: 0,
-            sensitivity: 0.005,
-            damping: 0.08
-        };
-
-        // Scene labels per phenomenon
-        const sceneLabels = {
-            'beer-lambert': 'Underwater - Beer-Lambert',
-            'rayleigh': 'Atmosphere - Rayleigh Scattering',
-            'mie': 'Foggy Forest - Mie Scattering',
-            'combined': 'Murky Water - Combined Transport'
-        };
-
-        // ========== Presets ==========
-        const presets = {
-            water: {
-                sigmaR: 0.45, sigmaG: 0.06, sigmaB: 0.01,
-                phenomenon: 'beer-lambert',
-            },
-            atmosphere: {
-                sigmaR: 0.02, sigmaG: 0.06, sigmaB: 0.15,
-                phenomenon: 'rayleigh',
-                particleSize: 0.0001,
-            },
-            fog: {
-                sigmaR: 0.3, sigmaG: 0.3, sigmaB: 0.3,
-                phenomenon: 'mie',
-                particleSize: 5,
-            },
-            blood: {
-                sigmaR: 0.1, sigmaG: 0.8, sigmaB: 0.9,
-                phenomenon: 'beer-lambert',
-            },
-            milk: {
-                sigmaR: 0.15, sigmaG: 0.15, sigmaB: 0.12,
-                phenomenon: 'mie',
-                particleSize: 1,
-            },
-            sunset: {
-                sigmaR: 0.01, sigmaG: 0.08, sigmaB: 0.25,
-                phenomenon: 'rayleigh',
-                particleSize: 0.0001,
-            },
-            'ocean-deep': {
-                sigmaR: 0.6, sigmaG: 0.1, sigmaB: 0.02,
-                phenomenon: 'beer-lambert',
-            },
-            smoke: {
-                sigmaR: 0.4, sigmaG: 0.5, sigmaB: 0.6,
-                phenomenon: 'mie',
-                particleSize: 0.5,
-            }
-        };
-
-        // ========== Phenomenon Info ==========
-        const phenomenonInfo = {
-            'beer-lambert': {
-                icon: '🧪',
-                title: 'Beer-Lambert Law',
-                equation: '<span class="var">I</span> = <span class="var">I</span><span class="subscript">0</span> · e<sup>-σ·d</sup>',
-                content: `
-                    <div class="info-block">
-                        <h4>The Core Idea</h4>
-                        <p>Light intensity decreases exponentially as it travels through a medium. The equation <code>I = I₀ · e^(-σ·d)</code> describes this beautifully simple relationship.</p>
-                    </div>
-                    <div class="info-block highlight">
-                        <h4>Why Things Have Color</h4>
-                        <p>Different wavelengths absorb at different rates! Water absorbs red light faster than blue—so deep water looks blue. Blood absorbs blue/green—so it looks red.</p>
-                    </div>
-                    <div class="info-block">
-                        <h4>Optical Depth Intuition</h4>
-                        <p>At τ = 1, about 63% of light is absorbed. At τ = 3, it's 95%. At τ = 5, 99% is gone. This is why we use log scale—the interesting stuff happens early!</p>
-                    </div>
-                `,
-                tryThis: `<strong>Try this:</strong> Click "Water" preset, then slowly increase the red absorption. Watch how the color strip shifts from cyan toward pure blue—this is exactly what happens as you dive deeper!`
-            },
-            'rayleigh': {
-                icon: '🌅',
-                title: 'Rayleigh Scattering',
-                equation: 'σ<span class="subscript">s</span> ∝ 1/λ<sup>4</sup>',
-                content: `
-                    <div class="info-block">
-                        <h4>The 1/λ⁴ Rule</h4>
-                        <p>When light hits particles much smaller than its wavelength (like air molecules), short wavelengths scatter WAY more. Blue scatters about 5.5× more than red!</p>
-                    </div>
-                    <div class="info-block highlight">
-                        <h4>Why the Sky is Blue</h4>
-                        <p>Sunlight enters the atmosphere. Blue light scatters in all directions and reaches your eyes from everywhere. Red light mostly passes straight through.</p>
-                    </div>
-                    <div class="info-block">
-                        <h4>Why Sunsets are Red</h4>
-                        <p>At sunset, light travels through MORE atmosphere. All the blue has scattered away by the time it reaches you, leaving only red and orange.</p>
-                    </div>
-                `,
-                tryThis: `<strong>Try this:</strong> Compare "Atmosphere" and "Sunset" presets. Notice how the sunset has much more optical depth—the light travels through more air, scattering away all the blue!`
-            },
-            'mie': {
-                icon: '☁️',
-                title: 'Mie Scattering',
-                equation: 'σ<span class="subscript">s</span> ≈ constant',
-                content: `
-                    <div class="info-block">
-                        <h4>Big Particles, Equal Scattering</h4>
-                        <p>When particles are similar in size to light's wavelength (or bigger), they scatter all colors equally. No color preference = white!</p>
-                    </div>
-                    <div class="info-block highlight">
-                        <h4>Why Clouds & Fog are White</h4>
-                        <p>Water droplets in clouds (~10μm) are huge compared to light wavelengths. They scatter red, green, and blue equally → white appearance.</p>
-                    </div>
-                    <div class="info-block">
-                        <h4>Forward Scattering</h4>
-                        <p>Mie scattering is strongly forward-directed. That's why you see bright halos around lights in fog—the light bends mostly forward, not sideways.</p>
-                    </div>
-                `,
-                tryThis: `<strong>Try this:</strong> Compare "Fog" (large particles, white) with "Smoke" (smaller particles, slightly colored). Adjust particle size to see the transition!`
-            },
-            'combined': {
-                icon: '🔬',
-                title: 'Combined Transport',
-                equation: '<span class="var">T</span> = e<sup>-(σ<span class="subscript">a</span> + σ<span class="subscript">s</span>)·d</sup>',
-                content: `
-                    <div class="info-block">
-                        <h4>Real Media = Both</h4>
-                        <p>In reality, light experiences both absorption AND scattering. Total extinction combines them: <code>σ_total = σ_a + σ_s</code></p>
-                    </div>
-                    <div class="info-block highlight">
-                        <h4>Single-Scattering Albedo</h4>
-                        <p>The ratio ω = σ_s / σ_total tells the story: ω ≈ 0 means mostly absorption (dark smoke), ω ≈ 1 means mostly scattering (bright clouds).</p>
-                    </div>
-                    <div class="info-block">
-                        <h4>Multiple Scattering</h4>
-                        <p>Scattered light can scatter again! This is why thick clouds are bright inside—light bounces around before escaping. (Not shown in this simple demo)</p>
-                    </div>
-                `,
-                tryThis: `<strong>Try this:</strong> This mode combines wavelength-dependent absorption with particle scattering. Try making absorption high but scattering low—you get a dark, colored result like tea!`
-            }
-        };
-
-        // ========== Canvas Setup ==========
-        const graphCanvas = document.getElementById('graphCanvas');
-        const graphCtx = graphCanvas.getContext('2d');
-        const colorStrip = document.getElementById('colorStrip');
-        const colorCtx = colorStrip.getContext('2d');
-        const sceneCanvas = document.getElementById('sceneCanvas');
-        const sceneWrapper = document.getElementById('sceneWrapper');
-        let sceneGL, sceneQuadBuffer, sceneProgram, sceneUniforms;
-
-        // ========== Camera Controls ==========
-        function initCameraControls() {
-            sceneWrapper.addEventListener('mousedown', (e) => {
-                camera.isDragging = true;
-                camera.lastX = e.clientX;
-                camera.lastY = e.clientY;
-            });
-
-            window.addEventListener('mousemove', (e) => {
-                if (!camera.isDragging) return;
-
-                const dx = e.clientX - camera.lastX;
-                const dy = e.clientY - camera.lastY;
-
-                camera.targetRotY += dx * camera.sensitivity;
-                camera.targetRotX += dy * camera.sensitivity;
-
-                // Clamp pitch based on phenomenon
-                const maxPitch = currentPhenomenon === 'beer-lambert' ? 1.2 : 0.8;
-                const minPitch = currentPhenomenon === 'beer-lambert' ? -0.3 : -0.4;
-                camera.targetRotX = Math.max(minPitch, Math.min(maxPitch, camera.targetRotX));
-
-                camera.lastX = e.clientX;
-                camera.lastY = e.clientY;
-            });
-
-            window.addEventListener('mouseup', () => {
-                camera.isDragging = false;
-            });
-
-            // Touch support
-            sceneWrapper.addEventListener('touchstart', (e) => {
-                if (e.touches.length === 1) {
-                    camera.isDragging = true;
-                    camera.lastX = e.touches[0].clientX;
-                    camera.lastY = e.touches[0].clientY;
-                    e.preventDefault();
-                }
-            }, { passive: false });
-
-            window.addEventListener('touchmove', (e) => {
-                if (!camera.isDragging || e.touches.length !== 1) return;
-
-                const dx = e.touches[0].clientX - camera.lastX;
-                const dy = e.touches[0].clientY - camera.lastY;
-
-                camera.targetRotY += dx * camera.sensitivity;
-                camera.targetRotX += dy * camera.sensitivity;
-
-                const maxPitch = currentPhenomenon === 'beer-lambert' ? 1.2 : 0.8;
-                const minPitch = currentPhenomenon === 'beer-lambert' ? -0.3 : -0.4;
-                camera.targetRotX = Math.max(minPitch, Math.min(maxPitch, camera.targetRotX));
-
-                camera.lastX = e.touches[0].clientX;
-                camera.lastY = e.touches[0].clientY;
-            }, { passive: true });
-
-            window.addEventListener('touchend', () => {
-                camera.isDragging = false;
-            });
-        }
-
-        function updateCamera() {
-            // Smooth camera interpolation
-            camera.rotX += (camera.targetRotX - camera.rotX) * camera.damping;
-            camera.rotY += (camera.targetRotY - camera.rotY) * camera.damping;
-        }
-
-        function resetCameraForPhenomenon() {
-            switch (currentPhenomenon) {
-                case 'beer-lambert':
-                    camera.targetRotX = 0.6;  // Looking up through water
-                    camera.targetRotY = 0.0;
-                    break;
-                case 'rayleigh':
-                    camera.targetRotX = 0.1;  // Horizon view
-                    camera.targetRotY = 0.0;
-                    break;
-                case 'mie':
-                    camera.targetRotX = 0.0;  // Level view into fog
-                    camera.targetRotY = 0.0;
-                    break;
-                case 'combined':
-                    camera.targetRotX = 0.3;  // Slightly looking up
-                    camera.targetRotY = 0.0;
-                    break;
-            }
-        }
-
-        async function initScene() {
-            sceneGL = sceneCanvas.getContext('webgl2');
-            if (!sceneGL) return;
-
-            sceneQuadBuffer = sceneGL.createBuffer();
-            sceneGL.bindBuffer(sceneGL.ARRAY_BUFFER, sceneQuadBuffer);
-            sceneGL.bufferData(sceneGL.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), sceneGL.STATIC_DRAW);
-
-            initCameraControls();
-            await compileSceneShader();
-        }
-
-        async function compileSceneShader() {
-            const gl = sceneGL;
-            if (!gl) return;
-
-            // Clean up previous program
-            if (sceneProgram) {
-                gl.deleteProgram(sceneProgram);
-            }
-
-            try {
-                // Load shaders from external files
-                const shaders = await ShaderLoader.loadAll({
-                    vertex: 'shaders/scene.vert.glsl',
-                    fragment: 'shaders/scene.frag.glsl'
-                });
-
-                // Create program using shader loader
-                sceneProgram = ShaderLoader.createProgram(gl, shaders.vertex, shaders.fragment);
-                if (!sceneProgram) {
-                    console.error('Failed to create scene shader program');
-                    return;
-                }
-
-                // Cache uniform and attribute locations
-                sceneUniforms = {
-                    ...ShaderLoader.getUniforms(gl, sceneProgram, [
-                        'uSigma', 'uMaxDepth', 'uPhenomenon', 'uParticleSize',
-                        'uDensity', 'uTime', 'uResolution', 'uCameraRotX', 'uCameraRotY'
-                    ]),
-                    ...ShaderLoader.getAttributes(gl, sceneProgram, ['aPosition'])
-                };
-            } catch (error) {
-                console.error('Failed to load shaders:', error);
-            }
-        }
-
-        function resizeCanvases() {
-            const dpr = window.devicePixelRatio;
-
-            const graphRect = graphCanvas.getBoundingClientRect();
-            graphCanvas.width = graphRect.width * dpr;
-            graphCanvas.height = graphRect.height * dpr;
-
-            const stripRect = colorStrip.getBoundingClientRect();
-            colorStrip.width = stripRect.width * dpr;
-            colorStrip.height = stripRect.height * dpr;
-
-            const sceneRect = sceneCanvas.getBoundingClientRect();
-            sceneCanvas.width = sceneRect.width * dpr;
-            sceneCanvas.height = sceneRect.height * dpr;
-        }
-
-        // ========== Physics Functions ==========
-        function beerLambert(sigma, depth) {
-            return Math.exp(-sigma * depth);
-        }
-
-        function rayleighCoeff(wavelengthNm, baseCoeff = 1) {
-            const lambda = wavelengthNm / 550;
-            return baseCoeff / Math.pow(lambda, 4);
-        }
-
-        function mieCoeff(particleSizeUm, wavelengthNm, baseCoeff = 1) {
-            const x = 2 * Math.PI * particleSizeUm / (wavelengthNm / 1000);
-            if (x < 0.1) return rayleighCoeff(wavelengthNm, baseCoeff);
-            if (x > 10) return baseCoeff;
-            const t = (x - 0.1) / 9.9;
-            return rayleighCoeff(wavelengthNm, baseCoeff) * (1 - t) + baseCoeff * t;
-        }
-
-        function getTransmittance(depth, wavelength) {
-            let sigma;
-
-            switch (currentPhenomenon) {
-                case 'beer-lambert':
-                    if (wavelength === WAVELENGTHS.r) sigma = params.sigmaR;
-                    else if (wavelength === WAVELENGTHS.g) sigma = params.sigmaG;
-                    else sigma = params.sigmaB;
-                    break;
-
-                case 'rayleigh':
-                    const baseRayleigh = (params.sigmaR + params.sigmaG + params.sigmaB) / 3;
-                    sigma = rayleighCoeff(wavelength, baseRayleigh) * params.density;
-                    break;
-
-                case 'mie':
-                    const baseMie = (params.sigmaR + params.sigmaG + params.sigmaB) / 3;
-                    sigma = mieCoeff(params.particleSize, wavelength, baseMie) * params.density;
-                    break;
-
-                case 'combined':
-                    let absorption;
-                    if (wavelength === WAVELENGTHS.r) absorption = params.sigmaR;
-                    else if (wavelength === WAVELENGTHS.g) absorption = params.sigmaG;
-                    else absorption = params.sigmaB;
-
-                    const scattering = mieCoeff(params.particleSize, wavelength, 0.1) * params.density;
-                    sigma = absorption + scattering;
-                    break;
-            }
-
-            return beerLambert(sigma, depth);
-        }
-
-        // ========== Drawing Functions ==========
-        function drawGraph() {
-            const w = graphCanvas.width;
-            const h = graphCanvas.height;
-            const ctx = graphCtx;
-            const dpr = window.devicePixelRatio;
-
-            ctx.clearRect(0, 0, w, h);
-
-            const padding = { left: 55 * dpr, right: 25 * dpr, top: 25 * dpr, bottom: 45 * dpr };
-            const graphW = w - padding.left - padding.right;
-            const graphH = h - padding.top - padding.bottom;
-
-            // Grid
-            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-            ctx.lineWidth = 1;
-
-            for (let i = 0; i <= 10; i++) {
-                const x = padding.left + (i / 10) * graphW;
-                ctx.beginPath();
-                ctx.moveTo(x, padding.top);
-                ctx.lineTo(x, h - padding.bottom);
-                ctx.stroke();
-            }
-
-            for (let i = 0; i <= 10; i++) {
-                const y = padding.top + (i / 10) * graphH;
-                ctx.beginPath();
-                ctx.moveTo(padding.left, y);
-                ctx.lineTo(w - padding.right, y);
-                ctx.stroke();
-            }
-
-            // Axes labels
-            ctx.fillStyle = '#64748b';
-            ctx.font = `${11 * dpr}px "JetBrains Mono", monospace`;
-            ctx.textAlign = 'center';
-
-            for (let i = 0; i <= 5; i++) {
-                const depth = (i / 5) * params.maxDepth;
-                const x = padding.left + (i / 5) * graphW;
-                ctx.fillText(depth.toFixed(0), x, h - padding.bottom + 18 * dpr);
-            }
-
-            ctx.textAlign = 'right';
-            const yLabels = useLogScale ? ['0.001', '0.01', '0.1', '1'] : ['0', '0.25', '0.5', '0.75', '1'];
-            yLabels.forEach((label, i) => {
-                const y = padding.top + ((yLabels.length - 1 - i) / (yLabels.length - 1)) * graphH;
-                ctx.fillText(label, padding.left - 8 * dpr, y + 4 * dpr);
-            });
-
-            // Draw curves with glow effect
-            const colors = [
-                { wavelength: WAVELENGTHS.r, color: '#f87171', glow: 'rgba(248, 113, 113, 0.4)' },
-                { wavelength: WAVELENGTHS.g, color: '#4ade80', glow: 'rgba(74, 222, 128, 0.4)' },
-                { wavelength: WAVELENGTHS.b, color: '#60a5fa', glow: 'rgba(96, 165, 250, 0.4)' }
-            ];
-
-            colors.forEach(({ wavelength, color, glow }) => {
-                // Glow layer
-                ctx.beginPath();
-                ctx.strokeStyle = glow;
-                ctx.lineWidth = 8 * dpr;
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-
-                for (let i = 0; i <= graphW; i += 2) {
-                    const depth = (i / graphW) * params.maxDepth;
-                    let T = getTransmittance(depth, wavelength);
-
-                    let y;
-                    if (useLogScale) {
-                        T = Math.max(0.001, T);
-                        y = padding.top + (1 - (Math.log10(T) + 3) / 3) * graphH;
-                    } else {
-                        y = padding.top + (1 - T) * graphH;
-                    }
-
-                    if (i === 0) ctx.moveTo(padding.left + i, y);
-                    else ctx.lineTo(padding.left + i, y);
-                }
-                ctx.stroke();
-
-                // Main line
-                ctx.beginPath();
-                ctx.strokeStyle = color;
-                ctx.lineWidth = 3 * dpr;
-
-                for (let i = 0; i <= graphW; i += 2) {
-                    const depth = (i / graphW) * params.maxDepth;
-                    let T = getTransmittance(depth, wavelength);
-
-                    let y;
-                    if (useLogScale) {
-                        T = Math.max(0.001, T);
-                        y = padding.top + (1 - (Math.log10(T) + 3) / 3) * graphH;
-                    } else {
-                        y = padding.top + (1 - T) * graphH;
-                    }
-
-                    if (i === 0) ctx.moveTo(padding.left + i, y);
-                    else ctx.lineTo(padding.left + i, y);
-                }
-                ctx.stroke();
-            });
-        }
-
-        function drawColorStrip() {
-            const w = colorStrip.width;
-            const h = colorStrip.height;
-
-            const imageData = colorCtx.createImageData(w, h);
-
-            for (let x = 0; x < w; x++) {
-                const depth = (x / w) * params.maxDepth;
-
-                const r = Math.round(getTransmittance(depth, WAVELENGTHS.r) * 255);
-                const g = Math.round(getTransmittance(depth, WAVELENGTHS.g) * 255);
-                const b = Math.round(getTransmittance(depth, WAVELENGTHS.b) * 255);
-
-                for (let y = 0; y < h; y++) {
-                    const i = (y * w + x) * 4;
-                    imageData.data[i] = r;
-                    imageData.data[i + 1] = g;
-                    imageData.data[i + 2] = b;
-                    imageData.data[i + 3] = 255;
-                }
-            }
-
-            colorCtx.putImageData(imageData, 0, 0);
-        }
-
-        function drawScene() {
-            if (!sceneGL || !sceneProgram || !sceneUniforms) return;
-
-            const gl = sceneGL;
-            const w = sceneCanvas.width;
-            const h = sceneCanvas.height;
-            gl.viewport(0, 0, w, h);
-
-            // Update camera smoothly
-            updateCamera();
-
-            gl.useProgram(sceneProgram);
-
-            // Set uniforms
-            gl.uniform3f(sceneUniforms.uSigma, params.sigmaR, params.sigmaG, params.sigmaB);
-            gl.uniform1f(sceneUniforms.uMaxDepth, params.maxDepth);
-            gl.uniform1i(sceneUniforms.uPhenomenon,
-                currentPhenomenon === 'beer-lambert' ? 0 :
-                currentPhenomenon === 'rayleigh' ? 1 :
-                currentPhenomenon === 'mie' ? 2 : 3);
-            gl.uniform1f(sceneUniforms.uParticleSize, params.particleSize);
-            gl.uniform1f(sceneUniforms.uDensity, params.density);
-            gl.uniform1f(sceneUniforms.uTime, performance.now() / 1000);
-            gl.uniform2f(sceneUniforms.uResolution, w, h);
-            gl.uniform1f(sceneUniforms.uCameraRotX, camera.rotX);
-            gl.uniform1f(sceneUniforms.uCameraRotY, camera.rotY);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, sceneQuadBuffer);
-            gl.enableVertexAttribArray(sceneUniforms.aPosition);
-            gl.vertexAttribPointer(sceneUniforms.aPosition, 2, gl.FLOAT, false, 0, 0);
-            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-        }
-
-        function updateAll() {
-            resizeCanvases();
-            drawGraph();
-            drawColorStrip();
-            drawScene();
-            updateShaderCode();
-            document.getElementById('maxDepthDisplay').textContent = params.maxDepth;
-        }
-
-        // Animation loop for scene
-        function animate() {
-            drawScene();
-            requestAnimationFrame(animate);
-        }
-
-        // ========== Shader Code Generation ==========
-        function updateShaderCode() {
-            let code = '';
-
-            switch (currentPhenomenon) {
-                case 'beer-lambert':
-                    code = `// Beer-Lambert Absorption
-// The foundation of all light transport in absorbing media
-
-vec3 absorption(vec3 sigmaA, float depth) {
-    // Each wavelength attenuates independently
-    return exp(-sigmaA * depth);
-}
-
-void main() {
-    // Your absorption coefficients (higher = absorbs more)
-    vec3 sigma = vec3(${params.sigmaR.toFixed(3)}, ${params.sigmaG.toFixed(3)}, ${params.sigmaB.toFixed(3)});
-
-    float depth = /* distance through medium */;
-
-    vec3 transmittance = absorption(sigma, depth);
-    vec3 color = lightColor * transmittance;
-}`;
-                    break;
-
-                case 'rayleigh':
-                    code = `// Rayleigh Scattering
-// Why the sky is blue and sunsets are red
-
-float rayleighCoeff(float wavelengthNm) {
-    // The magic 1/λ⁴ relationship
-    float lambda = wavelengthNm / 550.0;
-    return 1.0 / pow(lambda, 4.0);
-}
-
-vec3 rayleighScattering(float baseDensity, float depth) {
-    // RGB wavelengths: 700nm, 550nm, 450nm
-    vec3 sigma = baseDensity * vec3(
-        rayleighCoeff(700.0),  // Red:   ~0.38
-        rayleighCoeff(550.0),  // Green: 1.0
-        rayleighCoeff(450.0)   // Blue:  ~2.07
-    );
-    return exp(-sigma * depth);
-}
-
-void main() {
-    float density = ${params.density.toFixed(2)};
-    float depth = /* ray distance through atmosphere */;
-
-    vec3 transmittance = rayleighScattering(density, depth);
-}`;
-                    break;
-
-                case 'mie':
-                    code = `// Mie Scattering
-// For fog, clouds, milk, and other large-particle media
-
-float miePhase(float cosTheta, float g) {
-    // Henyey-Greenstein phase function
-    // g > 0: forward scattering (typical: 0.8 for fog)
-    float g2 = g * g;
-    float denom = 1.0 + g2 - 2.0 * g * cosTheta;
-    return (1.0 - g2) / (4.0 * 3.14159 * pow(denom, 1.5));
-}
-
-vec3 mieScattering(vec3 sigma, float depth) {
-    // Large particles: wavelength-independent
-    return exp(-sigma * depth);
-}
-
-void main() {
-    vec3 sigma = vec3(${params.sigmaR.toFixed(3)}, ${params.sigmaG.toFixed(3)}, ${params.sigmaB.toFixed(3)});
-    float depth = /* distance through medium */;
-    float g = 0.8; // forward scattering strength
-
-    vec3 transmittance = mieScattering(sigma, depth);
-    float phase = miePhase(dot(viewDir, lightDir), g);
-}`;
-                    break;
-
-                case 'combined':
-                    code = `// Combined Absorption + Scattering
-// How real participating media actually work
-
-struct Medium {
-    vec3 sigmaA;  // absorption coefficient
-    vec3 sigmaS;  // scattering coefficient
-};
-
-vec3 transmittance(Medium m, float depth) {
-    vec3 sigmaT = m.sigmaA + m.sigmaS;
-    return exp(-sigmaT * depth);
-}
-
-float singleScatteringAlbedo(Medium m) {
-    // 0 = pure absorption, 1 = pure scattering
-    vec3 sigmaT = m.sigmaA + m.sigmaS;
-    return length(m.sigmaS) / length(sigmaT);
-}
-
-void main() {
-    Medium medium;
-    medium.sigmaA = vec3(${params.sigmaR.toFixed(3)}, ${params.sigmaG.toFixed(3)}, ${params.sigmaB.toFixed(3)});
-    medium.sigmaS = vec3(0.02);  // uniform scattering
-
-    float depth = /* distance */;
-    vec3 T = transmittance(medium, depth);
-}`;
-                    break;
-            }
-
-            document.getElementById('shaderCode').textContent = code;
-        }
-
-        // ========== UI Updates ==========
-        function updateInfo() {
-            const info = phenomenonInfo[currentPhenomenon];
-            document.getElementById('equationBox').innerHTML = info.equation;
-            document.getElementById('infoIcon').textContent = info.icon;
-            document.getElementById('infoTitle').textContent = info.title;
-            document.getElementById('infoContent').innerHTML = info.content;
-            document.querySelector('.try-this-content').innerHTML = info.tryThis;
-        }
-
-        function updateControlVisibility() {
-            const scatteringControls = document.getElementById('scatteringControls');
-            scatteringControls.style.display =
-                (currentPhenomenon === 'rayleigh' || currentPhenomenon === 'mie' || currentPhenomenon === 'combined')
-                    ? 'block' : 'none';
-        }
-
-        // ========== Event Listeners ==========
-        document.querySelectorAll('.phenomenon-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.phenomenon-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentPhenomenon = btn.dataset.phenomenon;
-                updateInfo();
-                updateControlVisibility();
-                resetCameraForPhenomenon();
-                updateSceneLabel();
-                updateAll();
-            });
-        });
-
-        function updateSceneLabel() {
-            document.getElementById('sceneLabel').textContent = sceneLabels[currentPhenomenon];
-        }
-
-        document.querySelectorAll('.preset-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const preset = presets[btn.dataset.preset];
-                if (!preset) return;
-
-                document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-
-                params.sigmaR = preset.sigmaR;
-                params.sigmaG = preset.sigmaG;
-                params.sigmaB = preset.sigmaB;
-                if (preset.particleSize !== undefined) params.particleSize = preset.particleSize;
-                if (preset.density !== undefined) params.density = preset.density;
-
-                document.getElementById('sigmaR').value = params.sigmaR;
-                document.getElementById('sigmaG').value = params.sigmaG;
-                document.getElementById('sigmaB').value = params.sigmaB;
-                document.getElementById('particleSize').value = params.particleSize;
-                document.getElementById('density').value = params.density;
-                updateSliderValues();
-
-                if (preset.phenomenon) {
-                    document.querySelectorAll('.phenomenon-btn').forEach(b => b.classList.remove('active'));
-                    document.querySelector(`[data-phenomenon="${preset.phenomenon}"]`).classList.add('active');
-                    currentPhenomenon = preset.phenomenon;
-                    updateInfo();
-                    updateControlVisibility();
-                    resetCameraForPhenomenon();
-                    updateSceneLabel();
-                }
-
-                updateAll();
-            });
-        });
-
-        function updateSliderValues() {
-            document.getElementById('sigmaRValue').textContent = params.sigmaR.toFixed(2);
-            document.getElementById('sigmaGValue').textContent = params.sigmaG.toFixed(2);
-            document.getElementById('sigmaBValue').textContent = params.sigmaB.toFixed(2);
-            document.getElementById('particleSizeValue').textContent = params.particleSize.toFixed(2) + ' μm';
-            document.getElementById('densityValue').textContent = params.density.toFixed(2);
-            document.getElementById('maxDepthValue').textContent = params.maxDepth;
-        }
-
-        ['sigmaR', 'sigmaG', 'sigmaB', 'particleSize', 'density', 'maxDepth'].forEach(id => {
-            document.getElementById(id).addEventListener('input', (e) => {
-                params[id] = parseFloat(e.target.value);
-                updateSliderValues();
-                document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-                updateAll();
-            });
-        });
-
-        document.getElementById('toggleLog').addEventListener('click', () => {
-            useLogScale = true;
-            document.getElementById('toggleLog').classList.add('active');
-            document.getElementById('toggleLinear').classList.remove('active');
-            updateAll();
-        });
-
-        document.getElementById('toggleLinear').addEventListener('click', () => {
-            useLogScale = false;
-            document.getElementById('toggleLinear').classList.add('active');
-            document.getElementById('toggleLog').classList.remove('active');
-            updateAll();
-        });
-
-        function copyCode() {
-            const code = document.getElementById('shaderCode').textContent;
-            navigator.clipboard.writeText(code).then(() => {
-                const btn = document.querySelector('.copy-btn');
-                btn.innerHTML = '<span>Copied!</span>';
-                btn.classList.add('copied');
-                setTimeout(() => {
-                    btn.innerHTML = '<span>Copy Code</span>';
-                    btn.classList.remove('copied');
-                }, 2000);
-            });
-        }
-
-        // ========== Initialization ==========
-        window.addEventListener('load', async () => {
-            await initScene();
-            updateSliderValues();
-            updateInfo();
-            updateControlVisibility();
-            resetCameraForPhenomenon();
-            updateSceneLabel();
-            updateAll();
-            animate();
-        });
-
-        window.addEventListener('resize', updateAll);
-    </script>
+    <script src="app.js"></script>
 </body>
 </html>

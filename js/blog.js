@@ -191,6 +191,39 @@
         listView.scrollTop = 0;
     }
 
+    // Closes every article. Kept identical in wording to the block
+    // tools/build-blog.js writes into the static pages: social traffic lands on
+    // those, in-site readers land on this one, and they must not disagree about
+    // the offer, the rate or the availability.
+    function hireBlockHtml() {
+        return '' +
+        '<div class="article-convert">' +
+            '<div class="subscribe-box">' +
+                '<p class="subscribe-title">One of these every few weeks</p>' +
+                '<p class="subscribe-copy">Rendering techniques, built and measured against a reference. No newsletter padding, nothing else sent to the address.</p>' +
+                '<form class="subscribe-form" data-source="article">' +
+                    '<input type="email" name="email" placeholder="you@studio.com" required aria-label="Email address">' +
+                    '<button type="submit">Notify me</button>' +
+                '</form>' +
+                '<p class="subscribe-status" role="status"></p>' +
+            '</div>' +
+            '<div class="article-cta-banner article-hire">' +
+                '<a class="availability-badge" href="mailto:contact.charles.grassi@gmail.com?subject=Rendering%20work">' +
+                    '<span class="availability-led"></span>' +
+                    'Available for contract work &middot; Remote' +
+                '</a>' +
+                '<h2 class="cta-banner-title">Rendering problems, solved and measured</h2>' +
+                '<p class="cta-banner-subtitle">Charles Grassi. Unity rendering and technical art specialist: URP, hand-written HLSL, volumetrics, water, procedural geometry. I work solo, and I write up the technique so you can see exactly what you are buying.</p>' +
+                '<p class="hire-offer">The easiest place to start is a <strong>fixed-price rendering audit</strong>. Send a build or a capture, get back a written breakdown of where the frame is going and what each fix is worth. No meeting needed, and it is the cheapest way to find out whether we should work together.</p>' +
+                '<div class="cta-banner-buttons">' +
+                    '<a href="mailto:contact.charles.grassi@gmail.com?subject=Rendering%20audit%20enquiry" class="cta-banner-btn primary">Talk about your frame</a>' +
+                    '<a href="https://www.linkedin.com/in/charles-grassi/" target="_blank" rel="noopener" class="cta-banner-btn secondary">LinkedIn</a>' +
+                    '<a href="?tab=contact" class="cta-banner-btn secondary">More work</a>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    }
+
     function renderArticle(post) {
         if (!articleContainer) return;
 
@@ -221,7 +254,7 @@
         });
         contentHtml += '</div>';
 
-        articleContainer.innerHTML = headerHtml + contentHtml;
+        articleContainer.innerHTML = headerHtml + contentHtml + hireBlockHtml();
 
         // Generate and insert Table of Contents
         generateTableOfContents();
@@ -234,12 +267,18 @@
 
         // Initialize shader demos
         initShaderDemos();
+
+        // Wire the subscribe form, the hire buttons and read-depth tracking.
+        // The script attached on load, but this content did not exist then.
+        if (typeof window.initConversion === 'function') {
+            window.initConversion(articleContainer);
+        }
     }
 
     function renderSection(section, index) {
         switch (section.type) {
             case 'intro':
-                return '<p class="article-section section-intro">' + section.content + '</p>';
+                return '<p class="article-section section-intro">' + formatInline(section.content) + '</p>';
 
             case 'heading':
                 var tag = 'h' + (section.level || 2);
@@ -247,7 +286,7 @@
                 return '<' + tag + ' id="' + headingId + '" class="article-section section-heading" data-toc-level="' + (section.level || 2) + '">' + section.content + '</' + tag + '>';
 
             case 'paragraph':
-                return '<p class="article-section section-paragraph">' + section.content + '</p>';
+                return '<p class="article-section section-paragraph">' + formatInline(section.content) + '</p>';
 
             case 'code':
                 return '<div class="article-section section-code">' +
@@ -260,19 +299,31 @@
 
             case 'list':
                 var itemsHtml = (section.items || []).map(function(item) {
-                    return '<li>' + escapeHtmlWithLinks(item) + '</li>';
+                    return '<li>' + markdownInline(escapeHtmlWithLinks(item)) + '</li>';
                 }).join('');
                 return '<ul class="article-section section-list">' + itemsHtml + '</ul>';
 
             case 'image':
                 return '<figure class="article-section section-image">' +
                     '<img src="blog/images/' + section.src + '" alt="' + (section.alt || '') + '" loading="lazy">' +
-                    (section.caption ? '<figcaption>' + section.caption + '</figcaption>' : '') +
+                    (section.caption ? '<figcaption>' + formatInline(section.caption) + '</figcaption>' : '') +
+                '</figure>';
+
+            case 'video':
+                // Looping, muted and inline so it behaves like a figure rather
+                // than a player. webm first, mp4 as the fallback source.
+                return '<figure class="article-section section-video">' +
+                    '<video autoplay loop muted playsinline preload="metadata"' +
+                        (section.poster ? ' poster="blog/images/' + section.poster + '"' : '') + '>' +
+                        (section.webm ? '<source src="blog/videos/' + section.webm + '" type="video/webm">' : '') +
+                        '<source src="blog/videos/' + section.src + '" type="video/mp4">' +
+                    '</video>' +
+                    (section.caption ? '<figcaption>' + formatInline(section.caption) + '</figcaption>' : '') +
                 '</figure>';
 
             case 'callout':
                 return '<aside class="article-section section-callout ' + (section.variant || 'info') + '">' +
-                    '<p>' + section.content + '</p>' +
+                    '<p>' + formatInline(section.content) + '</p>' +
                 '</aside>';
 
             case 'svg-diagram':
@@ -282,6 +333,15 @@
                     '</div>' +
                     (section.title ? '<figcaption>' + section.title + '</figcaption>' : '') +
                 '</figure>';
+
+            case 'details':
+                var innerHtml = (section.sections || []).map(function(child, childIndex) {
+                    return renderSection(child, index + '-' + childIndex);
+                }).join('');
+                return '<details class="article-section section-details">' +
+                    '<summary>' + formatInline(section.summary || 'Technical detail') + '</summary>' +
+                    '<div class="details-body">' + innerHtml + '</div>' +
+                '</details>';
 
             case 'shader-demo':
                 // Store shader config in data attribute for later initialization
@@ -994,6 +1054,27 @@
 
             block.innerHTML = code;
         });
+    }
+
+    /**
+     * Inline formatting for article prose: **bold**, *italic*, `code`.
+     *
+     * Runs on ALREADY ESCAPED text, so the markers are the only markup that
+     * survives and a stray < in a sentence cannot become a tag. The dynamic
+     * renderer and the static build both call this, because a post that renders
+     * bold in one and literal asterisks in the other is worse than neither.
+     */
+    function markdownInline(escaped) {
+        return String(escaped == null ? '' : escaped)
+            .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+                     '<a href="$2" target="_blank" rel="noopener">$1</a>')
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    }
+
+    function formatInline(text) {
+        return markdownInline(escapeHtml(String(text == null ? '' : text)));
     }
 
     function escapeHtml(text) {

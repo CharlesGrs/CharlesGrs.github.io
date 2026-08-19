@@ -8893,3 +8893,25 @@ footer {
         padding: 0.15rem 0.4rem;
     }
 }
+
+/* The hero status line is now a link to the contact tab rather than
+   decoration, so it needs to read as clickable without shouting. */
+.hero-status-link {
+    text-decoration: none;
+    width: fit-content;
+    padding: 0.3rem 0.7rem 0.3rem 0.6rem;
+    margin-left: -0.6rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    transition: background 0.25s ease, border-color 0.25s ease;
+}
+
+.hero-status-link:hover {
+    background: rgba(45, 212, 191, 0.08);
+    border-color: rgba(45, 212, 191, 0.3);
+}
+
+.hero-status-link .status-text {
+    color: var(--accent-teal);
+    font-weight: 600;
+}
