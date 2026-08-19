@@ -752,15 +752,18 @@
 <aside class="article-section section-callout info">
                 <p>The result, up front. The approximation real-time renderers ship today is off by a factor of <strong>ten</strong> depending on where the sun sits: a fifth of the correct brightness with the sun behind the camera, and more than twice too bright looking straight into it. The trained version holds within about <strong>five percent</strong> across almost the whole range, for about <strong>20% more GPU time</strong>.</p>
             </aside>
+<aside class="article-section section-callout info">
+                <p>All of it is on GitHub, MIT licensed: <a href="https://github.com/CharlesGrs/neural-clouds" target="_blank" rel="noopener"><strong>CharlesGrs/neural-clouds</strong></a>. The renderer, the path traced reference, the trainer, and the editor harness that produced every number in this article.</p>
+            </aside>
 <p class="article-section section-paragraph">This article builds one end to end, on a cloud, and then checks it against the slow correct answer to find out how close it really gets.</p>
-<h2 id="section-7-what-is-a-neural-shader" class="article-section section-heading" data-toc-level="2">What is a neural shader?</h2>
+<h2 id="section-8-what-is-a-neural-shader" class="article-section section-heading" data-toc-level="2">What is a neural shader?</h2>
 <p class="article-section section-paragraph">A shader is the small program that decides what colour each pixel ends up. Somewhere inside it there is a calculation: given these inputs, produce this colour. A neural shader replaces one of those calculations with a network that was trained rather than written.</p>
 <p class="article-section section-paragraph">Training means showing it examples. You generate a few hundred thousand cases where you already know the right answer, and the network gradually adjusts itself until it produces those answers too. Once that is done it has learned a shortcut to a result that would otherwise take far too long to compute.</p>
 <p class="article-section section-paragraph">The comparison people usually reach for is written directions against local knowledge. Directions are precise and someone had to work them out. Local knowledge came from walking the route a thousand times and cannot really be explained, but it gets you there faster.</p>
 <aside class="article-section section-callout info">
                 <p>The important word is <em>small</em>. This is not a model sitting in a data centre. The one in this article is about 500 multiply-add operations, which is roughly the cost of a couple of texture lookups, and it runs at every step along every ray.</p>
             </aside>
-<h2 id="section-12-why-clouds" class="article-section section-heading" data-toc-level="2">Why clouds?</h2>
+<h2 id="section-13-why-clouds" class="article-section section-heading" data-toc-level="2">Why clouds?</h2>
 <p class="article-section section-paragraph">Because a cloud is the clearest case of a problem where the honest answer is known and unaffordable.</p>
 <p class="article-section section-paragraph">The honest answer is called path tracing. You simulate millions of individual light paths, bouncing each one around inside the cloud until it escapes, and average what comes out. It produces genuinely correct images and it takes minutes per frame.</p>
 <p class="article-section section-paragraph">So real-time renderers approximate instead, with a handful of curves that get tuned until the picture looks right. Those approximations are good. They ship in everything, and a cloud drawn that way is one you would happily put in a game. What they are not is accurate, and how far off they land <strong>changes depending on where the sun is</strong>, which is the part that turns out to matter.</p>
@@ -803,7 +806,7 @@
 }</pre></div>
             </div><p class="article-section section-paragraph">Around forty lines, including the comments, and it produces every cloud in this article. Changing a couple of the numbers turns a cumulus into a storm.</p><p class="article-section section-paragraph">The reason it is written as a function rather than stored as data is that a function can be sampled at any resolution. The renderer bakes it into a voxel grid before drawing, and the path tracer can sample the same function directly, so both are looking at the same cloud rather than at two versions of one.</p></div>
             </details>
-<h2 id="section-19-what-exactly-gets-replaced" class="article-section section-heading" data-toc-level="2">What exactly gets replaced?</h2>
+<h2 id="section-20-what-exactly-gets-replaced" class="article-section section-heading" data-toc-level="2">What exactly gets replaced?</h2>
 <p class="article-section section-paragraph">Drawing a cloud means walking a ray forward in small steps and asking two questions at every step. How much light is blocked here, and how much light is scattered toward the camera from here.</p>
 <p class="article-section section-paragraph">The first question is easy, because it only depends on how dense the cloud is at that point. The second is the hard one. Answering it properly means accounting for every route light could have taken to arrive there, including all the bouncing.</p>
 <p class="article-section section-paragraph">The network answers the second question and nothing else. Same ray walking, same blocking, same way of combining it all together. One switch in the shader changes the lighting model and the rest of the code carries on unaware.</p>
@@ -879,7 +882,7 @@
                 <img src="../../blog/images/neural-cloud-debug-scatter.png" alt="Debug view showing the light the network predicts is scattering toward the camera" loading="lazy">
                 <figcaption>The network&#39;s output, painted onto the cloud rather than used to light it. Warm means more light heading toward the camera, cool means less.</figcaption>
             </figure>
-<h2 id="section-28-what-does-the-network-look-at" class="article-section section-heading" data-toc-level="2">What does the network look at?</h2>
+<h2 id="section-29-what-does-the-network-look-at" class="article-section section-heading" data-toc-level="2">What does the network look at?</h2>
 <p class="article-section section-paragraph">This is the decision that matters most, because the network can only be as good as what it is allowed to see, and every input it reads costs performance at runtime.</p>
 <p class="article-section section-paragraph">What works for clouds is <strong>how much cloud is nearby, measured at several sizes at once</strong>. Picture standing in fog and asking how thick it is within arm&#39;s reach, then within a room, then within a street, then across a whole neighbourhood. Do that where you are standing, do it again in the direction of the sun, add the angle between your view and the sun, and that is everything the network gets.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="neural-cloud-descriptor">
@@ -915,20 +918,20 @@
                 <img src="../../blog/images/neural-cloud-debug-skylight.png" alt="Debug view showing how much sky light reaches each point inside the cloud" loading="lazy">
                 <figcaption>How much of the sky each point can still see. Deep inside the cloud, very little. This is why cloud undersides are soft grey instead of black.</figcaption>
             </figure>
-<h2 id="section-38-how-do-you-build-one" class="article-section section-heading" data-toc-level="2">How do you build one?</h2>
+<h2 id="section-39-how-do-you-build-one" class="article-section section-heading" data-toc-level="2">How do you build one?</h2>
 <p class="article-section section-paragraph">Four steps, and none of them are exotic.</p>
-<h3 id="section-40-1-build-the-slow-correct-version-first" class="article-section section-heading" data-toc-level="3">1. Build the slow correct version first</h3>
+<h3 id="section-41-1-build-the-slow-correct-version-first" class="article-section section-heading" data-toc-level="3">1. Build the slow correct version first</h3>
 <p class="article-section section-paragraph">Write the path tracer. It fires rays, bounces them thousands of times, and averages the result. It is slow and it does not need to be fast, because it never ships. It exists to generate truth, and later to be the thing you get scored against.</p>
 <p class="article-section section-paragraph">Skipping this step is tempting and it removes the only way to tell whether the network helped. &quot;It looks better&quot; is not a result.</p>
-<h3 id="section-43-2-decide-what-the-network-sees" class="article-section section-heading" data-toc-level="3">2. Decide what the network sees</h3>
+<h3 id="section-44-2-decide-what-the-network-sees" class="article-section section-heading" data-toc-level="3">2. Decide what the network sees</h3>
 <p class="article-section section-paragraph">Covered above. Few inputs, each one cheap to fetch, and nothing that ties the network to one particular asset.</p>
-<h3 id="section-45-3-train-it" class="article-section section-heading" data-toc-level="3">3. Train it</h3>
+<h3 id="section-46-3-train-it" class="article-section section-heading" data-toc-level="3">3. Train it</h3>
 <p class="article-section section-paragraph">Run the path tracer over a lot of points, save the answers, and fit the network to them. This is ordinary machine learning, in Python, offline, once. What comes out is a few hundred numbers that ship with the game like any other asset.</p>
 <details class="article-section section-details">
                 <summary>What &quot;a few hundred numbers&quot; means in practice</summary>
                 <div class="details-body"><p class="article-section section-paragraph">Thirteen inputs, two hidden layers of sixteen units each, three outputs. That works out at 512 multiply-accumulate operations per evaluation, and the weights fit comfortably into shader constants.</p><p class="article-section section-paragraph">Where the training samples come from matters more than how many there are. The first version spread them evenly through the cloud, but most of a cloud is deep interior that no camera ever sees, so most of the effort went into learning a part of the answer that never appears on screen. Choosing points the way a camera does, by sending a ray in and training where it first collides, moved accuracy on the bright visible regions from 0.34 to 0.70 with no change to the network at all.</p></div>
             </details>
-<h3 id="section-48-4-run-it-in-the-shader" class="article-section section-heading" data-toc-level="3">4. Run it in the shader</h3>
+<h3 id="section-49-4-run-it-in-the-shader" class="article-section section-heading" data-toc-level="3">4. Run it in the shader</h3>
 <p class="article-section section-paragraph">Load the weights into shader constants and write the multiply-adds out by hand. There is no framework and no dependency involved. A network this small is a couple of loops.</p>
 <details class="article-section section-details">
                 <summary>The actual inference code, in HLSL</summary>
@@ -983,7 +986,7 @@ float3 CloudNetEvaluate(<span class="keyword">float</span> descriptor[<span clas
 }</pre></div>
             </div><p class="article-section section-paragraph">The three outputs are sun light, sky light and bounced ground light. They share both hidden layers, so the second and third cost sixteen multiply-adds each and no extra texture reads.</p></div>
             </details>
-<h2 id="section-51-does-it-work" class="article-section section-heading" data-toc-level="2">Does it work?</h2>
+<h2 id="section-52-does-it-work" class="article-section section-heading" data-toc-level="2">Does it work?</h2>
 <p class="article-section section-paragraph">The usual way to judge a cloud renderer is to look at a screenshot, and that turns out to be close to useless. An approximation is not uniformly wrong. It is a set of curves that were tuned in one situation, and it behaves differently in others.</p>
 <p class="article-section section-paragraph">So instead of one screenshot, swing the sun all the way around the cloud and score both renderers against the path traced answer at every position. A score of 1.000 means the render matches the truth. Below 1 is too dark, above 1 is too bright.</p>
 <div class="article-section section-code">
@@ -1047,7 +1050,7 @@ float3 CloudNetEvaluate(<span class="keyword">float</span> descriptor[<span clas
     <span class="number">180</span>           <span class="number">2.8441</span>    <span class="number">1.3775</span></pre></div>
             </div><p class="article-section section-paragraph">The neural version wins at every angle on RMSE as well as on average brightness, by a factor of about four front lit and two everywhere else. It wins looking into the sun too, at 1.38 against 2.84, even though that is the angle where both are furthest from the truth.</p><p class="article-section section-paragraph">The caveat, stated rather than buried: the approximation is running conventional parameters rather than ones fitted to this particular reference. Fitting them would lift the curve. It would not change the shape of it, which is the actual claim, since no single set of constants can track a quantity that changes character between front lit and backlit. But it has not been done.</p></div>
             </details>
-<h2 id="section-64-is-it-fast-enough" class="article-section section-heading" data-toc-level="2">Is it fast enough?</h2>
+<h2 id="section-65-is-it-fast-enough" class="article-section section-heading" data-toc-level="2">Is it fast enough?</h2>
 <p class="article-section section-paragraph">Almost. It costs about a fifth more than the approximation it replaces, and the reason it costs anything at all is about tooling rather than about the method.</p>
 <p class="article-section section-paragraph">On texture reads the neural version comes out ahead. The usual approximation needs fourteen of them per step: six walking a second ray toward the sun to find out how shadowed the point is, then four up and four down for ambient light. Those are sequential, so each one has to finish before the next can start. The network needs twelve, and they are independent, so the graphics card can start all of them at once and let them overlap.</p>
 <div class="article-section section-code">
@@ -1082,7 +1085,7 @@ float3 CloudNetEvaluate(<span class="keyword">float</span> descriptor[<span clas
 <aside class="article-section section-callout info">
                 <p>This is the honest state of neural shading in Unity in 2026. The hardware exists, the APIs exist, and the engine has not exposed them yet. If you are evaluating the technique for production today, budget for the scalar cost. If you are evaluating it for a project shipping in two years, the arithmetic is probably free by then.</p>
             </aside>
-<h2 id="section-77-how-do-you-do-this-in-unity" class="article-section section-heading" data-toc-level="2">How do you do this in Unity?</h2>
+<h2 id="section-78-how-do-you-do-this-in-unity" class="article-section section-heading" data-toc-level="2">How do you do this in Unity?</h2>
 <p class="article-section section-paragraph">None of this needs a special pipeline, a vendor extension, or a recent graphics card. It runs on Unity 6 with URP, and would run on Built-in with small changes.</p>
 <ul class="article-section section-list"><li><strong>The weights are just an asset.</strong> Training writes a small binary file, it goes into the project like any other, and a script uploads it into shader constants on load.</li>
 <li><strong>Inference is plain HLSL.</strong> No compute shader and no package dependency, just two unrolled loops in an ordinary fragment shader. That is also the reason it is not as fast as it could be: the matrix work is written out by hand because Unity does not expose the hardware path for it.</li>
@@ -1092,12 +1095,12 @@ float3 CloudNetEvaluate(<span class="keyword">float</span> descriptor[<span clas
                 <summary>Getting weights into shader constants without falling over</summary>
                 <div class="details-body"><p class="article-section section-paragraph">Shader constant arrays have a fixed length, and that length is decided by the first upload of the session. Growing the layout later leaves the new slots reading zero in an editor that is already running. The result is a spectacular white blob rather than an error message, and from the C# side the upload appears to have succeeded.</p><p class="article-section section-paragraph">Two guards make this survivable. The array is padded to a fixed size so its length no longer depends on the network shape, and the last slot carries a sentinel value the shader checks before trusting anything. When the sentinel is missing the shader falls back to the ordinary approximation instead of rendering nonsense.</p><p class="article-section section-paragraph">Neither guard resizes an array that has already been allocated, so changing the layout still means restarting the editor once.</p></div>
             </details>
-<h2 id="section-81-what-went-wrong-along-the-way" class="article-section section-heading" data-toc-level="2">What went wrong along the way</h2>
+<h2 id="section-82-what-went-wrong-along-the-way" class="article-section section-heading" data-toc-level="2">What went wrong along the way</h2>
 <p class="article-section section-paragraph">Almost none of the difficulty was the network being too small or the training data being too thin. It was a series of specific, quiet mistakes, and these are the ones worth passing on.</p>
-<h3 id="section-83-never-transform-the-thing-you-are-predicting" class="article-section section-heading" data-toc-level="3">Never transform the thing you are predicting</h3>
+<h3 id="section-84-never-transform-the-thing-you-are-predicting" class="article-section section-heading" data-toc-level="3">Never transform the thing you are predicting</h3>
 <p class="article-section section-paragraph">The correct answers had a very lopsided distribution, so fitting the cube root of them looked sensible. It cost <strong>half the light in the final render</strong>.</p>
 <p class="article-section section-paragraph">The reason is worth knowing because it applies to any fitting problem. Training answers come from a random simulation, so each one is slightly noisy. Cube root is a curve that bends, and averaging noisy numbers through a bending curve does not give you the curve of the average. Cubing afterwards does not undo it either, because the damage was done by the noise rather than by the transform. Going back to fitting the raw values, with nothing else changed, took the render from half the correct brightness to exactly right.</p>
-<h3 id="section-86-the-activation-function-shows-up-in-the-picture" class="article-section section-heading" data-toc-level="3">The activation function shows up in the picture</h3>
+<h3 id="section-87-the-activation-function-shows-up-in-the-picture" class="article-section section-heading" data-toc-level="3">The activation function shows up in the picture</h3>
 <p class="article-section section-paragraph">The standard building block in small networks is ReLU. Using it here made the network piecewise flat, and walking a ray through a piecewise flat field draws the seams. The cloud came out with faint shell-shaped creases following its surface. Squaring the ReLU costs one extra multiply and removes them completely.</p>
 <aside class="article-section section-callout warning">
                 <p>The tempting fix is Leaky ReLU, which is the standard recommendation almost everywhere including NVIDIA&#39;s own neural shading guide. It solves a different problem and brings the creases straight back, because the function is still made of flat pieces. The right answer for a network that outputs a number is not always the right answer for one that outputs a field you are going to walk through.</p>
@@ -1110,7 +1113,7 @@ float3 CloudNetEvaluate(<span class="keyword">float</span> descriptor[<span clas
                 </div>
                 <figcaption>Flat-sided activations leave seams in the render</figcaption>
             </figure>
-<h3 id="section-90-a-smooth-quantity-can-still-need-a-lot-of-samples" class="article-section section-heading" data-toc-level="3">A smooth quantity can still need a lot of samples</h3>
+<h3 id="section-91-a-smooth-quantity-can-still-need-a-lot-of-samples" class="article-section section-heading" data-toc-level="3">A smooth quantity can still need a lot of samples</h3>
 <p class="article-section section-paragraph">Part of what the network predicts is how much sky light reaches a point. That quantity varies smoothly, so estimating it from only a few light paths seemed reasonable.</p>
 <p class="article-section section-paragraph">The quantity is smooth, but the estimate of it is a coin flip: each path either escapes to the sky or it does not, with nothing in between. Averaging eight coin flips is very noisy however smooth the true answer underneath happens to be.</p>
 <figure class="article-section section-svg-diagram" data-diagram-id="neural-cloud-bernoulli">
@@ -1138,10 +1141,10 @@ float3 CloudNetEvaluate(<span class="keyword">float</span> descriptor[<span clas
     <span class="number">8</span> paths  -&gt;  <span class="number">0.79</span>        <span class="number">64</span> paths  -&gt;  <span class="number">0.98</span></pre></div>
             </div><p class="article-section section-paragraph">On an eight-path dataset the network reproduced only half the variation in the real answer, while every average-brightness check reported that everything was fine. An average is blind to this. The model was not underfitting, it was correctly fitting a target that had half its information replaced by noise.</p></div>
             </details>
-<h3 id="section-95-test-on-something-genuinely-unseen" class="article-section section-heading" data-toc-level="3">Test on something genuinely unseen</h3>
+<h3 id="section-96-test-on-something-genuinely-unseen" class="article-section section-heading" data-toc-level="3">Test on something genuinely unseen</h3>
 <p class="article-section section-paragraph">To check that the network generalises, one cloud shape is held out of training. The first version held out the last shape in the list, which happened to be both the thickest and the largest. That measures extrapolation rather than generalisation, and it failed badly.</p>
 <p class="article-section section-paragraph">Taken at face value the failure said the network was too small and needed to be bigger, which would have meant a rewrite. Holding out a shape from the middle of the range instead showed the opposite: making the network bigger buys nothing here. A wider one scored very slightly worse.</p>
-<h2 id="section-98-what-else-can-you-do-with-this" class="article-section section-heading" data-toc-level="2">What else can you do with this?</h2>
+<h2 id="section-99-what-else-can-you-do-with-this" class="article-section section-heading" data-toc-level="2">What else can you do with this?</h2>
 <p class="article-section section-paragraph">Clouds are one instance of a shape that turns up everywhere: <strong>the correct answer exists, it is a simulation, and the simulation is too slow.</strong> Once you start looking for that shape it is difficult to stop finding it.</p>
 <ul class="article-section section-list"><li><strong>Skin, wax, marble, milk.</strong> Light entering a surface, bouncing around inside and leaving somewhere else is the same physics as a cloud at a smaller scale. Real-time renderers approximate it with a blur whose width was chosen by eye. The correct answer is a simulation nobody can afford per frame.</li>
 <li><strong>Textures.</strong> NVIDIA&#39;s neural texture compression stores a material as network weights instead of pixels and decompresses it while shading, several times smaller than the block formats everyone uses today. That one is already shipping.</li>
@@ -1154,11 +1157,12 @@ float3 CloudNetEvaluate(<span class="keyword">float</span> descriptor[<span clas
                 <summary>Where this particular cloud stops</summary>
                 <div class="details-body"><p class="article-section section-paragraph">The material is baked into the weights. How reflective the droplets are and how strongly they scatter forward are not inputs, so changing them leaves the network answering confidently about a material it has never seen. They stay locked.</p><p class="article-section section-paragraph">The sky is simplified to two bands, above and below the horizon, so a cloud lit by a bright sunset on one side and dark sky on the other has detail two numbers cannot express.</p><p class="article-section section-paragraph">Looking straight into the sun is the hardest case, because a single very bright forward spike dominates there and a network spreads its effort across everything rather than nailing a spike. The weights used here were trained on this one cloud, which handles it well; a network trained across many shapes at once has more trouble with it. The general fix is to stop asking the network to predict the easy part, since the first bounce of light has an exact formula and can be computed directly, leaving the network only what comes after.</p><p class="article-section section-paragraph">And there is no level of detail system, so this handles one cloud close up rather than a sky full of them.</p></div>
             </details>
-<h2 id="section-104-why-this-matters-beyond-clouds" class="article-section section-heading" data-toc-level="2">Why this matters beyond clouds</h2>
+<h2 id="section-105-why-this-matters-beyond-clouds" class="article-section section-heading" data-toc-level="2">Why this matters beyond clouds</h2>
 <p class="article-section section-paragraph">The cloud is a worked example. The pattern under it is reusable anywhere the honest answer is a simulation you cannot afford and the situation can be described in a handful of numbers. Subsurface scattering, layered materials, indirect light and cloth all have that shape. Run the simulation offline, train something small to reproduce it, and the expensive part moves from runtime to training time, which is a cost you pay once.</p>
 <p class="article-section section-paragraph">What makes a result like this trustworthy is not the network. It is replacing exactly one quantity, keeping everything else identical, building the slow correct version first, and then measuring across a whole range of situations rather than picking a flattering screenshot.</p>
 <p class="article-section section-paragraph">The most interesting thing to come out of it is not that a network beat an approximation, which was always likely given enough correct answers to learn from. It is that the approximation everyone ships is off by a factor of ten depending on where the sun is, and that is not something a screenshot was ever going to reveal.</p>
-<h2 id="section-108-where-to-read-more" class="article-section section-heading" data-toc-level="2">Where to read more</h2>
+<h2 id="section-109-where-to-read-more" class="article-section section-heading" data-toc-level="2">Where to read more</h2>
+<p class="article-section section-paragraph">The code for everything above is at <a href="https://github.com/CharlesGrs/neural-clouds" target="_blank" rel="noopener"><strong>github.com/CharlesGrs/neural-clouds</strong></a>, MIT licensed. It includes the Unity package, the offline trainer, and the workbench that runs the sun sweep and the benchmark, so every number here can be re-measured rather than taken on trust.</p>
 <p class="article-section section-paragraph">NVIDIA&#39;s <a href="https://developer.nvidia.com/blog/how-to-get-started-with-neural-shading-for-your-game-or-application/" target="_blank" rel="noopener">How to Get Started with Neural Shading</a> is the best introduction to the wider technique, and covers the parts this article deliberately worked around: cooperative vectors, the tensor hardware underneath them, and Slang, which is the shading language built to target that path. It walks through a much smaller worked example than a cloud, which makes it a good place to start before building something.</p>
 <p class="article-section section-paragraph">The difference in approach is worth knowing about. That guide shows the technique on the hardware designed for it. This article shows what happens when you build the same thing in an engine with none of that available, measure it honestly against a path traced reference, and find out it still wins on quality while costing about a fifth more.</p>
                 </div>
@@ -1172,26 +1176,26 @@ float3 CloudNetEvaluate(<span class="keyword">float</span> descriptor[<span clas
                 <span class="toc-header-title">Contents</span>
             </div>
             <nav class="toc-nav">
-                <a class="toc-item" href="#section-7-what-is-a-neural-shader" data-target="section-7-what-is-a-neural-shader">What is a neural shader?</a>
-                    <a class="toc-item" href="#section-12-why-clouds" data-target="section-12-why-clouds">Why clouds?</a>
-                    <a class="toc-item" href="#section-19-what-exactly-gets-replaced" data-target="section-19-what-exactly-gets-replaced">What exactly gets replaced?</a>
-                    <a class="toc-item" href="#section-28-what-does-the-network-look-at" data-target="section-28-what-does-the-network-look-at">What does the network look at?</a>
-                    <a class="toc-item" href="#section-38-how-do-you-build-one" data-target="section-38-how-do-you-build-one">How do you build one?</a>
-                    <a class="toc-item toc-subchapter" href="#section-40-1-build-the-slow-correct-version-first" data-target="section-40-1-build-the-slow-correct-version-first">1. Build the slow correct version first</a>
-                    <a class="toc-item toc-subchapter" href="#section-43-2-decide-what-the-network-sees" data-target="section-43-2-decide-what-the-network-sees">2. Decide what the network sees</a>
-                    <a class="toc-item toc-subchapter" href="#section-45-3-train-it" data-target="section-45-3-train-it">3. Train it</a>
-                    <a class="toc-item toc-subchapter" href="#section-48-4-run-it-in-the-shader" data-target="section-48-4-run-it-in-the-shader">4. Run it in the shader</a>
-                    <a class="toc-item" href="#section-51-does-it-work" data-target="section-51-does-it-work">Does it work?</a>
-                    <a class="toc-item" href="#section-64-is-it-fast-enough" data-target="section-64-is-it-fast-enough">Is it fast enough?</a>
-                    <a class="toc-item" href="#section-77-how-do-you-do-this-in-unity" data-target="section-77-how-do-you-do-this-in-unity">How do you do this in Unity?</a>
-                    <a class="toc-item" href="#section-81-what-went-wrong-along-the-way" data-target="section-81-what-went-wrong-along-the-way">What went wrong along the way</a>
-                    <a class="toc-item toc-subchapter" href="#section-83-never-transform-the-thing-you-are-predicting" data-target="section-83-never-transform-the-thing-you-are-predicting">Never transform the thing you are predicting</a>
-                    <a class="toc-item toc-subchapter" href="#section-86-the-activation-function-shows-up-in-the-picture" data-target="section-86-the-activation-function-shows-up-in-the-picture">The activation function shows up in the picture</a>
-                    <a class="toc-item toc-subchapter" href="#section-90-a-smooth-quantity-can-still-need-a-lot-of-samples" data-target="section-90-a-smooth-quantity-can-still-need-a-lot-of-samples">A smooth quantity can still need a lot of samples</a>
-                    <a class="toc-item toc-subchapter" href="#section-95-test-on-something-genuinely-unseen" data-target="section-95-test-on-something-genuinely-unseen">Test on something genuinely unseen</a>
-                    <a class="toc-item" href="#section-98-what-else-can-you-do-with-this" data-target="section-98-what-else-can-you-do-with-this">What else can you do with this?</a>
-                    <a class="toc-item" href="#section-104-why-this-matters-beyond-clouds" data-target="section-104-why-this-matters-beyond-clouds">Why this matters beyond clouds</a>
-                    <a class="toc-item" href="#section-108-where-to-read-more" data-target="section-108-where-to-read-more">Where to read more</a>
+                <a class="toc-item" href="#section-8-what-is-a-neural-shader" data-target="section-8-what-is-a-neural-shader">What is a neural shader?</a>
+                    <a class="toc-item" href="#section-13-why-clouds" data-target="section-13-why-clouds">Why clouds?</a>
+                    <a class="toc-item" href="#section-20-what-exactly-gets-replaced" data-target="section-20-what-exactly-gets-replaced">What exactly gets replaced?</a>
+                    <a class="toc-item" href="#section-29-what-does-the-network-look-at" data-target="section-29-what-does-the-network-look-at">What does the network look at?</a>
+                    <a class="toc-item" href="#section-39-how-do-you-build-one" data-target="section-39-how-do-you-build-one">How do you build one?</a>
+                    <a class="toc-item toc-subchapter" href="#section-41-1-build-the-slow-correct-version-first" data-target="section-41-1-build-the-slow-correct-version-first">1. Build the slow correct version first</a>
+                    <a class="toc-item toc-subchapter" href="#section-44-2-decide-what-the-network-sees" data-target="section-44-2-decide-what-the-network-sees">2. Decide what the network sees</a>
+                    <a class="toc-item toc-subchapter" href="#section-46-3-train-it" data-target="section-46-3-train-it">3. Train it</a>
+                    <a class="toc-item toc-subchapter" href="#section-49-4-run-it-in-the-shader" data-target="section-49-4-run-it-in-the-shader">4. Run it in the shader</a>
+                    <a class="toc-item" href="#section-52-does-it-work" data-target="section-52-does-it-work">Does it work?</a>
+                    <a class="toc-item" href="#section-65-is-it-fast-enough" data-target="section-65-is-it-fast-enough">Is it fast enough?</a>
+                    <a class="toc-item" href="#section-78-how-do-you-do-this-in-unity" data-target="section-78-how-do-you-do-this-in-unity">How do you do this in Unity?</a>
+                    <a class="toc-item" href="#section-82-what-went-wrong-along-the-way" data-target="section-82-what-went-wrong-along-the-way">What went wrong along the way</a>
+                    <a class="toc-item toc-subchapter" href="#section-84-never-transform-the-thing-you-are-predicting" data-target="section-84-never-transform-the-thing-you-are-predicting">Never transform the thing you are predicting</a>
+                    <a class="toc-item toc-subchapter" href="#section-87-the-activation-function-shows-up-in-the-picture" data-target="section-87-the-activation-function-shows-up-in-the-picture">The activation function shows up in the picture</a>
+                    <a class="toc-item toc-subchapter" href="#section-91-a-smooth-quantity-can-still-need-a-lot-of-samples" data-target="section-91-a-smooth-quantity-can-still-need-a-lot-of-samples">A smooth quantity can still need a lot of samples</a>
+                    <a class="toc-item toc-subchapter" href="#section-96-test-on-something-genuinely-unseen" data-target="section-96-test-on-something-genuinely-unseen">Test on something genuinely unseen</a>
+                    <a class="toc-item" href="#section-99-what-else-can-you-do-with-this" data-target="section-99-what-else-can-you-do-with-this">What else can you do with this?</a>
+                    <a class="toc-item" href="#section-105-why-this-matters-beyond-clouds" data-target="section-105-why-this-matters-beyond-clouds">Why this matters beyond clouds</a>
+                    <a class="toc-item" href="#section-109-where-to-read-more" data-target="section-109-where-to-read-more">Where to read more</a>
             </nav>
         </aside>
         </div>

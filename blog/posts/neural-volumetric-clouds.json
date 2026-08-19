@@ -46,6 +46,11 @@
       "content": "The result, up front. The approximation real-time renderers ship today is off by a factor of **ten** depending on where the sun sits: a fifth of the correct brightness with the sun behind the camera, and more than twice too bright looking straight into it. The trained version holds within about **five percent** across almost the whole range, for about **20% more GPU time**."
     },
     {
+      "type": "callout",
+      "variant": "info",
+      "content": "All of it is on GitHub, MIT licensed: [**CharlesGrs/neural-clouds**](https://github.com/CharlesGrs/neural-clouds). The renderer, the path traced reference, the trainer, and the editor harness that produced every number in this article."
+    },
+    {
       "type": "paragraph",
       "content": "This article builds one end to end, on a cloud, and then checks it against the slow correct answer to find out how close it really gets."
     },
@@ -684,6 +689,10 @@
       "type": "heading",
       "level": 2,
       "content": "Where to read more"
+    },
+    {
+      "type": "paragraph",
+      "content": "The code for everything above is at [**github.com/CharlesGrs/neural-clouds**](https://github.com/CharlesGrs/neural-clouds), MIT licensed. It includes the Unity package, the offline trainer, and the workbench that runs the sun sweep and the benchmark, so every number here can be re-measured rather than taken on trust."
     },
     {
       "type": "paragraph",
