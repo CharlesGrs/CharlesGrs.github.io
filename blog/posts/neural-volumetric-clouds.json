@@ -38,7 +38,7 @@
       "src": "neural-cloud-turntable.mp4",
       "webm": "neural-cloud-turntable.webm",
       "poster": "neural-cloud-turntable-poster.png",
-      "caption": "Left is the correct answer from a path tracer. Middle is the approximation games ship. Right is a small neural network trained to reproduce the left one. Watch the percentages as the camera goes round: the middle one drifts, the right one does not."
+      "caption": "Left is the correct answer from a path tracer at 512 samples per pixel. Middle is the approximation games ship. Right is a small neural network trained to reproduce the left one. Watch the percentages as the camera goes round: the middle one drifts from 27% to 96% of the true brightness, the right one stays put. The grain on the left is the path tracer's own noise, and this eight second loop took forty five minutes to render."
     },
     {
       "type": "callout",

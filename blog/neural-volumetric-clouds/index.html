@@ -747,7 +747,7 @@
                     <source src="../../blog/videos/neural-cloud-turntable.webm" type="video/webm">
                     <source src="../../blog/videos/neural-cloud-turntable.mp4" type="video/mp4">
                 </video>
-                <figcaption>Left is the correct answer from a path tracer. Middle is the approximation games ship. Right is a small neural network trained to reproduce the left one. Watch the percentages as the camera goes round: the middle one drifts, the right one does not.</figcaption>
+                <figcaption>Left is the correct answer from a path tracer at 512 samples per pixel. Middle is the approximation games ship. Right is a small neural network trained to reproduce the left one. Watch the percentages as the camera goes round: the middle one drifts from 27% to 96% of the true brightness, the right one stays put. The grain on the left is the path tracer&#39;s own noise, and this eight second loop took forty five minutes to render.</figcaption>
             </figure>
 <aside class="article-section section-callout info">
                 <p>The result, up front. The approximation real-time renderers ship today is off by a factor of <strong>ten</strong> depending on where the sun sits: a fifth of the correct brightness with the sun behind the camera, and more than twice too bright looking straight into it. The trained version holds within about <strong>five percent</strong> across almost the whole range, for about <strong>20% more GPU time</strong>.</p>
