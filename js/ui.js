@@ -268,12 +268,12 @@
         { text: ' — the studio AAA teams call when ', highlight: false },
         { text: 'performance is non-negotiable', highlight: true },
         { text: '.', highlight: false, pauseAfter: 500 },
-        { text: ' 8+ years pushing pixels for ', highlight: false },
-        { text: 'Meta', highlight: true },
-        { text: ', ', highlight: false },
+        { text: ' 7+ years pushing pixels for ', highlight: false },
         { text: 'Ubisoft', highlight: true },
         { text: ', ', highlight: false },
         { text: 'Nexus Studios', highlight: true },
+        { text: ', ', highlight: false },
+        { text: '22cans', highlight: true },
         { text: ', and ', highlight: false },
         { text: '12+ studios worldwide', highlight: true },
         { text: '.', highlight: false, pauseAfter: 600 },
@@ -289,20 +289,27 @@
         { text: '. ', highlight: false },
         { text: '15× faster light baking', highlight: true },
         { text: '.', highlight: false, pauseAfter: 600 },
-        { text: ' Video games, VR, ', highlight: false },
-        { text: 'Web3', highlight: true },
+        { text: ' Games, VR, ', highlight: false },
+        { text: 'WebGPU', highlight: true },
         { text: ', projection mapping — if it runs on a GPU, I optimize it.', highlight: false, pauseAfter: 500 },
+        { text: ' I also build ', highlight: false },
+        { text: 'AI agents and Python backends', highlight: true },
+        { text: ' that run real businesses.', highlight: false, pauseAfter: 500 },
         { text: ' Latest: ', highlight: false },
-        { text: 'Blumhouse Enhanced Cinema', highlight: true },
-        { text: ' on ', highlight: false },
-        { text: 'Meta Quest 3', highlight: true },
-        { text: '.', highlight: false }
+        { text: 'CTO at Events Arena', highlight: true },
+        { text: ' and ', highlight: false },
+        { text: 'HYPERDRYFT', highlight: true },
+        { text: ', a WebGPU live-visuals engine.', highlight: false }
     ];
 
     const typos = [
         { pos: 35, wrong: 'z', correct: 's' },
         { pos: 120, wrong: 'n', correct: 'm' },
     ];
+
+    // The HTML carries the same bio as static text for crawlers and
+    // link previews; clear it before the typed version takes over.
+    container.textContent = '';
 
     // Create invisible placeholder to reserve space for full text
     const placeholder = document.createElement('span');
