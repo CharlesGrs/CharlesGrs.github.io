@@ -38,7 +38,7 @@
       "src": "neural-cloud-turntable.mp4",
       "webm": "neural-cloud-turntable.webm",
       "poster": "neural-cloud-turntable-poster.png",
-      "caption": "Left is the correct answer from a path tracer. Middle is the approximation games ship. Right is a small neural network trained to reproduce the left one. The top row is how right each one is, the bottom row is what it costs. Watch the middle number as the camera goes round: it falls to 30% of the true brightness and climbs back, while the right one stays put. The grain on the left is the path tracer's own noise."
+      "caption": "Left is the correct answer from a path tracer. Middle is a common approximation used in games. Right is a small neural network trained to reproduce the left one. The top row is how right each one is, the bottom row is what it costs. Watch the middle number as the camera goes round: it falls to 30% of the true brightness and climbs back, while the right one stays put. The grain on the left is the path tracer's own noise."
     },
     {
       "type": "callout",
@@ -362,7 +362,7 @@
     },
     {
       "type": "paragraph",
-      "content": "One limit on these numbers: the network was trained on this one cloud and is scored on it here, while the approximation gets no such advantage. This article gives no score for a cloud the network has never seen."
+      "content": "Two things to know about these numbers. The approximation is Henyey-Greenstein plus three of Wrenninge's multiple scattering octaves, which is one common approach, not the only one and not necessarily the best. And the network was trained on this one cloud and is scored on it here, while the approximation's constants were fitted on an earlier setup. Scores on a cloud the network never saw are under *Test on something genuinely unseen*, and they are data scores rather than a rendered sweep."
     },
     {
       "type": "paragraph",
@@ -372,11 +372,11 @@
       "type": "image",
       "src": "neural-cloud-front.png",
       "alt": "Path traced reference, the usual approximation, and the neural version, front lit",
-      "caption": "Left is the path traced truth. Middle is the approximation games use today. Right is the neural version. Same cloud, same ray walking, same everything except one calculation."
+      "caption": "Left is the path traced truth. Middle is a common approximation used in games. Right is the neural version. Same cloud, same ray walking, same everything except one calculation."
     },
     {
       "type": "paragraph",
-      "content": "The middle image is worth sitting with, because there is nothing obviously wrong with it. Without the left one for comparison it would pass without comment. It is simply *grey where it should be white*, and tuning cannot fix that everywhere at once, because the error moves as the sun does."
+      "content": "The middle image is worth sitting with, because there is nothing obviously wrong with it. Without the left one for comparison it would pass without comment. It is simply *grey where it should be white*, and no single set of constants can fix that everywhere at once, because the error moves as the sun does."
     },
     {
       "type": "paragraph",
@@ -422,7 +422,7 @@
         },
         {
           "type": "paragraph",
-          "content": "The caveat, stated rather than buried: the approximation is running conventional parameters rather than ones fitted to this particular reference. Fitting them would lift the curve. It would not change the shape of it, which is the actual claim, since no single set of constants can track a quantity that changes character between front lit and backlit. But it has not been done."
+          "content": "The caveat, stated rather than buried: the approximation's three octave falloffs are 0.4, 0.35 and 0.1, for extinction, brightness and phase. They replace the conventional 0.5, 0.5 and 0.6, and were fitted against a path traced reference at sun angles of 0, 90 and 180 degrees on an earlier setup, not on this exact shot. Fitting did not flatten the curve. A correction term that changes with the sun angle might remove much of the brightness error, and that has not been measured here."
         }
       ]
     },
@@ -612,11 +612,15 @@
     },
     {
       "type": "paragraph",
-      "content": "To check that the network generalises, one cloud shape is held out of training. The first version held out the last shape in the list, which happened to be the most optically thick one, and that put it outside the training data on every axis at once. That measures extrapolation rather than generalisation, so the low score said more about the test than about the network."
+      "content": "To check that the network generalises, one cloud shape is held out of training. The first version held out the last shape in the list, which happened to be the most optically thick one, and that put it outside the training data on every axis at once. That measures extrapolation rather than generalisation, so the low score, 0.02 correlation on the split between sky and ground light, said more about the test than about the network."
     },
     {
       "type": "paragraph",
       "content": "Taken at face value that score said the network was too small and needed to be bigger, which would have meant a rewrite. Holding out a shape from the middle of the range instead showed the opposite: making the network bigger buys nothing here. A wider one scored very slightly worse."
+    },
+    {
+      "type": "paragraph",
+      "content": "On that fairer test, a network of this size trained across 22 shapes scored 0.86 correlation on the sun light and 0.52 on the sky and ground split, with the sun's average brightness at 0.996. Weights trained on a single shape scored 0.70 and -0.10 on the same unseen cloud, against 0.86 and 0.62 on their own shape. These compare the network with training data rather than rendered images, and they are not the weights in the video, which come from a later single-cloud run."
     },
     {
       "type": "heading",
