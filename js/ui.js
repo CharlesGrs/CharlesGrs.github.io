@@ -263,49 +263,33 @@
     if (!container) return;
 
     const fullText = [
-        { text: 'Founder of ', highlight: false },
-        { text: 'Zylaris Ltd', highlight: true },
-        { text: ' — the studio AAA teams call when ', highlight: false },
-        { text: 'performance is non-negotiable', highlight: true },
-        { text: '.', highlight: false, pauseAfter: 500 },
-        { text: ' 7+ years pushing pixels for ', highlight: false },
-        { text: 'Ubisoft', highlight: true },
-        { text: ', ', highlight: false },
+        { text: 'I’ve been ', highlight: false },
+        { text: 'drawing with mathematics', highlight: true },
+        { text: ' for years, and since 2020 it has been my job.', highlight: false, pauseAfter: 500 },
+        { text: ' At ', highlight: false },
         { text: 'Nexus Studios', highlight: true },
-        { text: ', ', highlight: false },
+        { text: ' I worked on ', highlight: false },
+        { text: 'Blumhouse Enhanced Cinema', highlight: true },
+        { text: ' for Meta Quest, nominated for a ', highlight: false },
+        { text: '2026 Primetime Emmy', highlight: true },
+        { text: '.', highlight: false, pauseAfter: 600 },
+        { text: ' Before that I led the team behind a ', highlight: false },
+        { text: '360° projection installation', highlight: true },
+        { text: ' at SABDA, and worked on shaders, lighting and VFX at ', highlight: false },
         { text: '22cans', highlight: true },
-        { text: ', and ', highlight: false },
-        { text: '12+ studios worldwide', highlight: true },
-        { text: '.', highlight: false, pauseAfter: 600 },
-        { text: ' From ', highlight: false },
-        { text: '90 FPS VR', highlight: true },
-        { text: ' on Quest to ', highlight: false },
-        { text: '16K immersive installations', highlight: true },
-        { text: ' — I build rendering systems that ship.', highlight: false, pauseAfter: 500 },
-        { text: ' ', highlight: false },
-        { text: '100+ shaders', highlight: true },
-        { text: ' delivered. ', highlight: false },
-        { text: '70% average performance gains', highlight: true },
-        { text: '. ', highlight: false },
-        { text: '15× faster light baking', highlight: true },
-        { text: '.', highlight: false, pauseAfter: 600 },
-        { text: ' Games, VR, ', highlight: false },
-        { text: 'WebGPU', highlight: true },
-        { text: ', projection mapping — if it runs on a GPU, I optimize it.', highlight: false, pauseAfter: 500 },
-        { text: ' I also build ', highlight: false },
-        { text: 'AI agents and Python backends', highlight: true },
-        { text: ' that run real businesses.', highlight: false, pauseAfter: 500 },
-        { text: ' Latest: ', highlight: false },
-        { text: 'CTO at Events Arena', highlight: true },
+        { text: ', ', highlight: false },
+        { text: 'The Sandbox', highlight: true },
         { text: ' and ', highlight: false },
+        { text: 'Ubisoft', highlight: true },
+        { text: '.', highlight: false, pauseAfter: 500 },
+        { text: ' I also co-founded ', highlight: false },
         { text: 'HYPERDRYFT', highlight: true },
-        { text: ', a WebGPU live-visuals engine.', highlight: false }
+        { text: ', a live-visuals engine on WebGPU, and I’m CTO of ', highlight: false },
+        { text: 'Events Arena', highlight: true },
+        { text: '.', highlight: false }
     ];
 
-    const typos = [
-        { pos: 35, wrong: 'z', correct: 's' },
-        { pos: 120, wrong: 'n', correct: 'm' },
-    ];
+    const typos = [];
 
     // The HTML carries the same bio as static text for crawlers and
     // link previews; clear it before the typed version takes over.

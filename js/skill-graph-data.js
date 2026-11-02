@@ -7,7 +7,7 @@ window.skillGraphData = {
     skills: [
         // === SUNS (3 main hubs) - Kelvin temperature colors ===
         { id: 'unity', label: 'Unity', category: 'primary', baseSize: 45, isLight: true, lightColor: '#aaccff',
-          desc: 'Primary game engine', usage: 'Daily since 2017 - shipped 12+ titles across mobile, PC, and VR platforms' },
+          desc: 'Primary game engine', usage: 'My main engine since 2020, on mobile, PC, VR and projection rooms' },
         { id: 'unreal', label: 'Unreal', category: 'primary', baseSize: 35, isLight: true, lightColor: '#ff6030',
           desc: 'Secondary engine', usage: 'Blueprint systems and material editor for specific projects' },
         { id: 'graphics', label: 'Graphics APIs', category: 'primary', baseSize: 40, isLight: true, lightColor: '#ffcc66',
@@ -15,9 +15,9 @@ window.skillGraphData = {
 
         // === Unity ecosystem ===
         { id: 'csharp', label: 'C#', category: 'secondary', baseSize: 16, color: '#2dd4bf',
-          desc: 'Main programming language', usage: '7+ years - gameplay systems, editor tools, and performance-critical code' },
+          desc: 'Main programming language', usage: 'Gameplay systems, editor tools, and performance-critical code' },
         { id: 'hdrp', label: 'HDRP', category: 'secondary', baseSize: 12, color: '#f472b6',
-          desc: 'High Definition Render Pipeline', usage: 'AAA-quality visuals for high-end platforms' },
+          desc: 'High Definition Render Pipeline', usage: 'High-end visuals, cloth and interior lighting' },
         { id: 'urp', label: 'URP', category: 'secondary', baseSize: 11, color: '#fb923c',
           desc: 'Universal Render Pipeline', usage: 'Optimized rendering for mobile and cross-platform' },
         { id: 'vfx', label: 'VFX Graph', category: 'secondary', baseSize: 10, color: '#3bc9a5',
@@ -37,7 +37,7 @@ window.skillGraphData = {
         { id: 'glsl', label: 'GLSL', category: 'secondary', baseSize: 12, color: '#a855f7',
           desc: 'OpenGL shader language', usage: 'Cross-platform shaders and WebGL effects' },
         { id: 'directx', label: 'DirectX', category: 'secondary', baseSize: 13, color: '#5090e0',
-          desc: 'Graphics API', usage: 'DX11/DX12 for Windows and Xbox development' },
+          desc: 'Graphics API', usage: 'DX11/DX12 on Windows' },
         { id: 'opengl', label: 'OpenGL', category: 'secondary', baseSize: 10, color: '#5c7cfa',
           desc: 'Cross-platform graphics', usage: 'Mobile and desktop rendering' },
         { id: 'compute', label: 'Compute', category: 'secondary', baseSize: 10, color: '#38d9a9',

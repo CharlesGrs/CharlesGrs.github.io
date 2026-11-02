@@ -8916,3 +8916,37 @@ footer {
     color: var(--accent-teal);
     font-weight: 600;
 }
+
+/* About panel: the selected credit and the articles */
+.credit { display: flex; align-items: center; gap: 1rem; color: inherit; text-decoration: none; }
+.credit img { flex: 0 0 46%; width: 46%; height: auto; aspect-ratio: 1240 / 579; object-fit: cover; border-radius: 6px; display: block; }
+.credit-text { display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
+.credit-text strong { color: var(--text-primary); font-size: 1rem; font-weight: 600; }
+.credit-text span { color: var(--text-secondary); font-size: 0.85rem; line-height: 1.45; }
+.credit:hover strong, .credit:focus-visible strong { color: var(--accent-gold); }
+.article-link { display: flex; flex-direction: column; gap: 0.2rem; padding: 0.6rem 0.75rem; background: rgba(0, 0, 0, 0.25); border-radius: 6px; color: inherit; text-decoration: none; }
+.article-link strong { color: var(--text-primary); font-size: 0.85rem; font-weight: 600; line-height: 1.3; }
+.article-link span { color: var(--text-secondary); font-size: 0.78rem; line-height: 1.35; }
+.article-link:hover strong, .article-link:focus-visible strong { color: var(--accent-teal); }
+@media (max-width: 600px) {
+    .credit { flex-direction: column; align-items: stretch; }
+    .credit img { flex: none; width: 100%; }
+}
+
+/* Laptop widths: the top bar used to push its links, Download CV included, outside the window. */
+@media (min-width: 901px) and (max-width: 1800px) {
+    .main-window-chrome .chrome-dot,
+    .main-window-chrome .chrome-tag,
+    .main-window-chrome .chrome-separator,
+    .main-window-chrome .chrome-region,
+    .chrome-tabs .tab-bracket,
+    .chrome-tabs .tab-connector { display: none; }
+    .chrome-tabs { gap: 0.15rem; }
+    .chrome-tabs .tab-label { padding: 0.5rem 0.4rem; }
+}
+@media (min-width: 901px) and (max-width: 1240px) {
+    .main-window-chrome { flex-wrap: wrap; gap: 0.25rem 1rem; }
+    .chrome-identity { order: 1; }
+    .chrome-channels { order: 2; }
+    .chrome-tabs { order: 3; width: 100%; }
+}
