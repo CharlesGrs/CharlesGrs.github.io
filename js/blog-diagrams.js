@@ -3220,26 +3220,26 @@
 
             // angle, analytic energy, neural energy
             var DATA = [
-                [0, 0.2085, 0.9600],
-                [15, 0.2206, 0.9531],
-                [30, 0.2929, 0.9797],
-                [45, 0.3909, 0.9622],
-                [60, 0.4840, 0.9571],
-                [75, 0.5710, 0.9903],
-                [90, 0.6545, 0.9904],
-                [105, 0.7470, 0.9671],
-                [120, 0.8493, 0.9772],
-                [135, 0.9295, 0.9664],
-                [150, 1.0103, 0.9448],
-                [165, 1.2122, 0.9607],
-                [180, 1.4892, 0.9692]
+                [0, 0.2084, 0.9628],
+                [15, 0.2273, 0.9584],
+                [30, 0.3093, 0.9600],
+                [45, 0.4099, 0.9522],
+                [60, 0.5094, 0.9431],
+                [75, 0.6024, 0.9564],
+                [90, 0.6738, 0.9565],
+                [105, 0.7377, 0.9317],
+                [120, 0.7944, 0.9043],
+                [135, 0.8927, 0.9394],
+                [150, 1.0800, 0.9370],
+                [165, 1.4327, 1.0102],
+                [180, 2.1731, 1.1994]
             ];
             if (!DATA.length) { container.appendChild(svg); return; }
 
             svg.appendChild(createText(w / 2, 20, 'Energy against sun angle', 'diagram-title'));
 
             var left = 66, right = w - 150, top = 44, bottom = h - 46;
-            var yLow = 0.0, yHigh = 2.0;
+            var yLow = 0.0, yHigh = 2.5;
 
             function X(angle) { return left + (angle / 180) * (right - left); }
             function Y(e) {
@@ -3248,7 +3248,7 @@
             }
 
             // grid
-            [0.0, 0.5, 1.0, 1.5, 2.0].forEach(function(v) {
+            [0.0, 0.5, 1.0, 1.5, 2.0, 2.5].forEach(function(v) {
                 svg.appendChild(createLine(left, Y(v), right, Y(v),
                                            'rgba(255,255,255,0.06)', 1));
                 svg.appendChild(createText(left - 24, Y(v), v.toFixed(1),

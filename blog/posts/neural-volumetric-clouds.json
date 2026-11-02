@@ -43,7 +43,7 @@
     {
       "type": "callout",
       "variant": "info",
-      "content": "The result, up front. The approximation real-time renderers ship today is off by a factor of **ten** depending on where the sun sits: a fifth of the correct brightness with the sun behind the camera, and more than twice too bright looking straight into it. The trained version holds within about **five percent** across almost the whole range, for about **20% more GPU time**."
+      "content": "The result, up front. The approximation real-time renderers ship today is off by a factor of **ten** depending on where the sun sits: a fifth of the correct brightness with the sun behind the camera, and more than twice too bright looking straight into it. The trained version stays within about **ten percent** at twelve of the thirteen sun positions, for about **20% more GPU time**."
     },
     {
       "type": "paragraph",
@@ -358,7 +358,7 @@
     },
     {
       "type": "paragraph",
-      "content": "The usual approach swings from **0.21 to 2.17**, a factor of ten across the sweep. With the sun behind the camera it draws the cloud with about a fifth of the light it should have, and looking into the sun it renders it more than twice as bright as it is. The network holds between **0.93 and 0.96** from front lit all the way round to side on and past it, which is within about five percent of correct across eleven of the thirteen positions. The last two are the hard ones, and they are worth looking at rather than averaging away."
+      "content": "The usual approach swings from **0.21 to 2.17**, a factor of ten across the sweep. With the sun behind the camera it draws the cloud with about a fifth of the light it should have, and looking into the sun it renders it more than twice as bright as it is. The network stays between **0.90 and 1.01** at twelve of the thirteen positions. The last one, looking straight into the sun, is the hard one, and it is worth looking at rather than averaging away."
     },
     {
       "type": "paragraph",

@@ -750,7 +750,7 @@
                 <figcaption>Left is the correct answer from a path tracer. Middle is the approximation games ship. Right is a small neural network trained to reproduce the left one. The top row is how right each one is, the bottom row is what it costs. Watch the middle number as the camera goes round: it falls to 30% of the true brightness and climbs back, while the right one stays put. The grain on the left is the path tracer&#39;s own noise.</figcaption>
             </figure>
 <aside class="article-section section-callout info">
-                <p>The result, up front. The approximation real-time renderers ship today is off by a factor of <strong>ten</strong> depending on where the sun sits: a fifth of the correct brightness with the sun behind the camera, and more than twice too bright looking straight into it. The trained version holds within about <strong>five percent</strong> across almost the whole range, for about <strong>20% more GPU time</strong>.</p>
+                <p>The result, up front. The approximation real-time renderers ship today is off by a factor of <strong>ten</strong> depending on where the sun sits: a fifth of the correct brightness with the sun behind the camera, and more than twice too bright looking straight into it. The trained version stays within about <strong>ten percent</strong> at twelve of the thirteen sun positions, for about <strong>20% more GPU time</strong>.</p>
             </aside>
 <p class="article-section section-paragraph">This article builds one end to end, on a cloud, and then checks it against the slow correct answer to find out how close it really gets.</p>
 <h2 id="section-7-what-is-a-neural-shader" class="article-section section-heading" data-toc-level="2">What is a neural shader?</h2>
@@ -1018,7 +1018,7 @@ float3 CloudNetEvaluate(<span class="keyword">float</span> descriptor[<span clas
                 </div>
                 <figcaption>The shape of the curve is the result</figcaption>
             </figure>
-<p class="article-section section-paragraph">The usual approach swings from <strong>0.21 to 2.17</strong>, a factor of ten across the sweep. With the sun behind the camera it draws the cloud with about a fifth of the light it should have, and looking into the sun it renders it more than twice as bright as it is. The network holds between <strong>0.93 and 0.96</strong> from front lit all the way round to side on and past it, which is within about five percent of correct across eleven of the thirteen positions. The last two are the hard ones, and they are worth looking at rather than averaging away.</p>
+<p class="article-section section-paragraph">The usual approach swings from <strong>0.21 to 2.17</strong>, a factor of ten across the sweep. With the sun behind the camera it draws the cloud with about a fifth of the light it should have, and looking into the sun it renders it more than twice as bright as it is. The network stays between <strong>0.90 and 1.01</strong> at twelve of the thirteen positions. The last one, looking straight into the sun, is the hard one, and it is worth looking at rather than averaging away.</p>
 <p class="article-section section-paragraph">Here is the worst case, with the sun behind the camera:</p>
 <figure class="article-section section-image">
                 <img src="../../blog/images/neural-cloud-front.png" alt="Path traced reference, the usual approximation, and the neural version, front lit" loading="lazy">
