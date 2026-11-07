@@ -13,85 +13,111 @@
     <title>Charles Grassi - CV</title>
     <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon/favicon-32x32.png">
     <style>
-@font-face { font-family: "Bricolage"; src: url("assets/fonts/cv/Bricolage-400.ttf") format("truetype"); font-weight: 400; }
-@font-face { font-family: "Bricolage"; src: url("assets/fonts/cv/Bricolage-600.ttf") format("truetype"); font-weight: 600; }
-@font-face { font-family: "Figtree"; src: url("assets/fonts/cv/Figtree-400.ttf") format("truetype"); font-weight: 400; }
-@font-face { font-family: "Figtree"; src: url("assets/fonts/cv/Figtree-500.ttf") format("truetype"); font-weight: 500; }
-@font-face { font-family: "Figtree"; src: url("assets/fonts/cv/Figtree-600.ttf") format("truetype"); font-weight: 600; }
-:root { --paper: #0d1014; --ink: #c9c7c0; --muted: #a3a29e; --accent: #d9dade; }
+@font-face { font-family: "SourceSerif"; src: url("assets/fonts/cv/SourceSerif-400.ttf") format("truetype"); font-weight: 400; }
+@font-face { font-family: "SourceSerif"; src: url("assets/fonts/cv/SourceSerif-600.ttf") format("truetype"); font-weight: 600; }
+@font-face { font-family: "SourceSans"; src: url("assets/fonts/cv/SourceSans-400.ttf") format("truetype"); font-weight: 400; }
+@font-face { font-family: "SourceSans"; src: url("assets/fonts/cv/SourceSans-500.ttf") format("truetype"); font-weight: 500; }
+@font-face { font-family: "SourceSans"; src: url("assets/fonts/cv/SourceSans-600.ttf") format("truetype"); font-weight: 600; }
+:root { --paper: #0d1014; --ink: #d6d4cd; --muted: #a6a5a0; --rule: #eeece6; --hair: #ffffff1f;
+        --display: "SourceSerif", Georgia, serif; --body: "SourceSans", Arial, sans-serif; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 @page { size: A4; margin: 0; }
 html { background: var(--paper); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 body {
+    --r: 1;
     width: 210mm; height: 297mm; margin: 0 auto; padding: 8.5mm 8mm 12mm; overflow: hidden;
-    background: var(--paper); color: var(--ink); font: 400 9.5pt/1.4 "Figtree", sans-serif;
+    background: var(--paper); color: var(--ink); font: 400 9.6pt/1.42 var(--body);
     font-synthesis: none; font-variant-ligatures: none;
 }
 a { color: inherit; text-decoration: none; }
 header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1mm 6mm; align-items: end; }
-h1 { font: 600 41pt/.98 "Bricolage", sans-serif; letter-spacing: -.03em; color: var(--ink); }
+h1 { font: 600 41pt/.98 var(--display); letter-spacing: -.02em; color: var(--rule); }
 .title { margin-top: 1.2mm; font-size: 11pt; line-height: 1.25; color: var(--muted); }
-.contact { text-align: right; font-size: 8pt; line-height: 1.5; color: var(--muted); }
-.statement { margin-top: 4mm; max-width: 150mm; font: 400 14pt/1.32 "Bricolage", sans-serif; text-wrap: pretty; }
-.mosaic { display: grid; grid-template-columns: 2fr 1fr 1fr; grid-auto-rows: 24.5mm; margin: 5mm -8mm 0; }
-.mosaic figure { position: relative; min-width: 0; }
-.mosaic figure:first-child { grid-row: span 2; }
-.mosaic img { display: block; width: 100%; height: 100%; object-fit: cover; }
-figcaption {
-    position: absolute; left: 1.2mm; bottom: 1.2mm; padding: .25mm 1.1mm; border-radius: .6mm;
-    background: rgba(0, 0, 0, .6); color: #fff; font-size: 7.2pt; line-height: 1.25; font-weight: 600;
-}
+.contact { text-align: right; font-size: 8pt; line-height: 1.4; color: var(--muted); }
+.statement { margin-top: calc(4mm * var(--r)); font: 400 12.5pt/1.32 var(--display); text-wrap: pretty; }
 h2 {
-    margin-top: 6.25mm; padding-top: 1.6mm; border-top: .25mm solid var(--accent); color: var(--accent);
+    margin-top: calc(3.8mm * var(--r)); padding-top: 1.6mm; border-top: .25mm solid var(--rule); color: var(--rule);
     font-size: 8.5pt; line-height: 1.2; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
 }
-.job { margin-top: 3.5mm; }
-h2 + .job { margin-top: 1.925mm; }
-.job-line { display: flex; justify-content: space-between; align-items: baseline; gap: 4mm; }
-h3 { font-size: 9.5pt; line-height: 1.4; font-weight: 600; color: var(--accent); }
-h3 span { font-weight: 400; color: var(--muted); }
-.dates { font-size: 9pt; color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.job p { text-wrap: pretty; }
-.article { margin-top: .8mm; }
-h2 + .article { margin-top: 1.925mm; }
-.article a {
-    color: var(--accent); font-weight: 500; text-decoration: underline;
-    text-underline-offset: .5mm; text-decoration-thickness: .1mm;
+figure { position: relative; min-width: 0; overflow: hidden; }
+figure img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.timeline { position: relative; padding-left: 5mm; }
+.timeline::before {
+    content: ""; position: absolute; left: .6mm; top: 1.4mm; bottom: 1.5mm; width: .7mm; border-radius: .35mm;
+    background: linear-gradient(to bottom, #dbe7ff, #ffe0b0 38%, #ffaa5e 72%, #ff6f3c);
 }
-.article span { color: var(--muted); }
-.skills { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.4mm 5mm; margin-top: 1.925mm; }
-.skills small { display: block; font-size: 7.2pt; line-height: 1.3; color: var(--muted); }
+.chapter {
+    position: relative; display: grid; grid-template-columns: 40mm minmax(0, 1fr); gap: 5mm;
+    margin-top: calc(2mm * var(--r)); padding-top: calc(1.8mm * var(--r)); border-top: .1mm solid var(--hair);
+}
+.chapter:first-child { margin-top: calc(1.9mm * var(--r)); padding-top: 0; border-top: 0; }
+.chapter::before {
+    content: ""; position: absolute; left: -5.15mm; top: calc(1.8mm * var(--r) + 1.1mm); width: 2.2mm; height: 2.2mm;
+    border-radius: 50%; background: var(--c); box-shadow: 0 0 0 .7mm var(--paper), 0 0 2.6mm var(--c);
+}
+.chapter:first-child::before { top: 1.1mm; }
+.era b { display: block; font: 600 12pt/1.15 var(--display); color: var(--c); font-variant-numeric: tabular-nums; }
+.era span { display: block; margin-top: .7mm; font-size: 8pt; line-height: 1.3; color: var(--muted); }
+.thumb { margin-top: 2mm; height: 24mm; border-radius: .8mm; }
+.cap { display: block; margin-top: .7mm; font-size: 7pt; line-height: 1.2; color: var(--muted); }
+.roles { display: grid; gap: calc(1.5mm * var(--r)); }
+.roles p { text-wrap: pretty; }
+h3 { font-size: 9.6pt; line-height: 1.4; font-weight: 600; color: var(--rule); }
+h3 span { font-weight: 400; color: var(--muted); }
+.role h3 {
+    display: flex; justify-content: space-between; align-items: center; gap: 3mm;
+    padding: .15mm 1.8mm; margin-left: -1.8mm; border-radius: .6mm;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--c) 24%, transparent), color-mix(in srgb, var(--c) 3%, transparent));
+    box-shadow: inset .7mm 0 0 var(--c);
+}
+.role h3 span { color: var(--rule); font-weight: 500; }
+.minor { display: flex; flex-wrap: wrap; gap: .4mm 5mm; margin-top: -.4mm; }
+.minor h3 { font-size: 9.2pt; white-space: nowrap; }
+.minor h3 span { color: #cfcdc6; }
+.others { margin-top: calc(2mm * var(--r)); padding-top: calc(1.6mm * var(--r)); border-top: .1mm solid var(--hair); }
+.others b { margin-right: 2mm; font-size: 7.6pt; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.acards { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; margin-top: calc(2.2mm * var(--r)); }
+.acard { display: grid; grid-template-columns: 23mm minmax(0, 1fr); gap: 3mm; align-items: start; }
+.acard figure { height: 16mm; border-radius: .8mm; }
+.acard figure svg { display: block; width: 100%; height: 100%; }
+.acard b { display: block; font-size: 9.6pt; line-height: 1.25; color: var(--rule); font-weight: 600;
+           text-decoration: underline; text-underline-offset: .5mm; text-decoration-thickness: .1mm; }
+.acard p { margin-top: .6mm; font-size: 8.6pt; line-height: 1.35; text-wrap: pretty; }
+.acard .hl { color: #f2c36b; font-weight: 600; }
+.skills { display: grid; grid-template-columns: 1.45fr 1fr 1fr; gap: 1.4mm 4mm; margin-top: calc(1.9mm * var(--r)); }
+.skills small { display: block; margin-bottom: .6mm; font-size: 7.2pt; line-height: 1.3; color: var(--muted); }
+.pills { display: flex; flex-wrap: wrap; gap: .5mm; }
+.pills span { padding: 0 1.2mm; border: .15mm solid #ffffff36; border-radius: 1.2mm; font-size: 7.5pt; line-height: 1.38; white-space: nowrap; }
 @media print { html, body { height: 296.5mm; } }
 @media screen and (max-width: 780px) {
     body { width: auto; height: auto; padding: 6vw; overflow: visible; }
-    header, .skills { grid-template-columns: 1fr; }
+    header, .chapter, .acards, .skills { grid-template-columns: 1fr; }
     .contact { text-align: left; }
-    .mosaic { margin: 5mm -6vw 0; grid-auto-rows: 22vw; }
-    .job-line { flex-wrap: wrap; }
+    .role h3 { flex-wrap: wrap; }
 }
 </style>
 </head>
-<body>
+<body style="--r:1.139">
     <header>
         <div>
             <h1>Charles Grassi</h1>
             <p class="title">Graphics Programmer &amp; Technical Artist</p>
         </div>
         <div class="contact">
-            <div>Europe (CET) · EU citizen</div>
+            <div>Europe (CET) · EU citizen · French, English</div>
             <div><a href="mailto:contact.charles.grassi@gmail.com">contact.charles.grassi@gmail.com</a></div>
             <div>+33 6 46 11 82 14</div>
             <div><a href="https://linkedin.com/in/charles-grassi">linkedin.com/in/charles-grassi</a></div>
             <div><a href="https://charlesgrassi.dev">charlesgrassi.dev</a></div>
         </div>
     </header>
-    <p class="statement">I’ve been drawing with mathematics for years, and since 2020 it has been my job.</p>
-    <section class="mosaic"><figure><img src="images/cv/blumhouse.jpg" alt="Blumhouse Enhanced Cinema"><figcaption>Blumhouse Enhanced Cinema</figcaption></figure><figure><img src="images/cv/sabda-room.jpg" alt="360° projection room"><figcaption>360° projection room</figcaption></figure><figure><img src="images/cv/sabda-wide.jpg" alt="360° projection room"><figcaption>360° projection room</figcaption></figure><figure><img src="images/cv/cave.jpg" alt="Cave 360° scene"><figcaption>Cave 360° scene</figcaption></figure><figure><img src="images/cv/mountain.jpg" alt="Raytraced mountain"><figcaption>Raytraced mountain</figcaption></figure></section>
+    <p class="statement">Shaders, lighting and VFX for games, VR and live installations, made with the care of a painter and the rigour of a profiler.</p>
     <h2>Experience</h2>
-    <div class="job"><div class="job-line"><h3>HYPERDRYFT <span>Co-founder & Graphics Lead</span></h3><div class="dates">2026</div></div><p>A live-visuals engine on WebGPU: node graphs compile to multipass WGSL, driven by live audio.</p></div><div class="job"><div class="job-line"><h3>Events Arena <span>Chief Technology Officer</span></h3><div class="dates">2025–now</div></div><p>Built the company’s booking platform and its AI agent.</p></div><div class="job"><div class="job-line"><h3>Nexus Studios <span>Technical Artist & Graphics Programmer</span></h3><div class="dates">2025</div></div><p>Worked on Blumhouse Enhanced Cinema for Meta Quest, nominated for a 2026 Primetime Emmy. Real-time global illumination for VR.</p></div><div class="job"><div class="job-line"><h3>SABDA <span>Chief Technology Officer</span></h3><div class="dates">2023–2024</div></div><p>Led the team behind a 360° projection installation, with real-time 3D across several servers.</p></div><div class="job"><div class="job-line"><h3>Little Red Dog Games <span>Lead Graphics Programmer</span></h3><div class="dates">2023</div></div><p>Led a small team on compute-shader and Burst VFX in Unity.</p></div><div class="job"><div class="job-line"><h3>22cans <span>Senior Graphics Programmer</span></h3><div class="dates">2023</div></div><p>A material shader library, plus grass and volumetric lighting for mobile and desktop.</p></div><div class="job"><div class="job-line"><h3>Scapin’ / The Sandbox <span>Graphics Programmer</span></h3><div class="dates">2021–2022</div></div><p>Custom mobile lighting, stylized parallax clouds and screen-space god rays.</p></div><div class="job"><div class="job-line"><h3>Ubisoft <span>Technical Artist</span></h3><div class="dates">2020–2021</div></div><p>Shaders and VFX on a small title.</p></div>
+    <div class="timeline"><div class="chapter" style="--c:#dbe7ff"><div class="era"><b>2025–now</b><span>Live visuals, VR and AI</span><figure class="thumb"><img src="images/cv/ch-blumhouse.jpg" alt="Blumhouse Enhanced Cinema"></figure><small class="cap">Blumhouse Enhanced Cinema</small></div><div class="roles"><div class="role"><h3>HYPERDRYFT <span>Co-founder & Graphics Lead</span></h3><p>A live-visuals engine on WebGPU, delivered for a global brand’s event booth.</p></div><div class="role"><h3>Nexus Studios <span>Technical Artist & Graphics Programmer</span></h3><p>Blumhouse Enhanced Cinema for Meta Quest, nominated for a 2026 Primetime Emmy. Real-time global illumination for VR.</p></div><div class="role"><h3>Events Arena <span>Chief Technology Officer</span></h3><p>Built the company’s platform from scratch in Python, FastAPI and PostgreSQL: booking intake, seat allocation, pricing and ticket logistics.</p></div></div></div><div class="chapter" style="--c:#ffe0b0"><div class="era"><b>2023–2024</b><span>Leading teams</span><figure class="thumb"><img src="images/cv/ch-sabda.jpg" alt="360° projection room"></figure><small class="cap">360° projection room</small></div><div class="roles"><div class="role"><h3>SABDA <span>Chief Technology Officer</span></h3><p>Led the team behind a 360° projection room, with real-time 3D across several servers.</p></div><div class="role"><h3>Little Red Dog Games <span>Lead Graphics Programmer</span></h3><p>Led a team of technical artists building the game’s VFX in Unity.</p></div><div class="role"><h3>22cans <span>Senior Graphics Programmer</span></h3><p>In Peter Molyneux’s studio: rendering for a game on phones and PCs, from its material library to foliage and lighting.</p></div></div></div><div class="chapter" style="--c:#ffaa5e"><div class="era"><b>2020–2022</b><span>Shaders for games and apps</span><figure class="thumb"><img src="images/cv/ch-sandbox.jpg" alt="The Sandbox"></figure><small class="cap">The Sandbox</small></div><div class="roles"><div class="role"><h3>Scapin’ <span>Graphics Programmer</span></h3><p>Wrote the avatar shader library, a lighting library and custom render passes, tuned for tile-based mobile GPUs: half precision, low bandwidth, a cheap UI blur.</p></div><div class="role"><h3>The Sandbox <span>Graphics Programmer</span></h3><p>Worked on the game’s stylized look: clouds, outlines and shafts of light.</p></div><div class="role"><h3>Ubisoft <span>Technical Artist</span></h3><p>Shaders and VFX for a title in production, and tools for the art team to work with them.</p></div></div></div><div class="chapter" style="--c:#ff6f3c"><div class="era"><b>2016–2020</b><span>Starting out</span></div><div class="roles"><div class="role"><h3>Broxilia <span>Indie game developer</span></h3><p>Taught myself computer science and fell for real-time graphics: wrote my first shaders and released a small game on Steam.</p></div><div class="minor"><h3>IXCYS <span>C# Developer</span></h3></div></div></div></div>
+    <p class="others"><b>Other clients</b> DREST · GN3RA · H3 Space · Lunchbox Entertainment</p>
     <h2>Articles</h2>
-    <p class="article"><a href="https://charlesgrassi.dev/blog/neural-volumetric-clouds/">Neural Shaders, Explained With Clouds</a> <span>A small network trained against a path tracer.</span></p><p class="article"><a href="https://charlesgrassi.dev/blog/gpu-cache-hierarchy/">GPU Cache Hierarchy</a> <span>Why one texture fetch costs more than another.</span></p>
+    <div class="acards"><div class="acard"><figure><img src="images/cv/art-clouds.jpg" alt=""></figure><div><b><a href="https://charlesgrassi.dev/blog/neural-volumetric-clouds/">Neural Shaders, Explained With Clouds</a></b><p>A small neural network, fitted to a path-traced reference, replaces the scattering approximation in a real-time cloud shader. <span class="hl">250,000+ views on Reddit and X.</span></p></div></div><div class="acard"><figure><svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="GPU cache levels"><rect width="120" height="80" fill="#131920"/><g font-family="SourceSans, Arial, sans-serif" font-size="9" font-weight="600" fill="#a6a5a0"><text x="8" y="22">L1</text><text x="8" y="44">L2</text><text x="8" y="66">VRAM</text></g><rect x="38" y="15" width="14" height="9" rx="2" fill="#dbe7ff"/><rect x="38" y="37" width="36" height="9" rx="2" fill="#ffe0b0"/><rect x="38" y="59" width="74" height="9" rx="2" fill="#ff6f3c"/></svg></figure><div><b><a href="https://charlesgrassi.dev/blog/gpu-cache-hierarchy/">GPU Cache Hierarchy</a></b><p>Texture-fetch cost across the GPU memory hierarchy (L1, L2, VRAM), and how access patterns decide a shader’s performance.</p></div></div></div>
     <h2>What I use</h2>
-    <div class="skills"><div><small>Rendering</small>Real-time GI, PBR, volumetrics, compute, SDF, VFX, AR/VR</div><div><small>APIs and shading</small>WebGPU/WGSL, DX11/12, Vulkan, Metal, OpenGL, HLSL, GLSL</div><div><small>Languages and engines</small>C++, C#, Python, Rust, Unreal (Niagara), Unity (URP, HDRP)</div><div><small>Profiling</small>RenderDoc, NSight, PIX, Frame Debugger</div><div><small>AI and backend</small>Claude API, tool-use agents, MCP, FastAPI, PostgreSQL</div><div><small>Spoken</small>French (native), English (fluent)</div></div>
+    <div class="skills"><div><small>Rendering</small><div class="pills"><span>Real-time GI</span><span>PBR</span><span>Ray marching</span><span>Compute shaders</span><span>GPU-driven rendering</span><span>Custom render passes</span><span>Post-processing</span><span>VFX</span><span>Neural shading</span><span>Mobile and VR optimisation</span></div></div><div><small>APIs and engines</small><div class="pills"><span>WebGPU/WGSL</span><span>DX11/12</span><span>Vulkan</span><span>Metal</span><span>OpenGL</span><span>HLSL</span><span>GLSL</span><span>Unreal (Niagara)</span><span>Unity (URP, HDRP)</span></div></div><div><small>Languages and tools</small><div class="pills"><span>C++</span><span>C#</span><span>Python</span><span>Rust</span><span>RenderDoc</span><span>NSight</span><span>PIX</span><span>Claude API</span><span>MCP</span><span>FastAPI</span><span>PostgreSQL</span></div></div></div>
 </body>
 </html>
